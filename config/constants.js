@@ -1,0 +1,143 @@
+// Configuration constants for LP Staking Platform
+window.CONFIG = {
+    // Contract Addresses (Polygon Amoy Testnet)
+    CONTRACTS: {
+        STAKING_CONTRACT: '0x1234567890123456789012345678901234567890', // Replace with actual address
+        REWARD_TOKEN: '0x0987654321098765432109876543210987654321', // Replace with actual address
+    },
+
+    // Network Configuration
+    NETWORKS: {
+        POLYGON_AMOY: {
+            chainId: 80002,
+            name: 'Polygon Amoy Testnet',
+            rpcUrl: 'https://rpc-amoy.polygon.technology',
+            blockExplorer: 'https://amoy.polygonscan.com',
+            nativeCurrency: {
+                name: 'MATIC',
+                symbol: 'MATIC',
+                decimals: 18
+            }
+        }
+    },
+
+    // Default network
+    DEFAULT_NETWORK: 80002,
+
+    // RPC Configuration
+    RPC: {
+        POLYGON_AMOY: [
+            'https://rpc-amoy.polygon.technology',
+            'https://polygon-amoy-bor-rpc.publicnode.com',
+            'https://polygon-amoy.drpc.org'
+        ],
+        FALLBACK_TIMEOUT: 5000, // 5 seconds
+        MAX_RETRIES: 3
+    },
+
+    // API Configuration
+    APIS: {
+        COINGECKO: 'https://api.coingecko.com/api/v3',
+        PRICE_UPDATE_INTERVAL: 300000, // 5 minutes
+        CACHE_DURATION: 300000 // 5 minutes
+    },
+
+    // UI Configuration
+    UI: {
+        THEME_STORAGE_KEY: 'lp-staking-theme',
+        WALLET_STORAGE_KEY: 'lp-staking-wallet-connection',
+        DATA_REFRESH_INTERVAL: 30000, // 30 seconds
+        NOTIFICATION_DURATION: 5000, // 5 seconds
+        MODAL_ANIMATION_DURATION: 300, // 300ms
+        LOADING_DELAY: 1000 // 1 second minimum loading
+    },
+
+    // Transaction Configuration
+    TRANSACTIONS: {
+        GAS_MULTIPLIER: 1.2, // 20% buffer
+        MAX_GAS_PRICE: '100', // 100 gwei
+        DEFAULT_GAS_LIMITS: {
+            APPROVE: 60000,
+            STAKE: 150000,
+            UNSTAKE: 200000,
+            CLAIM: 120000,
+            ADMIN_ACTION: 300000
+        },
+        CONFIRMATION_BLOCKS: 1,
+        TIMEOUT: 300000 // 5 minutes
+    },
+
+    // Validation Rules
+    VALIDATION: {
+        MIN_STAKE_AMOUNT: '0.0001', // Minimum stake amount
+        MAX_DECIMALS: 18,
+        ADDRESS_REGEX: /^0x[a-fA-F0-9]{40}$/,
+        AMOUNT_REGEX: /^\d*\.?\d*$/
+    },
+
+    // Error Messages
+    ERRORS: {
+        WALLET_NOT_CONNECTED: 'Please connect your wallet first',
+        WRONG_NETWORK: 'Please switch to Polygon Amoy Testnet',
+        INSUFFICIENT_BALANCE: 'Insufficient balance for this transaction',
+        TRANSACTION_REJECTED: 'Transaction was rejected by user',
+        NETWORK_ERROR: 'Network error. Please try again.',
+        CONTRACT_ERROR: 'Contract interaction failed',
+        INVALID_AMOUNT: 'Please enter a valid amount',
+        AMOUNT_TOO_LOW: 'Amount is below minimum stake requirement',
+        AMOUNT_TOO_HIGH: 'Amount exceeds available balance'
+    },
+
+    // Success Messages
+    SUCCESS: {
+        WALLET_CONNECTED: 'Wallet connected successfully',
+        NETWORK_SWITCHED: 'Network switched successfully',
+        STAKE_SUCCESS: 'Tokens staked successfully',
+        UNSTAKE_SUCCESS: 'Tokens unstaked successfully',
+        CLAIM_SUCCESS: 'Rewards claimed successfully',
+        APPROVAL_SUCCESS: 'Token approval successful'
+    },
+
+    // Feature Flags
+    FEATURES: {
+        DARK_MODE: true,
+        WALLET_CONNECT: true,
+        ADMIN_PANEL: true,
+        PRICE_FEEDS: true,
+        REAL_TIME_UPDATES: true,
+        TRANSACTION_HISTORY: true
+    },
+
+    // Development Configuration
+    DEV: {
+        DEBUG_MODE: false, // Set to true for development
+        MOCK_DATA: false, // Set to true to use mock data
+        SKIP_WALLET_CHECK: false, // Set to true to skip wallet requirements
+        LOG_LEVEL: 'info' // 'debug', 'info', 'warn', 'error'
+    }
+};
+
+// Environment-specific overrides
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.CONFIG.DEV.DEBUG_MODE = true;
+    window.CONFIG.DEV.LOG_LEVEL = 'debug';
+}
+
+// Freeze configuration to prevent accidental modifications
+Object.freeze(window.CONFIG);
+Object.freeze(window.CONFIG.CONTRACTS);
+Object.freeze(window.CONFIG.NETWORKS);
+Object.freeze(window.CONFIG.RPC);
+Object.freeze(window.CONFIG.APIS);
+Object.freeze(window.CONFIG.UI);
+Object.freeze(window.CONFIG.TRANSACTIONS);
+Object.freeze(window.CONFIG.VALIDATION);
+Object.freeze(window.CONFIG.ERRORS);
+Object.freeze(window.CONFIG.SUCCESS);
+Object.freeze(window.CONFIG.FEATURES);
+Object.freeze(window.CONFIG.DEV);
+
+// Export for module systems (if needed)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = window.CONFIG;
+}

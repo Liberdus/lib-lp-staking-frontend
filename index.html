@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LP Staking Platform - Earn rewards by staking your liquidity provider tokens">
+    <title>LP Staking Platform</title>
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    
+    <!-- Meta tags for social sharing -->
+    <meta property="og:title" content="LP Staking Platform">
+    <meta property="og:description" content="Earn rewards by staking your liquidity provider tokens">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Loading LP Staking Platform...</p>
+        </div>
+    </div>
+
+    <!-- Network Warning -->
+    <div id="network-warning" class="network-warning" style="display: none;">
+        <div class="warning-content">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-message">Please switch to Polygon Amoy Testnet</span>
+            <button id="switch-network-btn" class="btn btn-small btn-primary">Switch Network</button>
+            <button id="dismiss-warning-btn" class="btn btn-small btn-secondary">Dismiss</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="assets/images/logo.png" alt="LP Staking" class="logo-image">
+                    <span class="logo-text">LP Staking</span>
+                </div>
+                
+                <nav class="nav">
+                    <a href="#/" class="nav-link" data-route="/">Home</a>
+                    <a href="#/admin" class="nav-link" data-route="/admin">Admin</a>
+                </nav>
+                
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn btn-icon" aria-label="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="connect-wallet-btn" class="btn btn-primary">
+                        <span class="wallet-icon">👛</span>
+                        <span class="wallet-text">Connect Wallet</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="app-content" class="main-content">
+        <!-- Dynamic content will be loaded here -->
+        <div class="container">
+            <div class="welcome-message">
+                <h1>Welcome to LP Staking Platform</h1>
+                <p>Connect your wallet to start earning rewards on your liquidity provider tokens.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>LP Staking</h3>
+                    <p>Decentralized liquidity provider rewards platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Links</h4>
+                    <a href="https://docs.example.com" target="_blank">Documentation</a>
+                    <a href="https://github.com/example" target="_blank">GitHub</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <a href="https://discord.gg/example" target="_blank">Discord</a>
+                    <a href="https://twitter.com/example" target="_blank">Twitter</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 LP Staking Platform. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-container" class="modal-container"></div>
+
+    <!-- Transaction Status Container -->
+    <div id="transaction-status-container" class="transaction-status-container" style="display: none;"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script>
+        // Debug ethers loading
+        console.log('Ethers loaded:', typeof window.ethers);
+        if (typeof window.ethers === 'undefined') {
+            console.error('CRITICAL: Ethers.js failed to load!');
+            // Try fallback CDN
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+            fallbackScript.onload = () => console.log('Fallback ethers loaded:', typeof window.ethers);
+            fallbackScript.onerror = () => console.error('All ethers CDNs failed!');
+            document.head.appendChild(fallbackScript);
+        }
+    </script>
+    <script>
+        // Verify ethers loaded before continuing
+        if (typeof window.ethers === 'undefined') {
+            document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;"><h1>🚨 Loading Error</h1><p>Ethers.js failed to load. Please check your internet connection and refresh.</p><button onclick="location.reload()">Refresh Page</button></div>';
+            throw new Error('Ethers.js not loaded');
+        }
+        console.log('✅ Ethers.js loaded successfully');
+    </script>
+
+    <script src="config/constants.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/core/state.js"></script>
+    <script src="js/core/router.js"></script>
+    <script src="js/wallet/network-manager.js"></script>
+    <script src="js/wallet/wallet-manager.js"></script>
+    <script src="js/contracts/contract-manager.js"></script>
+    <script src="js/components/base-component.js"></script>
+    <script src="js/components/notification.js"></script>
+    <script src="js/components/modal.js"></script>
+    <script src="js/pages/home.js"></script>
+    <script src="js/pages/admin.js"></script>
+    <script src="js/core/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,442 @@
+/* LP Staking Platform - Responsive Design */
+
+/* Mobile First Approach - Base styles are for mobile */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+    .container {
+        padding: 0 var(--space-6);
+    }
+    
+    .modal-content {
+        width: 85%;
+    }
+    
+    .notification-container {
+        max-width: 420px;
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+    :root {
+        --container-padding: var(--space-6);
+    }
+    
+    .header-content {
+        gap: var(--space-8);
+    }
+    
+    .nav {
+        display: flex;
+    }
+    
+    .modal-content {
+        width: 80%;
+        max-width: 600px;
+    }
+    
+    .footer-content {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .table {
+        font-size: var(--font-size-base);
+    }
+    
+    .btn {
+        padding: var(--space-3) var(--space-5);
+    }
+    
+    .btn-large {
+        padding: var(--space-4) var(--space-8);
+    }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    :root {
+        --container-padding: var(--space-8);
+    }
+    
+    .main-content {
+        padding: var(--space-12) 0;
+    }
+    
+    .modal-content {
+        width: 70%;
+        max-width: 800px;
+    }
+    
+    .card-body {
+        padding: var(--space-8);
+    }
+    
+    .card-header,
+    .card-footer {
+        padding: var(--space-8);
+    }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+    .modal-content {
+        width: 60%;
+        max-width: 900px;
+    }
+}
+
+/* Mobile-specific styles (up to 767px) */
+@media (max-width: 767px) {
+    /* Header adjustments */
+    .header {
+        height: 70px;
+    }
+    
+    .header-content {
+        flex-wrap: wrap;
+        gap: var(--space-4);
+    }
+    
+    .logo {
+        font-size: var(--font-size-lg);
+    }
+    
+    .logo-image {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .nav {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        padding-top: var(--space-2);
+        border-top: 1px solid var(--border-primary);
+        margin-top: var(--space-2);
+    }
+    
+    .nav-link {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-sm);
+    }
+    
+    .header-actions {
+        gap: var(--space-2);
+    }
+    
+    /* Button adjustments */
+    .btn {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-sm);
+    }
+    
+    .btn-icon {
+        padding: var(--space-2);
+        width: 36px;
+        height: 36px;
+    }
+    
+    /* Typography adjustments */
+    h1 { font-size: var(--font-size-3xl); }
+    h2 { font-size: var(--font-size-2xl); }
+    h3 { font-size: var(--font-size-xl); }
+    
+    /* Card adjustments */
+    .card-header,
+    .card-body,
+    .card-footer {
+        padding: var(--space-4);
+    }
+    
+    /* Table adjustments */
+    .table {
+        font-size: var(--font-size-sm);
+    }
+    
+    .table th,
+    .table td {
+        padding: var(--space-3);
+    }
+    
+    /* Make tables horizontally scrollable on mobile */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Modal adjustments */
+    .modal-content {
+        width: 95%;
+        margin: 2vh auto;
+        max-height: 96vh;
+        border-radius: var(--border-radius-lg);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: var(--space-4);
+    }
+    
+    .modal-title {
+        font-size: var(--font-size-lg);
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+    
+    /* Form adjustments */
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: var(--space-3);
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    /* Notification adjustments */
+    .notification-container {
+        top: var(--space-2);
+        right: var(--space-2);
+        left: var(--space-2);
+        max-width: none;
+    }
+    
+    .notification {
+        padding: var(--space-3);
+    }
+    
+    /* Footer adjustments */
+    .footer {
+        padding: var(--space-8) 0 var(--space-4);
+    }
+    
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: var(--space-6);
+        margin-bottom: var(--space-6);
+    }
+    
+    /* Network warning adjustments */
+    .warning-content {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-2);
+    }
+    
+    .warning-message {
+        font-size: var(--font-size-sm);
+    }
+    
+    /* Welcome message adjustments */
+    .welcome-message {
+        padding: var(--space-8) 0;
+    }
+    
+    .welcome-message h1 {
+        font-size: var(--font-size-3xl);
+        margin-bottom: var(--space-4);
+    }
+    
+    .welcome-message p {
+        font-size: var(--font-size-base);
+    }
+}
+
+/* Very small devices (320px and up) */
+@media (max-width: 374px) {
+    .container {
+        padding: 0 var(--space-3);
+    }
+    
+    .header-content {
+        padding: 0 var(--space-3);
+    }
+    
+    .logo {
+        font-size: var(--font-size-base);
+    }
+    
+    .logo-text {
+        display: none;
+    }
+    
+    .nav {
+        gap: var(--space-3);
+    }
+    
+    .nav-link {
+        padding: var(--space-1) var(--space-2);
+        font-size: var(--font-size-xs);
+    }
+    
+    .btn {
+        padding: var(--space-2);
+        font-size: var(--font-size-xs);
+    }
+    
+    .wallet-text {
+        display: none;
+    }
+    
+    .modal-content {
+        width: 98%;
+        margin: 1vh auto;
+        max-height: 98vh;
+    }
+    
+    .notification {
+        padding: var(--space-2);
+        font-size: var(--font-size-sm);
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+    .modal-content {
+        max-height: 95vh;
+        margin: 2.5vh auto;
+    }
+    
+    .modal-body {
+        max-height: calc(95vh - 120px);
+    }
+    
+    .welcome-message {
+        padding: var(--space-6) 0;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .logo-image {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Dark mode specific responsive adjustments */
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"] {
+        --background-primary: var(--gray-900);
+        --background-secondary: var(--gray-800);
+        --background-tertiary: var(--gray-700);
+        --background-overlay: rgba(0, 0, 0, 0.8);
+        
+        --text-primary: var(--gray-100);
+        --text-secondary: var(--gray-300);
+        --text-tertiary: var(--gray-400);
+        --text-inverse: var(--gray-900);
+        
+        --border-primary: var(--gray-700);
+        --border-secondary: var(--gray-600);
+    }
+}
+
+/* Print styles */
+@media print {
+    .header,
+    .footer,
+    .network-warning,
+    .notification-container,
+    .modal-container,
+    .loading-screen {
+        display: none !important;
+    }
+    
+    .main-content {
+        min-height: auto;
+        padding: 0;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+    
+    .btn {
+        border: 1px solid #000;
+        background: none !important;
+        color: #000 !important;
+    }
+    
+    a {
+        color: #000 !important;
+        text-decoration: underline !important;
+    }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner {
+        animation: none;
+    }
+    
+    .notification {
+        animation: none;
+    }
+    
+    .modal-backdrop {
+        animation: none;
+    }
+    
+    .modal-content {
+        animation: none;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    :root {
+        --border-primary: #000000;
+        --border-secondary: #000000;
+        --text-primary: #000000;
+        --text-secondary: #000000;
+        --background-primary: #ffffff;
+        --background-secondary: #ffffff;
+    }
+    
+    [data-theme="dark"] {
+        --border-primary: #ffffff;
+        --border-secondary: #ffffff;
+        --text-primary: #ffffff;
+        --text-secondary: #ffffff;
+        --background-primary: #000000;
+        --background-secondary: #000000;
+    }
+    
+    .btn {
+        border-width: 2px;
+    }
+    
+    .card {
+        border-width: 2px;
+    }
+}
+
+/* Focus visible improvements for keyboard navigation */
+@media (hover: none) and (pointer: coarse) {
+    /* Touch device specific styles */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .nav-link {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .form-input,
+    .form-select,
+    .form-textarea {
+        min-height: 44px;
+    }
+}
