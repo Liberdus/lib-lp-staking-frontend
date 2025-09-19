@@ -1,7 +1,18 @@
 /**
  * Router - Hash-based routing system for single page application
  * Handles navigation between different pages without full page reloads
+ *
+ * SINGLETON PATTERN - Prevents redeclaration errors
  */
+(function(global) {
+    'use strict';
+
+    // Prevent redeclaration
+    if (global.Router) {
+        console.warn('Router already exists, skipping redeclaration');
+        return;
+    }
+
 class Router {
     constructor() {
         this.routes = new Map();
@@ -438,5 +449,10 @@ class Router {
     }
 }
 
-// Create global instance
-window.router = new Router();
+    // Export Router class to global scope
+    global.Router = Router;
+
+    // Note: Instance creation is now handled by SystemInitializer
+    console.log('✅ Router class loaded');
+
+})(window);

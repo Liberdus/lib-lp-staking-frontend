@@ -1,7 +1,18 @@
 /**
  * Main Application Class
  * Initializes and coordinates all application components
+ *
+ * SINGLETON PATTERN - Prevents redeclaration errors
  */
+(function(global) {
+    'use strict';
+
+    // Prevent redeclaration
+    if (global.App) {
+        console.warn('App already exists, skipping redeclaration');
+        return;
+    }
+
 class App {
     constructor() {
         this.isInitialized = false;
@@ -12,72 +23,78 @@ class App {
     }
 
     /**
-     * Initialize application
+     * Initialize application with SystemInitializer
      */
     async init() {
         try {
-            this.log('Initializing LP Staking Platform...');
-            
+            this.log('🚀 Initializing LP Staking Platform...');
+
             // Show loading screen
             this.showLoadingScreen();
-            
-            // Initialize core systems
-            await this.initializeCore();
-            
+
+            // Initialize core systems using SystemInitializer
+            const systemsInitialized = await this.initializeCoreSystemsWithManager();
+
+            if (!systemsInitialized) {
+                throw new Error('Core systems initialization failed');
+            }
+
             // Set up global event listeners
             this.setupGlobalEventListeners();
-            
+
             // Initialize theme
             this.initializeTheme();
-            
+
             // Set up routes
             this.setupRoutes();
-            
+
             // Initialize wallet connection check
             await this.initializeWallet();
-            
+
             // Initialize network management
             this.initializeNetwork();
-            
+
             // Hide loading screen
             setTimeout(() => {
                 this.hideLoadingScreen();
-            }, window.CONFIG.UI.LOADING_DELAY);
-            
+            }, window.CONFIG?.UI?.LOADING_DELAY || 2000);
+
             this.isInitialized = true;
-            this.log('Application initialized successfully');
-            
+            this.log('✅ Application initialized successfully');
+
         } catch (error) {
-            this.logError('Failed to initialize application:', error);
+            this.logError('❌ Failed to initialize application:', error);
             this.showInitializationError(error);
         }
     }
 
     /**
-     * Initialize core systems
+     * Initialize core systems using SystemInitializer
      */
-    async initializeCore() {
+    async initializeCoreSystemsWithManager() {
+        this.log('🔧 Initializing core systems with SystemInitializer...');
+
+        // Check if SystemInitializer is available
+        if (!window.systemInitializer) {
+            throw new Error('SystemInitializer not available');
+        }
+
+        // Initialize all core systems
+        const success = await window.systemInitializer.initialize();
+
+        if (!success) {
+            const status = window.systemInitializer.getSystemStatus();
+            this.logError('SystemInitializer failed:', status);
+            return false;
+        }
+
         // Validate configuration
         if (!window.CONFIG) {
-            throw new Error('Configuration not loaded');
+            this.log('⚠️ Configuration not loaded, using defaults');
         }
-        
-        // Initialize state management
-        if (!window.appState) {
-            throw new Error('State manager not initialized');
-        }
-        
-        // Initialize router
-        if (!window.router) {
-            throw new Error('Router not initialized');
-        }
-        
-        // Initialize notification manager
-        if (!window.notificationManager) {
-            throw new Error('Notification manager not initialized');
-        }
-        
-        this.log('Core systems initialized');
+
+        this.log('✅ Core systems initialized via SystemInitializer');
+        return true;
     }
 
     /**
@@ -138,7 +155,7 @@ class App {
         // Listen for system theme changes
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         this.addEventListener(mediaQuery, 'change', (e) => {
-            if (window.appState.getState('ui.theme') === 'auto') {
+            if (window.stateManager.get('ui.theme') === 'auto') {
                 this.updateThemeDisplay();
             }
         });
@@ -305,40 +322,59 @@ class App {
     }
 
     /**
-     * Show welcome message for disconnected users
+     * Show Liberdus welcome message for disconnected users
      */
     showWelcomeMessage() {
         const appContent = document.getElementById('app-content');
         if (!appContent) return;
 
         appContent.innerHTML = `
-            <div class="container">
-                <div class="welcome-message">
-                    <h1>Welcome to LP Staking Platform</h1>
-                    <p>Connect your wallet to start earning rewards on your liquidity provider tokens.</p>
+            <div class="liberdus-container">
+                <div class="liberdus-main">
+                    <div class="welcome-section">
+                        <div class="welcome-header">
+                            <h1 class="welcome-title">LP Staking</h1>
+                            <p class="welcome-subtitle">Connect your wallet to start earning rewards on your liquidity provider tokens.</p>
+                        </div>
 
-                    <div class="features-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 3rem 0;">
-                        <div class="feature-card">
-                            <div class="feature-icon">💰</div>
-                            <h3>Earn Rewards</h3>
-                            <p>Stake your LP tokens and earn rewards automatically</p>
+                        <div class="connect-prompt">
+                            <div class="connect-card">
+                                <div class="connect-icon">👛</div>
+                                <h2>Connect Wallet to Get Started</h2>
+                                <p>Access your LP staking dashboard and start earning rewards</p>
+                                <button onclick="window.app.handleWalletConnect()" class="connect-cta-btn">
+                                    <span class="btn-icon">🔗</span>
+                                    Connect Wallet
+                                </button>
+                            </div>
                         </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">🔒</div>
-                            <h3>Secure Staking</h3>
-                            <p>Multi-signature governance ensures platform security</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">📊</div>
-                            <h3>Real-time APR</h3>
-                            <p>Track your earnings with live APR calculations</p>
+
+                        <div class="features-preview">
+                            <div class="feature-item">
+                                <span class="feature-icon">💰</span>
+                                <span class="feature-text">Earn Rewards</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">🔒</span>
+                                <span class="feature-text">Secure Staking</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">📊</span>
+                                <span class="feature-text">Real-time APR</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="cta-section" style="text-align: center; margin-top: 2rem;">
-                        <button onclick="window.app.handleWalletConnect()" class="btn btn-primary btn-large">
-                            Connect Wallet to Get Started
-                        </button>
+                    <!-- Footer -->
+                    <div class="liberdus-footer">
+                        <div class="footer-content">
+                            <span class="copyright">© 2024 Liberdus LP Stake. All rights reserved.</span>
+                            <div class="social-links">
+                                <a href="#" class="social-link">📱</a>
+                                <a href="#" class="social-link">🐦</a>
+                                <a href="#" class="social-link">💬</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -346,80 +382,97 @@ class App {
     }
 
     /**
-     * Show staking interface for connected users
+     * Show Liberdus LP Staking interface - Exact Design Match
      */
     showStakingInterface(walletData) {
         const appContent = document.getElementById('app-content');
         if (!appContent) return;
 
         appContent.innerHTML = `
-            <div class="container">
-                <div class="staking-dashboard">
-                    <div class="dashboard-header">
-                        <h1>LP Staking Dashboard</h1>
-                        <div class="wallet-info">
-                            <span class="wallet-label">Connected:</span>
-                            <span class="wallet-address">${walletData.address.slice(0, 6)}...${walletData.address.slice(-4)}</span>
-                            <span class="wallet-type">(${walletData.walletType || 'MetaMask'})</span>
+            <div class="liberdus-container">
+                <div class="liberdus-main">
+                    <!-- LP Staking Header -->
+                    <div class="lp-staking-header">
+                        <h1 class="lp-title">LP Staking</h1>
+                        <div class="reward-rate-info">
+                            <span class="rate-icon">⏰</span>
+                            <span class="rate-text">Hourly Reward Rate: 0.00 LIB</span>
+                            <button class="refresh-btn">🔄</button>
                         </div>
                     </div>
 
-                    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
-                        <div class="stat-card card">
-                            <div class="card-body">
-                                <h3>Your Staked Amount</h3>
-                                <div class="stat-value">$0.00</div>
-                                <div class="stat-label">LP Tokens Staked</div>
+                    <!-- LP Staking Table -->
+                    <div class="lp-staking-table">
+                        <div class="table-header">
+                            <div class="header-cell pair-header">
+                                <span class="header-icon">🔗</span>
+                                <span>Pair</span>
+                            </div>
+                            <div class="header-cell platform-header">
+                                <span class="header-icon">🏛️</span>
+                                <span>Platform</span>
+                            </div>
+                            <div class="header-cell apr-header">
+                                <span class="header-icon">📈</span>
+                                <span>Est. APR</span>
+                            </div>
+                            <div class="header-cell weight-header">
+                                <span class="header-icon">⚖️</span>
+                                <span>Reward Weight</span>
+                            </div>
+                            <div class="header-cell tvl-header">
+                                <span class="header-icon">💰</span>
+                                <span>TVL</span>
+                            </div>
+                            <div class="header-cell share-header">
+                                <span class="header-icon">📊</span>
+                                <span>My Pool Share</span>
+                            </div>
+                            <div class="header-cell earnings-header">
+                                <span class="header-icon">💎</span>
+                                <span>My Earnings</span>
                             </div>
                         </div>
-                        <div class="stat-card card">
-                            <div class="card-body">
-                                <h3>Pending Rewards</h3>
-                                <div class="stat-value">0.00</div>
-                                <div class="stat-label">Reward Tokens</div>
-                            </div>
-                        </div>
-                        <div class="stat-card card">
-                            <div class="card-body">
-                                <h3>Current APR</h3>
-                                <div class="stat-value">0.00%</div>
-                                <div class="stat-label">Annual Percentage Rate</div>
+
+                        <div class="table-body">
+                            <!-- LIB-USDT Row -->
+                            <div class="table-row">
+                                <div class="cell pair-cell">
+                                    <div class="pair-info">
+                                        <span class="pair-name">LIB-USDT</span>
+                                        <span class="pair-link">🔗</span>
+                                    </div>
+                                </div>
+                                <div class="cell platform-cell">
+                                    <span class="platform-badge uniswap">Uniswap V2</span>
+                                </div>
+                                <div class="cell apr-cell">
+                                    <span class="apr-value">0.0%</span>
+                                </div>
+                                <div class="cell weight-cell">
+                                    <span class="weight-badge high">70 (100.00%)</span>
+                                </div>
+                                <div class="cell tvl-cell">
+                                    <span class="tvl-value">0.00</span>
+                                </div>
+                                <div class="cell share-cell">
+                                    <span class="share-badge">0.00%</span>
+                                </div>
+                                <div class="cell earnings-cell">
+                                    <span class="earnings-badge">0.0000 LIB</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="staking-actions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 2rem 0;">
-                        <div class="action-card card">
-                            <div class="card-header">
-                                <h3>Stake LP Tokens</h3>
-                            </div>
-                            <div class="card-body">
-                                <p>Stake your LP tokens to start earning rewards.</p>
-                                <button class="btn btn-primary btn-full" onclick="window.notificationManager.info('Coming Soon', 'Staking functionality will be implemented in Day 4-7')">
-                                    Stake Tokens
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="action-card card">
-                            <div class="card-header">
-                                <h3>Claim Rewards</h3>
-                            </div>
-                            <div class="card-body">
-                                <p>Claim your accumulated staking rewards.</p>
-                                <button class="btn btn-success btn-full" onclick="window.notificationManager.info('Coming Soon', 'Rewards claiming will be implemented in Day 4-7')">
-                                    Claim Rewards
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="staking-pairs">
-                        <h2>Available Staking Pairs</h2>
-                        <div class="pairs-placeholder card">
-                            <div class="card-body text-center">
-                                <h3>Loading Staking Pairs...</h3>
-                                <p>Staking pairs will be loaded from the smart contract in Day 2-3.</p>
+                    <!-- Footer -->
+                    <div class="liberdus-footer">
+                        <div class="footer-content">
+                            <span class="copyright">© 2024 Liberdus LP Stake. All rights reserved.</span>
+                            <div class="social-links">
+                                <a href="#" class="social-link">📱</a>
+                                <a href="#" class="social-link">🐦</a>
+                                <a href="#" class="social-link">💬</a>
                             </div>
                         </div>
                     </div>
@@ -660,7 +713,7 @@ class App {
      * Toggle theme
      */
     toggleTheme() {
-        const currentTheme = window.appState.getState('ui.theme');
+        const currentTheme = window.stateManager.get('ui.theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         this.setTheme(newTheme);
     }
@@ -669,7 +722,7 @@ class App {
      * Set theme
      */
     setTheme(theme) {
-        window.appState.setState('ui.theme', theme);
+        window.stateManager.set('ui.theme', theme);
         this.updateThemeDisplay();
         
         // Update theme toggle button
@@ -686,7 +739,7 @@ class App {
      * Update theme display
      */
     updateThemeDisplay() {
-        const theme = window.appState.getState('ui.theme');
+        const theme = window.stateManager.get('ui.theme');
         document.documentElement.setAttribute('data-theme', theme);
     }
 
@@ -804,7 +857,38 @@ class App {
     }
 }
 
-// Initialize application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new App();
-});
+    // Export App class to global scope
+    global.App = App;
+
+    // Initialize application when DOM is ready with proper guards
+    document.addEventListener('DOMContentLoaded', () => {
+        // Prevent multiple initialization
+        if (global.app) {
+            console.warn('App already initialized, skipping');
+            return;
+        }
+
+        try {
+            console.log('🚀 Initializing LP Staking Platform...');
+            global.app = new App();
+        } catch (error) {
+            console.error('❌ Critical App initialization error:', error);
+
+            // Show user-friendly error message
+            const appContent = document.getElementById('app-content');
+            if (appContent) {
+                appContent.innerHTML = `
+                    <div style="max-width: 600px; margin: 2rem auto; padding: 2rem; background: #fee; border: 1px solid #fcc; border-radius: 0.5rem; color: #c33;">
+                        <h2 style="margin-top: 0;">⚠️ Application Initialization Error</h2>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please refresh the page or contact support if the issue persists.</p>
+                        <button onclick="window.location.reload()" style="background: #c33; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                            🔄 Refresh Page
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    });
+
+})(window);

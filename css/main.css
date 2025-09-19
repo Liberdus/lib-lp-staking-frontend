@@ -1,56 +1,86 @@
-/* LP Staking Platform - Main CSS Framework */
+/* Liberdus LP Staking - Pixel Perfect CSS Framework */
 
-/* CSS Custom Properties (Design System) */
+/* Liberdus Design System - Exact Color Matching */
 :root {
-    /* Colors - Light Theme */
-    --primary-50: #f0f9ff;
-    --primary-100: #e0f2fe;
-    --primary-200: #bae6fd;
-    --primary-300: #7dd3fc;
-    --primary-400: #38bdf8;
-    --primary-500: #0ea5e9;
-    --primary-600: #0284c7;
-    --primary-700: #0369a1;
-    --primary-800: #075985;
-    --primary-900: #0c4a6e;
+    /* Liberdus Dark Theme - Primary Background Colors */
+    --liberdus-bg-primary: #0a0e1a;
+    --liberdus-bg-secondary: #1a1f2e;
+    --liberdus-bg-tertiary: #242938;
+    --liberdus-bg-card: #1e2332;
+    --liberdus-bg-hover: #2a2f3e;
+    --liberdus-bg-input: #2d3748;
 
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
+    /* Liberdus Text Colors */
+    --liberdus-text-primary: #ffffff;
+    --liberdus-text-secondary: #b8bcc8;
+    --liberdus-text-tertiary: #8b92a5;
+    --liberdus-text-muted: #6b7280;
+    --liberdus-text-disabled: #4a5568;
 
-    --success-50: #f0fdf4;
-    --success-500: #22c55e;
-    --success-600: #16a34a;
+    /* Liberdus Border Colors */
+    --liberdus-border-primary: #2d3748;
+    --liberdus-border-secondary: #4a5568;
+    --liberdus-border-accent: #3182ce;
+    --liberdus-border-hover: #4299e1;
 
-    --warning-50: #fffbeb;
-    --warning-500: #f59e0b;
-    --warning-600: #d97706;
+    /* Liberdus Brand Colors - Exact Match */
+    --liberdus-blue: #3182ce;
+    --liberdus-blue-light: #4299e1;
+    --liberdus-blue-dark: #2c5282;
+    --liberdus-blue-bg: rgba(49, 130, 206, 0.1);
+    --liberdus-blue-hover: rgba(49, 130, 206, 0.2);
 
-    --error-50: #fef2f2;
-    --error-500: #ef4444;
-    --error-600: #dc2626;
+    --liberdus-red: #e53e3e;
+    --liberdus-red-light: #fc8181;
+    --liberdus-red-dark: #c53030;
+    --liberdus-red-bg: rgba(229, 62, 62, 0.1);
+    --liberdus-red-hover: rgba(229, 62, 62, 0.2);
 
-    /* Semantic Colors */
-    --background-primary: var(--gray-50);
-    --background-secondary: #ffffff;
-    --background-tertiary: var(--gray-100);
-    --background-overlay: rgba(0, 0, 0, 0.5);
+    --liberdus-green: #38a169;
+    --liberdus-green-light: #68d391;
+    --liberdus-green-dark: #2f855a;
+    --liberdus-green-bg: rgba(56, 161, 105, 0.1);
+    --liberdus-green-hover: rgba(56, 161, 105, 0.2);
 
-    --text-primary: var(--gray-900);
-    --text-secondary: var(--gray-600);
-    --text-tertiary: var(--gray-500);
-    --text-inverse: #ffffff;
+    --liberdus-orange: #dd6b20;
+    --liberdus-orange-light: #f6ad55;
+    --liberdus-orange-dark: #c05621;
+    --liberdus-orange-bg: rgba(221, 107, 32, 0.1);
 
-    --border-primary: var(--gray-200);
-    --border-secondary: var(--gray-300);
-    --border-focus: var(--primary-500);
+    --liberdus-purple: #805ad5;
+    --liberdus-purple-light: #b794f6;
+    --liberdus-purple-dark: #6b46c1;
+    --liberdus-purple-bg: rgba(128, 90, 213, 0.1);
+
+    /* Liberdus Gold/Coin Color - Exact Match */
+    --liberdus-gold: #f6ad55;
+    --liberdus-gold-light: #fbd38d;
+    --liberdus-gold-dark: #ed8936;
+    --liberdus-gold-glow: rgba(246, 173, 85, 0.3);
+
+    /* Legacy Compatibility Mappings */
+    --primary-color: var(--liberdus-blue);
+    --primary-light: var(--liberdus-blue-bg);
+    --primary-600: var(--liberdus-blue-dark);
+
+    --background-primary: var(--liberdus-bg-primary);
+    --background-secondary: var(--liberdus-bg-secondary);
+    --background-tertiary: var(--liberdus-bg-tertiary);
+    --background-overlay: rgba(0, 0, 0, 0.8);
+
+    --text-primary: var(--liberdus-text-primary);
+    --text-secondary: var(--liberdus-text-secondary);
+    --text-tertiary: var(--liberdus-text-tertiary);
+    --text-inverse: var(--liberdus-text-primary);
+
+    --border-primary: var(--liberdus-border-primary);
+    --border-secondary: var(--liberdus-border-secondary);
+    --border-focus: var(--liberdus-border-accent);
+
+    --success-color: var(--liberdus-green);
+    --success-600: var(--liberdus-green-dark);
+    --warning-color: var(--liberdus-orange);
+    --error-color: var(--liberdus-red);
 
     --primary-color: var(--primary-600);
     --primary-hover: var(--primary-700);
@@ -132,20 +162,38 @@
     --z-toast: 1080;
 }
 
-/* Dark Theme */
+/* Liberdus Dark Theme - Default Theme */
+body,
 [data-theme="dark"] {
-    --background-primary: var(--gray-900);
-    --background-secondary: var(--gray-800);
-    --background-tertiary: var(--gray-700);
+    /* Override root variables for dark theme */
+    --background-primary: var(--liberdus-bg-primary);
+    --background-secondary: var(--liberdus-bg-secondary);
+    --background-tertiary: var(--liberdus-bg-tertiary);
     --background-overlay: rgba(0, 0, 0, 0.8);
 
-    --text-primary: var(--gray-100);
-    --text-secondary: var(--gray-300);
-    --text-tertiary: var(--gray-400);
-    --text-inverse: var(--gray-900);
+    --text-primary: var(--liberdus-text-primary);
+    --text-secondary: var(--liberdus-text-secondary);
+    --text-tertiary: var(--liberdus-text-tertiary);
+    --text-inverse: var(--liberdus-bg-primary);
 
-    --border-primary: var(--gray-700);
-    --border-secondary: var(--gray-600);
+    --border-primary: var(--liberdus-border-primary);
+    --border-secondary: var(--liberdus-border-secondary);
+}
+
+/* Light Theme Override (if needed) */
+[data-theme="light"] {
+    --background-primary: #ffffff;
+    --background-secondary: #f7fafc;
+    --background-tertiary: #edf2f7;
+    --background-overlay: rgba(0, 0, 0, 0.5);
+
+    --text-primary: #1a202c;
+    --text-secondary: #4a5568;
+    --text-tertiary: #718096;
+    --text-inverse: #ffffff;
+
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e0;
 }
 
 /* Reset and Base Styles */
@@ -163,12 +211,15 @@ html {
 }
 
 body {
-    font-family: var(--font-family);
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-normal);
-    line-height: var(--line-height-normal);
-    color: var(--text-primary);
-    background-color: var(--background-primary);
+    font-family: var(--liberdus-font-family);
+    font-size: var(--liberdus-text-base);
+    font-weight: var(--liberdus-font-normal);
+    line-height: var(--liberdus-leading-normal);
+    color: var(--liberdus-text-primary);
+    background-color: var(--liberdus-bg-primary);
+    background-image:
+        radial-gradient(circle at 20% 80%, rgba(49, 130, 206, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(128, 90, 213, 0.03) 0%, transparent 50%);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;

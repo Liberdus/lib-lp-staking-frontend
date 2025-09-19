@@ -46,29 +46,45 @@
         </div>
     </div>
 
-    <!-- Header -->
+    <!-- Liberdus Header - Exact Design Match -->
     <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <img src="assets/images/logo.png" alt="LP Staking" class="logo-image">
-                    <span class="logo-text">LP Staking</span>
-                </div>
-                
-                <nav class="nav">
-                    <a href="#/" class="nav-link" data-route="/">Home</a>
-                    <a href="#/admin" class="nav-link" data-route="/admin">Admin</a>
-                </nav>
-                
-                <div class="header-actions">
-                    <button id="theme-toggle" class="btn btn-icon" aria-label="Toggle theme">
-                        <span class="theme-icon">🌙</span>
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>Liberdus LP Staking</h1>
+            </div>
+
+            <nav class="nav">
+                <a href="#/" class="nav-link active" data-route="/">
+                    <span class="nav-link-icon">🏠</span>
+                    HOME
+                </a>
+                <a href="#/admin" class="nav-link" data-route="/admin">
+                    <span class="nav-link-icon">⚙️</span>
+                    ADMIN PANEL
+                </a>
+            </nav>
+
+            <div class="header-actions">
+                <div class="user-dropdown">
+                    <button class="user-avatar">
+                        <span class="avatar-icon">👤</span>
                     </button>
-                    <button id="connect-wallet-btn" class="btn btn-primary">
-                        <span class="wallet-icon">👛</span>
-                        <span class="wallet-text">Connect Wallet</span>
+                </div>
+                <div class="token-selector">
+                    <button class="token-btn">
+                        <span class="token-icon">🔵</span>
+                        <span class="token-text">POL</span>
+                        <span class="dropdown-arrow">▼</span>
                     </button>
                 </div>
+                <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <button id="connect-wallet-btn" class="connect-wallet-btn">
+                    <span class="wallet-icon">👛</span>
+                    <span class="wallet-text">Connect Wallet</span>
+                </button>
             </div>
         </div>
     </header>
@@ -142,18 +158,34 @@
         console.log('✅ Ethers.js loaded successfully');
     </script>
 
+    <!-- CRITICAL FIX: Proper System Initialization Order -->
     <script src="config/constants.js"></script>
     <script src="js/utils/helpers.js"></script>
-    <script src="js/core/state.js"></script>
+
+    <!-- Step 1: Load Core Class Definitions (NO INSTANCES) -->
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/state-manager.js"></script>
+    <script src="js/core/event-manager.js"></script>
     <script src="js/core/router.js"></script>
+
+    <!-- Step 2: Load SystemInitializer (Handles All Instances) -->
+    <script src="js/core/system-initializer.js"></script>
+
+    <!-- Wallet and Contract Integration -->
     <script src="js/wallet/network-manager.js"></script>
     <script src="js/wallet/wallet-manager.js"></script>
     <script src="js/contracts/contract-manager.js"></script>
+
+    <!-- UI Components -->
     <script src="js/components/base-component.js"></script>
     <script src="js/components/notification.js"></script>
     <script src="js/components/modal.js"></script>
+
+    <!-- Application Pages -->
     <script src="js/pages/home.js"></script>
     <script src="js/pages/admin.js"></script>
+
+    <!-- Main Application -->
     <script src="js/core/app.js"></script>
 </body>
 </html>

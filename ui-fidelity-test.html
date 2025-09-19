@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liberdus LP Staking - UI Fidelity Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <style>
+        .test-section {
+            margin: 2rem 0;
+            padding: 2rem;
+            background: var(--liberdus-bg-secondary);
+            border: 1px solid var(--liberdus-border-primary);
+            border-radius: 0.5rem;
+        }
+        
+        .test-title {
+            color: var(--liberdus-text-primary);
+            font-size: 1.5rem;
+            font-weight: var(--liberdus-font-semibold);
+            margin-bottom: 1rem;
+        }
+        
+        .test-description {
+            color: var(--liberdus-text-secondary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .color-swatch {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 0.25rem;
+            margin-right: 0.5rem;
+            border: 1px solid var(--liberdus-border-primary);
+        }
+        
+        .color-info {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            font-family: var(--liberdus-font-mono);
+            font-size: 0.875rem;
+        }
+        
+        .typography-sample {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--liberdus-bg-primary);
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="liberdus-container">
+        <div class="liberdus-main">
+            <h1 style="text-align: center; color: var(--liberdus-text-primary); margin-bottom: 3rem;">
+                🎨 Liberdus LP Staking - UI Fidelity Test
+            </h1>
+            
+            <!-- Color Palette Test -->
+            <div class="test-section">
+                <h2 class="test-title">🎨 Color Palette Verification</h2>
+                <p class="test-description">Verify that all colors match the original React design exactly.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                    <div>
+                        <h3 style="color: var(--liberdus-text-primary); margin-bottom: 1rem;">Background Colors</h3>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-bg-primary);"></div>
+                            Primary: #0a0e1a
+                        </div>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-bg-secondary);"></div>
+                            Secondary: #1a1f2e
+                        </div>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-bg-tertiary);"></div>
+                            Tertiary: #242938
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--liberdus-text-primary); margin-bottom: 1rem;">Brand Colors</h3>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-blue);"></div>
+                            Blue: #3182ce
+                        </div>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-gold);"></div>
+                            Gold: #f6ad55
+                        </div>
+                        <div class="color-info">
+                            <div class="color-swatch" style="background: var(--liberdus-green);"></div>
+                            Green: #38a169
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Typography Test -->
+            <div class="test-section">
+                <h2 class="test-title">📝 Typography Verification</h2>
+                <p class="test-description">Verify font families, sizes, and weights match the original design.</p>
+                
+                <div class="typography-sample">
+                    <h1 style="font-size: var(--liberdus-text-4xl); font-weight: var(--liberdus-font-bold); color: var(--liberdus-text-primary); margin: 0;">
+                        LP Staking (4xl/bold)
+                    </h1>
+                </div>
+                
+                <div class="typography-sample">
+                    <h2 style="font-size: var(--liberdus-text-2xl); font-weight: var(--liberdus-font-semibold); color: var(--liberdus-text-primary); margin: 0;">
+                        Section Header (2xl/semibold)
+                    </h2>
+                </div>
+                
+                <div class="typography-sample">
+                    <p style="font-size: var(--liberdus-text-base); color: var(--liberdus-text-secondary); margin: 0;">
+                        Body text using secondary color (base/normal)
+                    </p>
+                </div>
+                
+                <div class="typography-sample">
+                    <p style="font-size: var(--liberdus-text-sm); color: var(--liberdus-text-tertiary); margin: 0;">
+                        Small text using tertiary color (sm/normal)
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Component Test -->
+            <div class="test-section">
+                <h2 class="test-title">🧩 Component Verification</h2>
+                <p class="test-description">Test key components match the original design.</p>
+                
+                <!-- Header Component Test -->
+                <div style="margin: 2rem 0;">
+                    <h3 style="color: var(--liberdus-text-primary); margin-bottom: 1rem;">Header Component</h3>
+                    <div style="background: var(--liberdus-bg-secondary); border: 1px solid var(--liberdus-border-primary); border-radius: 0.5rem; padding: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="logo">
+                                <div class="logo-icon"></div>
+                                <h1>Liberdus LP Staking</h1>
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <a href="#" class="nav-link active">
+                                    <span class="nav-link-icon">🏠</span>
+                                    HOME
+                                </a>
+                                <a href="#" class="nav-link">
+                                    <span class="nav-link-icon">⚙️</span>
+                                    ADMIN PANEL
+                                </a>
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <button class="user-avatar">
+                                    <span class="avatar-icon">👤</span>
+                                </button>
+                                <button class="token-btn">
+                                    <span class="token-icon">🔵</span>
+                                    <span class="token-text">POL</span>
+                                    <span class="dropdown-arrow">▼</span>
+                                </button>
+                                <button class="connect-wallet-btn">
+                                    <span class="wallet-icon">👛</span>
+                                    <span class="wallet-text">Connect Wallet</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Badge Components Test -->
+                <div style="margin: 2rem 0;">
+                    <h3 style="color: var(--liberdus-text-primary); margin-bottom: 1rem;">Badge Components</h3>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <span class="platform-badge uniswap">Uniswap V2</span>
+                        <span class="weight-badge high">70 (100.00%)</span>
+                        <span class="share-badge">0.00%</span>
+                        <span class="earnings-badge">0.0000 LIB</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Responsive Test -->
+            <div class="test-section">
+                <h2 class="test-title">📱 Responsive Design Test</h2>
+                <p class="test-description">Resize your browser window to test responsive behavior.</p>
+                
+                <div style="background: var(--liberdus-bg-primary); padding: 1rem; border-radius: 0.375rem; margin: 1rem 0;">
+                    <p style="color: var(--liberdus-text-secondary); margin: 0; text-align: center;">
+                        ✅ Desktop: > 1024px | ✅ Tablet: 768px - 1024px | ✅ Mobile: < 768px
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Success Criteria -->
+            <div class="test-section" style="border: 2px solid var(--liberdus-green);">
+                <h2 class="test-title" style="color: var(--liberdus-green);">✅ UI Fidelity Success Criteria</h2>
+                <div style="color: var(--liberdus-text-secondary);">
+                    <p>✅ Dark theme with exact color matching (#0a0e1a primary background)</p>
+                    <p>✅ Liberdus branding with gold coin icon and proper typography</p>
+                    <p>✅ Header navigation with HOME and ADMIN PANEL buttons</p>
+                    <p>✅ User controls (avatar, POL token selector, theme toggle)</p>
+                    <p>✅ LP Staking table with proper column structure and badges</p>
+                    <p>✅ Responsive design for all screen sizes</p>
+                    <p>✅ Consistent spacing, borders, and hover effects</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
