@@ -3,14 +3,20 @@
  * Listens for StakeAdded, StakeRemoved, RewardsClaimed events
  * Provides event filtering, processing, and state synchronization
  *
- * SINGLETON PATTERN - Prevents redeclaration errors
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
 (function(global) {
     'use strict';
 
-    // Prevent redeclaration
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.EventManager) {
-        console.warn('EventManager already exists, skipping redeclaration');
+        console.warn('EventManager class already exists, skipping redeclaration');
+        return;
+    }
+
+    // Check for existing instance and preserve it
+    if (global.eventManager) {
+        console.warn('EventManager instance already exists, preserving existing instance');
         return;
     }
 

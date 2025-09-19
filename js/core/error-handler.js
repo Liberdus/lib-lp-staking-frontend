@@ -3,14 +3,20 @@
  * Provides error categorization, user-friendly messages, and retry logic
  * Handles blockchain, network, and application errors gracefully
  *
- * SINGLETON PATTERN - Prevents redeclaration errors
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
 (function(global) {
     'use strict';
 
-    // Prevent redeclaration
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.ErrorHandler) {
-        console.warn('ErrorHandler already exists, skipping redeclaration');
+        console.warn('ErrorHandler class already exists, skipping redeclaration');
+        return;
+    }
+
+    // Check for existing instance and preserve it
+    if (global.errorHandler) {
+        console.warn('ErrorHandler instance already exists, preserving existing instance');
         return;
     }
 

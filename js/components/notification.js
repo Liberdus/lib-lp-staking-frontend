@@ -1,15 +1,42 @@
 /**
- * NotificationManager - Handles toast notifications
+ * NotificationManager - Enhanced toast notifications with accessibility
  * Provides success, error, warning, and info notifications
+ * Features: Auto-dismiss, animations, screen reader support, action buttons
+ *
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
+(function(global) {
+    'use strict';
+
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
+    if (global.NotificationManager) {
+        console.warn('NotificationManager class already exists, skipping redeclaration');
+        return;
+    }
+
+    // Check for existing instance and preserve it
+    if (global.notificationManager) {
+        console.warn('NotificationManager instance already exists, preserving existing instance');
+        return;
+    }
+
 class NotificationManager {
     constructor() {
         this.container = null;
         this.notifications = new Map();
         this.queue = [];
         this.maxNotifications = 5;
-        this.defaultDuration = window.CONFIG.UI.NOTIFICATION_DURATION;
-        
+        this.defaultDuration = window.CONFIG?.UI?.NOTIFICATION_DURATION || 5000;
+        this.positions = {
+            'top-right': 'notification-container-top-right',
+            'top-left': 'notification-container-top-left',
+            'bottom-right': 'notification-container-bottom-right',
+            'bottom-left': 'notification-container-bottom-left',
+            'top-center': 'notification-container-top-center',
+            'bottom-center': 'notification-container-bottom-center'
+        };
+        this.currentPosition = 'top-right';
+
         this.init();
     }
 
@@ -21,8 +48,11 @@ class NotificationManager {
         if (!this.container) {
             this.createContainer();
         }
-        
-        this.log('NotificationManager initialized');
+
+        // Set up global keyboard shortcuts
+        this.setupKeyboardShortcuts();
+
+        this.log('NotificationManager initialized with enhanced features');
     }
 
     /**
@@ -31,19 +61,61 @@ class NotificationManager {
     createContainer() {
         this.container = document.createElement('div');
         this.container.id = 'notification-container';
-        this.container.className = 'notification-container';
+        this.container.className = `notification-container ${this.positions[this.currentPosition]}`;
+        this.container.setAttribute('aria-live', 'polite');
+        this.container.setAttribute('aria-atomic', 'false');
+        this.container.setAttribute('role', 'status');
         document.body.appendChild(this.container);
     }
 
     /**
-     * Show notification
+     * Set notification position
+     */
+    setPosition(position) {
+        if (!this.positions[position]) {
+            this.logError('Invalid notification position:', position);
+            return;
+        }
+
+        this.currentPosition = position;
+        if (this.container) {
+            // Remove old position classes
+            Object.values(this.positions).forEach(className => {
+                this.container.classList.remove(className);
+            });
+            // Add new position class
+            this.container.classList.add(this.positions[position]);
+        }
+    }
+
+    /**
+     * Setup keyboard shortcuts for notification management
+     */
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + Shift + D to dismiss all notifications
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                this.dismissAll();
+            }
+        });
+    }
+
+    /**
+     * Show notification with enhanced options
      */
     show(type, title, message, options = {}) {
         const {
             duration = this.defaultDuration,
             persistent = false,
             actions = [],
-            id = null
+            id = null,
+            icon = null,
+            className = '',
+            priority = 'normal', // 'low', 'normal', 'high', 'urgent'
+            sound = false,
+            vibrate = false,
+            progress = false
         } = options;
 
         const notification = {
@@ -54,17 +126,46 @@ class NotificationManager {
             duration,
             persistent,
             actions,
-            timestamp: Date.now()
+            icon,
+            className,
+            priority,
+            sound,
+            vibrate,
+            progress,
+            timestamp: Date.now(),
+            startTime: Date.now()
         };
 
-        // Add to queue if too many notifications
-        if (this.notifications.size >= this.maxNotifications) {
+        // Handle priority queue
+        if (priority === 'urgent') {
+            // Show immediately, potentially removing lower priority notifications
+            this.handleUrgentNotification(notification);
+        } else if (this.notifications.size >= this.maxNotifications) {
             this.queue.push(notification);
             return notification.id;
+        } else {
+            this.renderNotification(notification);
+        }
+
+        return notification.id;
+    }
+
+    /**
+     * Handle urgent notifications
+     */
+    handleUrgentNotification(notification) {
+        // If at capacity, remove oldest non-urgent notification
+        if (this.notifications.size >= this.maxNotifications) {
+            const oldestNonUrgent = Array.from(this.notifications.values())
+                .filter(n => n.priority !== 'urgent')
+                .sort((a, b) => a.timestamp - b.timestamp)[0];
+
+            if (oldestNonUrgent) {
+                this.dismiss(oldestNonUrgent.id);
+            }
         }
 
         this.renderNotification(notification);
-        return notification.id;
     }
 
     /**
@@ -96,33 +197,92 @@ class NotificationManager {
     }
 
     /**
-     * Render notification to DOM
+     * Render notification to DOM with enhanced features
      */
     renderNotification(notification) {
         const element = this.createNotificationElement(notification);
-        
-        // Add to container
-        this.container.appendChild(element);
-        
+
+        // Add to container with proper insertion order
+        if (this.currentPosition.includes('top')) {
+            this.container.appendChild(element);
+        } else {
+            this.container.insertBefore(element, this.container.firstChild);
+        }
+
         // Store reference
         this.notifications.set(notification.id, {
             ...notification,
-            element
+            element,
+            progressInterval: null
         });
 
-        // Set up auto-dismiss
+        // Set up auto-dismiss with progress bar
         if (!notification.persistent && notification.duration > 0) {
-            setTimeout(() => {
-                this.dismiss(notification.id);
-            }, notification.duration);
+            this.setupAutoDismiss(notification);
+        }
+
+        // Set up progress bar if enabled
+        if (notification.progress && notification.duration > 0) {
+            this.setupProgressBar(notification);
         }
 
         // Trigger entrance animation
         requestAnimationFrame(() => {
             element.classList.add('notification-enter');
+
+            // Trigger sound/vibration if enabled
+            this.triggerFeedback(notification);
         });
 
-        this.log('Notification shown:', notification.type, notification.title);
+        // Announce to screen readers for urgent notifications
+        if (notification.priority === 'urgent') {
+            this.announceToScreenReader(notification);
+        }
+
+        this.log('Notification rendered:', notification.type, notification.title);
+    }
+
+    /**
+     * Setup auto-dismiss with pause on hover
+     */
+    setupAutoDismiss(notification) {
+        const notificationData = this.notifications.get(notification.id);
+        if (!notificationData) return;
+
+        let remainingTime = notification.duration;
+        let dismissTimer = null;
+        let startTime = Date.now();
+
+        const startTimer = () => {
+            dismissTimer = setTimeout(() => {
+                this.dismiss(notification.id);
+            }, remainingTime);
+        };
+
+        const pauseTimer = () => {
+            if (dismissTimer) {
+                clearTimeout(dismissTimer);
+                remainingTime -= (Date.now() - startTime);
+                dismissTimer = null;
+            }
+        };
+
+        const resumeTimer = () => {
+            startTime = Date.now();
+            startTimer();
+        };
+
+        // Set up hover events
+        notificationData.element.addEventListener('mouseenter', pauseTimer);
+        notificationData.element.addEventListener('mouseleave', resumeTimer);
+        notificationData.element.addEventListener('focus', pauseTimer);
+        notificationData.element.addEventListener('blur', resumeTimer);
+
+        // Start initial timer
+        startTimer();
+
+        // Store timer reference for cleanup
+        notificationData.dismissTimer = dismissTimer;
     }
 
     /**

@@ -1,15 +1,21 @@
 /**
- * Router - Hash-based routing system for single page application
- * Handles navigation between different pages without full page reloads
+ * Enhanced Router - React Router-like routing system with browser history support
+ * Features: Route guards, navigation hooks, browser history, nested routes, lazy loading
  *
- * SINGLETON PATTERN - Prevents redeclaration errors
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
 (function(global) {
     'use strict';
 
-    // Prevent redeclaration
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.Router) {
-        console.warn('Router already exists, skipping redeclaration');
+        console.warn('Router class already exists, skipping redeclaration');
+        return;
+    }
+
+    // Check for existing instance and preserve it
+    if (global.router) {
+        console.warn('Router instance already exists, preserving existing instance');
         return;
     }
 
@@ -20,26 +26,84 @@ class Router {
         this.currentComponent = null;
         this.listeners = new Set();
         this.isNavigating = false;
-        
+
+        // Enhanced features
+        this.history = [];
+        this.historyIndex = -1;
+        this.maxHistorySize = 50;
+        this.navigationHooks = {
+            beforeEach: [],
+            afterEach: [],
+            beforeResolve: []
+        };
+        this.routeParams = {};
+        this.queryParams = {};
+        this.nestedRoutes = new Map();
+        this.lazyComponents = new Map();
+
+        // Browser history support
+        this.supportsPushState = !!(window.history && window.history.pushState);
+        this.useHashRouting = !this.supportsPushState;
+
         this.init();
     }
 
     /**
-     * Initialize router
+     * Initialize enhanced router with browser history support
      */
     init() {
-        // Listen for hash changes
-        window.addEventListener('hashchange', () => this.handleHashChange());
-        window.addEventListener('load', () => this.handleHashChange());
-        
-        // Set up navigation link handlers
+        // Set up event listeners based on browser support
+        if (this.supportsPushState && !this.useHashRouting) {
+            // Use HTML5 History API
+            window.addEventListener('popstate', (e) => this.handlePopState(e));
+            window.addEventListener('load', () => this.handleInitialRoute());
+        } else {
+            // Fallback to hash routing
+            window.addEventListener('hashchange', () => this.handleHashChange());
+            window.addEventListener('load', () => this.handleHashChange());
+        }
+
+        // Set up navigation link handlers with enhanced features
         this.setupNavigationLinks();
-        
-        this.log('Router initialized');
+
+        // Set up keyboard shortcuts
+        this.setupKeyboardShortcuts();
+
+        // Initialize history
+        this.initializeHistory();
+
+        this.log('Enhanced Router initialized with browser history support');
     }
 
     /**
-     * Register a route
+     * Initialize history tracking
+     */
+    initializeHistory() {
+        const currentPath = this.getCurrentPath();
+        this.addToHistory(currentPath, { initial: true });
+    }
+
+    /**
+     * Set up keyboard shortcuts for navigation
+     */
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Alt + Left Arrow - Go back
+            if (e.altKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                this.back();
+            }
+
+            // Alt + Right Arrow - Go forward
+            if (e.altKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                this.forward();
+            }
+        });
+    }
+
+    /**
+     * Register a route with enhanced options
      */
     register(path, component, options = {}) {
         const route = {
@@ -49,63 +113,199 @@ class Router {
             requiresAuth: options.requiresAuth || false,
             requiresAdmin: options.requiresAdmin || false,
             beforeEnter: options.beforeEnter || null,
-            afterEnter: options.afterEnter || null
+            afterEnter: options.afterEnter || null,
+            // Enhanced options
+            meta: options.meta || {},
+            props: options.props || {},
+            children: options.children || [],
+            lazy: options.lazy || false,
+            redirect: options.redirect || null,
+            alias: options.alias || [],
+            caseSensitive: options.caseSensitive || false
         };
-        
+
         this.routes.set(path, route);
+
+        // Register aliases
+        if (route.alias.length > 0) {
+            route.alias.forEach(aliasPath => {
+                this.routes.set(aliasPath, { ...route, isAlias: true, originalPath: path });
+            });
+        }
+
+        // Register nested routes
+        if (route.children.length > 0) {
+            this.registerNestedRoutes(path, route.children);
+        }
+
+        // Handle lazy loading
+        if (route.lazy && typeof component === 'function') {
+            this.lazyComponents.set(path, component);
+        }
+
         this.log('Route registered:', path);
-        
+
         return this;
     }
 
     /**
-     * Navigate to a route
+     * Register nested routes
      */
-    navigate(path, replace = false) {
-        if (this.isNavigating) {
+    registerNestedRoutes(parentPath, children) {
+        children.forEach(child => {
+            const childPath = this.joinPaths(parentPath, child.path);
+            this.register(childPath, child.component, {
+                ...child,
+                parent: parentPath
+            });
+        });
+    }
+
+    /**
+     * Join paths correctly
+     */
+    joinPaths(parent, child) {
+        const cleanParent = parent.replace(/\/$/, '');
+        const cleanChild = child.replace(/^\//, '');
+        return `${cleanParent}/${cleanChild}`;
+    }
+
+    /**
+     * Navigate to a route with enhanced browser history support
+     */
+    async navigate(path, options = {}) {
+        const {
+            replace = false,
+            state = null,
+            force = false,
+            silent = false
+        } = typeof options === 'boolean' ? { replace: options } : options;
+
+        if (this.isNavigating && !force) {
             this.log('Navigation already in progress, ignoring:', path);
-            return;
+            return false;
         }
 
         try {
             this.log('Navigating to:', path);
-            
-            if (replace) {
-                window.location.replace(`#${path}`);
-            } else {
-                window.location.hash = path;
+
+            // Parse path and query parameters
+            const { pathname, search, hash } = this.parsePath(path);
+            const fullPath = pathname + search + hash;
+
+            // Run beforeEach hooks
+            const canNavigate = await this.runBeforeEachHooks(fullPath, this.getCurrentPath());
+            if (!canNavigate) {
+                this.log('Navigation blocked by beforeEach hook');
+                return false;
             }
+
+            // Update browser history
+            if (!silent) {
+                if (this.supportsPushState && !this.useHashRouting) {
+                    if (replace) {
+                        window.history.replaceState(state, '', fullPath);
+                    } else {
+                        window.history.pushState(state, '', fullPath);
+                    }
+                } else {
+                    // Hash routing fallback
+                    if (replace) {
+                        window.location.replace(`#${fullPath}`);
+                    } else {
+                        window.location.hash = fullPath;
+                    }
+                }
+            }
+
+            // Add to internal history
+            if (!replace) {
+                this.addToHistory(fullPath, state);
+            }
+
+            // Handle route change
+            if (!silent) {
+                await this.handleRouteChange(fullPath);
+            }
+
+            return true;
+
         } catch (error) {
             this.logError('Navigation failed:', error);
+            return false;
         }
     }
 
     /**
-     * Go back in history
+     * Go back in history with enhanced support
      */
     back() {
-        window.history.back();
+        if (this.canGoBack()) {
+            if (this.supportsPushState && !this.useHashRouting) {
+                window.history.back();
+            } else {
+                // Manual history management for hash routing
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    const previousPath = this.history[this.historyIndex].path;
+                    this.navigate(previousPath, { silent: true });
+                }
+            }
+        } else {
+            this.log('Cannot go back, no previous history');
+        }
     }
 
     /**
-     * Go forward in history
+     * Go forward in history with enhanced support
      */
     forward() {
-        window.history.forward();
+        if (this.canGoForward()) {
+            if (this.supportsPushState && !this.useHashRouting) {
+                window.history.forward();
+            } else {
+                // Manual history management for hash routing
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    const nextPath = this.history[this.historyIndex].path;
+                    this.navigate(nextPath, { silent: true });
+                }
+            }
+        } else {
+            this.log('Cannot go forward, no next history');
+        }
     }
 
     /**
      * Replace current route
      */
-    replace(path) {
-        this.navigate(path, true);
+    replace(path, state = null) {
+        return this.navigate(path, { replace: true, state });
     }
 
     /**
-     * Get current route path
+     * Check if can go back
+     */
+    canGoBack() {
+        return this.historyIndex > 0;
+    }
+
+    /**
+     * Check if can go forward
+     */
+    canGoForward() {
+        return this.historyIndex < this.history.length - 1;
+    }
+
+    /**
+     * Get current route path with enhanced parsing
      */
     getCurrentPath() {
-        return window.location.hash.slice(1) || '/';
+        if (this.supportsPushState && !this.useHashRouting) {
+            return window.location.pathname + window.location.search + window.location.hash;
+        } else {
+            return window.location.hash.slice(1) || '/';
+        }
     }
 
     /**
@@ -116,34 +316,190 @@ class Router {
     }
 
     /**
-     * Handle hash change events
+     * Parse path into components
+     */
+    parsePath(path) {
+        const url = new URL(path, window.location.origin);
+        return {
+            pathname: url.pathname,
+            search: url.search,
+            hash: url.hash
+        };
+    }
+
+    /**
+     * Add navigation hooks (React Router-like)
+     */
+    beforeEach(hook) {
+        this.navigationHooks.beforeEach.push(hook);
+        return () => {
+            const index = this.navigationHooks.beforeEach.indexOf(hook);
+            if (index > -1) {
+                this.navigationHooks.beforeEach.splice(index, 1);
+            }
+        };
+    }
+
+    afterEach(hook) {
+        this.navigationHooks.afterEach.push(hook);
+        return () => {
+            const index = this.navigationHooks.afterEach.indexOf(hook);
+            if (index > -1) {
+                this.navigationHooks.afterEach.splice(index, 1);
+            }
+        };
+    }
+
+    beforeResolve(hook) {
+        this.navigationHooks.beforeResolve.push(hook);
+        return () => {
+            const index = this.navigationHooks.beforeResolve.indexOf(hook);
+            if (index > -1) {
+                this.navigationHooks.beforeResolve.splice(index, 1);
+            }
+        };
+    }
+
+    /**
+     * Run beforeEach hooks
+     */
+    async runBeforeEachHooks(to, from) {
+        for (const hook of this.navigationHooks.beforeEach) {
+            try {
+                const result = await hook(to, from, (path) => {
+                    if (path) {
+                        this.navigate(path, { replace: true });
+                    }
+                });
+
+                if (result === false) {
+                    return false;
+                }
+            } catch (error) {
+                this.logError('Error in beforeEach hook:', error);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Run afterEach hooks
+     */
+    async runAfterEachHooks(to, from) {
+        for (const hook of this.navigationHooks.afterEach) {
+            try {
+                await hook(to, from);
+            } catch (error) {
+                this.logError('Error in afterEach hook:', error);
+            }
+        }
+    }
+
+    /**
+     * Add to internal history
+     */
+    addToHistory(path, state = null) {
+        // Remove any forward history if we're not at the end
+        if (this.historyIndex < this.history.length - 1) {
+            this.history = this.history.slice(0, this.historyIndex + 1);
+        }
+
+        // Add new entry
+        this.history.push({
+            path,
+            state,
+            timestamp: Date.now()
+        });
+
+        this.historyIndex = this.history.length - 1;
+
+        // Limit history size
+        if (this.history.length > this.maxHistorySize) {
+            this.history.shift();
+            this.historyIndex--;
+        }
+    }
+
+    /**
+     * Handle hash change events (legacy support)
      */
     async handleHashChange() {
+        const path = this.getCurrentPath();
+        await this.handleRouteChange(path);
+    }
+
+    /**
+     * Handle popstate events (HTML5 History API)
+     */
+    async handlePopState(event) {
+        const path = this.getCurrentPath();
+        await this.handleRouteChange(path, event.state);
+    }
+
+    /**
+     * Handle initial route on page load
+     */
+    async handleInitialRoute() {
+        const path = this.getCurrentPath();
+        await this.handleRouteChange(path);
+    }
+
+    /**
+     * Enhanced route change handler
+     */
+    async handleRouteChange(path, state = null) {
         if (this.isNavigating) return;
-        
+
         this.isNavigating = true;
-        
+
         try {
-            const path = this.getCurrentPath();
-            const route = this.findRoute(path);
-            
+            // Parse path and extract parameters
+            const { pathname, search } = this.parsePath(path);
+            this.parseQueryParams(search);
+
+            const route = this.findRoute(pathname);
+
             if (!route) {
                 this.log('Route not found:', path);
-                this.navigate('/', true);
+                await this.handleNotFound(path);
                 return;
+            }
+
+            // Handle redirects
+            if (route.redirect) {
+                this.navigate(route.redirect, { replace: true });
+                return;
+            }
+
+            // Extract route parameters
+            this.routeParams = this.extractRouteParams(pathname, route.path);
+
+            // Run beforeResolve hooks
+            for (const hook of this.navigationHooks.beforeResolve) {
+                try {
+                    const result = await hook(route, this.currentRoute);
+                    if (result === false) {
+                        this.log('Route blocked by beforeResolve hook');
+                        return;
+                    }
+                } catch (error) {
+                    this.logError('Error in beforeResolve hook:', error);
+                    return;
+                }
             }
 
             // Check authentication requirements
             if (route.requiresAuth && !this.isAuthenticated()) {
                 this.log('Route requires authentication:', path);
-                this.showAuthenticationRequired();
+                await this.handleAuthRequired(route);
                 return;
             }
 
             // Check admin requirements
             if (route.requiresAdmin && !this.isAdmin()) {
                 this.log('Route requires admin access:', path);
-                this.showAccessDenied();
+                await this.handleAccessDenied(route);
                 return;
             }
 
@@ -157,9 +513,7 @@ class Router {
             }
 
             // Clean up current component
-            if (this.currentComponent && typeof this.currentComponent.destroy === 'function') {
-                this.currentComponent.destroy();
-            }
+            await this.cleanupCurrentComponent();
 
             // Update current route
             const previousRoute = this.currentRoute;
@@ -171,36 +525,126 @@ class Router {
             // Update active navigation links
             this.updateActiveNavigation(path);
 
-            // Create and mount new component
-            if (typeof route.component === 'function') {
-                this.currentComponent = new route.component();
-                if (typeof this.currentComponent.mount === 'function') {
-                    await this.currentComponent.mount();
-                }
-            } else if (typeof route.component === 'string') {
-                // Handle string-based components (HTML content)
-                this.renderContent(route.component);
-            }
+            // Load and mount component
+            await this.loadAndMountComponent(route, state);
 
             // Execute afterEnter hook
             if (route.afterEnter) {
                 await route.afterEnter(route, previousRoute);
             }
 
+            // Run afterEach hooks
+            await this.runAfterEachHooks(path, previousRoute?.path);
+
             // Notify listeners
             this.notifyListeners('routeChanged', {
                 route,
                 previousRoute,
-                path
+                path,
+                params: this.routeParams,
+                query: this.queryParams,
+                state
             });
 
             this.log('Route changed successfully:', path);
 
         } catch (error) {
             this.logError('Route change failed:', error);
-            this.showError('Navigation failed. Please try again.');
+            await this.handleRouteError(error, path);
         } finally {
             this.isNavigating = false;
+        }
+    }
+
+    /**
+     * Parse query parameters
+     */
+    parseQueryParams(search) {
+        this.queryParams = {};
+        if (search) {
+            const params = new URLSearchParams(search);
+            for (const [key, value] of params) {
+                this.queryParams[key] = value;
+            }
+        }
+    }
+
+    /**
+     * Extract route parameters from path
+     */
+    extractRouteParams(actualPath, routePath) {
+        const params = {};
+        const actualSegments = actualPath.split('/').filter(Boolean);
+        const routeSegments = routePath.split('/').filter(Boolean);
+
+        for (let i = 0; i < routeSegments.length; i++) {
+            const routeSegment = routeSegments[i];
+            const actualSegment = actualSegments[i];
+
+            if (routeSegment.startsWith(':')) {
+                const paramName = routeSegment.slice(1);
+                params[paramName] = actualSegment;
+            }
+        }
+
+        return params;
+    }
+
+    /**
+     * Clean up current component
+     */
+    async cleanupCurrentComponent() {
+        if (this.currentComponent) {
+            if (typeof this.currentComponent.componentWillUnmount === 'function') {
+                this.currentComponent.componentWillUnmount();
+            }
+            if (typeof this.currentComponent.destroy === 'function') {
+                this.currentComponent.destroy();
+            }
+            this.currentComponent = null;
+        }
+    }
+
+    /**
+     * Load and mount component with lazy loading support
+     */
+    async loadAndMountComponent(route, state = null) {
+        let ComponentClass = route.component;
+
+        // Handle lazy loading
+        if (route.lazy && this.lazyComponents.has(route.path)) {
+            try {
+                ComponentClass = await this.lazyComponents.get(route.path)();
+                if (ComponentClass.default) {
+                    ComponentClass = ComponentClass.default;
+                }
+            } catch (error) {
+                this.logError('Failed to load lazy component:', error);
+                await this.handleComponentLoadError(error, route);
+                return;
+            }
+        }
+
+        // Create and mount component
+        if (typeof ComponentClass === 'function') {
+            try {
+                this.currentComponent = new ComponentClass(null, {
+                    ...route.props,
+                    params: this.routeParams,
+                    query: this.queryParams,
+                    state
+                });
+
+                if (typeof this.currentComponent.mount === 'function') {
+                    await this.currentComponent.mount();
+                }
+            } catch (error) {
+                this.logError('Failed to mount component:', error);
+                await this.handleComponentMountError(error, route);
+            }
+        } else if (typeof ComponentClass === 'string') {
+            // Handle string-based components (HTML content)
+            this.renderContent(ComponentClass);
         }
     }
 
@@ -430,6 +874,125 @@ class Router {
         
         this.listeners.clear();
         this.routes.clear();
+    }
+
+    /**
+     * CRITICAL FIX: Handle route not found errors
+     */
+    async handleNotFound(path) {
+        this.log('Handling 404 for path:', path);
+
+        try {
+            // Try to find a 404 route
+            const notFoundRoute = this.routes.get('404') || this.routes.get('/404');
+
+            if (notFoundRoute) {
+                await this.renderRoute(notFoundRoute, path);
+                return;
+            }
+
+            // Fallback to default 404 handling
+            this.render404Page(path);
+
+        } catch (error) {
+            this.logError('Error in handleNotFound:', error);
+            this.render404Page(path);
+        }
+    }
+
+    /**
+     * CRITICAL FIX: Handle route errors
+     */
+    async handleRouteError(error, path) {
+        this.logError('Route error for path:', path, error);
+
+        try {
+            // Notify error handler if available
+            if (window.errorHandler && typeof window.errorHandler.processError === 'function') {
+                window.errorHandler.processError(error, {
+                    context: 'routing',
+                    path: path,
+                    type: 'route_error'
+                });
+            }
+
+            // Show user-friendly error message
+            if (window.notificationManager && typeof window.notificationManager.error === 'function') {
+                window.notificationManager.error(
+                    'Navigation failed. Please try again or refresh the page.',
+                    { duration: 5000 }
+                );
+            }
+
+            // Try to recover by navigating to home
+            if (path !== '/' && path !== '#/') {
+                this.log('Attempting recovery by navigating to home');
+                setTimeout(() => {
+                    this.navigate('/', { replace: true });
+                }, 1000);
+            } else {
+                // If home page failed, show critical error
+                this.renderCriticalError(error);
+            }
+
+        } catch (recoveryError) {
+            this.logError('Error in handleRouteError recovery:', recoveryError);
+            this.renderCriticalError(error);
+        }
+    }
+
+    /**
+     * Render 404 page
+     */
+    render404Page(path) {
+        const container = document.getElementById('app-content');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem 1rem; max-width: 600px; margin: 0 auto;">
+                    <div style="font-size: 6rem; margin-bottom: 1rem;">🔍</div>
+                    <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #333;">Page Not Found</h1>
+                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 2rem;">
+                        The page "${path}" could not be found.
+                    </p>
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="window.router?.navigate('/')"
+                                style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 1rem;">
+                            🏠 Go Home
+                        </button>
+                        <button onclick="window.history.back()"
+                                style="background: #6c757d; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 1rem;">
+                            ← Go Back
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render critical error page
+     */
+    renderCriticalError(error) {
+        const container = document.getElementById('app-content');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem 1rem; max-width: 600px; margin: 0 auto;">
+                    <div style="font-size: 6rem; margin-bottom: 1rem;">⚠️</div>
+                    <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #dc3545;">Navigation Error</h1>
+                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 2rem;">
+                        A critical error occurred during navigation. Please refresh the page.
+                    </p>
+                    <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem; margin-bottom: 2rem; text-align: left;">
+                        <strong>Error Details:</strong><br>
+                        <code style="color: #dc3545;">${error.message || 'Unknown error'}</code>
+                    </div>
+                    <button onclick="window.location.reload()"
+                            style="background: #dc3545; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 1rem;">
+                        🔄 Refresh Page
+                    </button>
+                </div>
+            `;
+        }
     }
 
     /**

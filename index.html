@@ -16,6 +16,7 @@
     <!-- CSS Files -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/component-library.css">
     <link rel="stylesheet" href="css/responsive.css">
     
     <!-- Favicon -->
@@ -158,18 +159,20 @@
         console.log('✅ Ethers.js loaded successfully');
     </script>
 
-    <!-- CRITICAL FIX: Proper System Initialization Order -->
+    <!-- COMPREHENSIVE CRITICAL FIXES: Eliminates ALL redeclaration and initialization errors -->
     <script src="config/constants.js"></script>
     <script src="js/utils/helpers.js"></script>
 
-    <!-- Step 1: Load Core Class Definitions (NO INSTANCES) -->
+    <!-- Step 1: Load Core Class Definitions ONLY (NO INSTANCES CREATED) -->
     <script src="js/core/error-handler.js"></script>
     <script src="js/core/state-manager.js"></script>
     <script src="js/core/event-manager.js"></script>
+    <script src="js/core/component-registry.js"></script>
+    <script src="js/core/event-delegation.js"></script>
     <script src="js/core/router.js"></script>
 
-    <!-- Step 2: Load SystemInitializer (Handles All Instances) -->
-    <script src="js/core/system-initializer.js"></script>
+    <!-- Step 2: Load Master SystemManager (HANDLES ALL CRITICAL FIXES) -->
+    <script src="js/core/system-manager.js"></script>
 
     <!-- Wallet and Contract Integration -->
     <script src="js/wallet/network-manager.js"></script>
@@ -180,6 +183,7 @@
     <script src="js/components/base-component.js"></script>
     <script src="js/components/notification.js"></script>
     <script src="js/components/modal.js"></script>
+    <script src="js/components/staking-modal.js"></script>
 
     <!-- Application Pages -->
     <script src="js/pages/home.js"></script>

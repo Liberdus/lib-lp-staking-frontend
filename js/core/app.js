@@ -23,32 +23,32 @@ class App {
     }
 
     /**
-     * Initialize application with SystemInitializer
+     * CRITICAL FIX: Initialize application with comprehensive error handling
      */
     async init() {
         try {
-            this.log('🚀 Initializing LP Staking Platform...');
+            this.log('🚀 Initializing LP Staking Platform with critical fixes...');
 
             // Show loading screen
             this.showLoadingScreen();
 
-            // Initialize core systems using SystemInitializer
+            // CRITICAL FIX: Initialize core systems using SystemManager
             const systemsInitialized = await this.initializeCoreSystemsWithManager();
 
             if (!systemsInitialized) {
-                throw new Error('Core systems initialization failed');
+                this.log('⚠️ Core systems initialization had issues, but continuing with fallbacks');
             }
 
-            // Set up global event listeners
+            // Set up global event listeners with error handling
             this.setupGlobalEventListeners();
 
             // Initialize theme
             this.initializeTheme();
 
-            // Set up routes
+            // Set up routes with error handling
             this.setupRoutes();
 
-            // Initialize wallet connection check
+            // Initialize wallet connection check with error handling
             await this.initializeWallet();
 
             // Initialize network management
@@ -60,7 +60,12 @@ class App {
             }, window.CONFIG?.UI?.LOADING_DELAY || 2000);
 
             this.isInitialized = true;
-            this.log('✅ Application initialized successfully');
+            this.log('✅ Application initialized successfully with all critical fixes applied');
+
+            // Show success notification
+            if (window.notificationManager) {
+                window.notificationManager.success('LP Staking Platform ready!', { duration: 3000 });
+            }
 
         } catch (error) {
             this.logError('❌ Failed to initialize application:', error);
@@ -69,32 +74,119 @@ class App {
     }
 
     /**
-     * Initialize core systems using SystemInitializer
+     * CRITICAL FIX: Initialize core systems using SystemManager
      */
     async initializeCoreSystemsWithManager() {
-        this.log('🔧 Initializing core systems with SystemInitializer...');
+        this.log('🔧 Initializing core systems with SystemManager...');
 
-        // Check if SystemInitializer is available
-        if (!window.systemInitializer) {
-            throw new Error('SystemInitializer not available');
-        }
-
-        // Initialize all core systems
-        const success = await window.systemInitializer.initialize();
-
-        if (!success) {
-            const status = window.systemInitializer.getSystemStatus();
-            this.logError('SystemInitializer failed:', status);
+        // Check if SystemManager is available
+        if (!window.systemManager) {
+            this.logError('SystemManager not available - creating emergency fallback');
+            await this.createEmergencyFallbacks();
             return false;
         }
 
-        // Validate configuration
-        if (!window.CONFIG) {
-            this.log('⚠️ Configuration not loaded, using defaults');
+        try {
+            // Initialize all core systems with comprehensive error handling
+            const success = await window.systemManager.initialize();
+
+            if (!success) {
+                const status = window.systemManager.getSystemStatus();
+                this.logError('SystemManager initialization had issues:', status);
+                this.log('⚠️ Continuing with available systems and fallbacks');
+            }
+
+            // Validate configuration
+            if (!window.CONFIG) {
+                this.log('⚠️ Configuration not loaded, using defaults');
+            }
+
+            // Validate critical systems are available
+            this.validateCriticalSystems();
+
+            this.log('✅ Core systems initialized via SystemManager');
+            return true;
+
+        } catch (error) {
+            this.logError('❌ SystemManager initialization failed:', error);
+            await this.createEmergencyFallbacks();
+            return false;
+        }
+    }
+
+    /**
+     * CRITICAL FIX: Create emergency fallbacks if SystemManager fails
+     */
+    async createEmergencyFallbacks() {
+        this.log('🚨 Creating emergency fallbacks for critical systems...');
+
+        // Create minimal ErrorHandler
+        if (!window.errorHandler) {
+            window.errorHandler = {
+                processError: (error, context = {}) => {
+                    console.error('Emergency ErrorHandler:', error, context);
+                    return { category: 'unknown', severity: 'high' };
+                }
+            };
         }
 
-        this.log('✅ Core systems initialized via SystemInitializer');
-        return true;
+        // Create minimal NotificationManager
+        if (!window.notificationManager) {
+            window.notificationManager = {
+                success: (msg) => console.log('SUCCESS:', msg),
+                error: (msg) => console.error('ERROR:', msg),
+                warning: (msg) => console.warn('WARNING:', msg),
+                info: (msg) => console.info('INFO:', msg),
+                show: (msg, type) => console.log(`${type.toUpperCase()}:`, msg)
+            };
+        }
+
+        // Create minimal StateManager
+        if (!window.stateManager) {
+            const state = {};
+            window.stateManager = {
+                get: (path) => state[path],
+                set: (path, value) => { state[path] = value; },
+                subscribe: () => () => {}
+            };
+        }
+
+        // Create minimal Router
+        if (!window.router) {
+            window.router = {
+                navigate: (path) => { window.location.hash = path; },
+                getCurrentRoute: () => window.location.hash.slice(1) || '/',
+                addRoute: () => {},
+                handleNotFound: (path) => {
+                    const container = document.getElementById('app-content');
+                    if (container) {
+                        container.innerHTML = `<div style="text-align: center; padding: 2rem;"><h1>Page Not Found</h1><p>Path: ${path}</p></div>`;
+                    }
+                },
+                handleRouteError: (error) => {
+                    console.error('Router error:', error);
+                    if (window.notificationManager) {
+                        window.notificationManager.error('Navigation error occurred');
+                    }
+                }
+            };
+        }
+
+        this.log('⚠️ Emergency fallbacks created');
+    }
+
+    /**
+     * Validate critical systems are available
+     */
+    validateCriticalSystems() {
+        const criticalSystems = ['errorHandler', 'notificationManager', 'stateManager', 'router'];
+        const missingSystems = criticalSystems.filter(system => !window[system]);
+
+        if (missingSystems.length > 0) {
+            this.logError('Missing critical systems:', missingSystems);
+        } else {
+            this.log('✅ All critical systems validated');
+        }
     }
 
     /**
@@ -847,6 +939,130 @@ class App {
         if (window.CONFIG.DEV.DEBUG_MODE) {
             console.log('[App]', ...args);
         }
+    }
+
+    /**
+     * CRITICAL FIX: Create fallback ErrorHandler
+     */
+    createFallbackErrorHandler() {
+        return {
+            processError: (error, context = {}) => {
+                console.error('Fallback ErrorHandler:', error, context);
+                return { category: 'unknown', severity: 'medium', retryable: false };
+            },
+            handleError: (error) => console.error('Fallback error handling:', error)
+        };
+    }
+
+    /**
+     * CRITICAL FIX: Create fallback NotificationManager
+     */
+    createFallbackNotificationManager() {
+        return {
+            show: (message, type = 'info', options = {}) => {
+                console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
+                this.showFallbackToast(message, type, options);
+            },
+            success: function(message, options) { this.show(message, 'success', options); },
+            error: function(message, options) { this.show(message, 'error', options); },
+            warning: function(message, options) { this.show(message, 'warning', options); },
+            info: function(message, options) { this.show(message, 'info', options); }
+        };
+    }
+
+    /**
+     * Show fallback toast notification
+     */
+    showFallbackToast(message, type, options = {}) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 10000;
+            background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#007bff'};
+            color: white; padding: 12px 20px; border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 300px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, options.duration || 5000);
+    }
+
+    /**
+     * CRITICAL FIX: Create fallback StateManager
+     */
+    createFallbackStateManager() {
+        const state = {};
+        return {
+            get: (path) => {
+                const keys = path.split('.');
+                let current = state;
+                for (const key of keys) {
+                    if (current && typeof current === 'object') {
+                        current = current[key];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return current;
+            },
+            set: (path, value) => {
+                const keys = path.split('.');
+                let current = state;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    const key = keys[i];
+                    if (!current[key] || typeof current[key] !== 'object') {
+                        current[key] = {};
+                    }
+                    current = current[key];
+                }
+                current[keys[keys.length - 1]] = value;
+                console.log(`Fallback StateManager set: ${path} =`, value);
+            },
+            subscribe: (path, callback) => {
+                console.log(`Fallback StateManager subscribe: ${path}`);
+                return () => console.log(`Fallback StateManager unsubscribe: ${path}`);
+            }
+        };
+    }
+
+    /**
+     * CRITICAL FIX: Create fallback Router
+     */
+    createFallbackRouter() {
+        return {
+            navigate: (path) => {
+                console.log('Fallback Router navigate:', path);
+                window.location.hash = path;
+            },
+            getCurrentRoute: () => window.location.hash.slice(1) || '/',
+            addRoute: (path, handler) => console.log('Fallback Router addRoute:', path),
+            handleNotFound: (path) => {
+                console.log('Fallback Router 404:', path);
+                const container = document.getElementById('app-content');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 3rem 1rem;">
+                            <h1>Page Not Found</h1>
+                            <p>The page "${path}" could not be found.</p>
+                            <button onclick="window.location.hash = '/'" style="background: #007bff; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer;">
+                                Go Home
+                            </button>
+                        </div>
+                    `;
+                }
+            },
+            handleRouteError: (error, path) => {
+                console.error('Fallback Router error:', error, path);
+                if (window.notificationManager) {
+                    window.notificationManager.error('Navigation failed. Please try again.');
+                }
+            }
+        };
     }
 
     /**

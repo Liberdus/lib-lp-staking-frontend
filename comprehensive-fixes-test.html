@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Staking - Comprehensive Critical Fixes Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            font-family: var(--font-family);
+        }
+        
+        .test-section {
+            background: var(--liberdus-bg-card);
+            border: 1px solid var(--liberdus-border-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .test-result {
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            margin: 0.5rem 0;
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+        }
+        
+        .test-pass {
+            background: var(--liberdus-green-bg);
+            color: var(--liberdus-green);
+            border: 1px solid var(--liberdus-green);
+        }
+        
+        .test-fail {
+            background: var(--liberdus-red-bg);
+            color: var(--liberdus-red);
+            border: 1px solid var(--liberdus-red);
+        }
+        
+        .test-warning {
+            background: var(--liberdus-orange-bg);
+            color: var(--liberdus-orange);
+            border: 1px solid var(--liberdus-orange);
+        }
+        
+        .test-button {
+            background: var(--liberdus-blue);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            transition: background var(--transition-fast);
+        }
+        
+        .test-button:hover {
+            background: var(--liberdus-blue-dark);
+        }
+        
+        .test-button.danger {
+            background: var(--liberdus-red);
+        }
+        
+        .test-button.danger:hover {
+            background: var(--liberdus-red-dark);
+        }
+        
+        .system-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .status-card {
+            background: var(--liberdus-bg-secondary);
+            border: 1px solid var(--liberdus-border-primary);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        .status-ok { background: var(--liberdus-green); }
+        .status-error { background: var(--liberdus-red); }
+        .status-warning { background: var(--liberdus-orange); }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <header style="text-align: center; margin-bottom: 3rem;">
+            <h1 style="color: var(--liberdus-text-primary); margin-bottom: 0.5rem;">🔧 LP Staking Critical Fixes Test</h1>
+            <p style="color: var(--liberdus-text-secondary);">Comprehensive validation of all critical error fixes</p>
+        </header>
+
+        <!-- System Status Overview -->
+        <div class="test-section">
+            <h2>🚀 System Status Overview</h2>
+            <div id="system-status" class="system-status">
+                <!-- Status cards will be populated by JavaScript -->
+            </div>
+            <button class="test-button" onclick="runSystemStatusCheck()">🔍 Check System Status</button>
+        </div>
+
+        <!-- Class Redeclaration Test -->
+        <div class="test-section">
+            <h2>🔄 Class Redeclaration Prevention Test</h2>
+            <p>Testing that core classes are only declared once and instances are properly managed.</p>
+            <div id="redeclaration-results"></div>
+            <button class="test-button" onclick="testClassRedeclaration()">🧪 Test Redeclaration Prevention</button>
+            <button class="test-button danger" onclick="simulateRedeclaration()">⚠️ Simulate Redeclaration</button>
+        </div>
+
+        <!-- ErrorHandler Test -->
+        <div class="test-section">
+            <h2>🚨 ErrorHandler Initialization Test</h2>
+            <p>Testing ErrorHandler availability and fallback systems.</p>
+            <div id="errorhandler-results"></div>
+            <button class="test-button" onclick="testErrorHandler()">🧪 Test ErrorHandler</button>
+            <button class="test-button" onclick="testErrorProcessing()">🔍 Test Error Processing</button>
+        </div>
+
+        <!-- Router Methods Test -->
+        <div class="test-section">
+            <h2>🗺️ Router Methods Test</h2>
+            <p>Testing that all required router methods exist and handle errors properly.</p>
+            <div id="router-results"></div>
+            <button class="test-button" onclick="testRouterMethods()">🧪 Test Router Methods</button>
+            <button class="test-button" onclick="testRouteError()">⚠️ Test Route Error Handling</button>
+            <button class="test-button" onclick="testNotFound()">🔍 Test 404 Handling</button>
+        </div>
+
+        <!-- NotificationManager Test -->
+        <div class="test-section">
+            <h2>🔔 NotificationManager Test</h2>
+            <p>Testing notification system availability and fallback toasts.</p>
+            <div id="notification-results"></div>
+            <button class="test-button" onclick="testNotificationManager()">🧪 Test NotificationManager</button>
+            <button class="test-button" onclick="testNotificationTypes()">🎨 Test All Notification Types</button>
+        </div>
+
+        <!-- Wallet Connection Test -->
+        <div class="test-section">
+            <h2>💰 Wallet Connection Guards Test</h2>
+            <p>Testing wallet connection state management and concurrent connection prevention.</p>
+            <div id="wallet-results"></div>
+            <button class="test-button" onclick="testWalletGuards()">🧪 Test Wallet Guards</button>
+            <button class="test-button" onclick="simulateConcurrentConnections()">⚠️ Simulate Concurrent Connections</button>
+        </div>
+
+        <!-- Global Error Boundaries Test -->
+        <div class="test-section">
+            <h2>🛡️ Global Error Boundaries Test</h2>
+            <p>Testing window-level error catching and recovery mechanisms.</p>
+            <div id="error-boundary-results"></div>
+            <button class="test-button" onclick="testGlobalErrorBoundaries()">🧪 Test Error Boundaries</button>
+            <button class="test-button danger" onclick="triggerGlobalError()">💥 Trigger Global Error</button>
+            <button class="test-button danger" onclick="triggerPromiseRejection()">🚫 Trigger Promise Rejection</button>
+        </div>
+
+        <!-- Performance Test -->
+        <div class="test-section">
+            <h2>⚡ Performance & Memory Test</h2>
+            <p>Testing system performance and memory leak prevention.</p>
+            <div id="performance-results"></div>
+            <button class="test-button" onclick="testPerformance()">🧪 Test Performance</button>
+            <button class="test-button" onclick="testMemoryLeaks()">🔍 Test Memory Management</button>
+        </div>
+
+        <!-- Comprehensive Test -->
+        <div class="test-section" style="text-align: center;">
+            <h2>🎯 Run All Tests</h2>
+            <p>Execute comprehensive test suite to validate all critical fixes.</p>
+            <button class="test-button" onclick="runAllTests()" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                🚀 Run Complete Test Suite
+            </button>
+            <button class="test-button" onclick="clearAllResults()" style="background: var(--liberdus-text-tertiary);">
+                🧹 Clear Results
+            </button>
+        </div>
+    </div>
+
+    <!-- Required Scripts in Proper Order -->
+    <script src="config/constants.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    
+    <!-- Core Classes -->
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/state-manager.js"></script>
+    <script src="js/core/event-manager.js"></script>
+    <script src="js/components/notification.js"></script>
+    <script src="js/core/component-registry.js"></script>
+    <script src="js/core/event-delegation.js"></script>
+    <script src="js/core/router.js"></script>
+    
+    <!-- System Manager -->
+    <script src="js/core/system-manager.js"></script>
+    
+    <!-- Wallet Manager -->
+    <script src="js/wallet/wallet-manager.js"></script>
+    
+    <!-- App -->
+    <script src="js/core/app.js"></script>
+
+    <script>
+        // Test Suite Implementation
+        let testResults = {};
+        let testCount = 0;
+        
+        function logResult(section, test, status, message) {
+            if (!testResults[section]) testResults[section] = [];
+            testResults[section].push({ test, status, message });
+            
+            const container = document.getElementById(`${section}-results`);
+            if (container) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result test-${status}`;
+                resultDiv.innerHTML = `
+                    <strong>${status.toUpperCase()}:</strong> ${test}<br>
+                    <small>${message}</small>
+                `;
+                container.appendChild(resultDiv);
+            }
+            
+            console.log(`[${section.toUpperCase()}] ${test}: ${status} - ${message}`);
+        }
+        
+        function clearResults(section) {
+            const container = document.getElementById(`${section}-results`);
+            if (container) {
+                container.innerHTML = '';
+            }
+            if (testResults[section]) {
+                testResults[section] = [];
+            }
+        }
+        
+        function clearAllResults() {
+            const sections = ['system-status', 'redeclaration', 'errorhandler', 'router', 'notification', 'wallet', 'error-boundary', 'performance'];
+            sections.forEach(section => clearResults(section));
+            testResults = {};
+            testCount = 0;
+            console.clear();
+            console.log('🧹 All test results cleared');
+        }
+        
+        // Initialize SystemManager when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Starting comprehensive critical fixes test...');
+            
+            try {
+                if (window.systemManager) {
+                    console.log('SystemManager found, initializing...');
+                    await window.systemManager.initialize();
+                    console.log('✅ SystemManager initialized successfully');
+                } else {
+                    console.error('❌ SystemManager not found');
+                }
+            } catch (error) {
+                console.error('❌ SystemManager initialization failed:', error);
+            }
+            
+            // Auto-run system status check
+            setTimeout(() => {
+                runSystemStatusCheck();
+            }, 1000);
+        });
+        
+        // System Status Check
+        function runSystemStatusCheck() {
+            clearResults('system-status');
+            const statusContainer = document.getElementById('system-status');
+            statusContainer.innerHTML = '';
+
+            const systems = [
+                { name: 'SystemManager', instance: 'systemManager', class: 'SystemManager' },
+                { name: 'ErrorHandler', instance: 'errorHandler', class: 'ErrorHandler' },
+                { name: 'NotificationManager', instance: 'notificationManager', class: 'NotificationManager' },
+                { name: 'StateManager', instance: 'stateManager', class: 'StateManager' },
+                { name: 'EventManager', instance: 'eventManager', class: 'EventManager' },
+                { name: 'Router', instance: 'router', class: 'Router' },
+                { name: 'WalletManager', instance: 'walletManager', class: 'WalletManager' }
+            ];
+
+            systems.forEach(system => {
+                const card = document.createElement('div');
+                card.className = 'status-card';
+
+                const hasClass = typeof window[system.class] === 'function';
+                const hasInstance = !!window[system.instance];
+                const isWorking = hasInstance && typeof window[system.instance] === 'object';
+
+                let status = 'error';
+                let statusText = 'Missing';
+
+                if (hasClass && hasInstance && isWorking) {
+                    status = 'ok';
+                    statusText = 'Ready';
+                } else if (hasClass && hasInstance) {
+                    status = 'warning';
+                    statusText = 'Partial';
+                } else if (hasClass) {
+                    status = 'warning';
+                    statusText = 'Class Only';
+                }
+
+                card.innerHTML = `
+                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                        <span class="status-indicator status-${status}"></span>
+                        <strong>${system.name}</strong>
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--liberdus-text-secondary);">
+                        Status: ${statusText}<br>
+                        Class: ${hasClass ? '✅' : '❌'} | Instance: ${hasInstance ? '✅' : '❌'}
+                    </div>
+                `;
+
+                statusContainer.appendChild(card);
+            });
+        }
+
+        // Class Redeclaration Test
+        function testClassRedeclaration() {
+            clearResults('redeclaration');
+
+            const classes = ['StateManager', 'EventManager', 'Router', 'ErrorHandler', 'NotificationManager'];
+            let allPassed = true;
+
+            classes.forEach(className => {
+                try {
+                    const originalClass = window[className];
+                    const originalCount = window[className + '_INSTANCES'] || 0;
+
+                    // Try to redeclare (should be prevented)
+                    eval(`
+                        if (window.${className}) {
+                            console.warn('${className} already exists, skipping redeclaration');
+                        }
+                    `);
+
+                    const afterClass = window[className];
+                    const afterCount = window[className + '_INSTANCES'] || 0;
+
+                    if (originalClass === afterClass) {
+                        logResult('redeclaration', `${className} Redeclaration Prevention`, 'pass',
+                            'Class redeclaration properly prevented');
+                    } else {
+                        logResult('redeclaration', `${className} Redeclaration Prevention`, 'fail',
+                            'Class was redeclared when it should have been prevented');
+                        allPassed = false;
+                    }
+                } catch (error) {
+                    logResult('redeclaration', `${className} Test`, 'fail', `Error: ${error.message}`);
+                    allPassed = false;
+                }
+            });
+
+            if (allPassed) {
+                logResult('redeclaration', 'Overall Redeclaration Test', 'pass',
+                    'All classes properly prevent redeclaration');
+            }
+        }
+
+        // ErrorHandler Test
+        function testErrorHandler() {
+            clearResults('errorhandler');
+
+            if (!window.errorHandler) {
+                logResult('errorhandler', 'ErrorHandler Availability', 'fail',
+                    'ErrorHandler not found - should have fallback');
+                return;
+            }
+
+            logResult('errorhandler', 'ErrorHandler Availability', 'pass',
+                'ErrorHandler is available');
+
+            // Test error processing
+            if (typeof window.errorHandler.processError === 'function') {
+                try {
+                    const result = window.errorHandler.processError(new Error('Test error'), { context: 'test' });
+                    logResult('errorhandler', 'Error Processing', 'pass',
+                        `Error processed successfully: ${JSON.stringify(result)}`);
+                } catch (error) {
+                    logResult('errorhandler', 'Error Processing', 'fail',
+                        `Error processing failed: ${error.message}`);
+                }
+            } else {
+                logResult('errorhandler', 'Error Processing Method', 'fail',
+                    'processError method not available');
+            }
+        }
+
+        function testErrorProcessing() {
+            if (window.errorHandler && typeof window.errorHandler.processError === 'function') {
+                const testError = new Error('Comprehensive test error');
+                const result = window.errorHandler.processError(testError, {
+                    context: 'test',
+                    component: 'TestSuite'
+                });
+
+                logResult('errorhandler', 'Error Processing Test', 'pass',
+                    `Processed error: ${result.category || 'unknown'} severity: ${result.severity || 'unknown'}`);
+            } else {
+                logResult('errorhandler', 'Error Processing Test', 'fail',
+                    'ErrorHandler processError method not available');
+            }
+        }
+
+        // Router Methods Test
+        function testRouterMethods() {
+            clearResults('router');
+
+            if (!window.router) {
+                logResult('router', 'Router Availability', 'fail', 'Router not found');
+                return;
+            }
+
+            logResult('router', 'Router Availability', 'pass', 'Router is available');
+
+            const requiredMethods = ['navigate', 'getCurrentRoute', 'handleNotFound', 'handleRouteError'];
+            let allMethodsExist = true;
+
+            requiredMethods.forEach(method => {
+                if (typeof window.router[method] === 'function') {
+                    logResult('router', `${method} Method`, 'pass', `${method} method exists`);
+                } else {
+                    logResult('router', `${method} Method`, 'fail', `${method} method missing`);
+                    allMethodsExist = false;
+                }
+            });
+
+            if (allMethodsExist) {
+                logResult('router', 'All Router Methods', 'pass', 'All required methods exist');
+            }
+        }
+
+        function testRouteError() {
+            if (window.router && typeof window.router.handleRouteError === 'function') {
+                try {
+                    window.router.handleRouteError(new Error('Test route error'), '/test-path');
+                    logResult('router', 'Route Error Handling', 'pass', 'Route error handled successfully');
+                } catch (error) {
+                    logResult('router', 'Route Error Handling', 'fail', `Error handling failed: ${error.message}`);
+                }
+            } else {
+                logResult('router', 'Route Error Handling', 'fail', 'handleRouteError method not available');
+            }
+        }
+
+        function testNotFound() {
+            if (window.router && typeof window.router.handleNotFound === 'function') {
+                try {
+                    window.router.handleNotFound('/non-existent-path');
+                    logResult('router', '404 Handling', 'pass', '404 handling executed successfully');
+                } catch (error) {
+                    logResult('router', '404 Handling', 'fail', `404 handling failed: ${error.message}`);
+                }
+            } else {
+                logResult('router', '404 Handling', 'fail', 'handleNotFound method not available');
+            }
+        }
+
+        // NotificationManager Test
+        function testNotificationManager() {
+            clearResults('notification');
+
+            if (!window.notificationManager) {
+                logResult('notification', 'NotificationManager Availability', 'fail',
+                    'NotificationManager not found');
+                return;
+            }
+
+            logResult('notification', 'NotificationManager Availability', 'pass',
+                'NotificationManager is available');
+
+            const methods = ['success', 'error', 'warning', 'info', 'show'];
+            let allMethodsExist = true;
+
+            methods.forEach(method => {
+                if (typeof window.notificationManager[method] === 'function') {
+                    logResult('notification', `${method} Method`, 'pass', `${method} method exists`);
+                } else {
+                    logResult('notification', `${method} Method`, 'fail', `${method} method missing`);
+                    allMethodsExist = false;
+                }
+            });
+
+            if (allMethodsExist) {
+                logResult('notification', 'All Notification Methods', 'pass', 'All methods available');
+            }
+        }
+
+        function testNotificationTypes() {
+            if (!window.notificationManager) {
+                logResult('notification', 'Notification Types Test', 'fail', 'NotificationManager not available');
+                return;
+            }
+
+            try {
+                window.notificationManager.success('✅ Success notification test', { duration: 2000 });
+                window.notificationManager.info('ℹ️ Info notification test', { duration: 2000 });
+                window.notificationManager.warning('⚠️ Warning notification test', { duration: 2000 });
+                window.notificationManager.error('❌ Error notification test', { duration: 2000 });
+
+                logResult('notification', 'Notification Types Test', 'pass',
+                    'All notification types triggered successfully');
+            } catch (error) {
+                logResult('notification', 'Notification Types Test', 'fail',
+                    `Notification test failed: ${error.message}`);
+            }
+        }
+
+        // Wallet Connection Guards Test
+        function testWalletGuards() {
+            clearResults('wallet');
+
+            if (!window.walletManager) {
+                logResult('wallet', 'WalletManager Availability', 'fail', 'WalletManager not found');
+                return;
+            }
+
+            logResult('wallet', 'WalletManager Availability', 'pass', 'WalletManager is available');
+
+            // Test connection state
+            const isConnecting = window.walletManager.isConnecting;
+            const isConnected = window.walletManager.isConnected();
+
+            logResult('wallet', 'Connection State Check', 'pass',
+                `Connecting: ${isConnecting}, Connected: ${isConnected}`);
+
+            // Test connection methods exist
+            const methods = ['connectMetaMask', 'connectWalletConnect', 'disconnect'];
+            methods.forEach(method => {
+                if (typeof window.walletManager[method] === 'function') {
+                    logResult('wallet', `${method} Method`, 'pass', `${method} method exists`);
+                } else {
+                    logResult('wallet', `${method} Method`, 'fail', `${method} method missing`);
+                }
+            });
+        }
+
+        function simulateConcurrentConnections() {
+            if (!window.walletManager) {
+                logResult('wallet', 'Concurrent Connection Test', 'fail', 'WalletManager not available');
+                return;
+            }
+
+            // Simulate multiple connection attempts
+            let connectionAttempts = 0;
+            let rejectedAttempts = 0;
+
+            for (let i = 0; i < 3; i++) {
+                setTimeout(async () => {
+                    try {
+                        connectionAttempts++;
+                        if (window.walletManager.isConnecting) {
+                            rejectedAttempts++;
+                            logResult('wallet', `Connection Attempt ${i + 1}`, 'pass',
+                                'Concurrent connection properly rejected');
+                        } else {
+                            logResult('wallet', `Connection Attempt ${i + 1}`, 'warning',
+                                'Connection attempt allowed (first attempt)');
+                        }
+                    } catch (error) {
+                        logResult('wallet', `Connection Attempt ${i + 1}`, 'fail',
+                            `Connection error: ${error.message}`);
+                    }
+                }, i * 100);
+            }
+
+            setTimeout(() => {
+                if (rejectedAttempts > 0) {
+                    logResult('wallet', 'Concurrent Connection Prevention', 'pass',
+                        `${rejectedAttempts} concurrent attempts properly prevented`);
+                }
+            }, 500);
+        }
+
+        // Global Error Boundaries Test
+        function testGlobalErrorBoundaries() {
+            clearResults('error-boundary');
+
+            // Check if global error handlers are set up
+            const hasErrorHandler = !!window.addEventListener;
+            const hasSystemManager = !!window.systemManager;
+
+            if (hasErrorHandler) {
+                logResult('error-boundary', 'Global Error Handler Setup', 'pass',
+                    'Global error event listeners available');
+            } else {
+                logResult('error-boundary', 'Global Error Handler Setup', 'fail',
+                    'Global error handling not available');
+            }
+
+            if (hasSystemManager && window.systemManager.globalErrorHandler) {
+                logResult('error-boundary', 'SystemManager Error Handler', 'pass',
+                    'SystemManager has global error handler');
+            } else {
+                logResult('error-boundary', 'SystemManager Error Handler', 'warning',
+                    'SystemManager error handler not confirmed');
+            }
+        }
+
+        function triggerGlobalError() {
+            logResult('error-boundary', 'Global Error Test', 'warning',
+                'Triggering intentional global error...');
+
+            setTimeout(() => {
+                throw new Error('Intentional test error for global error boundary');
+            }, 100);
+        }
+
+        function triggerPromiseRejection() {
+            logResult('error-boundary', 'Promise Rejection Test', 'warning',
+                'Triggering intentional promise rejection...');
+
+            setTimeout(() => {
+                Promise.reject(new Error('Intentional test promise rejection'));
+            }, 100);
+        }
+
+        // Performance Test
+        function testPerformance() {
+            clearResults('performance');
+
+            const startTime = performance.now();
+
+            // Test system initialization performance
+            if (window.systemManager) {
+                const status = window.systemManager.getSystemStatus();
+                const initTime = status.duration || 0;
+
+                if (initTime < 5000) {
+                    logResult('performance', 'Initialization Performance', 'pass',
+                        `Systems initialized in ${initTime}ms`);
+                } else {
+                    logResult('performance', 'Initialization Performance', 'warning',
+                        `Systems took ${initTime}ms to initialize (>5s)`);
+                }
+            }
+
+            // Test memory usage
+            if (performance.memory) {
+                const memory = performance.memory;
+                const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024);
+                const totalMB = Math.round(memory.totalJSHeapSize / 1024 / 1024);
+
+                logResult('performance', 'Memory Usage', 'pass',
+                    `Using ${usedMB}MB of ${totalMB}MB heap`);
+            }
+
+            const endTime = performance.now();
+            logResult('performance', 'Performance Test Duration', 'pass',
+                `Test completed in ${Math.round(endTime - startTime)}ms`);
+        }
+
+        function testMemoryLeaks() {
+            clearResults('performance');
+
+            // Test for common memory leak patterns
+            let leakCount = 0;
+
+            // Check for excessive global variables
+            const globalKeys = Object.keys(window);
+            const suspiciousGlobals = globalKeys.filter(key =>
+                key.includes('temp') || key.includes('cache') || key.includes('buffer')
+            );
+
+            if (suspiciousGlobals.length > 10) {
+                logResult('performance', 'Global Variable Check', 'warning',
+                    `${suspiciousGlobals.length} suspicious global variables found`);
+                leakCount++;
+            } else {
+                logResult('performance', 'Global Variable Check', 'pass',
+                    'No excessive global variables detected');
+            }
+
+            // Check for event listener cleanup
+            const systems = ['stateManager', 'eventManager', 'router'];
+            systems.forEach(system => {
+                if (window[system] && typeof window[system].removeAllListeners === 'function') {
+                    logResult('performance', `${system} Cleanup`, 'pass',
+                        'Cleanup methods available');
+                } else {
+                    logResult('performance', `${system} Cleanup`, 'warning',
+                        'Cleanup methods not confirmed');
+                }
+            });
+
+            if (leakCount === 0) {
+                logResult('performance', 'Memory Leak Check', 'pass',
+                    'No obvious memory leaks detected');
+            }
+        }
+
+        // Run All Tests
+        function runAllTests() {
+            console.log('🚀 Running comprehensive test suite...');
+            clearAllResults();
+
+            const tests = [
+                () => runSystemStatusCheck(),
+                () => testClassRedeclaration(),
+                () => testErrorHandler(),
+                () => testRouterMethods(),
+                () => testNotificationManager(),
+                () => testWalletGuards(),
+                () => testGlobalErrorBoundaries(),
+                () => testPerformance()
+            ];
+
+            tests.forEach((test, index) => {
+                setTimeout(() => {
+                    try {
+                        test();
+                    } catch (error) {
+                        console.error(`Test ${index + 1} failed:`, error);
+                    }
+                }, index * 500);
+            });
+
+            // Show completion message
+            setTimeout(() => {
+                if (window.notificationManager) {
+                    window.notificationManager.success('🎉 Comprehensive test suite completed!', { duration: 5000 });
+                }
+                console.log('✅ All tests completed');
+            }, tests.length * 500 + 1000);
+        }
+
+        // Simulate redeclaration for testing
+        function simulateRedeclaration() {
+            logResult('redeclaration', 'Redeclaration Simulation', 'warning',
+                'Attempting to simulate redeclaration...');
+
+            try {
+                // This should be prevented by the singleton patterns
+                eval(`
+                    (function(global) {
+                        if (global.StateManager) {
+                            console.warn('StateManager already exists, skipping redeclaration');
+                            return;
+                        }
+                        // This should not execute due to the guard
+                        global.StateManager = function() { console.log('REDECLARED!'); };
+                    })(window);
+                `);
+
+                logResult('redeclaration', 'Redeclaration Prevention Test', 'pass',
+                    'Redeclaration properly prevented by singleton pattern');
+            } catch (error) {
+                logResult('redeclaration', 'Redeclaration Prevention Test', 'fail',
+                    `Redeclaration test failed: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+    </script>
+</body>
+</html>

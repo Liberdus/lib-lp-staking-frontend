@@ -38,18 +38,66 @@ class WalletManager {
     }
 
     /**
-     * Connect to MetaMask wallet
+     * CRITICAL FIX: Connect to MetaMask wallet with comprehensive connection guards
      */
     async connectMetaMask() {
+        // CRITICAL FIX: Enhanced connection state checking with timeout
         if (this.isConnecting) {
-            throw new Error('Connection already in progress');
+            console.warn('MetaMask connection already in progress, waiting for completion...');
+
+            // Wait for current connection to complete with timeout
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    console.error('Connection timeout - resetting connection state');
+                    this.isConnecting = false;
+                    reject(new Error('Connection timeout - please try again'));
+                }, 30000); // 30 second timeout
+
+                const checkConnection = () => {
+                    if (!this.isConnecting) {
+                        clearTimeout(timeout);
+                        if (this.isConnected()) {
+                            resolve(true);
+                        } else {
+                            reject(new Error('Previous connection attempt failed'));
+                        }
+                    } else {
+                        setTimeout(checkConnection, 500);
+                    }
+                };
+                setTimeout(checkConnection, 500);
+            });
         }
 
+        // Check if already connected
+        if (this.isConnected()) {
+            console.log('MetaMask already connected:', this.address);
+            if (window.notificationManager) {
+                window.notificationManager.info('Wallet already connected');
+            }
+            return true;
+        }
+
+        // Check MetaMask availability
         if (!window.ethereum) {
-            throw new Error('MetaMask not installed. Please install MetaMask to continue.');
+            const error = new Error('MetaMask not installed. Please install MetaMask to continue.');
+            if (window.notificationManager) {
+                window.notificationManager.error('MetaMask not detected. Please install MetaMask browser extension.');
+            }
+            throw error;
         }
 
+        // Set connection state with timeout protection
         this.isConnecting = true;
+        const connectionTimeout = setTimeout(() => {
+            if (this.isConnecting) {
+                console.error('MetaMask connection timeout');
+                this.isConnecting = false;
+                if (window.notificationManager) {
+                    window.notificationManager.error('Connection timeout. Please try again.');
+                }
+            }
+        }, 60000); // 60 second timeout
 
         try {
             this.log('Connecting to MetaMask...');
@@ -81,30 +129,72 @@ class WalletManager {
             // Store connection info
             this.storeConnectionInfo();
 
-            // Notify listeners
+            // CRITICAL FIX: Notify listeners with enhanced error handling
             this.notifyListeners('connected', {
                 address: this.address,
                 chainId: this.chainId,
                 walletType: this.walletType
             });
 
+            // Show success notification if NotificationManager is available
+            if (window.notificationManager && typeof window.notificationManager.success === 'function') {
+                window.notificationManager.success(
+                    `Wallet connected successfully! Address: ${this.address.slice(0, 6)}...${this.address.slice(-4)}`,
+                    { duration: 3000 }
+                );
+            }
+
             this.log('MetaMask connected successfully:', this.address);
             return true;
 
         } catch (error) {
             this.logError('MetaMask connection failed:', error);
+
+            // Show user-friendly error message
+            if (window.notificationManager) {
+                if (error.code === 4001) {
+                    window.notificationManager.warning('Connection cancelled by user');
+                } else if (error.code === -32002) {
+                    window.notificationManager.warning('MetaMask is already processing a request. Please wait.');
+                } else {
+                    window.notificationManager.error(`Connection failed: ${error.message}`);
+                }
+            }
+
             throw error;
         } finally {
+            clearTimeout(connectionTimeout);
             this.isConnecting = false;
         }
     }
 
     /**
-     * Connect to WalletConnect
+     * CRITICAL FIX: Connect to WalletConnect with enhanced connection guards
      */
     async connectWalletConnect() {
+        // CRITICAL FIX: Enhanced connection state checking
         if (this.isConnecting) {
-            throw new Error('Connection already in progress');
+            console.warn('WalletConnect connection already in progress, waiting...');
+            // Wait for current connection to complete
+            return new Promise((resolve, reject) => {
+                const checkConnection = () => {
+                    if (!this.isConnecting) {
+                        if (this.isConnected()) {
+                            resolve(true);
+                        } else {
+                            reject(new Error('Previous connection attempt failed'));
+                        }
+                    } else {
+                        setTimeout(checkConnection, 100);
+                    }
+                };
+                setTimeout(checkConnection, 100);
+            });
+        }
+
+        if (this.isConnected()) {
+            console.log('WalletConnect already connected:', this.address);
+            return true;
         }
 
         this.isConnecting = true;

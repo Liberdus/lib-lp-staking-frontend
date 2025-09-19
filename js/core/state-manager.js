@@ -3,14 +3,20 @@
  * Provides reactive state management with path-based subscriptions
  * Supports nested state updates, computed properties, and middleware
  *
- * SINGLETON PATTERN - Prevents redeclaration errors
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
 (function(global) {
     'use strict';
 
-    // Prevent redeclaration
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.StateManager) {
-        console.warn('StateManager already exists, skipping redeclaration');
+        console.warn('StateManager class already exists, skipping redeclaration');
+        return;
+    }
+
+    // Check for existing instance and preserve it
+    if (global.stateManager) {
+        console.warn('StateManager instance already exists, preserving existing instance');
         return;
     }
 

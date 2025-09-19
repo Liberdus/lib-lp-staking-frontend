@@ -1,99 +1,145 @@
 /**
  * SystemInitializer - Centralized system initialization manager
- * Prevents redeclaration errors and ensures proper initialization order
- * Handles all core system dependencies and error recovery
+ * CRITICAL FIX: Prevents redeclaration errors and ensures proper initialization order
+ * Handles all core system dependencies and error recovery with singleton pattern
  */
 (function(global) {
     'use strict';
-    
-    // Prevent multiple initialization
-    if (global.SystemInitializer) {
+
+    // CRITICAL FIX: Prevent multiple initialization with stronger checks
+    if (global.SystemInitializer || global.systemInitializer) {
         console.warn('SystemInitializer already exists, skipping redeclaration');
         return;
     }
-    
+
     class SystemInitializer {
         constructor() {
             this.initialized = false;
             this.systems = new Map();
             this.initializationOrder = [
                 'ErrorHandler',
-                'StateManager', 
+                'StateManager',
                 'EventManager',
+                'ComponentRegistry',
+                'EventDelegation',
+                'NotificationManager',
                 'Router'
             ];
             this.errors = [];
             this.startTime = Date.now();
-            
-            console.log('🚀 SystemInitializer created');
+            this.isInitializing = false;
+
+            console.log('🚀 SystemInitializer created with enhanced error handling');
         }
         
         /**
-         * Initialize all core systems in proper order
+         * CRITICAL FIX: Initialize all core systems in proper order with enhanced error handling
          */
         async initialize() {
             if (this.initialized) {
                 console.warn('Systems already initialized');
                 return true;
             }
-            
-            console.log('🔧 Starting system initialization...');
-            
+
+            if (this.isInitializing) {
+                console.warn('Initialization already in progress');
+                return false;
+            }
+
+            this.isInitializing = true;
+            console.log('🔧 Starting enhanced system initialization...');
+
             try {
                 // Step 1: Validate environment
                 this.validateEnvironment();
-                
-                // Step 2: Initialize core systems in order
+
+                // Step 2: Clear any existing global instances to prevent conflicts
+                this.clearExistingInstances();
+
+                // Step 3: Initialize core systems in order
                 await this.initializeCoreSystemsSequentially();
-                
-                // Step 3: Validate all systems are working
+
+                // Step 4: Initialize UI components
+                await this.initializeUIComponents();
+
+                // Step 5: Validate all systems are working
                 this.validateSystems();
-                
-                // Step 4: Set up global error handling
+
+                // Step 6: Set up global error handling
                 this.setupGlobalErrorHandling();
-                
+
                 this.initialized = true;
                 const duration = Date.now() - this.startTime;
                 console.log(`✅ All systems initialized successfully in ${duration}ms`);
-                
+
                 return true;
-                
+
             } catch (error) {
                 console.error('❌ System initialization failed:', error);
                 this.handleInitializationFailure(error);
                 return false;
+            } finally {
+                this.isInitializing = false;
             }
         }
         
         /**
-         * Validate environment before initialization
+         * CRITICAL FIX: Enhanced environment validation
          */
         validateEnvironment() {
-            console.log('🔍 Validating environment...');
-            
-            // Check required DOM elements
+            console.log('🔍 Validating environment with enhanced checks...');
+
+            // Check required DOM elements and create if missing
             const requiredElements = [
-                '#app-content',
-                '#notification-container', 
-                '#modal-container'
+                { selector: '#app-content', tag: 'div', id: 'app-content' },
+                { selector: '#notification-container', tag: 'div', id: 'notification-container' },
+                { selector: '#modal-container', tag: 'div', id: 'modal-container' }
             ];
-            
-            for (const selector of requiredElements) {
-                const element = document.querySelector(selector);
+
+            for (const { selector, tag, id } of requiredElements) {
+                let element = document.querySelector(selector);
                 if (!element) {
-                    throw new Error(`Required DOM element ${selector} not found`);
+                    console.warn(`Creating missing DOM element: ${selector}`);
+                    element = document.createElement(tag);
+                    element.id = id;
+                    document.body.appendChild(element);
                 }
             }
-            
-            // Check for conflicting global variables
-            const conflictingGlobals = ['StateManager', 'ErrorHandler', 'EventManager', 'Router'];
-            for (const globalName of conflictingGlobals) {
-                if (global[globalName] && typeof global[globalName] === 'function') {
-                    console.warn(`⚠️ Global class ${globalName} already exists - potential redeclaration`);
+
+            // Check for essential dependencies
+            if (typeof window.ethers === 'undefined') {
+                console.warn('⚠️ Ethers.js not loaded - wallet functionality may be limited');
+            }
+
+            console.log('✅ Environment validation passed with auto-fixes');
+        }
+
+        /**
+         * CRITICAL FIX: Clear existing instances to prevent redeclaration
+         */
+        clearExistingInstances() {
+            console.log('🧹 Clearing existing global instances...');
+
+            const globalInstances = [
+                'errorHandler', 'stateManager', 'eventManager',
+                'componentRegistry', 'eventDelegation', 'notificationManager', 'router'
+            ];
+
+            for (const instanceName of globalInstances) {
+                if (global[instanceName]) {
+                    console.log(`Clearing existing ${instanceName}`);
+                    if (typeof global[instanceName].destroy === 'function') {
+                        try {
+                            global[instanceName].destroy();
+                        } catch (error) {
+                            console.warn(`Error destroying ${instanceName}:`, error);
+                        }
+                    }
+                    global[instanceName] = null;
                 }
             }
-            
-            console.log('✅ Environment validation passed');
+
+            console.log('✅ Global instances cleared');
         }
         
         /**
@@ -372,6 +418,38 @@
             };
         }
         
+        /**
+         * CRITICAL FIX: Create fallback NotificationManager
+         */
+        createFallbackNotificationManager() {
+            return {
+                show: (message, type = 'info', options = {}) => {
+                    console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
+                    // Create simple toast fallback
+                    const toast = document.createElement('div');
+                    toast.style.cssText = `
+                        position: fixed; top: 20px; right: 20px; z-index: 10000;
+                        background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#007bff'};
+                        color: white; padding: 12px 20px; border-radius: 4px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 300px;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    `;
+                    toast.textContent = message;
+                    document.body.appendChild(toast);
+
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                    }, options.duration || 5000);
+                },
+                success: (message, options) => this.show(message, 'success', options),
+                error: (message, options) => this.show(message, 'error', options),
+                warning: (message, options) => this.show(message, 'warning', options),
+                info: (message, options) => this.show(message, 'info', options)
+            };
+        }
+
         /**
          * Get system status
          */

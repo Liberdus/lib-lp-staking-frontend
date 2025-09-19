@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critical Fixes Validation - LP Staking Platform</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .test-result {
+            padding: 0.5rem 1rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            font-size: 1rem;
+        }
+        button:hover { background: #0056b3; }
+        .critical { background: #dc3545; }
+        .critical:hover { background: #c82333; }
+        #console-output {
+            background: #000;
+            color: #0f0;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Critical Fixes Validation Test</h1>
+        <p>This page validates all critical fixes applied to resolve startup errors.</p>
+        
+        <div class="test-section">
+            <h2>🔧 Test Controls</h2>
+            <button onclick="runAllTests()">🧪 Run All Tests</button>
+            <button onclick="testRedeclarationFixes()">🔄 Test Redeclaration Fixes</button>
+            <button onclick="testErrorHandlerInit()">🚨 Test ErrorHandler Init</button>
+            <button onclick="testRouterMethods()">🗺️ Test Router Methods</button>
+            <button onclick="testNotificationManager()">🔔 Test NotificationManager</button>
+            <button onclick="testWalletConnection()">💰 Test Wallet Connection</button>
+            <button onclick="clearResults()" class="critical">🧹 Clear Results</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Test Results</h2>
+            <div id="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🖥️ Console Output</h2>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <!-- Load all scripts in the same order as main application -->
+    <script src="config/constants.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/state-manager.js"></script>
+    <script src="js/core/event-manager.js"></script>
+    <script src="js/core/component-registry.js"></script>
+    <script src="js/core/event-delegation.js"></script>
+    <script src="js/core/router.js"></script>
+    <script src="js/core/critical-fixes-initializer.js"></script>
+    <script src="js/core/system-initializer.js"></script>
+    <script src="js/wallet/network-manager.js"></script>
+    <script src="js/wallet/wallet-manager.js"></script>
+    <script src="js/contracts/contract-manager.js"></script>
+    <script src="js/components/base-component.js"></script>
+    <script src="js/components/notification.js"></script>
+    <script src="js/components/modal.js"></script>
+    <script src="js/components/staking-modal.js"></script>
+    <script src="js/pages/home.js"></script>
+    <script src="js/pages/admin.js"></script>
+
+    <script>
+        // Enhanced console capture
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        const consoleOutput = document.getElementById('console-output');
+        const testResults = document.getElementById('test-results');
+        
+        function captureConsole() {
+            ['log', 'error', 'warn', 'info'].forEach(method => {
+                console[method] = function(...args) {
+                    originalConsole[method].apply(console, args);
+                    const timestamp = new Date().toLocaleTimeString();
+                    const message = args.map(arg => 
+                        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                    ).join(' ');
+                    consoleOutput.textContent += `[${timestamp}] ${method.toUpperCase()}: ${message}\n`;
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                };
+            });
+        }
+        
+        function addTestResult(test, status, message, details = '') {
+            const result = document.createElement('div');
+            result.className = `test-result ${status}`;
+            result.innerHTML = `
+                <strong>${test}:</strong> ${message}
+                ${details ? `<br><small>${details}</small>` : ''}
+            `;
+            testResults.appendChild(result);
+        }
+        
+        function clearResults() {
+            testResults.innerHTML = '';
+            consoleOutput.textContent = '';
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            console.log('🧪 Starting comprehensive critical fixes validation...');
+            
+            await testRedeclarationFixes();
+            await testErrorHandlerInit();
+            await testRouterMethods();
+            await testNotificationManager();
+            await testWalletConnection();
+            
+            console.log('✅ All critical fixes tests completed');
+        }
+        
+        async function testRedeclarationFixes() {
+            console.log('🔄 Testing redeclaration fixes...');
+            
+            try {
+                // Test that classes exist but instances are properly managed
+                const classes = ['StateManager', 'EventManager', 'Router', 'ErrorHandler'];
+                const instances = ['stateManager', 'eventManager', 'router', 'errorHandler'];
+                
+                let classesFound = 0;
+                let instancesFound = 0;
+                
+                classes.forEach(className => {
+                    if (typeof window[className] === 'function') {
+                        classesFound++;
+                        console.log(`✅ ${className} class found`);
+                    } else {
+                        console.error(`❌ ${className} class missing`);
+                    }
+                });
+                
+                instances.forEach(instanceName => {
+                    if (window[instanceName]) {
+                        instancesFound++;
+                        console.log(`✅ ${instanceName} instance found`);
+                    } else {
+                        console.warn(`⚠️ ${instanceName} instance missing`);
+                    }
+                });
+                
+                if (classesFound === classes.length) {
+                    addTestResult('Redeclaration Fixes', 'success', 
+                        `All ${classesFound} classes found without redeclaration errors`);
+                } else {
+                    addTestResult('Redeclaration Fixes', 'error', 
+                        `Only ${classesFound}/${classes.length} classes found`);
+                }
+                
+                if (instancesFound >= 3) {
+                    addTestResult('Instance Management', 'success', 
+                        `${instancesFound}/${instances.length} instances properly initialized`);
+                } else {
+                    addTestResult('Instance Management', 'warning', 
+                        `Only ${instancesFound}/${instances.length} instances found (fallbacks may be active)`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Redeclaration test failed:', error);
+                addTestResult('Redeclaration Fixes', 'error', 'Test failed', error.message);
+            }
+        }
+        
+        async function testErrorHandlerInit() {
+            console.log('🚨 Testing ErrorHandler initialization...');
+            
+            try {
+                if (window.errorHandler) {
+                    // Test basic functionality
+                    const testError = new Error('Test error for validation');
+                    const processed = window.errorHandler.processError(testError);
+                    
+                    if (processed && processed.category) {
+                        addTestResult('ErrorHandler Init', 'success', 
+                            'ErrorHandler properly initialized and functional');
+                        console.log('✅ ErrorHandler test passed:', processed);
+                    } else {
+                        addTestResult('ErrorHandler Init', 'warning', 
+                            'ErrorHandler exists but may be fallback version');
+                    }
+                } else {
+                    addTestResult('ErrorHandler Init', 'error', 
+                        'ErrorHandler not found - critical system missing');
+                }
+            } catch (error) {
+                console.error('❌ ErrorHandler test failed:', error);
+                addTestResult('ErrorHandler Init', 'error', 'Test failed', error.message);
+            }
+        }
+        
+        async function testRouterMethods() {
+            console.log('🗺️ Testing Router missing methods...');
+            
+            try {
+                if (window.router) {
+                    const requiredMethods = ['handleNotFound', 'handleRouteError', 'navigate'];
+                    const foundMethods = [];
+                    const missingMethods = [];
+                    
+                    requiredMethods.forEach(method => {
+                        if (typeof window.router[method] === 'function') {
+                            foundMethods.push(method);
+                            console.log(`✅ Router.${method} found`);
+                        } else {
+                            missingMethods.push(method);
+                            console.error(`❌ Router.${method} missing`);
+                        }
+                    });
+                    
+                    if (missingMethods.length === 0) {
+                        addTestResult('Router Methods', 'success', 
+                            'All required router methods found');
+                        
+                        // Test handleNotFound
+                        try {
+                            await window.router.handleNotFound('/test-404');
+                            console.log('✅ handleNotFound test passed');
+                        } catch (error) {
+                            console.warn('⚠️ handleNotFound test failed:', error);
+                        }
+                        
+                    } else {
+                        addTestResult('Router Methods', 'error', 
+                            `Missing methods: ${missingMethods.join(', ')}`);
+                    }
+                } else {
+                    addTestResult('Router Methods', 'error', 'Router not found');
+                }
+            } catch (error) {
+                console.error('❌ Router methods test failed:', error);
+                addTestResult('Router Methods', 'error', 'Test failed', error.message);
+            }
+        }
+        
+        async function testNotificationManager() {
+            console.log('🔔 Testing NotificationManager availability...');
+            
+            try {
+                if (window.notificationManager) {
+                    const requiredMethods = ['show', 'success', 'error', 'warning', 'info'];
+                    const foundMethods = [];
+                    
+                    requiredMethods.forEach(method => {
+                        if (typeof window.notificationManager[method] === 'function') {
+                            foundMethods.push(method);
+                        }
+                    });
+                    
+                    if (foundMethods.length === requiredMethods.length) {
+                        addTestResult('NotificationManager', 'success', 
+                            'NotificationManager fully functional');
+                        
+                        // Test notification
+                        window.notificationManager.info('Critical fixes validation test', { duration: 2000 });
+                        console.log('✅ Test notification sent');
+                        
+                    } else {
+                        addTestResult('NotificationManager', 'warning', 
+                            `Partial functionality: ${foundMethods.length}/${requiredMethods.length} methods`);
+                    }
+                } else {
+                    addTestResult('NotificationManager', 'error', 
+                        'NotificationManager not found - wallet events may fail');
+                }
+            } catch (error) {
+                console.error('❌ NotificationManager test failed:', error);
+                addTestResult('NotificationManager', 'error', 'Test failed', error.message);
+            }
+        }
+        
+        async function testWalletConnection() {
+            console.log('💰 Testing wallet connection guards...');
+            
+            try {
+                if (window.WalletManager && typeof window.WalletManager === 'function') {
+                    const walletManager = new window.WalletManager();
+                    
+                    // Test connection state checking
+                    if (typeof walletManager.connectMetaMask === 'function') {
+                        addTestResult('Wallet Connection Guards', 'success', 
+                            'WalletManager with enhanced connection guards available');
+                        console.log('✅ WalletManager connection guards ready');
+                    } else {
+                        addTestResult('Wallet Connection Guards', 'warning', 
+                            'WalletManager exists but may lack connection methods');
+                    }
+                } else {
+                    addTestResult('Wallet Connection Guards', 'warning', 
+                        'WalletManager not found - wallet functionality unavailable');
+                }
+            } catch (error) {
+                console.error('❌ Wallet connection test failed:', error);
+                addTestResult('Wallet Connection Guards', 'error', 'Test failed', error.message);
+            }
+        }
+        
+        // Initialize console capture and run initial test
+        captureConsole();
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('🚀 Critical Fixes Validation Page Loaded');
+                console.log('Click "Run All Tests" to validate all critical fixes');
+                
+                // Show current system status
+                if (window.criticalFixesInitializer) {
+                    console.log('✅ CriticalFixesInitializer available');
+                }
+                if (window.systemInitializer) {
+                    console.log('✅ SystemInitializer available');
+                }
+                
+                addTestResult('Page Load', 'info', 'Validation page loaded successfully');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
