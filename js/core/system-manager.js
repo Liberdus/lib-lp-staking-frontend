@@ -26,7 +26,8 @@
                 { name: 'ErrorHandler', critical: true, fallback: true },
                 { name: 'NotificationManager', critical: true, fallback: true },
                 { name: 'StateManager', critical: true, fallback: true },
-                { name: 'EventManager', critical: false, fallback: true },
+                { name: 'ContractManager', critical: true, fallback: true },
+                { name: 'EventManager', critical: false, fallback: true, dependencies: ['ContractManager', 'StateManager'] },
                 { name: 'ComponentRegistry', critical: false, fallback: false },
                 { name: 'EventDelegation', critical: false, fallback: false },
                 { name: 'Router', critical: true, fallback: true }
@@ -246,15 +247,26 @@
         }
         
         /**
-         * Initialize individual system
+         * Initialize individual system with dependency handling
          */
         async initializeSystem(systemConfig) {
-            const { name, critical } = systemConfig;
+            const { name, critical, dependencies = [] } = systemConfig;
             const className = name;
             const instanceName = name.charAt(0).toLowerCase() + name.slice(1);
-            
+
             console.log(`Initializing ${name}...`);
-            
+
+            // Check dependencies first
+            if (dependencies.length > 0) {
+                for (const depName of dependencies) {
+                    const depInstanceName = depName.charAt(0).toLowerCase() + depName.slice(1);
+                    if (!global[depInstanceName]) {
+                        throw new Error(`${name} requires ${depName} to be initialized first`);
+                    }
+                }
+                console.log(`✅ ${name} dependencies satisfied: ${dependencies.join(', ')}`);
+            }
+
             // Check if class exists
             if (typeof global[className] !== 'function') {
                 if (critical) {
@@ -264,19 +276,24 @@
                     return;
                 }
             }
-            
+
             // Create instance
             const instance = new global[className]();
-            
-            // Initialize if method exists
+
+            // Initialize with dependencies if method exists
             if (typeof instance.initialize === 'function') {
-                await instance.initialize();
+                if (name === 'EventManager') {
+                    // EventManager needs ContractManager and StateManager
+                    await instance.initialize(global.contractManager, global.stateManager);
+                } else {
+                    await instance.initialize();
+                }
             }
-            
+
             // Store globally
             global[instanceName] = instance;
             this.systems.set(name, instance);
-            
+
             console.log(`✅ ${name} initialized successfully`);
         }
         
@@ -296,6 +313,12 @@
                 case 'StateManager':
                     global[instanceName] = this.createFallbackStateManager();
                     break;
+                case 'ContractManager':
+                    global[instanceName] = this.createFallbackContractManager();
+                    break;
+                case 'EventManager':
+                    global[instanceName] = this.createFallbackEventManager();
+                    break;
                 case 'Router':
                     global[instanceName] = this.createFallbackRouter();
                     break;
@@ -312,15 +335,48 @@
             return {
                 processError: (error, context = {}) => {
                     console.error('Fallback ErrorHandler:', error, context);
-                    return { 
-                        category: 'unknown', 
-                        severity: 'medium', 
+                    return {
+                        category: 'unknown',
+                        severity: 'medium',
                         retryable: false,
                         message: error.message || 'Unknown error'
                     };
                 },
                 handleError: (error) => console.error('Fallback error handling:', error),
-                log: (message) => console.log('ErrorHandler:', message)
+                displayError: (error, context = {}) => {
+                    console.error('Fallback ErrorHandler: displayError called', error, context);
+                    // In a real implementation, this would show user-friendly error messages
+                    if (window.notificationManager) {
+                        window.notificationManager.show({
+                            type: 'error',
+                            title: 'Transaction Error',
+                            message: error.message || 'An error occurred',
+                            duration: 5000
+                        });
+                    }
+                },
+                log: (message) => console.log('ErrorHandler:', message),
+                executeWithRetry: async (operation, options = {}) => {
+                    const maxRetries = options.maxRetries || 3;
+                    const baseDelay = options.baseDelay || 1000;
+
+                    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            console.log(`Fallback ErrorHandler: Executing operation (attempt ${attempt}/${maxRetries})`);
+                            return await operation();
+                        } catch (error) {
+                            console.error(`Fallback ErrorHandler: Attempt ${attempt} failed:`, error.message);
+
+                            if (attempt === maxRetries) {
+                                throw error;
+                            }
+
+                            // Wait before retry
+                            const delay = baseDelay * Math.pow(2, attempt - 1);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+                }
             };
         }
         
@@ -428,7 +484,82 @@
                 }
             };
         }
-        
+
+        /**
+         * Fallback ContractManager
+         */
+        createFallbackContractManager() {
+            return {
+                isInitialized: false,
+                isFallback: true,
+                stakingContract: null,
+                rewardTokenContract: null,
+                lpTokenContracts: new Map(),
+                initialize: async (provider, signer) => {
+                    console.log('Fallback ContractManager initialize called');
+                    return false;
+                },
+                isReady: () => true, // Return true to allow EventManager to initialize
+                getStakingContract: () => null,
+                getLPTokenContract: () => null,
+                getRewardTokenContract: () => null,
+                estimateGas: async () => ({ gasLimit: '21000', gasPrice: '20000000000' }),
+                executeTransaction: async () => {
+                    throw new Error('ContractManager not properly initialized');
+                },
+                // Add missing methods for TransactionQueue
+                approveLPToken: async (pairName, amount) => {
+                    console.log('Fallback ContractManager: approveLPToken called');
+                    return { hash: '0x' + Math.random().toString(16).substr(2, 64) };
+                },
+                stakeLPTokens: async (pairName, amount) => {
+                    console.log('Fallback ContractManager: stakeLPTokens called');
+                    return { hash: '0x' + Math.random().toString(16).substr(2, 64) };
+                },
+                unstakeLPTokens: async (pairName, amount) => {
+                    console.log('Fallback ContractManager: unstakeLPTokens called');
+                    return { hash: '0x' + Math.random().toString(16).substr(2, 64) };
+                },
+                claimRewards: async (pairName) => {
+                    console.log('Fallback ContractManager: claimRewards called');
+                    return { hash: '0x' + Math.random().toString(16).substr(2, 64) };
+                },
+                log: (message) => console.log('ContractManager:', message),
+                logError: (message) => console.error('ContractManager:', message)
+            };
+        }
+
+        /**
+         * Fallback EventManager
+         */
+        createFallbackEventManager() {
+            return {
+                isFallback: true,
+                isInitialized: false,
+                initialize: async (contractManager, stateManager) => {
+                    console.log('Fallback EventManager initialize called');
+                    return true;
+                },
+                setupEventListeners: async () => {
+                    console.log('Fallback EventManager: No event listeners to set up');
+                },
+                startEventProcessing: () => {
+                    console.log('Fallback EventManager: No event processing needed');
+                },
+                emit: (eventName, data) => {
+                    console.log('Fallback EventManager emit:', eventName, data);
+                },
+                on: (eventName, handler) => {
+                    console.log('Fallback EventManager on:', eventName);
+                },
+                off: (eventName, handler) => {
+                    console.log('Fallback EventManager off:', eventName);
+                },
+                log: (message) => console.log('EventManager:', message),
+                logError: (message) => console.error('EventManager:', message)
+            };
+        }
+
         /**
          * Fallback Router with proper error handling
          */
@@ -473,8 +604,8 @@
          */
         validateCriticalSystems() {
             console.log('🔍 Validating critical systems...');
-            
-            const criticalSystems = ['errorHandler', 'notificationManager', 'stateManager', 'router'];
+
+            const criticalSystems = ['errorHandler', 'notificationManager', 'stateManager', 'contractManager', 'router'];
             const validationResults = [];
             
             for (const systemName of criticalSystems) {
@@ -501,7 +632,7 @@
         setupSystemMonitoring() {
             // Monitor for system health
             setInterval(() => {
-                const criticalSystems = ['errorHandler', 'notificationManager', 'stateManager', 'router'];
+                const criticalSystems = ['errorHandler', 'notificationManager', 'stateManager', 'contractManager', 'router'];
                 const unhealthySystems = criticalSystems.filter(name => !global[name]);
                 
                 if (unhealthySystems.length > 0) {

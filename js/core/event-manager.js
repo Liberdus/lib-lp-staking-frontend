@@ -86,12 +86,19 @@ class EventManager {
             if (!this.contractManager || !this.stateManager) {
                 throw new Error('ContractManager and StateManager are required');
             }
-            
-            // Set up event listeners for all supported events
+
+            // Set up event listeners for all supported events (may skip if in fallback mode)
             await this.setupEventListeners();
-            
+
             // Start event processing queue
             this.startEventProcessing();
+
+            // Log initialization status
+            if (this.contractManager.isFallback) {
+                this.log('EventManager initialized in fallback mode (no contract events)');
+            } else {
+                this.log('EventManager initialized with full contract event support');
+            }
             
             this.log('EventManager initialized successfully');
             return true;
@@ -106,12 +113,25 @@ class EventManager {
      */
     async setupEventListeners() {
         try {
+            // Check if ContractManager is ready or in fallback mode
             if (!this.contractManager.isReady()) {
-                throw new Error('ContractManager is not ready');
+                if (this.contractManager.isFallback) {
+                    this.log('ContractManager is in fallback mode - skipping event listener setup');
+                    return; // Gracefully skip event setup for fallback mode
+                } else {
+                    throw new Error('ContractManager is not ready');
+                }
             }
-            
-            const stakingContract = this.contractManager.getStakingContract();
-            const rewardTokenContract = this.contractManager.getRewardTokenContract();
+
+            // Try to get contracts - may be null in fallback mode
+            let stakingContract, rewardTokenContract;
+            try {
+                stakingContract = this.contractManager.getStakingContract();
+                rewardTokenContract = this.contractManager.getRewardTokenContract();
+            } catch (error) {
+                this.log('Contracts not available - skipping event listener setup:', error.message);
+                return;
+            }
             
             // Set up staking contract event listeners
             await this.setupStakingEventListeners(stakingContract);

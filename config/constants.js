@@ -1,9 +1,16 @@
 // Configuration constants for LP Staking Platform
 window.CONFIG = {
     // Contract Addresses (Polygon Amoy Testnet)
+    // NOTE: These are placeholder addresses. Replace with actual deployed contract addresses.
+    // The system will work in fallback mode if these addresses are invalid.
     CONTRACTS: {
-        STAKING_CONTRACT: '0x1234567890123456789012345678901234567890', // Replace with actual address
-        REWARD_TOKEN: '0x0987654321098765432109876543210987654321', // Replace with actual address
+        STAKING_CONTRACT: null, // Replace with actual deployed staking contract address
+        REWARD_TOKEN: null, // Replace with actual reward token contract address
+        LP_TOKENS: {
+            // Example LP token pairs - replace with actual addresses
+            // 'LIB-USDT': '0x...actual_address...',
+            // 'LIB-WETH': '0x...actual_address...'
+        }
     },
 
     // Network Configuration

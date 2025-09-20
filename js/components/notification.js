@@ -367,22 +367,27 @@ class NotificationManager {
         if (!notification) return;
 
         const element = notification.element;
-        
+
+        // Clean up progress interval if it exists
+        if (notification.progressInterval) {
+            clearInterval(notification.progressInterval);
+        }
+
         // Trigger exit animation
         element.classList.add('notification-exit');
-        
+
         setTimeout(() => {
             // Remove from DOM
             if (element.parentNode) {
                 element.parentNode.removeChild(element);
             }
-            
+
             // Remove from tracking
             this.notifications.delete(id);
-            
+
             // Process queue
             this.processQueue();
-            
+
             this.log('Notification dismissed:', id);
         }, 300);
     }
@@ -506,6 +511,104 @@ class NotificationManager {
     logError(...args) {
         console.error('[NotificationManager]', ...args);
     }
+
+    /**
+     * Setup progress bar for notification
+     */
+    setupProgressBar(notification) {
+        const notificationData = this.notifications.get(notification.id);
+        if (!notificationData) return;
+
+        const element = notificationData.element;
+        const progressBar = element.querySelector('.notification-progress');
+
+        if (!progressBar) {
+            // Create progress bar if it doesn't exist
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'notification-progress-container';
+            progressContainer.innerHTML = '<div class="notification-progress"></div>';
+            element.appendChild(progressContainer);
+        }
+
+        const progressElement = element.querySelector('.notification-progress');
+        if (progressElement) {
+            let progress = 0;
+            const interval = 50; // Update every 50ms
+            const increment = (interval / notification.duration) * 100;
+
+            const progressInterval = setInterval(() => {
+                progress += increment;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(progressInterval);
+                }
+                progressElement.style.width = `${progress}%`;
+            }, interval);
+
+            // Store interval for cleanup
+            notificationData.progressInterval = progressInterval;
+        }
+    }
+
+    /**
+     * Trigger sound/vibration feedback for notification
+     */
+    triggerFeedback(notification) {
+        try {
+            // Trigger sound if enabled and supported
+            if (notification.sound && 'Audio' in window) {
+                // You can customize the sound file path here
+                const audio = new Audio('/assets/sounds/notification.mp3');
+                audio.volume = 0.3;
+                audio.play().catch(e => {
+                    // Silently fail if audio can't be played
+                    this.log('Audio playback failed:', e.message);
+                });
+            }
+
+            // Trigger vibration if enabled and supported
+            if (notification.vibrate && 'vibrate' in navigator) {
+                // Different vibration patterns based on notification type
+                const vibrationPatterns = {
+                    success: [100],
+                    error: [100, 50, 100],
+                    warning: [200],
+                    info: [50]
+                };
+
+                const pattern = vibrationPatterns[notification.type] || [100];
+                navigator.vibrate(pattern);
+            }
+        } catch (error) {
+            this.log('Feedback trigger failed:', error.message);
+        }
+    }
+
+    /**
+     * Announce notification to screen readers
+     */
+    announceToScreenReader(notification) {
+        try {
+            // Create a temporary element for screen reader announcement
+            const announcement = document.createElement('div');
+            announcement.setAttribute('aria-live', 'assertive');
+            announcement.setAttribute('aria-atomic', 'true');
+            announcement.className = 'sr-only';
+            announcement.textContent = `${notification.type}: ${notification.title}. ${notification.message}`;
+
+            // Add to DOM temporarily
+            document.body.appendChild(announcement);
+
+            // Remove after announcement
+            setTimeout(() => {
+                if (announcement.parentNode) {
+                    announcement.parentNode.removeChild(announcement);
+                }
+            }, 1000);
+        } catch (error) {
+            this.log('Screen reader announcement failed:', error.message);
+        }
+    }
 }
 
 // Add CSS for notification animations
@@ -535,8 +638,42 @@ style.textContent = `
         display: flex;
         gap: var(--space-2);
     }
+
+    .notification-progress-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+    }
+
+    .notification-progress {
+        height: 100%;
+        background-color: currentColor;
+        width: 0%;
+        transition: width 0.1s ease-out;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
 `;
 document.head.appendChild(style);
 
-// Create global instance
-window.notificationManager = new NotificationManager();
+    // Export NotificationManager class to global scope
+    global.NotificationManager = NotificationManager;
+
+    // Note: Instance creation is now handled by SystemManager
+    console.log('✅ NotificationManager class loaded');
+
+})(window);

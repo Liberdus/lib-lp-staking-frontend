@@ -1,0 +1,18 @@
+# Development and temporary files
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary test files
+*-test.html
+debug*.html
+temp*.html
