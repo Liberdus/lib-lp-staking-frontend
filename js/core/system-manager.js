@@ -30,7 +30,13 @@
                 { name: 'EventManager', critical: false, fallback: true, dependencies: ['ContractManager', 'StateManager'] },
                 { name: 'ComponentRegistry', critical: false, fallback: false },
                 { name: 'EventDelegation', critical: false, fallback: false },
-                { name: 'Router', critical: true, fallback: true }
+                { name: 'Router', critical: true, fallback: true },
+                // Day 6: Rewards System Components
+                { name: 'PriceFeeds', critical: false, fallback: false },
+                { name: 'RewardsCalculator', critical: false, fallback: false, dependencies: ['ContractManager', 'PriceFeeds'] },
+                { name: 'RewardsHistory', critical: false, fallback: false },
+                { name: 'PendingRewardsDisplay', critical: false, fallback: false, dependencies: ['RewardsCalculator'] },
+                { name: 'APRDisplay', critical: false, fallback: false, dependencies: ['RewardsCalculator'] }
             ];
             
             console.log('🚀 SystemManager created - ready to eliminate all critical errors');
@@ -285,6 +291,24 @@
                 if (name === 'EventManager') {
                     // EventManager needs ContractManager and StateManager
                     await instance.initialize(global.contractManager, global.stateManager);
+                } else if (name === 'RewardsCalculator') {
+                    // RewardsCalculator needs ContractManager and PriceFeeds
+                    await instance.initialize(global.contractManager, global.priceFeeds);
+                } else if (name === 'PendingRewardsDisplay') {
+                    // PendingRewardsDisplay needs RewardsCalculator and other dependencies
+                    await instance.initialize({
+                        rewardsCalculator: global.rewardsCalculator,
+                        contractManager: global.contractManager,
+                        walletManager: global.walletManager
+                    });
+                } else if (name === 'APRDisplay') {
+                    // APRDisplay needs RewardsCalculator
+                    await instance.initialize({
+                        rewardsCalculator: global.rewardsCalculator
+                    });
+                } else if (name === 'RewardsHistory') {
+                    // RewardsHistory needs user address (will be set later when wallet connects)
+                    await instance.initialize(null); // Initialize without user address for now
                 } else {
                     await instance.initialize();
                 }
