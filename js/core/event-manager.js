@@ -113,13 +113,25 @@ class EventManager {
      */
     async setupEventListeners() {
         try {
-            // Check if ContractManager is ready or in fallback mode
+            // Check if ContractManager exists and is ready
+            if (!this.contractManager) {
+                this.log('ContractManager not available - skipping event listener setup');
+                return;
+            }
+            
+            // Check if ContractManager has isReady method and is ready
+            if (typeof this.contractManager.isReady !== 'function') {
+                this.log('ContractManager isReady method not available - skipping event listener setup');
+                return;
+            }
+            
             if (!this.contractManager.isReady()) {
                 if (this.contractManager.isFallback) {
                     this.log('ContractManager is in fallback mode - skipping event listener setup');
                     return; // Gracefully skip event setup for fallback mode
                 } else {
-                    throw new Error('ContractManager is not ready');
+                    this.log('ContractManager is not ready - skipping event listener setup');
+                    return; // Don't throw error, just skip
                 }
             }
 

@@ -3,193 +3,689 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="LP Staking Platform - Earn rewards by staking your liquidity provider tokens">
-    <title>LP Staking Platform</title>
-    
-    <!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/component-library.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <title>Liberdus LP Staking - Earn Rewards by Staking LP Tokens</title>
+    <meta name="description" content="Stake your liquidity provider tokens and earn rewards on our secure DeFi platform">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     
-    <!-- Meta tags for social sharing -->
-    <meta property="og:title" content="LP Staking Platform">
-    <meta property="og:description" content="Earn rewards by staking your liquidity provider tokens">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
+    <!-- Google Fonts - Exo (matching React app exactly) -->
+    <link href="https://fonts.googleapis.com/css?family=Exo:400,500,600,700,800&display=swap" rel="stylesheet">
+    
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
+    <!-- CSS Variables for theming (matching MUI theme exactly) -->
+    <style>
+        :root {
+            /* Primary colors - matching MUI theme */
+            --primary-main: #1976d2;
+            --primary-hover: #1565c0;
+            --primary-light: #e3f2fd;
+            --secondary-main: #dc004e;
+            --secondary-hover: #c5003e;
+            
+            /* Status colors */
+            --success-main: #4caf50;
+            --error-main: #f44336;
+            --warning-main: #ff9800;
+            --info-main: #2196f3;
+            
+            /* Background colors - light theme */
+            --background-default: #ffffff;
+            --background-paper: #ffffff;
+            --surface-hover: rgba(0, 0, 0, 0.04);
+            --action-selected: rgba(25, 118, 210, 0.08);
+            --action-hover: rgba(0, 0, 0, 0.04);
+            
+            /* Text colors - light theme */
+            --text-primary: rgba(0, 0, 0, 0.87);
+            --text-secondary: rgba(0, 0, 0, 0.6);
+            --text-disabled: rgba(0, 0, 0, 0.38);
+            
+            /* Border and divider */
+            --divider: rgba(0, 0, 0, 0.12);
+            
+            /* Shadows */
+            --shadow-1: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+            --shadow-4: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+            --shadow-8: 0px 5px 5px -3px rgba(0,0,0,0.2), 0px 8px 10px 1px rgba(0,0,0,0.14), 0px 3px 14px 2px rgba(0,0,0,0.12);
+            
+            /* Typography */
+            --font-family: "Exo", "Helvetica", "Arial", sans-serif;
+            --font-size: 15px;
+            
+            /* Spacing */
+            --spacing-1: 8px;
+            --spacing-2: 16px;
+            --spacing-3: 24px;
+            --spacing-4: 32px;
+            --spacing-6: 48px;
+            
+            /* Border radius */
+            --border-radius: 4px;
+            --border-radius-lg: 8px;
+        }
+        
+        /* Dark theme */
+        [data-theme="dark"] {
+            --background-default: #121212;
+            --background-paper: #1e1e1e;
+            --surface-hover: rgba(255, 255, 255, 0.08);
+            --action-selected: rgba(144, 202, 249, 0.16);
+            --action-hover: rgba(255, 255, 255, 0.08);
+            
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-disabled: rgba(255, 255, 255, 0.5);
+            
+            --divider: rgba(255, 255, 255, 0.12);
+        }
+        
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            line-height: 1.5;
+            color: var(--text-primary);
+            background-color: var(--background-default);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-synthesis: none;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Container matching MUI Container */
+        .container-lg {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-3);
+        }
+        
+        .container-xl {
+            max-width: 1536px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-3);
+        }
+        
+        /* Header matching MUI AppBar */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 1100;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--divider);
+            transition: all 0.3s ease;
+        }
+        
+        [data-theme="dark"] .header {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .header-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-2) 0;
+            min-height: 64px;
+        }
+        
+        /* Logo section */
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: opacity 0.2s;
+        }
+        
+        .logo-section:hover {
+            opacity: 0.8;
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #2196F3 30%, #21CBF3 90%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+        
+        [data-theme="dark"] .logo-text {
+            background: linear-gradient(45deg, #fff 30%, #ccc 90%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Navigation */
+        .nav-section {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+        
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-1);
+            padding: var(--spacing-1) var(--spacing-2);
+            border: none;
+            border-radius: var(--border-radius-lg);
+            background: transparent;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            font-size: var(--font-size);
+        }
+        
+        .nav-button:hover {
+            background: var(--action-hover);
+            transform: translateY(-2px);
+        }
+        
+        .nav-button.active {
+            background: var(--action-selected);
+            color: var(--primary-main);
+        }
+        
+        /* Theme toggle */
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+            background: var(--action-hover);
+        }
+        
+        /* Connect wallet button */
+        .connect-wallet-btn {
+            background: var(--primary-main);
+            color: white;
+            border: none;
+            padding: var(--spacing-1) var(--spacing-3);
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-1);
+            font-size: var(--font-size);
+        }
+        
+        .connect-wallet-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-4);
+        }
+        
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-6) var(--spacing-3);
+        }
+        
+        /* Page title */
+        .page-title {
+            text-align: center;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .page-title h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-2);
+            color: var(--text-primary);
+        }
+        
+        .reward-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .reward-info .material-icons {
+            color: var(--primary-main);
+        }
+        
+        .reward-rate {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Refresh button */
+        .refresh-button {
+            background: transparent;
+            border: none;
+            color: var(--primary-main);
+            cursor: pointer;
+            padding: var(--spacing-1);
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .refresh-button:hover {
+            background: var(--action-hover);
+            transform: rotate(180deg);
+        }
+        
+        /* Table container */
+        .table-container {
+            width: 100%;
+            background: var(--background-paper);
+            border-radius: 12px;
+            box-shadow: var(--shadow-4);
+            overflow: hidden;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: var(--spacing-2);
+            text-align: left;
+            border-bottom: 1px solid var(--divider);
+        }
+        
+        .table th {
+            background: var(--background-default);
+            font-weight: 600;
+            color: var(--text-primary);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .table th .material-icons {
+            vertical-align: middle;
+            margin-right: var(--spacing-1);
+            color: var(--primary-main);
+        }
+        
+        .table tbody tr:hover {
+            background: var(--surface-hover);
+        }
+        
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Button styles matching MUI */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-1);
+            padding: var(--spacing-1) var(--spacing-2);
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            min-width: 64px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary-main);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-4);
+        }
+
+        .btn-secondary {
+            background: var(--secondary-main);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-4);
+        }
+
+        .btn-text {
+            background: transparent;
+            color: var(--primary-main);
+            font-weight: bold;
+        }
+
+        .btn-text:hover {
+            background: var(--action-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Chip styles matching MUI */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid;
+        }
+
+        .chip-primary {
+            background: var(--primary-light);
+            color: var(--primary-main);
+            border-color: var(--primary-main);
+        }
+
+        .chip-secondary {
+            background: rgba(220, 0, 78, 0.1);
+            color: var(--secondary-main);
+            border-color: var(--secondary-main);
+        }
+
+        /* Success color for APR */
+        .success-text {
+            color: var(--success-main);
+            font-weight: bold;
+        }
+
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: var(--border-radius);
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        [data-theme="dark"] .skeleton {
+            background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+            background-size: 200% 100%;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            padding: var(--spacing-3) 0;
+            border-top: 1px solid var(--divider);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+        }
+
+        [data-theme="dark"] .footer {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-2);
+        }
+
+        .footer-text {
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .social-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+
+        .social-link:hover {
+            transform: translateY(-2px);
+            color: var(--primary-main);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .logo-text {
+                display: none;
+            }
+
+            .nav-section {
+                gap: var(--spacing-1);
+            }
+
+            .nav-button span:not(.material-icons) {
+                display: none;
+            }
+
+            .page-title h1 {
+                font-size: 32px;
+            }
+
+            .reward-info {
+                flex-direction: column;
+                gap: var(--spacing-1);
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 8px;
+                font-size: 14px;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container-lg,
+            .container-xl {
+                padding: 0 var(--spacing-2);
+            }
+
+            .main-content {
+                padding: var(--spacing-3) var(--spacing-2);
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .table {
+                min-width: 600px;
+            }
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-4 {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .mt-4 {
+            margin-top: var(--spacing-4);
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
+        .gap-2 {
+            gap: var(--spacing-2);
+        }
+    </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <p>Loading LP Staking Platform...</p>
-        </div>
-    </div>
-
-    <!-- Network Warning -->
-    <div id="network-warning" class="network-warning" style="display: none;">
-        <div class="warning-content">
-            <span class="warning-icon">⚠️</span>
-            <span class="warning-message">Please switch to Polygon Amoy Testnet</span>
-            <button id="switch-network-btn" class="btn btn-small btn-primary">Switch Network</button>
-            <button id="dismiss-warning-btn" class="btn btn-small btn-secondary">Dismiss</button>
-        </div>
-    </div>
-
-    <!-- Liberdus Header - Exact Design Match -->
+    <!-- Header matching React Header component -->
     <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon"></div>
-                <h1>Liberdus LP Staking</h1>
-            </div>
-
-            <nav class="nav">
-                <a href="#/" class="nav-link active" data-route="/">
-                    <span class="nav-link-icon">🏠</span>
-                    HOME
+        <div class="container-lg">
+            <div class="header-toolbar">
+                <!-- Logo section -->
+                <a href="/" class="logo-section">
+                    <img src="assets/logo.png" alt="Liberdus LP Staking" class="logo">
+                    <span class="logo-text">Liberdus LP Staking</span>
                 </a>
-                <a href="#/admin" class="nav-link" data-route="/admin">
-                    <span class="nav-link-icon">⚙️</span>
-                    ADMIN PANEL
-                </a>
-            </nav>
-
-            <div class="header-actions">
-                <div class="user-dropdown">
-                    <button class="user-avatar">
-                        <span class="avatar-icon">👤</span>
+                
+                <!-- Navigation -->
+                <div class="nav-section">
+                    <a href="/" class="nav-button active">
+                        <span class="material-icons">home</span>
+                        <span>Home</span>
+                    </a>
+                    <a href="/admin" class="nav-button">
+                        <span class="material-icons">admin_panel_settings</span>
+                        <span>Admin Panel</span>
+                    </a>
+                    
+                    <!-- Connect Wallet Button -->
+                    <button id="connect-wallet-btn" class="connect-wallet-btn">
+                        <span class="material-icons">account_balance_wallet</span>
+                        <span>Connect Wallet</span>
+                    </button>
+                    
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="theme-toggle">
+                        <span class="material-icons-outlined">light_mode</span>
                     </button>
                 </div>
-                <div class="token-selector">
-                    <button class="token-btn">
-                        <span class="token-icon">🔵</span>
-                        <span class="token-text">POL</span>
-                        <span class="dropdown-arrow">▼</span>
-                    </button>
-                </div>
-                <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme">
-                    <span class="theme-icon">🌙</span>
-                </button>
-                <button id="connect-wallet-btn" class="connect-wallet-btn">
-                    <span class="wallet-icon">👛</span>
-                    <span class="wallet-text">Connect Wallet</span>
-                </button>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main id="app-content" class="main-content">
-        <!-- Dynamic content will be loaded here -->
-        <div class="container">
-            <div class="welcome-message">
-                <h1>Welcome to LP Staking Platform</h1>
-                <p>Connect your wallet to start earning rewards on your liquidity provider tokens.</p>
+    <main class="main-content">
+        <div class="container-xl">
+            <!-- Page Title -->
+            <div class="page-title">
+                <h1>LP Staking</h1>
+                <div class="reward-info">
+                    <span class="material-icons">access_time</span>
+                    <span class="reward-rate">Hourly Reward Rate: <span id="hourly-rate">0.00</span> LIB</span>
+                    <button id="refresh-button" class="refresh-button">
+                        <span class="material-icons">refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Alert container -->
+            <div id="alert-container"></div>
+
+            <!-- Loading skeleton or table -->
+            <div id="content-container">
+                <!-- This will be populated by JavaScript -->
             </div>
         </div>
     </main>
 
-    <!-- Footer -->
+    <!-- Footer matching React Footer component -->
     <footer class="footer">
-        <div class="container">
+        <div class="container-lg">
             <div class="footer-content">
-                <div class="footer-section">
-                    <h3>LP Staking</h3>
-                    <p>Decentralized liquidity provider rewards platform</p>
+                <span class="footer-text">© 2024 Liberdus LP Stake. All rights reserved.</span>
+                <div class="social-links">
+                    <a href="https://github.com" target="_blank" rel="noopener" class="social-link">
+                        <span class="material-icons">code</span>
+                    </a>
+                    <a href="https://twitter.com" target="_blank" rel="noopener" class="social-link">
+                        <span class="material-icons">alternate_email</span>
+                    </a>
+                    <a href="https://telegram.org" target="_blank" rel="noopener" class="social-link">
+                        <span class="material-icons">send</span>
+                    </a>
                 </div>
-                <div class="footer-section">
-                    <h4>Links</h4>
-                    <a href="https://docs.example.com" target="_blank">Documentation</a>
-                    <a href="https://github.com/example" target="_blank">GitHub</a>
-                </div>
-                <div class="footer-section">
-                    <h4>Community</h4>
-                    <a href="https://discord.gg/example" target="_blank">Discord</a>
-                    <a href="https://twitter.com/example" target="_blank">Twitter</a>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 LP Staking Platform. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Notification Container -->
-    <div id="notification-container" class="notification-container"></div>
-
-    <!-- Modal Container -->
-    <div id="modal-container" class="modal-container"></div>
-
-    <!-- Transaction Status Container -->
-    <div id="transaction-status-container" class="transaction-status-container" style="display: none;"></div>
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+    
+    <!-- Notification container -->
+    <div id="notification-container"></div>
 
     <!-- Scripts -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script>
-        // Debug ethers loading
-        console.log('Ethers loaded:', typeof window.ethers);
-        if (typeof window.ethers === 'undefined') {
-            console.error('CRITICAL: Ethers.js failed to load!');
-            // Try fallback CDN
-            const fallbackScript = document.createElement('script');
-            fallbackScript.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
-            fallbackScript.onload = () => console.log('Fallback ethers loaded:', typeof window.ethers);
-            fallbackScript.onerror = () => console.error('All ethers CDNs failed!');
-            document.head.appendChild(fallbackScript);
-        }
-    </script>
-    <script>
-        // Verify ethers loaded before continuing
-        if (typeof window.ethers === 'undefined') {
-            document.body.innerHTML = '<div style="text-align:center;padding:50px;color:red;"><h1>🚨 Loading Error</h1><p>Ethers.js failed to load. Please check your internet connection and refresh.</p><button onclick="location.reload()">Refresh Page</button></div>';
-            throw new Error('Ethers.js not loaded');
-        }
-        console.log('✅ Ethers.js loaded successfully');
-    </script>
-
-    <!-- COMPREHENSIVE CRITICAL FIXES: Eliminates ALL redeclaration and initialization errors -->
-    <script src="config/constants.js"></script>
-    <script src="js/utils/helpers.js"></script>
-
-    <!-- Step 1: Load Core Class Definitions ONLY (NO INSTANCES CREATED) -->
-    <script src="js/core/error-handler.js"></script>
-    <script src="js/components/notification.js"></script>
-    <script src="js/core/state-manager.js"></script>
-    <script src="js/contracts/contract-manager.js"></script>
-    <script src="js/core/event-manager.js"></script>
-    <script src="js/core/component-registry.js"></script>
-    <script src="js/core/event-delegation.js"></script>
-    <script src="js/core/router.js"></script>
-
-    <!-- Step 2: Load Master SystemManager (HANDLES ALL CRITICAL FIXES) -->
-    <script src="js/core/system-manager.js"></script>
-
-    <!-- Wallet and Network Integration -->
-    <script src="js/wallet/network-manager.js"></script>
-    <script src="js/wallet/wallet-manager.js"></script>
-
-    <!-- UI Components -->
-    <script src="js/components/base-component.js"></script>
-    <script src="js/components/modal.js"></script>
-    <script src="js/components/staking-modal.js"></script>
-
-    <!-- Application Pages -->
-    <script src="js/pages/home.js"></script>
-    <script src="js/pages/admin.js"></script>
-
-    <!-- Main Application -->
-    <script src="js/core/app.js"></script>
+    <script src="js/master-initializer.js"></script>
 </body>
 </html>

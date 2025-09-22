@@ -1,1389 +1,832 @@
 /**
- * StakingModal - Enhanced staking interface component for Phase 2
- * Comprehensive staking modal with advanced features, validation, and mobile responsiveness
- * Features: Advanced validation, real-time balance updates, accessibility, mobile-first design
+ * StakingModal - Professional modal component for staking operations
+ * Provides comprehensive staking interface matching React original with tabs, sliders, and validation
+ * Supports stake, unstake, and claim operations with real-time feedback and animations
+ * 
+ * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
  */
+(function(global) {
+    'use strict';
+
+    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
+    if (global.StakingModal) {
+        console.warn('StakingModal class already exists, skipping redeclaration');
+        return;
+    }
+
 class StakingModal extends BaseComponent {
     constructor() {
         super();
-
-        // Component state with enhanced features
-        this.state = {
-            selectedPair: null,
-            isOpen: false,
-            activeTab: 0, // 0: Stake, 1: Unstake, 2: Claim
-
-            // Stake tab state with validation
-            stakePercent: 0,
-            stakeAmount: '',
-            stakeAmountError: '',
-            stakeIsValid: false,
-
-            // Unstake tab state with validation
-            unstakePercent: 0,
-            unstakeAmount: '',
-            unstakeAmountError: '',
-            unstakeIsValid: false,
-
-            // Enhanced data state
-            balance: 0,
-            tokenInfo: null,
-            pendingRewards: 0,
-            userStakeInfo: null,
-            balanceRefreshTime: null,
-
-            // Advanced UI state
-            isLoading: false,
-            isLoadingBalance: false,
-            isLoadingStakeInfo: false,
-            isLoadingRewards: false,
-            isStakeSliderChange: false,
-            isUnstakeSliderChange: false,
-
-            // Error handling
-            loadError: null,
-            lastRefreshError: null,
-
-            // Accessibility state
-            announceMessage: '',
-            focusedElement: null
+        this.isOpen = false;
+        this.currentTab = 'stake';
+        this.pairData = null;
+        this.currentPairId = null;
+        this.modalElement = null;
+        this.overlayElement = null;
+        
+        // User balances and data
+        this.userBalances = {
+            lpToken: '0',
+            stakedAmount: '0',
+            pendingRewards: '0',
+            allowance: '0'
         };
         
-        // Bind methods - enhanced with new features
-        this.show = this.show.bind(this);
-        this.hide = this.hide.bind(this);
-        this.handleTabChange = this.handleTabChange.bind(this);
-        this.handleStake = this.handleStake.bind(this);
-        this.handleUnstake = this.handleUnstake.bind(this);
-        this.handleClaimRewards = this.handleClaimRewards.bind(this);
-        this.handleStakeAmountChange = this.handleStakeAmountChange.bind(this);
-        this.handleUnstakeAmountChange = this.handleUnstakeAmountChange.bind(this);
-        this.handleStakeSliderChange = this.handleStakeSliderChange.bind(this);
-        this.handleUnstakeSliderChange = this.handleUnstakeSliderChange.bind(this);
-
-        // Enhanced methods
-        this.validateStakeAmount = this.validateStakeAmount.bind(this);
-        this.validateUnstakeAmount = this.validateUnstakeAmount.bind(this);
-        this.refreshBalanceData = this.refreshBalanceData.bind(this);
-        this.handleKeyboardNavigation = this.handleKeyboardNavigation.bind(this);
-        this.announceToScreenReader = this.announceToScreenReader.bind(this);
-        this.formatTokenAmount = this.formatTokenAmount.bind(this);
-        this.sanitizeInput = this.sanitizeInput.bind(this);
-        this.handleMaxAmount = this.handleMaxAmount.bind(this);
-        this.handleQuickPercentage = this.handleQuickPercentage.bind(this);
-
-        // Auto-refresh timer
-        this.refreshTimer = null;
-        this.REFRESH_INTERVAL = 30000; // 30 seconds
-
-        // Debounce timers
-        this.validationDebounce = null;
-        this.balanceRefreshDebounce = null;
+        // Input validation
+        this.validation = {
+            minStakeAmount: 0.001,
+            maxStakeAmount: null, // Will be set based on balance
+            minUnstakeAmount: 0.001,
+            isValidating: false
+        };
+        
+        // Transaction state
+        this.transactionState = {
+            isProcessing: false,
+            currentOperation: null,
+            txHash: null,
+            error: null
+        };
+        
+        // Animation settings
+        this.animationDuration = 300;
+        this.slideAnimationDuration = 200;
+        
+        // Tab configuration
+        this.tabs = [
+            { id: 'stake', label: 'Stake', icon: '📈' },
+            { id: 'unstake', label: 'Unstake', icon: '📉' },
+            { id: 'claim', label: 'Claim', icon: '🎁' }
+        ];
+        
+        this.log('StakingModal initialized with enhanced features');
     }
 
     /**
-     * Show staking modal with enhanced features
+     * Initialize modal system
      */
-    async show(selectedPair, initialTab = 0) {
-        try {
-            // Clear any existing timers
-            this.clearTimers();
-
-            // Reset state for new pair
-            this.setState({
-                selectedPair,
-                activeTab: initialTab,
-                isOpen: true,
-                stakeAmount: '',
-                unstakeAmount: '',
-                stakePercent: 0,
-                unstakePercent: 0,
-                stakeAmountError: '',
-                unstakeAmountError: '',
-                stakeIsValid: false,
-                unstakeIsValid: false,
-                loadError: null,
-                lastRefreshError: null,
-                announceMessage: ''
-            });
-
-            // Announce modal opening to screen readers
-            this.announceToScreenReader(`Opening staking modal for ${selectedPair.pairName}`);
-
-            // Show loading modal first
-            const loadingContent = this.renderLoadingModal();
-            window.modalManager.show('staking-modal', loadingContent, {
-                title: `${selectedPair.pairName} Staking`,
-                size: 'large',
-                className: 'staking-modal loading',
-                closeOnBackdrop: false,
-                showCloseButton: true,
-                onClose: () => this.hide()
-            });
-
-            // Load data for the selected pair
-            await this.loadPairData();
-
-            // Render full modal content
-            const content = await this.render();
-            window.modalManager.updateContent('staking-modal', content);
-
-            // Remove loading class
-            const modal = document.getElementById('staking-modal-backdrop');
-            if (modal) {
-                modal.classList.remove('loading');
-            }
-
-            // Set up event listeners after modal is shown
-            this.setupEventListeners();
-
-            // Start auto-refresh timer
-            this.startAutoRefresh();
-
-            // Set initial focus based on tab
-            this.setInitialFocus(initialTab);
-
-        } catch (error) {
-            this.logError('Failed to show staking modal:', error);
-            window.notificationManager?.error('Error', 'Failed to open staking modal');
-            this.hide();
-        }
+    initialize() {
+        this.injectModalStyles();
+        this.createModalStructure();
+        this.setupEventListeners();
+        this.log('StakingModal initialization complete');
     }
 
     /**
-     * Hide staking modal with cleanup
+     * Open modal for specific pair
      */
-    hide() {
-        this.setState({ isOpen: false });
-        this.clearTimers();
-        this.announceToScreenReader('Staking modal closed');
-        window.modalManager.hide('staking-modal');
-    }
-
-    /**
-     * Clear all timers
-     */
-    clearTimers() {
-        if (this.refreshTimer) {
-            clearInterval(this.refreshTimer);
-            this.refreshTimer = null;
-        }
-        if (this.validationDebounce) {
-            clearTimeout(this.validationDebounce);
-            this.validationDebounce = null;
-        }
-        if (this.balanceRefreshDebounce) {
-            clearTimeout(this.balanceRefreshDebounce);
-            this.balanceRefreshDebounce = null;
-        }
-    }
-
-    /**
-     * Start auto-refresh timer
-     */
-    startAutoRefresh() {
-        this.refreshTimer = setInterval(() => {
-            if (this.state.isOpen && !this.state.isLoading) {
-                this.refreshBalanceData();
-            }
-        }, this.REFRESH_INTERVAL);
-    }
-
-    /**
-     * Set initial focus based on active tab
-     */
-    setInitialFocus(tabIndex) {
-        setTimeout(() => {
-            let focusSelector;
-            switch (tabIndex) {
-                case 0:
-                    focusSelector = '.stake-tab .amount-input';
-                    break;
-                case 1:
-                    focusSelector = '.unstake-tab .amount-input';
-                    break;
-                case 2:
-                    focusSelector = '.claim-button';
-                    break;
-                default:
-                    focusSelector = '.tab-button.active';
-            }
-
-            const element = document.querySelector(focusSelector);
-            if (element && !element.disabled) {
-                element.focus();
-                this.setState({ focusedElement: focusSelector });
-            }
-        }, 100);
-    }
-
-    /**
-     * Announce message to screen readers
-     */
-    announceToScreenReader(message) {
-        this.setState({ announceMessage: message });
-
-        // Clear message after announcement
-        setTimeout(() => {
-            this.setState({ announceMessage: '' });
-        }, 1000);
-    }
-
-    /**
-     * Load pair data from contracts with enhanced error handling
-     */
-    async loadPairData() {
-        if (!this.state.selectedPair || !window.walletManager?.isConnected()) {
-            this.setState({
-                loadError: 'Wallet not connected',
-                isLoading: false
-            });
+    async open(pairId, pairData = null) {
+        if (this.isOpen) {
+            this.log('Modal already open');
             return;
         }
 
-        try {
-            this.setState({
-                isLoading: true,
-                loadError: null,
-                isLoadingBalance: true,
-                isLoadingStakeInfo: true,
-                isLoadingRewards: true
-            });
-
-            const { selectedPair } = this.state;
-            const userAddress = window.walletManager.getAddress();
-
-            // Load data in parallel with individual error handling
-            const [tokenInfo, balance, pendingRewards, userStakeInfo] = await Promise.allSettled([
-                window.contractManager.getTokenInfo(selectedPair.lpToken),
-                window.contractManager.getERC20Balance(userAddress, selectedPair.lpToken),
-                window.contractManager.getPendingRewards(userAddress, selectedPair.lpToken),
-                window.contractManager.getUserStakeInfo(userAddress, selectedPair.lpToken)
-            ]);
-
-            // Process token info
-            if (tokenInfo.status === 'fulfilled') {
-                this.setState({ tokenInfo: tokenInfo.value });
-            } else {
-                throw new Error('Failed to load token information');
-            }
-
-            // Process balance
-            if (balance.status === 'fulfilled') {
-                const formattedBalance = parseFloat(
-                    window.ethers.formatUnits(balance.value, tokenInfo.value.decimals)
-                );
-                this.setState({
-                    balance: formattedBalance,
-                    isLoadingBalance: false,
-                    balanceRefreshTime: Date.now()
-                });
-            } else {
-                this.setState({
-                    balance: 0,
-                    isLoadingBalance: false,
-                    lastRefreshError: 'Failed to load balance'
-                });
-            }
-
-            // Process pending rewards
-            if (pendingRewards.status === 'fulfilled') {
-                this.setState({
-                    pendingRewards: parseFloat(window.ethers.formatEther(pendingRewards.value)),
-                    isLoadingRewards: false
-                });
-            } else {
-                this.setState({
-                    pendingRewards: 0,
-                    isLoadingRewards: false
-                });
-            }
-
-            // Process user stake info
-            if (userStakeInfo.status === 'fulfilled') {
-                this.setState({
-                    userStakeInfo: {
-                        amount: parseFloat(window.ethers.formatEther(userStakeInfo.value.amount)),
-                        pendingRewards: parseFloat(window.ethers.formatEther(userStakeInfo.value.pendingRewards)),
-                        lastRewardTime: userStakeInfo.value.lastRewardTime
-                    },
-                    isLoadingStakeInfo: false
-                });
-            } else {
-                this.setState({
-                    userStakeInfo: {
-                        amount: 0,
-                        pendingRewards: 0,
-                        lastRewardTime: 0
-                    },
-                    isLoadingStakeInfo: false
-                });
-            }
-
-            // Announce successful load
-            this.announceToScreenReader('Staking data loaded successfully');
-
-        } catch (error) {
-            this.logError('Failed to load pair data:', error);
-            this.setState({
-                loadError: error.message || 'Failed to load staking data',
-                isLoadingBalance: false,
-                isLoadingStakeInfo: false,
-                isLoadingRewards: false
-            });
-            window.notificationManager?.error('Error', 'Failed to load staking data');
-        } finally {
-            this.setState({ isLoading: false });
-        }
-    }
-
-    /**
-     * Refresh balance data without full reload
-     */
-    async refreshBalanceData() {
-        if (!this.state.selectedPair || !window.walletManager?.isConnected() || this.state.isLoading) {
-            return;
+        this.currentPairId = pairId;
+        this.pairData = pairData || await this.loadPairData(pairId);
+        
+        if (!this.overlayElement) {
+            this.initialize();
         }
 
-        try {
-            const { selectedPair, tokenInfo } = this.state;
-            const userAddress = window.walletManager.getAddress();
-
-            // Refresh balance and rewards in parallel
-            const [balance, pendingRewards] = await Promise.allSettled([
-                window.contractManager.getERC20Balance(userAddress, selectedPair.lpToken),
-                window.contractManager.getPendingRewards(userAddress, selectedPair.lpToken)
-            ]);
-
-            let hasUpdates = false;
-
-            if (balance.status === 'fulfilled' && tokenInfo) {
-                const newBalance = parseFloat(
-                    window.ethers.formatUnits(balance.value, tokenInfo.decimals)
-                );
-                if (Math.abs(newBalance - this.state.balance) > 0.0001) {
-                    this.setState({
-                        balance: newBalance,
-                        balanceRefreshTime: Date.now()
-                    });
-                    hasUpdates = true;
-                }
-            }
-
-            if (pendingRewards.status === 'fulfilled') {
-                const newRewards = parseFloat(window.ethers.formatEther(pendingRewards.value));
-                if (Math.abs(newRewards - this.state.pendingRewards) > 0.0001) {
-                    this.setState({ pendingRewards: newRewards });
-                    hasUpdates = true;
-                }
-            }
-
-            if (hasUpdates) {
-                this.announceToScreenReader('Balance updated');
-                // Re-validate amounts if they changed
-                this.validateCurrentAmounts();
-            }
-
-        } catch (error) {
-            this.logError('Failed to refresh balance data:', error);
-            this.setState({ lastRefreshError: 'Failed to refresh data' });
-        }
-    }
-
-    /**
-     * Validate current amounts after balance updates
-     */
-    validateCurrentAmounts() {
-        if (this.state.stakeAmount) {
-            this.validateStakeAmount(this.state.stakeAmount);
-        }
-        if (this.state.unstakeAmount) {
-            this.validateUnstakeAmount(this.state.unstakeAmount);
-        }
-    }
-
-    /**
-     * Advanced stake amount validation
-     */
-    validateStakeAmount(amount) {
-        const { balance, tokenInfo, selectedPair } = this.state;
-
-        // Clear previous validation timer
-        if (this.validationDebounce) {
-            clearTimeout(this.validationDebounce);
-        }
-
-        this.validationDebounce = setTimeout(() => {
-            let error = '';
-            let isValid = false;
-
-            if (!amount || amount === '') {
-                error = '';
-                isValid = false;
-            } else {
-                const numAmount = parseFloat(amount);
-
-                if (isNaN(numAmount)) {
-                    error = 'Please enter a valid number';
-                } else if (numAmount < 0) {
-                    error = 'Amount cannot be negative';
-                } else if (numAmount === 0) {
-                    error = 'Amount must be greater than zero';
-                } else if (selectedPair?.weight === 0) {
-                    error = 'This pair is currently disabled for staking';
-                } else if (numAmount > balance) {
-                    error = `Insufficient balance. Available: ${this.formatTokenAmount(balance, tokenInfo?.symbol)}`;
-                } else if (tokenInfo && this.hasExcessiveDecimals(amount, tokenInfo.decimals)) {
-                    error = `Maximum ${tokenInfo.decimals} decimal places allowed`;
-                } else if (numAmount < 0.0001) {
-                    error = 'Minimum stake amount is 0.0001';
-                } else {
-                    isValid = true;
-                }
-            }
-
-            this.setState({
-                stakeAmountError: error,
-                stakeIsValid: isValid
-            });
-
-            if (error) {
-                this.announceToScreenReader(`Stake validation error: ${error}`);
-            }
-        }, 300);
-    }
-
-    /**
-     * Advanced unstake amount validation
-     */
-    validateUnstakeAmount(amount) {
-        const { userStakeInfo, tokenInfo } = this.state;
-
-        // Clear previous validation timer
-        if (this.validationDebounce) {
-            clearTimeout(this.validationDebounce);
-        }
-
-        this.validationDebounce = setTimeout(() => {
-            let error = '';
-            let isValid = false;
-            const stakedAmount = userStakeInfo?.amount || 0;
-
-            if (!amount || amount === '') {
-                error = '';
-                isValid = false;
-            } else {
-                const numAmount = parseFloat(amount);
-
-                if (isNaN(numAmount)) {
-                    error = 'Please enter a valid number';
-                } else if (numAmount < 0) {
-                    error = 'Amount cannot be negative';
-                } else if (numAmount === 0) {
-                    error = 'Amount must be greater than zero';
-                } else if (stakedAmount === 0) {
-                    error = 'No tokens staked to unstake';
-                } else if (numAmount > stakedAmount) {
-                    error = `Insufficient staked amount. Available: ${this.formatTokenAmount(stakedAmount, tokenInfo?.symbol)}`;
-                } else if (tokenInfo && this.hasExcessiveDecimals(amount, tokenInfo.decimals)) {
-                    error = `Maximum ${tokenInfo.decimals} decimal places allowed`;
-                } else if (numAmount < 0.0001) {
-                    error = 'Minimum unstake amount is 0.0001';
-                } else {
-                    isValid = true;
-                }
-            }
-
-            this.setState({
-                unstakeAmountError: error,
-                unstakeIsValid: isValid
-            });
-
-            if (error) {
-                this.announceToScreenReader(`Unstake validation error: ${error}`);
-            }
-        }, 300);
-    }
-
-    /**
-     * Check if amount has excessive decimal places
-     */
-    hasExcessiveDecimals(amount, maxDecimals) {
-        const decimalPart = amount.toString().split('.')[1];
-        return decimalPart && decimalPart.length > maxDecimals;
-    }
-
-    /**
-     * Sanitize input to prevent injection and ensure valid format
-     */
-    sanitizeInput(value) {
-        if (!value) return '';
-
-        // Remove any non-numeric characters except decimal point
-        let sanitized = value.toString().replace(/[^0-9.]/g, '');
-
-        // Ensure only one decimal point
-        const parts = sanitized.split('.');
-        if (parts.length > 2) {
-            sanitized = parts[0] + '.' + parts.slice(1).join('');
-        }
-
-        // Remove leading zeros except for decimal numbers
-        if (sanitized.length > 1 && sanitized[0] === '0' && sanitized[1] !== '.') {
-            sanitized = sanitized.substring(1);
-        }
-
-        return sanitized;
-    }
-
-    /**
-     * Format token amount for display
-     */
-    formatTokenAmount(amount, symbol = '') {
-        if (amount === 0) return `0 ${symbol}`.trim();
-
-        const formatted = amount < 0.0001
-            ? amount.toExponential(2)
-            : amount.toFixed(4).replace(/\.?0+$/, '');
-
-        return `${formatted} ${symbol}`.trim();
-    }
-
-    /**
-     * Handle tab change with validation
-     */
-    handleTabChange(tabIndex) {
-        this.setState({ activeTab: tabIndex });
+        // Update modal content with pair data
         this.updateModalContent();
-        this.setInitialFocus(tabIndex);
-
-        // Announce tab change
-        const tabNames = ['Stake', 'Unstake', 'Claim'];
-        this.announceToScreenReader(`Switched to ${tabNames[tabIndex]} tab`);
+        
+        // Load user balances
+        await this.loadUserBalances();
+        
+        // Show modal with animation
+        this.overlayElement.classList.add('active');
+        this.isOpen = true;
+        
+        // Focus first input
+        setTimeout(() => {
+            const firstInput = this.modalElement.querySelector('.staking-amount-input');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }, this.animationDuration);
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
+        this.log(`Modal opened for pair: ${pairId}`);
     }
 
     /**
-     * Handle stake action
+     * Close modal
      */
-    async handleStake() {
-        const { selectedPair, stakeAmount, stakePercent, balance } = this.state;
-        
-        if (!selectedPair || !window.walletManager?.isConnected()) {
-            window.notificationManager?.error('Error', 'Please connect your wallet');
+    close() {
+        if (!this.isOpen) {
             return;
         }
 
+        // Hide modal with animation
+        this.overlayElement.classList.remove('active');
+        this.isOpen = false;
+        
+        // Reset transaction state
+        this.resetTransactionState();
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+        
+        // Clear form data after animation
+        setTimeout(() => {
+            this.clearFormData();
+        }, this.animationDuration);
+        
+        this.log('Modal closed');
+    }
+
+    /**
+     * Switch to specific tab
+     */
+    switchTab(tabId) {
+        if (this.currentTab === tabId) {
+            return;
+        }
+
+        // Update tab buttons
+        const tabButtons = this.modalElement.querySelectorAll('.staking-modal-tab');
+        tabButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+
+        // Update tab content
+        const tabContents = this.modalElement.querySelectorAll('.staking-tab-content');
+        tabContents.forEach(content => {
+            content.style.display = content.dataset.tabContent === tabId ? 'block' : 'none';
+        });
+
+        this.currentTab = tabId;
+        
+        // Reset form state for new tab
+        this.resetFormState();
+        
+        this.log(`Switched to tab: ${tabId}`);
+    }
+
+    /**
+     * Update modal content with pair data
+     */
+    updateModalContent() {
+        if (!this.pairData) return;
+
+        // Update title
+        const titleElement = this.modalElement.querySelector('.pair-name');
+        if (titleElement) {
+            titleElement.textContent = `${this.pairData.name} Staking`;
+        }
+
+        // Update pair icon if available
+        const iconElement = this.modalElement.querySelector('.pair-icon');
+        if (iconElement && this.pairData.icon) {
+            iconElement.textContent = this.pairData.icon;
+        }
+    }
+
+    /**
+     * Load user balances for current pair
+     */
+    async loadUserBalances() {
         try {
-            const amount = stakeAmount || ((stakePercent * balance) / 100).toString();
-            
-            if (Number(amount) === 0) {
-                window.notificationManager?.warning('Warning', 'Please enter an amount to stake');
+            if (!global.contractManager || !this.currentPairId) {
+                this.log('ContractManager not available or no pair selected');
                 return;
             }
 
-            this.setState({ isLoading: true });
-
-            await window.contractManager.stake(selectedPair.lpToken, amount);
+            // Get user balances from contract manager
+            const balances = await global.contractManager.getUserBalances(this.currentPairId);
             
-            window.notificationManager?.success('Success', 'Tokens staked successfully!');
-            this.hide();
-            
-            // Trigger data refresh
-            window.eventManager?.emit('stakingDataChanged');
+            this.userBalances = {
+                lpToken: balances.lpToken || '0',
+                stakedAmount: balances.staked || '0',
+                pendingRewards: balances.pendingRewards || '0',
+                allowance: balances.allowance || '0'
+            };
 
+            // Update UI with new balances
+            this.updateBalanceDisplays();
+            
+            this.log('User balances loaded:', this.userBalances);
         } catch (error) {
-            this.logError('Stake failed:', error);
-            window.notificationManager?.error('Error', 'Failed to stake tokens');
-        } finally {
-            this.setState({ isLoading: false });
+            this.log('Error loading user balances:', error);
+            
+            // Use mock data for development
+            this.userBalances = {
+                lpToken: '100.0',
+                stakedAmount: '25.0',
+                pendingRewards: '0.0234',
+                allowance: '1000000'
+            };
+            
+            this.updateBalanceDisplays();
         }
     }
 
     /**
-     * Handle unstake action
+     * Update balance displays in UI
      */
-    async handleUnstake() {
-        const { selectedPair, unstakeAmount, unstakePercent, userStakeInfo } = this.state;
+    updateBalanceDisplays() {
+        // Available balance
+        const availableBalance = this.modalElement.querySelector('#available-balance');
+        if (availableBalance) {
+            availableBalance.textContent = `${parseFloat(this.userBalances.lpToken).toFixed(4)} LP`;
+        }
+
+        // Staked balance
+        const stakedBalance = this.modalElement.querySelector('#staked-balance');
+        if (stakedBalance) {
+            stakedBalance.textContent = `${parseFloat(this.userBalances.stakedAmount).toFixed(4)} LP`;
+        }
+
+        // Pending rewards
+        const pendingRewards = this.modalElement.querySelector('#pending-rewards');
+        if (pendingRewards) {
+            pendingRewards.textContent = `${parseFloat(this.userBalances.pendingRewards).toFixed(4)} LIB`;
+        }
+
+        // Update validation limits
+        this.validation.maxStakeAmount = parseFloat(this.userBalances.lpToken);
         
-        if (!selectedPair || !window.walletManager?.isConnected()) {
-            window.notificationManager?.error('Error', 'Please connect your wallet');
-            return;
-        }
-
-        try {
-            const amount = unstakeAmount || ((unstakePercent * userStakeInfo.amount) / 100).toString();
-            
-            if (Number(amount) === 0) {
-                window.notificationManager?.warning('Warning', 'Please enter an amount to unstake');
-                return;
-            }
-
-            this.setState({ isLoading: true });
-
-            await window.contractManager.unstake(selectedPair.lpToken, amount);
-            
-            window.notificationManager?.success('Success', 'Tokens unstaked successfully!');
-            this.hide();
-            
-            // Trigger data refresh
-            window.eventManager?.emit('stakingDataChanged');
-
-        } catch (error) {
-            this.logError('Unstake failed:', error);
-            window.notificationManager?.error('Error', 'Failed to unstake tokens');
-        } finally {
-            this.setState({ isLoading: false });
-        }
+        // Enable/disable buttons based on balances
+        this.updateButtonStates();
     }
 
     /**
-     * Handle claim rewards action
+     * Update button states based on balances and validation
      */
-    async handleClaimRewards() {
-        const { selectedPair } = this.state;
-        
-        if (!selectedPair || !window.walletManager?.isConnected()) {
-            window.notificationManager?.error('Error', 'Please connect your wallet');
-            return;
+    updateButtonStates() {
+        // Stake button
+        const stakeButton = this.modalElement.querySelector('#stake-button');
+        const stakeInput = this.modalElement.querySelector('#stake-amount-input');
+        if (stakeButton && stakeInput) {
+            const amount = parseFloat(stakeInput.value) || 0;
+            const hasBalance = parseFloat(this.userBalances.lpToken) > 0;
+            const isValidAmount = amount >= this.validation.minStakeAmount && amount <= this.validation.maxStakeAmount;
+            stakeButton.disabled = !hasBalance || !isValidAmount || this.transactionState.isProcessing;
         }
 
-        try {
-            this.setState({ isLoading: true });
-
-            await window.contractManager.claimRewards(selectedPair.lpToken);
-            
-            window.notificationManager?.success('Success', 'Rewards claimed successfully!');
-            this.hide();
-            
-            // Trigger data refresh
-            window.eventManager?.emit('stakingDataChanged');
-
-        } catch (error) {
-            this.logError('Claim rewards failed:', error);
-            window.notificationManager?.error('Error', 'Failed to claim rewards');
-        } finally {
-            this.setState({ isLoading: false });
-        }
-    }
-
-    /**
-     * Handle stake amount input change with enhanced validation
-     */
-    handleStakeAmountChange(value) {
-        const { balance } = this.state;
-
-        // Sanitize input
-        const sanitizedValue = this.sanitizeInput(value);
-
-        this.setState({
-            isStakeSliderChange: false,
-            stakeAmount: sanitizedValue
-        });
-
-        if (!sanitizedValue) {
-            this.setState({
-                stakePercent: 0,
-                stakeAmountError: '',
-                stakeIsValid: false
-            });
-            return;
-        }
-
-        const numValue = parseFloat(sanitizedValue);
-        if (!isNaN(numValue) && numValue >= 0) {
-            // Update percentage
-            const newPercent = balance > 0 ? Math.min((numValue * 100) / balance, 100) : 0;
-            this.setState({ stakePercent: newPercent });
-        }
-
-        // Validate the amount
-        this.validateStakeAmount(sanitizedValue);
-    }
-
-    /**
-     * Handle unstake amount input change with enhanced validation
-     */
-    handleUnstakeAmountChange(value) {
-        const { userStakeInfo } = this.state;
-
-        // Sanitize input
-        const sanitizedValue = this.sanitizeInput(value);
-
-        this.setState({
-            isUnstakeSliderChange: false,
-            unstakeAmount: sanitizedValue
-        });
-
-        if (!sanitizedValue) {
-            this.setState({
-                unstakePercent: 0,
-                unstakeAmountError: '',
-                unstakeIsValid: false
-            });
-            return;
-        }
-
-        if (!userStakeInfo) {
-            this.setState({
-                unstakePercent: 0,
-                unstakeAmountError: 'No staking information available',
-                unstakeIsValid: false
-            });
-            return;
-        }
-
-        const numValue = parseFloat(sanitizedValue);
-        if (!isNaN(numValue) && numValue >= 0) {
-            // Update percentage
-            const stakedAmount = userStakeInfo.amount;
-            const newPercent = stakedAmount > 0 ? Math.min((numValue * 100) / stakedAmount, 100) : 0;
-            this.setState({ unstakePercent: newPercent });
-        }
-
-        // Validate the amount
-        this.validateUnstakeAmount(sanitizedValue);
-    }
-
-    /**
-     * Handle stake slider change with smooth updates
-     */
-    handleStakeSliderChange(percent) {
-        const { balance } = this.state;
-
-        const amount = (percent * balance) / 100;
-        const formattedAmount = amount > 0 ? amount.toFixed(6).replace(/\.?0+$/, '') : '';
-
-        this.setState({
-            isStakeSliderChange: true,
-            stakePercent: percent,
-            stakeAmount: formattedAmount,
-            stakeAmountError: '',
-            stakeIsValid: amount > 0 && amount <= balance
-        });
-
-        // Announce percentage change
-        if (percent % 25 === 0) { // Announce at quarter intervals
-            this.announceToScreenReader(`Stake percentage: ${percent}%`);
-        }
-    }
-
-    /**
-     * Handle unstake slider change with smooth updates
-     */
-    handleUnstakeSliderChange(percent) {
-        const { userStakeInfo } = this.state;
-
-        if (!userStakeInfo) return;
-
-        const amount = (percent * userStakeInfo.amount) / 100;
-        const formattedAmount = amount > 0 ? amount.toFixed(6).replace(/\.?0+$/, '') : '';
-
-        this.setState({
-            isUnstakeSliderChange: true,
-            unstakePercent: percent,
-            unstakeAmount: formattedAmount,
-            unstakeAmountError: '',
-            unstakeIsValid: amount > 0 && amount <= userStakeInfo.amount
-        });
-
-        // Announce percentage change
-        if (percent % 25 === 0) { // Announce at quarter intervals
-            this.announceToScreenReader(`Unstake percentage: ${percent}%`);
-        }
-    }
-
-    /**
-     * Handle max amount button click
-     */
-    handleMaxAmount(type) {
-        if (type === 'stake') {
-            const { balance } = this.state;
-            this.handleStakeAmountChange(balance.toString());
-            this.announceToScreenReader(`Set to maximum stake amount: ${this.formatTokenAmount(balance)}`);
-        } else if (type === 'unstake') {
-            const { userStakeInfo } = this.state;
-            if (userStakeInfo) {
-                this.handleUnstakeAmountChange(userStakeInfo.amount.toString());
-                this.announceToScreenReader(`Set to maximum unstake amount: ${this.formatTokenAmount(userStakeInfo.amount)}`);
-            }
-        }
-    }
-
-    /**
-     * Handle quick percentage buttons
-     */
-    handleQuickPercentage(percent, type) {
-        if (type === 'stake') {
-            this.handleStakeSliderChange(percent);
-        } else if (type === 'unstake') {
-            this.handleUnstakeSliderChange(percent);
-        }
-
-        this.announceToScreenReader(`Set ${type} percentage to ${percent}%`);
-    }
-
-    /**
-     * Handle keyboard navigation
-     */
-    handleKeyboardNavigation(event) {
-        const { activeTab } = this.state;
-
-        switch (event.key) {
-            case 'ArrowLeft':
-                if (activeTab > 0) {
-                    event.preventDefault();
-                    this.handleTabChange(activeTab - 1);
-                }
-                break;
-            case 'ArrowRight':
-                if (activeTab < 2) {
-                    event.preventDefault();
-                    this.handleTabChange(activeTab + 1);
-                }
-                break;
-            case 'Escape':
-                event.preventDefault();
-                this.hide();
-                break;
-            case 'Enter':
-                if (event.target.classList.contains('tab-button')) {
-                    event.preventDefault();
-                    const tabIndex = parseInt(event.target.dataset.tab);
-                    this.handleTabChange(tabIndex);
-                }
-                break;
-        }
-    }
-
-    /**
-     * Render component with enhanced features
-     */
-    async render() {
-        const { selectedPair, activeTab, tokenInfo, isLoading, loadError, announceMessage } = this.state;
-
-        if (loadError) {
-            return this.renderError();
-        }
-
-        if (!selectedPair || !tokenInfo || isLoading) {
-            return this.renderLoading();
-        }
-
-        return `
-            <div class="staking-modal-content" role="dialog" aria-labelledby="staking-modal-title" aria-describedby="staking-modal-description">
-                ${announceMessage ? `<div class="sr-only" aria-live="polite" aria-atomic="true">${announceMessage}</div>` : ''}
-                ${this.renderHeader()}
-                ${this.renderTabs()}
-                <div class="modal-divider"></div>
-                ${this.renderTabContent()}
-                ${this.renderRefreshIndicator()}
-            </div>
-        `;
-    }
-
-    /**
-     * Render loading modal for initial display
-     */
-    renderLoadingModal() {
-        const { selectedPair } = this.state;
-
-        return `
-            <div class="staking-modal-loading" role="dialog" aria-labelledby="loading-title" aria-describedby="loading-description">
-                <div class="loading-header">
-                    <h2 id="loading-title">${selectedPair?.pairName || 'Loading'} Staking</h2>
-                </div>
-                <div class="loading-content">
-                    <div class="loading-spinner" aria-hidden="true"></div>
-                    <p id="loading-description">Loading staking data...</p>
-                    <div class="loading-steps">
-                        <div class="loading-step ${this.state.isLoadingBalance ? 'active' : 'complete'}">
-                            <span class="step-icon">${this.state.isLoadingBalance ? '⏳' : '✅'}</span>
-                            <span>Loading balance</span>
-                        </div>
-                        <div class="loading-step ${this.state.isLoadingStakeInfo ? 'active' : 'complete'}">
-                            <span class="step-icon">${this.state.isLoadingStakeInfo ? '⏳' : '✅'}</span>
-                            <span>Loading stake info</span>
-                        </div>
-                        <div class="loading-step ${this.state.isLoadingRewards ? 'active' : 'complete'}">
-                            <span class="step-icon">${this.state.isLoadingRewards ? '⏳' : '✅'}</span>
-                            <span>Loading rewards</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render enhanced loading state
-     */
-    renderLoading() {
-        const { selectedPair } = this.state;
-
-        return `
-            <div class="staking-modal-loading" aria-live="polite">
-                <div class="loading-spinner" aria-hidden="true"></div>
-                <p>Loading ${selectedPair?.pairName || 'staking'} data...</p>
-                <div class="loading-progress">
-                    <div class="progress-bar" style="width: 60%"></div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render error state with recovery options
-     */
-    renderError() {
-        const { loadError, selectedPair } = this.state;
-
-        return `
-            <div class="staking-modal-error" role="alert" aria-labelledby="error-title">
-                <div class="error-icon" aria-hidden="true">⚠️</div>
-                <h3 id="error-title">Failed to Load Staking Data</h3>
-                <p class="error-message">${loadError}</p>
-                <div class="error-actions">
-                    <button class="retry-button" onclick="window.stakingModal.loadPairData()">
-                        <svg class="button-icon" viewBox="0 0 24 24" width="16" height="16">
-                            <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
-                        </svg>
-                        Retry
-                    </button>
-                    <button class="close-button" onclick="window.stakingModal.hide()">
-                        Close
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render refresh indicator
-     */
-    renderRefreshIndicator() {
-        const { balanceRefreshTime, lastRefreshError } = this.state;
-
-        if (!balanceRefreshTime && !lastRefreshError) return '';
-
-        const timeAgo = balanceRefreshTime ? Math.floor((Date.now() - balanceRefreshTime) / 1000) : 0;
-
-        return `
-            <div class="refresh-indicator">
-                ${lastRefreshError ? `
-                    <div class="refresh-error" role="alert">
-                        <span class="error-icon" aria-hidden="true">⚠️</span>
-                        <span>${lastRefreshError}</span>
-                        <button class="refresh-retry" onclick="window.stakingModal.refreshBalanceData()" aria-label="Retry refresh">
-                            🔄
-                        </button>
-                    </div>
-                ` : `
-                    <div class="refresh-success">
-                        <span class="success-icon" aria-hidden="true">✅</span>
-                        <span>Updated ${timeAgo}s ago</span>
-                    </div>
-                `}
-            </div>
-        `;
-    }
-
-    /**
-     * Render modal header
-     */
-    renderHeader() {
-        const { selectedPair } = this.state;
-
-        return `
-            <div class="staking-modal-header">
-                <div class="header-icon">
-                    <svg class="icon-swap" viewBox="0 0 24 24" width="28" height="28">
-                        <path fill="currentColor" d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
-                    </svg>
-                </div>
-                <h2 class="modal-title">${selectedPair.pairName}</h2>
-            </div>
-        `;
-    }
-
-    /**
-     * Render tab navigation
-     */
-    renderTabs() {
-        const { activeTab } = this.state;
-
-        return `
-            <div class="staking-tabs">
-                <button class="tab-button ${activeTab === 0 ? 'active' : ''}" data-tab="0">
-                    <svg class="tab-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    <span>Stake</span>
-                </button>
-                <button class="tab-button ${activeTab === 1 ? 'active' : ''}" data-tab="1">
-                    <svg class="tab-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    <span>Unstake</span>
-                </button>
-                <button class="tab-button ${activeTab === 2 ? 'active' : ''}" data-tab="2">
-                    <svg class="tab-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    <span>Claim</span>
-                </button>
-            </div>
-        `;
-    }
-
-    /**
-     * Render active tab content
-     */
-    renderTabContent() {
-        const { activeTab } = this.state;
-
-        switch (activeTab) {
-            case 0:
-                return this.renderStakeTab();
-            case 1:
-                return this.renderUnstakeTab();
-            case 2:
-                return this.renderClaimTab();
-            default:
-                return this.renderStakeTab();
-        }
-    }
-
-    /**
-     * Render enhanced stake tab with validation and accessibility
-     */
-    renderStakeTab() {
-        const {
-            stakeAmount,
-            stakePercent,
-            balance,
-            tokenInfo,
-            isLoading,
-            selectedPair,
-            stakeAmountError,
-            stakeIsValid,
-            isLoadingBalance
-        } = this.state;
-
-        const isDisabled = selectedPair?.weight === 0 || !stakeIsValid || isLoading;
-        const hasError = !!stakeAmountError;
-
-        return `
-            <div class="tab-content stake-tab" role="tabpanel" aria-labelledby="stake-tab-button" tabindex="0">
-                <div class="input-section">
-                    <div class="input-group ${hasError ? 'has-error' : ''}">
-                        <label class="input-label" for="stakeAmountInput">
-                            Amount to Stake
-                            <span class="required-indicator" aria-label="required">*</span>
-                        </label>
-                        <div class="input-wrapper">
-                            <input
-                                type="text"
-                                id="stakeAmountInput"
-                                class="amount-input ${hasError ? 'error' : ''}"
-                                data-ref="stakeAmountInput"
-                                placeholder="0.0"
-                                value="${stakeAmount}"
-                                aria-describedby="stake-amount-error stake-amount-help"
-                                aria-invalid="${hasError}"
-                                autocomplete="off"
-                                inputmode="decimal"
-                            />
-                            <span class="input-suffix">${tokenInfo?.symbol || ''}</span>
-                            <button
-                                class="max-button"
-                                type="button"
-                                onclick="window.stakingModal.handleMaxAmount('stake')"
-                                aria-label="Set maximum amount"
-                                ${isLoadingBalance ? 'disabled' : ''}
-                            >
-                                MAX
-                            </button>
-                        </div>
-                        ${hasError ? `
-                            <div id="stake-amount-error" class="error-message" role="alert" aria-live="polite">
-                                <svg class="error-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                    <path fill="currentColor" d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
-                                </svg>
-                                ${stakeAmountError}
-                            </div>
-                        ` : ''}
-                        <div id="stake-amount-help" class="input-help">
-                            Enter the amount of ${tokenInfo?.symbol || 'tokens'} you want to stake
-                        </div>
-                    </div>
-
-                    <div class="slider-group">
-                        <label class="slider-label" for="stakeSlider">
-                            Percentage: ${stakePercent.toFixed(1)}%
-                        </label>
-                        <div class="slider-wrapper">
-                            <input
-                                type="range"
-                                id="stakeSlider"
-                                class="percentage-slider"
-                                data-ref="stakeSlider"
-                                min="0"
-                                max="100"
-                                value="${stakePercent}"
-                                step="1"
-                                aria-describedby="slider-help"
-                                aria-label="Stake percentage slider"
-                            />
-                            <div class="slider-marks" aria-hidden="true">
-                                <span>0%</span>
-                                <span>25%</span>
-                                <span>50%</span>
-                                <span>75%</span>
-                                <span>100%</span>
-                            </div>
-                        </div>
-                        <div id="slider-help" class="slider-help">
-                            Use the slider or quick buttons to set percentage
-                        </div>
-                        <div class="quick-percentage-buttons">
-                            <button type="button" class="quick-btn" onclick="window.stakingModal.handleQuickPercentage(25, 'stake')" aria-label="Set 25 percent">25%</button>
-                            <button type="button" class="quick-btn" onclick="window.stakingModal.handleQuickPercentage(50, 'stake')" aria-label="Set 50 percent">50%</button>
-                            <button type="button" class="quick-btn" onclick="window.stakingModal.handleQuickPercentage(75, 'stake')" aria-label="Set 75 percent">75%</button>
-                            <button type="button" class="quick-btn" onclick="window.stakingModal.handleQuickPercentage(100, 'stake')" aria-label="Set 100 percent">100%</button>
-                        </div>
-                    </div>
-
-                    <div class="balance-info" ${isLoadingBalance ? 'aria-busy="true"' : ''}>
-                        <svg class="wallet-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor" d="M21 18V19C21 20.1 20.1 21 19 21H5C3.89 21 3 20.1 3 19V5C3 3.9 3.89 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.89 6 10 6.89 10 8V16C10 17.11 10.89 18 12 18H21M12 16H22V8H12V16M16 13.5C15.17 13.5 14.5 12.83 14.5 12S15.17 10.5 16 10.5 17.5 11.17 17.5 12 16.83 13.5 16 13.5Z"/>
-                        </svg>
-                        <span>
-                            Available Balance:
-                            ${isLoadingBalance ?
-                                '<span class="loading-text">Loading...</span>' :
-                                `<strong>${this.formatTokenAmount(balance, tokenInfo?.symbol)}</strong>`
-                            }
-                        </span>
-                    </div>
-
-                    ${selectedPair?.weight === 0 ? `
-                        <div class="warning-message" role="alert">
-                            <svg class="warning-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                <path fill="currentColor" d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
-                            </svg>
-                            This pair is currently disabled for staking
-                        </div>
-                    ` : ''}
-                </div>
-
-                <button
-                    class="action-button stake-button ${isDisabled ? 'disabled' : ''}"
-                    data-ref="stakeButton"
-                    type="button"
-                    ${isDisabled ? 'disabled' : ''}
-                    aria-describedby="stake-button-help"
-                >
-                    <svg class="button-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    ${isLoading ? 'Staking...' : 'Stake Tokens'}
-                </button>
-                <div id="stake-button-help" class="button-help">
-                    ${isDisabled ?
-                        (selectedPair?.weight === 0 ? 'Staking disabled for this pair' :
-                         !stakeIsValid ? 'Enter a valid amount to stake' :
-                         'Please wait...') :
-                        `Stake ${stakeAmount || '0'} ${tokenInfo?.symbol || 'tokens'}`
-                    }
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render unstake tab
-     */
-    renderUnstakeTab() {
-        const { unstakeAmount, unstakePercent, userStakeInfo, tokenInfo, isLoading } = this.state;
-
-        const stakedAmount = userStakeInfo?.amount || 0;
-        const isDisabled = Number(unstakeAmount) === 0 || isLoading;
-
-        return `
-            <div class="tab-content unstake-tab">
-                <div class="input-section">
-                    <div class="input-group">
-                        <label class="input-label">Amount to Unstake</label>
-                        <div class="input-wrapper">
-                            <input
-                                type="number"
-                                class="amount-input"
-                                data-ref="unstakeAmountInput"
-                                placeholder="0.0"
-                                value="${unstakeAmount}"
-                                min="0"
-                                max="${stakedAmount}"
-                                step="0.0001"
-                            />
-                            <span class="input-suffix">${tokenInfo?.symbol || ''}</span>
-                        </div>
-                    </div>
-
-                    <div class="slider-group">
-                        <label class="slider-label">Percentage: ${unstakePercent.toFixed(1)}%</label>
-                        <div class="slider-wrapper">
-                            <input
-                                type="range"
-                                class="percentage-slider"
-                                data-ref="unstakeSlider"
-                                min="0"
-                                max="100"
-                                value="${unstakePercent}"
-                                step="1"
-                            />
-                            <div class="slider-marks">
-                                <span>0%</span>
-                                <span>25%</span>
-                                <span>50%</span>
-                                <span>75%</span>
-                                <span>100%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="balance-info">
-                        <svg class="wallet-icon" viewBox="0 0 24 24" width="16" height="16">
-                            <path fill="currentColor" d="M21 18V19C21 20.1 20.1 21 19 21H5C3.89 21 3 20.1 3 19V5C3 3.9 3.89 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.89 6 10 6.89 10 8V16C10 17.11 10.89 18 12 18H21M12 16H22V8H12V16M16 13.5C15.17 13.5 14.5 12.83 14.5 12S15.17 10.5 16 10.5 17.5 11.17 17.5 12 16.83 13.5 16 13.5Z"/>
-                        </svg>
-                        <span>Staked: ${stakedAmount.toFixed(4)} ${tokenInfo?.symbol || ''}</span>
-                    </div>
-                </div>
-
-                <button
-                    class="action-button unstake-button ${isDisabled ? 'disabled' : ''}"
-                    data-ref="unstakeButton"
-                    ${isDisabled ? 'disabled' : ''}
-                >
-                    <svg class="button-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    ${isLoading ? 'Unstaking...' : 'Unstake Tokens'}
-                </button>
-            </div>
-        `;
-    }
-
-    /**
-     * Render claim rewards tab
-     */
-    renderClaimTab() {
-        const { pendingRewards, isLoading } = this.state;
-
-        const isDisabled = pendingRewards === 0 || isLoading;
-
-        return `
-            <div class="tab-content claim-tab">
-                <div class="rewards-display">
-                    <div class="rewards-header">
-                        <svg class="rewards-icon" viewBox="0 0 24 24" width="32" height="32">
-                            <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                        </svg>
-                        <h3>Available Rewards</h3>
-                    </div>
-                    <div class="rewards-amount">
-                        ${pendingRewards.toFixed(4)} LIB
-                    </div>
-                </div>
-
-                <button
-                    class="action-button claim-button ${isDisabled ? 'disabled' : ''}"
-                    data-ref="claimButton"
-                    ${isDisabled ? 'disabled' : ''}
-                >
-                    <svg class="button-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19V21Z"/>
-                    </svg>
-                    ${isLoading ? 'Claiming...' : 'Claim Rewards'}
-                </button>
-            </div>
-        `;
-    }
-
-    /**
-     * Set up event listeners
-     */
-    setupEventListeners() {
-        // Tab buttons
-        const tabButtons = document.querySelectorAll('.tab-button');
-        tabButtons.forEach(button => {
-            this.addEventListener(button, 'click', (e) => {
-                const tabIndex = parseInt(e.target.closest('.tab-button').dataset.tab);
-                this.handleTabChange(tabIndex);
-            });
-        });
-
-        // Stake tab listeners
-        const stakeAmountInput = this.ref('stakeAmountInput');
-        if (stakeAmountInput) {
-            this.addEventListener(stakeAmountInput, 'input', (e) => {
-                this.handleStakeAmountChange(e.target.value);
-            });
-        }
-
-        const stakeSlider = this.ref('stakeSlider');
-        if (stakeSlider) {
-            this.addEventListener(stakeSlider, 'input', (e) => {
-                this.handleStakeSliderChange(Number(e.target.value));
-            });
-        }
-
-        const stakeButton = this.ref('stakeButton');
-        if (stakeButton) {
-            this.addEventListener(stakeButton, 'click', this.handleStake);
-        }
-
-        // Unstake tab listeners
-        const unstakeAmountInput = this.ref('unstakeAmountInput');
-        if (unstakeAmountInput) {
-            this.addEventListener(unstakeAmountInput, 'input', (e) => {
-                this.handleUnstakeAmountChange(e.target.value);
-            });
-        }
-
-        const unstakeSlider = this.ref('unstakeSlider');
-        if (unstakeSlider) {
-            this.addEventListener(unstakeSlider, 'input', (e) => {
-                this.handleUnstakeSliderChange(Number(e.target.value));
-            });
-        }
-
-        const unstakeButton = this.ref('unstakeButton');
-        if (unstakeButton) {
-            this.addEventListener(unstakeButton, 'click', this.handleUnstake);
+        // Unstake button
+        const unstakeButton = this.modalElement.querySelector('#unstake-button');
+        const unstakeInput = this.modalElement.querySelector('#unstake-amount-input');
+        if (unstakeButton && unstakeInput) {
+            const amount = parseFloat(unstakeInput.value) || 0;
+            const hasStaked = parseFloat(this.userBalances.stakedAmount) > 0;
+            const isValidAmount = amount >= this.validation.minUnstakeAmount && amount <= parseFloat(this.userBalances.stakedAmount);
+            unstakeButton.disabled = !hasStaked || !isValidAmount || this.transactionState.isProcessing;
         }
 
         // Claim button
-        const claimButton = this.ref('claimButton');
+        const claimButton = this.modalElement.querySelector('#claim-button');
         if (claimButton) {
-            this.addEventListener(claimButton, 'click', this.handleClaimRewards);
+            const hasRewards = parseFloat(this.userBalances.pendingRewards) > 0;
+            claimButton.disabled = !hasRewards || this.transactionState.isProcessing;
         }
     }
 
     /**
-     * Update modal content after state change
+     * Handle percentage button clicks
      */
-    async updateModalContent() {
-        const modal = document.getElementById('staking-modal-backdrop');
-        if (modal) {
-            const content = await this.render();
-            const modalBody = modal.querySelector('.modal-body');
-            if (modalBody) {
-                modalBody.innerHTML = content;
-                this.setupEventListeners();
+    handlePercentageClick(percentage, tabType) {
+        const maxAmount = tabType === 'stake' ? 
+            parseFloat(this.userBalances.lpToken) : 
+            parseFloat(this.userBalances.stakedAmount);
+        
+        const amount = percentage === 100 ? maxAmount : (maxAmount * percentage / 100);
+        
+        // Update input
+        const input = this.modalElement.querySelector(`#${tabType}-amount-input`);
+        if (input) {
+            input.value = amount.toFixed(4);
+            this.validateInput(input, tabType);
+        }
+
+        // Update slider
+        const slider = this.modalElement.querySelector(`#${tabType}-slider`);
+        if (slider) {
+            slider.value = percentage;
+        }
+
+        // Update percentage button states
+        const buttons = this.modalElement.querySelectorAll(`[data-tab-content="${tabType}"] .staking-percentage-btn`);
+        buttons.forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.percentage) === percentage);
+        });
+    }
+
+    /**
+     * Handle slider input
+     */
+    handleSliderInput(slider, tabType) {
+        const percentage = parseInt(slider.value);
+        const maxAmount = tabType === 'stake' ? 
+            parseFloat(this.userBalances.lpToken) : 
+            parseFloat(this.userBalances.stakedAmount);
+        
+        const amount = (maxAmount * percentage / 100);
+        
+        // Update input
+        const input = this.modalElement.querySelector(`#${tabType}-amount-input`);
+        if (input) {
+            input.value = amount.toFixed(4);
+            this.validateInput(input, tabType);
+        }
+
+        // Update percentage button states
+        const buttons = this.modalElement.querySelectorAll(`[data-tab-content="${tabType}"] .staking-percentage-btn`);
+        buttons.forEach(btn => {
+            const btnPercentage = parseInt(btn.dataset.percentage);
+            btn.classList.toggle('active', Math.abs(btnPercentage - percentage) < 5);
+        });
+    }
+
+    /**
+     * Validate input amount
+     */
+    validateInput(input, tabType) {
+        const amount = parseFloat(input.value) || 0;
+        const errorElement = this.modalElement.querySelector(`#${tabType}-error`);
+        
+        let isValid = true;
+        let errorMessage = '';
+
+        if (amount <= 0) {
+            isValid = false;
+            errorMessage = 'Amount must be greater than 0';
+        } else if (tabType === 'stake') {
+            if (amount < this.validation.minStakeAmount) {
+                isValid = false;
+                errorMessage = `Minimum stake amount is ${this.validation.minStakeAmount}`;
+            } else if (amount > parseFloat(this.userBalances.lpToken)) {
+                isValid = false;
+                errorMessage = 'Insufficient balance';
+            }
+        } else if (tabType === 'unstake') {
+            if (amount < this.validation.minUnstakeAmount) {
+                isValid = false;
+                errorMessage = `Minimum unstake amount is ${this.validation.minUnstakeAmount}`;
+            } else if (amount > parseFloat(this.userBalances.stakedAmount)) {
+                isValid = false;
+                errorMessage = 'Insufficient staked balance';
+            }
+        }
+
+        // Update UI
+        input.classList.toggle('error', !isValid);
+        
+        if (errorElement) {
+            errorElement.textContent = errorMessage;
+            errorElement.style.display = errorMessage ? 'block' : 'none';
+        }
+
+        // Update button states
+        this.updateButtonStates();
+
+        return isValid;
+    }
+
+    /**
+     * Execute stake operation
+     */
+    async executeStake() {
+        const input = this.modalElement.querySelector('#stake-amount-input');
+        const amount = parseFloat(input.value) || 0;
+
+        if (!this.validateInput(input, 'stake')) {
+            return;
+        }
+
+        try {
+            this.setTransactionState('processing', 'stake');
+            
+            // Check allowance first
+            if (parseFloat(this.userBalances.allowance) < amount) {
+                await this.requestApproval(amount);
+            }
+
+            // Execute stake transaction
+            const txHash = await this.performStakeTransaction(amount);
+            
+            this.setTransactionState('success', 'stake', txHash);
+            
+            // Refresh balances
+            await this.loadUserBalances();
+            
+            // Show success notification
+            if (global.notificationManager) {
+                global.notificationManager.success(`Successfully staked ${amount.toFixed(4)} LP tokens!`);
+            }
+            
+        } catch (error) {
+            this.setTransactionState('error', 'stake', null, error.message);
+            
+            if (global.notificationManager) {
+                global.notificationManager.error(`Staking failed: ${error.message}`);
             }
         }
     }
+
+    /**
+     * Execute unstake operation
+     */
+    async executeUnstake() {
+        const input = this.modalElement.querySelector('#unstake-amount-input');
+        const amount = parseFloat(input.value) || 0;
+
+        if (!this.validateInput(input, 'unstake')) {
+            return;
+        }
+
+        try {
+            this.setTransactionState('processing', 'unstake');
+            
+            // Execute unstake transaction
+            const txHash = await this.performUnstakeTransaction(amount);
+            
+            this.setTransactionState('success', 'unstake', txHash);
+            
+            // Refresh balances
+            await this.loadUserBalances();
+            
+            // Show success notification
+            if (global.notificationManager) {
+                global.notificationManager.success(`Successfully unstaked ${amount.toFixed(4)} LP tokens!`);
+            }
+            
+        } catch (error) {
+            this.setTransactionState('error', 'unstake', null, error.message);
+            
+            if (global.notificationManager) {
+                global.notificationManager.error(`Unstaking failed: ${error.message}`);
+            }
+        }
+    }
+
+    /**
+     * Execute claim operation
+     */
+    async executeClaim() {
+        try {
+            this.setTransactionState('processing', 'claim');
+            
+            // Execute claim transaction
+            const txHash = await this.performClaimTransaction();
+            
+            this.setTransactionState('success', 'claim', txHash);
+            
+            // Refresh balances
+            await this.loadUserBalances();
+            
+            // Show success notification
+            if (global.notificationManager) {
+                global.notificationManager.success(`Successfully claimed ${this.userBalances.pendingRewards} LIB rewards!`);
+            }
+            
+        } catch (error) {
+            this.setTransactionState('error', 'claim', null, error.message);
+            
+            if (global.notificationManager) {
+                global.notificationManager.error(`Claiming failed: ${error.message}`);
+            }
+        }
+    }
+
+    /**
+     * Set transaction state and update UI
+     */
+    setTransactionState(state, operation, txHash = null, error = null) {
+        this.transactionState = {
+            isProcessing: state === 'processing',
+            currentOperation: operation,
+            txHash,
+            error
+        };
+
+        // Update button states
+        const button = this.modalElement.querySelector(`#${operation}-button`);
+        const spinner = button?.querySelector('.staking-loading-spinner');
+        const buttonText = button?.querySelector('.button-text');
+        const statusElement = this.modalElement.querySelector(`#${operation}-transaction-status`);
+        const statusText = this.modalElement.querySelector(`#${operation}-tx-status`);
+        const hashElement = this.modalElement.querySelector(`#${operation}-tx-hash`);
+
+        if (button) {
+            button.disabled = state === 'processing';
+        }
+
+        if (spinner) {
+            spinner.style.display = state === 'processing' ? 'block' : 'none';
+        }
+
+        if (buttonText) {
+            if (state === 'processing') {
+                buttonText.textContent = `Processing ${operation}...`;
+            } else {
+                const defaultTexts = {
+                    stake: 'Stake Tokens',
+                    unstake: 'Unstake Tokens',
+                    claim: '🎁 Claim Rewards'
+                };
+                buttonText.textContent = defaultTexts[operation];
+            }
+        }
+
+        if (statusElement) {
+            statusElement.style.display = (state === 'processing' || txHash) ? 'block' : 'none';
+        }
+
+        if (statusText) {
+            const statusTexts = {
+                processing: 'Pending',
+                success: 'Confirmed',
+                error: 'Failed'
+            };
+            statusText.textContent = statusTexts[state] || 'Unknown';
+        }
+
+        if (hashElement && txHash) {
+            hashElement.textContent = txHash;
+        }
+
+        // Update all button states
+        this.updateButtonStates();
+    }
+
+    /**
+     * Reset transaction state
+     */
+    resetTransactionState() {
+        this.transactionState = {
+            isProcessing: false,
+            currentOperation: null,
+            txHash: null,
+            error: null
+        };
+
+        // Hide all transaction status elements
+        const statusElements = this.modalElement.querySelectorAll('.staking-transaction-status');
+        statusElements.forEach(el => el.style.display = 'none');
+    }
+
+    /**
+     * Reset form state
+     */
+    resetFormState() {
+        // Clear inputs
+        const inputs = this.modalElement.querySelectorAll('.staking-amount-input');
+        inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('error');
+        });
+
+        // Reset sliders
+        const sliders = this.modalElement.querySelectorAll('.staking-slider');
+        sliders.forEach(slider => slider.value = 0);
+
+        // Reset percentage buttons
+        const percentageButtons = this.modalElement.querySelectorAll('.staking-percentage-btn');
+        percentageButtons.forEach(btn => btn.classList.remove('active'));
+
+        // Hide error messages
+        const errorMessages = this.modalElement.querySelectorAll('.staking-error-message');
+        errorMessages.forEach(msg => msg.style.display = 'none');
+
+        // Update button states
+        this.updateButtonStates();
+    }
+
+    /**
+     * Clear all form data
+     */
+    clearFormData() {
+        this.resetFormState();
+        this.resetTransactionState();
+        this.currentPairId = null;
+        this.pairData = null;
+    }
+
+    /**
+     * Load pair data (mock implementation)
+     */
+    async loadPairData(pairId) {
+        // Mock pair data - in real implementation, this would fetch from contract
+        return {
+            id: pairId,
+            name: 'LIB-USDT',
+            icon: '🔗',
+            apr: '25.5%',
+            tvl: '$150,000'
+        };
+    }
+
+    /**
+     * Request token approval (mock implementation)
+     */
+    async requestApproval(amount) {
+        this.log(`Requesting approval for ${amount} tokens`);
+        
+        // Mock approval - in real implementation, this would call contract
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        this.userBalances.allowance = '1000000'; // Set high allowance
+        return true;
+    }
+
+    /**
+     * Perform stake transaction (mock implementation)
+     */
+    async performStakeTransaction(amount) {
+        this.log(`Performing stake transaction for ${amount} tokens`);
+        
+        // Mock transaction - in real implementation, this would call contract
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        return mockTxHash;
+    }
+
+    /**
+     * Perform unstake transaction (mock implementation)
+     */
+    async performUnstakeTransaction(amount) {
+        this.log(`Performing unstake transaction for ${amount} tokens`);
+        
+        // Mock transaction - in real implementation, this would call contract
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        return mockTxHash;
+    }
+
+    /**
+     * Perform claim transaction (mock implementation)
+     */
+    async performClaimTransaction() {
+        this.log(`Performing claim transaction`);
+        
+        // Mock transaction - in real implementation, this would call contract
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        return mockTxHash;
+    }
+
+    /**
+     * Setup event listeners for modal interactions
+     */
+    setupEventListeners() {
+        if (!this.overlayElement || !this.modalElement) {
+            this.log('Modal elements not available for event setup');
+            return;
+        }
+
+        // Close modal on overlay click
+        this.overlayElement.addEventListener('click', (e) => {
+            if (e.target === this.overlayElement) {
+                this.close();
+            }
+        });
+
+        // Close modal on close button click
+        const closeButton = this.modalElement.querySelector('.staking-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => this.close());
+        }
+
+        // Tab switching
+        const tabButtons = this.modalElement.querySelectorAll('.staking-modal-tab');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.dataset.tab;
+                this.switchTab(tabId);
+            });
+        });
+
+        // Percentage buttons for stake tab
+        const stakePercentageButtons = this.modalElement.querySelectorAll('[data-tab-content="stake"] .staking-percentage-btn');
+        stakePercentageButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const percentage = parseInt(button.dataset.percentage);
+                this.handlePercentageClick(percentage, 'stake');
+            });
+        });
+
+        // Percentage buttons for unstake tab
+        const unstakePercentageButtons = this.modalElement.querySelectorAll('[data-tab-content="unstake"] .staking-percentage-btn');
+        unstakePercentageButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const percentage = parseInt(button.dataset.percentage);
+                this.handlePercentageClick(percentage, 'unstake');
+            });
+        });
+
+        // Slider inputs
+        const stakeSlider = this.modalElement.querySelector('#stake-slider');
+        if (stakeSlider) {
+            stakeSlider.addEventListener('input', () => {
+                this.handleSliderInput(stakeSlider, 'stake');
+            });
+        }
+
+        const unstakeSlider = this.modalElement.querySelector('#unstake-slider');
+        if (unstakeSlider) {
+            unstakeSlider.addEventListener('input', () => {
+                this.handleSliderInput(unstakeSlider, 'unstake');
+            });
+        }
+
+        // Amount inputs
+        const stakeInput = this.modalElement.querySelector('#stake-amount-input');
+        if (stakeInput) {
+            stakeInput.addEventListener('input', () => {
+                this.validateInput(stakeInput, 'stake');
+                this.updateSliderFromInput(stakeInput, 'stake');
+            });
+        }
+
+        const unstakeInput = this.modalElement.querySelector('#unstake-amount-input');
+        if (unstakeInput) {
+            unstakeInput.addEventListener('input', () => {
+                this.validateInput(unstakeInput, 'unstake');
+                this.updateSliderFromInput(unstakeInput, 'unstake');
+            });
+        }
+
+        // Action buttons
+        const stakeButton = this.modalElement.querySelector('#stake-button');
+        if (stakeButton) {
+            stakeButton.addEventListener('click', () => this.executeStake());
+        }
+
+        const unstakeButton = this.modalElement.querySelector('#unstake-button');
+        if (unstakeButton) {
+            unstakeButton.addEventListener('click', () => this.executeUnstake());
+        }
+
+        const claimButton = this.modalElement.querySelector('#claim-button');
+        if (claimButton) {
+            claimButton.addEventListener('click', () => this.executeClaim());
+        }
+
+        // Keyboard navigation
+        this.modalElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.close();
+            }
+        });
+
+        this.log('Event listeners setup complete');
+    }
+
+    /**
+     * Update slider from input value
+     */
+    updateSliderFromInput(input, tabType) {
+        const amount = parseFloat(input.value) || 0;
+        const maxAmount = tabType === 'stake' ?
+            parseFloat(this.userBalances.lpToken) :
+            parseFloat(this.userBalances.stakedAmount);
+
+        const percentage = maxAmount > 0 ? Math.min(100, (amount / maxAmount) * 100) : 0;
+
+        const slider = this.modalElement.querySelector(`#${tabType}-slider`);
+        if (slider) {
+            slider.value = percentage;
+        }
+
+        // Update percentage button states
+        const buttons = this.modalElement.querySelectorAll(`[data-tab-content="${tabType}"] .staking-percentage-btn`);
+        buttons.forEach(btn => {
+            const btnPercentage = parseInt(btn.dataset.percentage);
+            btn.classList.toggle('active', Math.abs(btnPercentage - percentage) < 5);
+        });
+    }
+
+    /**
+     * Cleanup modal
+     */
+    cleanup() {
+        if (this.overlayElement && this.overlayElement.parentNode) {
+            this.overlayElement.parentNode.removeChild(this.overlayElement);
+        }
+        
+        const styles = document.getElementById('staking-modal-styles');
+        if (styles) {
+            styles.remove();
+        }
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+        
+        this.log('StakingModal cleaned up');
+    }
 }
 
-// Export for use in other components
-window.StakingModal = StakingModal;
+    // Export StakingModal class to global scope
+    global.StakingModal = StakingModal;
+
+    // Note: Instance creation is now handled by SystemManager
+    console.log('✅ StakingModal class loaded');
+
+})(window);

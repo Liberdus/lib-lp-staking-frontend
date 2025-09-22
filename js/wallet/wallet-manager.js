@@ -387,7 +387,10 @@ class WalletManager {
      */
     async checkPreviousConnection() {
         try {
-            const connectionInfo = localStorage.getItem(window.CONFIG.UI.WALLET_STORAGE_KEY);
+            // Use safe localStorage access
+            const storageKey = window.CONFIG?.UI?.WALLET_STORAGE_KEY || 'lp_staking_wallet_connection';
+            const connectionInfo = window.sesSafeHandler?.safeLocalStorage?.getItem(storageKey) ||
+                                 localStorage.getItem(storageKey);
             if (!connectionInfo) return false;
 
             const { walletType, address } = JSON.parse(connectionInfo);
@@ -423,17 +426,34 @@ class WalletManager {
             timestamp: Date.now()
         };
         
-        localStorage.setItem(
-            window.CONFIG.UI.WALLET_STORAGE_KEY, 
-            JSON.stringify(connectionInfo)
-        );
+        const storageKey = window.CONFIG?.UI?.WALLET_STORAGE_KEY || 'lp_staking_wallet_connection';
+        const success = window.sesSafeHandler?.safeLocalStorage?.setItem(storageKey, JSON.stringify(connectionInfo));
+
+        if (!success) {
+            // Fallback to regular localStorage
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(connectionInfo));
+            } catch (error) {
+                console.warn('Failed to save connection info:', error.message);
+            }
+        }
     }
 
     /**
      * Clear stored connection information
      */
     clearConnectionInfo() {
-        localStorage.removeItem(window.CONFIG.UI.WALLET_STORAGE_KEY);
+        const storageKey = window.CONFIG?.UI?.WALLET_STORAGE_KEY || 'lp_staking_wallet_connection';
+        const success = window.sesSafeHandler?.safeLocalStorage?.removeItem(storageKey);
+
+        if (!success) {
+            // Fallback to regular localStorage
+            try {
+                localStorage.removeItem(storageKey);
+            } catch (error) {
+                console.warn('Failed to clear connection info:', error.message);
+            }
+        }
     }
 
     /**
@@ -532,8 +552,16 @@ class WalletManager {
      * Logging utility
      */
     log(...args) {
-        if (window.CONFIG.DEV.DEBUG_MODE) {
-            console.log('[WalletManager]', ...args);
+        try {
+            if (window.CONFIG?.DEV?.DEBUG_MODE) {
+                if (window.safeConsole) {
+                    window.safeConsole.log('[WalletManager]', ...args);
+                } else {
+                    console.log('[WalletManager]', ...args);
+                }
+            }
+        } catch (error) {
+            // Fallback - do nothing if logging fails
         }
     }
 
@@ -541,7 +569,15 @@ class WalletManager {
      * Error logging utility
      */
     logError(...args) {
-        console.error('[WalletManager]', ...args);
+        try {
+            if (window.safeConsole) {
+                window.safeConsole.error('[WalletManager]', ...args);
+            } else {
+                console.error('[WalletManager]', ...args);
+            }
+        } catch (error) {
+            // Fallback - do nothing if logging fails
+        }
     }
 }
 

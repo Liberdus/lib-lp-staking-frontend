@@ -1,15 +1,11 @@
 // Configuration constants for LP Staking Platform
 window.CONFIG = {
-    // Contract Addresses (Polygon Amoy Testnet)
-    // NOTE: These are placeholder addresses. Replace with actual deployed contract addresses.
-    // The system will work in fallback mode if these addresses are invalid.
+    // Contract Addresses (Polygon Amoy Testnet) - Real deployed contracts
     CONTRACTS: {
-        STAKING_CONTRACT: null, // Replace with actual deployed staking contract address
-        REWARD_TOKEN: null, // Replace with actual reward token contract address
+        STAKING_CONTRACT: '0xc24e28db325D2EEe5e4bc21C53b91A26eC9471f2',
+        REWARD_TOKEN: '0x568939fD09f57408dfeEccc3f7F2f7EA95D22249',
         LP_TOKENS: {
-            // Example LP token pairs - replace with actual addresses
-            // 'LIB-USDT': '0x...actual_address...',
-            // 'LIB-WETH': '0x...actual_address...'
+            // LP tokens will be fetched dynamically from the staking contract
         }
     },
 
@@ -117,10 +113,10 @@ window.CONFIG = {
 
     // Development Configuration
     DEV: {
-        DEBUG_MODE: false, // Set to true for development
-        MOCK_DATA: false, // Set to true to use mock data
+        DEBUG_MODE: true, // Enable for development
+        MOCK_DATA: false, // Disabled - use real blockchain data
         SKIP_WALLET_CHECK: false, // Set to true to skip wallet requirements
-        LOG_LEVEL: 'info' // 'debug', 'info', 'warn', 'error'
+        LOG_LEVEL: 'debug' // 'debug', 'info', 'warn', 'error'
     }
 };
 

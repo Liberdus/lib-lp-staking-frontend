@@ -54,6 +54,9 @@ class App {
             // Initialize network management
             this.initializeNetwork();
 
+            // Initialize UI components
+            this.initializeUIComponents();
+
             // Hide loading screen
             setTimeout(() => {
                 this.hideLoadingScreen();
@@ -233,7 +236,65 @@ class App {
             this.handleGlobalError(event.reason);
         });
         
+        // Set up mobile support for in-development tooltips
+        this.setupInDevelopmentMobileSupport();
+        
         this.log('Global event listeners set up');
+    }
+
+    /**
+     * Set up mobile support for in-development tooltips
+     */
+    setupInDevelopmentMobileSupport() {
+        // Add touch support for mobile devices
+        document.addEventListener('touchstart', (e) => {
+            const target = e.target.closest('.in-development');
+            if (target) {
+                // Prevent default action
+                e.preventDefault();
+                
+                // Remove previous mobile-tapped classes
+                document.querySelectorAll('.in-development.mobile-tapped').forEach(el => {
+                    el.classList.remove('mobile-tapped');
+                });
+                
+                // Add mobile-tapped class to show tooltip
+                target.classList.add('mobile-tapped');
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    target.classList.remove('mobile-tapped');
+                }, 3000);
+                
+                // Show notification for better mobile UX
+                const message = target.getAttribute('data-dev-message') || 'This feature is in development';
+                if (window.notificationManager) {
+                    window.notificationManager.info('In Development', message);
+                }
+            }
+        });
+        
+        // Handle clicks on in-development items
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.in-development');
+            if (target) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const message = target.getAttribute('data-dev-message') || 'This feature is in development';
+                if (window.notificationManager) {
+                    window.notificationManager.info('In Development', message);
+                }
+                
+                // Add shake animation
+                target.classList.add('shake');
+                setTimeout(() => {
+                    target.classList.remove('shake');
+                }, 500);
+            }
+        });
+        
+        this.log('In-development mobile support initialized');
     }
 
     /**
@@ -304,6 +365,24 @@ class App {
             }
         } catch (error) {
             this.logError('Wallet initialization error:', error);
+        }
+    }
+
+    /**
+     * Initialize UI components
+     */
+    initializeUIComponents() {
+        try {
+            // Create StakingModal instance
+            if (window.StakingModal && !window.stakingModal) {
+                window.stakingModal = new window.StakingModal();
+                this.log('StakingModal instance created');
+            }
+
+            // Initialize other UI components as needed
+            this.log('UI components initialized');
+        } catch (error) {
+            this.logError('Failed to initialize UI components:', error);
         }
     }
 
@@ -805,9 +884,11 @@ class App {
      * Toggle theme
      */
     toggleTheme() {
-        const currentTheme = window.stateManager.get('ui.theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        this.setTheme(newTheme);
+        // Theme system is part of Day 10 advanced UI features
+        if (window.notificationManager) {
+            window.notificationManager.info('Coming Soon', 'Advanced theme system will be implemented in Day 10');
+        }
+        console.log('Theme toggle clicked - feature coming in Day 10');
     }
 
     /**

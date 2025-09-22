@@ -21,22 +21,17 @@
             this.startTime = Date.now();
             this.initializationPromise = null;
             
-            // System initialization order (critical first)
+            // System initialization order (critical first) - Complete component list
             this.initializationOrder = [
                 { name: 'ErrorHandler', critical: true, fallback: true },
                 { name: 'NotificationManager', critical: true, fallback: true },
+                { name: 'ThemeManager', critical: false, fallback: true },
                 { name: 'StateManager', critical: true, fallback: true },
                 { name: 'ContractManager', critical: true, fallback: true },
                 { name: 'EventManager', critical: false, fallback: true, dependencies: ['ContractManager', 'StateManager'] },
                 { name: 'ComponentRegistry', critical: false, fallback: false },
-                { name: 'EventDelegation', critical: false, fallback: false },
-                { name: 'Router', critical: true, fallback: true },
-                // Day 6: Rewards System Components
-                { name: 'PriceFeeds', critical: false, fallback: false },
-                { name: 'RewardsCalculator', critical: false, fallback: false, dependencies: ['ContractManager', 'PriceFeeds'] },
-                { name: 'RewardsHistory', critical: false, fallback: false },
-                { name: 'PendingRewardsDisplay', critical: false, fallback: false, dependencies: ['RewardsCalculator'] },
-                { name: 'APRDisplay', critical: false, fallback: false, dependencies: ['RewardsCalculator'] }
+                { name: 'StakingModal', critical: false, fallback: true, dependencies: ['StateManager', 'ContractManager'] },
+                { name: 'Router', critical: true, fallback: true }
             ];
             
             console.log('🚀 SystemManager created - ready to eliminate all critical errors');
@@ -114,8 +109,9 @@
             console.log('🧹 Clearing existing instances to prevent redeclaration...');
             
             const instanceNames = [
-                'errorHandler', 'notificationManager', 'stateManager', 
-                'eventManager', 'componentRegistry', 'eventDelegation', 'router'
+                'errorHandler', 'notificationManager', 'stateManager',
+                'contractManager', 'eventManager', 'componentRegistry',
+                'eventDelegation', 'router', 'themeManager', 'stakingModal'
             ];
             
             for (const instanceName of instanceNames) {
@@ -276,7 +272,9 @@
             // Check if class exists
             if (typeof global[className] !== 'function') {
                 if (critical) {
-                    throw new Error(`Critical system class ${className} not found`);
+                    console.error(`❌ Critical system class ${className} not found, creating fallback`);
+                    this.createFallbackSystem(name);
+                    return;
                 } else {
                     console.warn(`Optional system class ${className} not found, skipping`);
                     return;
@@ -290,10 +288,21 @@
             if (typeof instance.initialize === 'function') {
                 if (name === 'EventManager') {
                     // EventManager needs ContractManager and StateManager
-                    await instance.initialize(global.contractManager, global.stateManager);
+                    if (global.contractManager && global.stateManager) {
+                        await instance.initialize(global.contractManager, global.stateManager);
+                    } else {
+                        console.warn('EventManager dependencies not available, using fallback initialization');
+                        // Initialize with null dependencies for fallback mode
+                        await instance.initialize(null, global.stateManager);
+                    }
                 } else if (name === 'RewardsCalculator') {
                     // RewardsCalculator needs ContractManager and PriceFeeds
-                    await instance.initialize(global.contractManager, global.priceFeeds);
+                    if (global.contractManager && global.priceFeeds) {
+                        await instance.initialize(global.contractManager, global.priceFeeds);
+                    } else {
+                        console.warn('RewardsCalculator dependencies not available, skipping');
+                        return;
+                    }
                 } else if (name === 'PendingRewardsDisplay') {
                     // PendingRewardsDisplay needs RewardsCalculator and other dependencies
                     await instance.initialize({

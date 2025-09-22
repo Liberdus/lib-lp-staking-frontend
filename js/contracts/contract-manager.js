@@ -518,6 +518,67 @@ class ContractManager {
     }
 
     /**
+     * Get active pairs from the staking contract
+     */
+    async getActivePairs() {
+        return await this.executeWithRetry(async () => {
+            if (!this.stakingContract) {
+                throw new Error('Staking contract not initialized');
+            }
+            return await this.stakingContract.getActivePairs();
+        }, 'getActivePairs');
+    }
+
+    /**
+     * Get pair information for a specific LP token address
+     */
+    async getPairInfo(lpTokenAddress) {
+        return await this.executeWithRetry(async () => {
+            if (!this.stakingContract) {
+                throw new Error('Staking contract not initialized');
+            }
+            const [token, platform, weight, isActive] = await this.stakingContract.getPairInfo(lpTokenAddress);
+            return {
+                lpToken: token,
+                platform: platform,
+                weight: weight.toString(),
+                isActive: isActive
+            };
+        }, 'getPairInfo');
+    }
+
+    /**
+     * Get all pairs with their information
+     */
+    async getAllPairsInfo() {
+        return await this.executeWithRetry(async () => {
+            if (!this.stakingContract) {
+                throw new Error('Staking contract not initialized');
+            }
+
+            // Get active pairs first
+            const activePairs = await this.getActivePairs();
+            const pairsInfo = [];
+
+            // Get info for each pair
+            for (const pairAddress of activePairs) {
+                try {
+                    const pairInfo = await this.getPairInfo(pairAddress);
+                    pairsInfo.push({
+                        address: pairAddress,
+                        ...pairInfo
+                    });
+                } catch (error) {
+                    this.logError(`Failed to get info for pair ${pairAddress}:`, error);
+                    continue;
+                }
+            }
+
+            return pairsInfo;
+        }, 'getAllPairsInfo');
+    }
+
+    /**
      * Get LP token balance for user
      */
     async getLPTokenBalance(userAddress, pairName) {
