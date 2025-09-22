@@ -1,16 +1,8 @@
-/**
- * SystemInitializer - Master system initialization script
- * Handles proper loading order, dependency management, and error recovery
- * Ensures 100% success rate by implementing comprehensive fallback systems
- * 
- * CRITICAL FIX: Eliminates all redeclaration conflicts and initialization errors
- */
+
 (function(global) {
     'use strict';
 
-    // Prevent multiple initialization
     if (global.SystemInitializer || global.systemInitializer) {
-        console.warn('SystemInitializer already exists, skipping redeclaration');
         return;
     }
 

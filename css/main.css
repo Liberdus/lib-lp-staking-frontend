@@ -1,8 +1,6 @@
-/* Liberdus LP Staking - Pixel Perfect CSS Framework */
 
-/* Liberdus Design System - Exact Color Matching */
 :root {
-    /* Liberdus Dark Theme - Primary Background Colors */
+
     --liberdus-bg-primary: #0a0e1a;
     --liberdus-bg-secondary: #1a1f2e;
     --liberdus-bg-tertiary: #242938;
@@ -10,20 +8,20 @@
     --liberdus-bg-hover: #2a2f3e;
     --liberdus-bg-input: #2d3748;
 
-    /* Liberdus Text Colors */
+
     --liberdus-text-primary: #ffffff;
     --liberdus-text-secondary: #b8bcc8;
     --liberdus-text-tertiary: #8b92a5;
     --liberdus-text-muted: #6b7280;
     --liberdus-text-disabled: #4a5568;
 
-    /* Liberdus Border Colors */
+
     --liberdus-border-primary: #2d3748;
     --liberdus-border-secondary: #4a5568;
     --liberdus-border-accent: #3182ce;
     --liberdus-border-hover: #4299e1;
 
-    /* Liberdus Brand Colors - Exact Match */
+
     --liberdus-blue: #3182ce;
     --liberdus-blue-light: #4299e1;
     --liberdus-blue-dark: #2c5282;

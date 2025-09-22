@@ -1,22 +1,11 @@
-/**
- * NotificationManager - Advanced notification system with animations and queue management
- * Provides comprehensive user feedback for all system operations
- * Supports multiple notification types, animations, and persistent storage
- *
- * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
- */
+
 (function(global) {
     'use strict';
 
-    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.NotificationManager) {
-        console.warn('NotificationManager class already exists, skipping redeclaration');
         return;
     }
-
-    // Check for existing instance and preserve it
     if (global.notificationManager) {
-        console.warn('NotificationManager instance already exists, preserving existing instance');
         return;
     }
 

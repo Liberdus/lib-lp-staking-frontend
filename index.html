@@ -6,20 +6,13 @@
     <title>Liberdus LP Staking - Earn Rewards by Staking LP Tokens</title>
     <meta name="description" content="Stake your liquidity provider tokens and earn rewards on our secure DeFi platform">
     
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    
-    <!-- Google Fonts - Exo (matching React app exactly) -->
     <link href="https://fonts.googleapis.com/css?family=Exo:400,500,600,700,800&display=swap" rel="stylesheet">
-    
-    <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-    
-    <!-- CSS Variables for theming (matching MUI theme exactly) -->
     <style>
         :root {
-            /* Primary colors - matching MUI theme */
+
             --primary-main: #1976d2;
             --primary-hover: #1565c0;
             --primary-light: #e3f2fd;
@@ -597,17 +590,17 @@
     </style>
 </head>
 <body>
-    <!-- Header matching React Header component -->
+
     <header class="header">
         <div class="container-lg">
             <div class="header-toolbar">
-                <!-- Logo section -->
+
                 <a href="/" class="logo-section">
                     <img src="assets/logo.png" alt="Liberdus LP Staking" class="logo">
                     <span class="logo-text">Liberdus LP Staking</span>
                 </a>
                 
-                <!-- Navigation -->
+
                 <div class="nav-section">
                     <a href="/" class="nav-button active">
                         <span class="material-icons">home</span>
@@ -618,13 +611,13 @@
                         <span>Admin Panel</span>
                     </a>
                     
-                    <!-- Connect Wallet Button -->
+
                     <button id="connect-wallet-btn" class="connect-wallet-btn">
                         <span class="material-icons">account_balance_wallet</span>
                         <span>Connect Wallet</span>
                     </button>
                     
-                    <!-- Theme Toggle -->
+
                     <button id="theme-toggle" class="theme-toggle">
                         <span class="material-icons-outlined">light_mode</span>
                     </button>
@@ -633,10 +626,10 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+
     <main class="main-content">
         <div class="container-xl">
-            <!-- Page Title -->
+
             <div class="page-title">
                 <h1>LP Staking</h1>
                 <div class="reward-info">
@@ -648,17 +641,15 @@
                 </div>
             </div>
 
-            <!-- Alert container -->
+
             <div id="alert-container"></div>
 
-            <!-- Loading skeleton or table -->
             <div id="content-container">
-                <!-- This will be populated by JavaScript -->
             </div>
         </div>
     </main>
 
-    <!-- Footer matching React Footer component -->
+
     <footer class="footer">
         <div class="container-lg">
             <div class="footer-content">
@@ -678,13 +669,8 @@
         </div>
     </footer>
 
-    <!-- Modal container -->
     <div id="modal-container"></div>
-    
-    <!-- Notification container -->
     <div id="notification-container"></div>
-
-    <!-- Scripts -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="js/master-initializer.js"></script>
 </body>

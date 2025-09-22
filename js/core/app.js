@@ -1,15 +1,8 @@
-/**
- * Main Application Class
- * Initializes and coordinates all application components
- *
- * SINGLETON PATTERN - Prevents redeclaration errors
- */
+
 (function(global) {
     'use strict';
 
-    // Prevent redeclaration
     if (global.App) {
-        console.warn('App already exists, skipping redeclaration');
         return;
     }
 
@@ -22,24 +15,15 @@ class App {
         this.init();
     }
 
-    /**
-     * CRITICAL FIX: Initialize application with comprehensive error handling
-     */
+
     async init() {
         try {
-            this.log('🚀 Initializing LP Staking Platform with critical fixes...');
-
-            // Show loading screen
+            this.log('Initializing LP Staking Platform...');
             this.showLoadingScreen();
-
-            // CRITICAL FIX: Initialize core systems using SystemManager
             const systemsInitialized = await this.initializeCoreSystemsWithManager();
-
             if (!systemsInitialized) {
-                this.log('⚠️ Core systems initialization had issues, but continuing with fallbacks');
+                this.log('Core systems initialization had issues, but continuing with fallbacks');
             }
-
-            // Set up global event listeners with error handling
             this.setupGlobalEventListeners();
 
             // Initialize theme

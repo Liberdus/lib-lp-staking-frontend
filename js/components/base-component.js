@@ -1,8 +1,4 @@
-/**
- * BaseComponent - Enhanced base class for all components
- * Provides React-like lifecycle methods and advanced functionality
- * Features: Props/state management, component composition, error boundaries
- */
+
 class BaseComponent {
     constructor(selector = null, props = {}) {
         this.selector = selector;
@@ -11,13 +7,13 @@ class BaseComponent {
         this.isMounted = false;
         this.isUpdating = false;
 
-        // React-like props and state
+
         this.props = { ...props };
         this.state = {};
         this.prevProps = {};
         this.prevState = {};
 
-        // Component management
+
         this.eventListeners = [];
         this.stateSubscriptions = [];
         this.childComponents = new Map();

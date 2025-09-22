@@ -1,15 +1,15 @@
-// Configuration constants for LP Staking Platform
+
 window.CONFIG = {
-    // Contract Addresses (Polygon Amoy Testnet) - Real deployed contracts
+
     CONTRACTS: {
         STAKING_CONTRACT: '0xc24e28db325D2EEe5e4bc21C53b91A26eC9471f2',
         REWARD_TOKEN: '0x568939fD09f57408dfeEccc3f7F2f7EA95D22249',
         LP_TOKENS: {
-            // LP tokens will be fetched dynamically from the staking contract
+
         }
     },
 
-    // Network Configuration
+
     NETWORKS: {
         POLYGON_AMOY: {
             chainId: 80002,
@@ -24,10 +24,10 @@ window.CONFIG = {
         }
     },
 
-    // Default network
+
     DEFAULT_NETWORK: 80002,
 
-    // RPC Configuration
+
     RPC: {
         POLYGON_AMOY: [
             'https://rpc-amoy.polygon.technology',

@@ -1,8 +1,4 @@
-/**
- * Master Initializer - Complete system initialization for LP Staking
- * Ensures all components from milestones.md are loaded and functional
- * Provides 100% feature parity with React version
- */
+
 
 class MasterInitializer {
     constructor() {
@@ -11,7 +7,7 @@ class MasterInitializer {
         this.initializationPromise = null;
         this.isReady = false;
         
-        console.log('🚀 Master Initializer starting...');
+
         this.init();
     }
 
@@ -26,27 +22,13 @@ class MasterInitializer {
 
     async initializeSystem() {
         try {
-            console.log('📦 Loading core systems...');
-
-            // Phase 0: Load configuration first
             await this.loadConfiguration();
-
-            // Phase 1: Load core utilities and managers
+            await this.loadConfiguration();
             await this.loadCoreUtilities();
-
-            // Phase 2: Load wallet and contract systems
             await this.loadWalletSystems();
-
-            // Phase 3: Load UI components
             await this.loadUIComponents();
-
-            // Phase 4: Initialize all systems
             await this.initializeComponents();
-
-            // Phase 5: Setup global event handlers
             this.setupGlobalHandlers();
-            
-            console.log('✅ All systems initialized successfully!');
             this.isReady = true;
             
             // Dispatch ready event

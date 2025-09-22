@@ -1,16 +1,8 @@
-/**
- * StakingModal - Professional modal component for staking operations
- * Provides comprehensive staking interface matching React original with tabs, sliders, and validation
- * Supports stake, unstake, and claim operations with real-time feedback and animations
- * 
- * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
- */
+
 (function(global) {
     'use strict';
 
-    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.StakingModal) {
-        console.warn('StakingModal class already exists, skipping redeclaration');
         return;
     }
 
@@ -24,7 +16,7 @@ class StakingModal extends BaseComponent {
         this.modalElement = null;
         this.overlayElement = null;
         
-        // User balances and data
+
         this.userBalances = {
             lpToken: '0',
             stakedAmount: '0',

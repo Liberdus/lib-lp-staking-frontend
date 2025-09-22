@@ -1,22 +1,11 @@
-/**
- * StateManager - Comprehensive Observer Pattern Implementation
- * Provides reactive state management with path-based subscriptions
- * Supports nested state updates, computed properties, and middleware
- *
- * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
- */
+
 (function(global) {
     'use strict';
 
-    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.StateManager) {
-        console.warn('StateManager class already exists, skipping redeclaration');
         return;
     }
-
-    // Check for existing instance and preserve it
     if (global.stateManager) {
-        console.warn('StateManager instance already exists, preserving existing instance');
         return;
     }
 

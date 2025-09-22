@@ -1,33 +1,22 @@
-/**
- * ContractManager - Comprehensive smart contract integration with ethers.js v6
- * Handles staking contract, ERC20 tokens, ABI management, and transaction handling
- * Implements provider fallback, gas estimation, and retry logic
- *
- * ENHANCED SINGLETON PATTERN - Completely prevents redeclaration errors
- */
+
 (function(global) {
     'use strict';
 
-    // CRITICAL FIX: Enhanced redeclaration prevention with instance management
     if (global.ContractManager) {
-        console.warn('ContractManager class already exists, skipping redeclaration');
         return;
     }
-
-    // Check for existing instance and preserve it
     if (global.contractManager) {
-        console.warn('ContractManager instance already exists, preserving existing instance');
         return;
     }
 
 class ContractManager {
     constructor() {
-        // Contract instances
+
         this.stakingContract = null;
         this.rewardTokenContract = null;
         this.lpTokenContracts = new Map(); // Map of LP token contracts
 
-        // Provider management
+
         this.provider = null;
         this.signer = null;
         this.fallbackProviders = [];

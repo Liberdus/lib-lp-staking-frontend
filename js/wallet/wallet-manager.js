@@ -1,9 +1,4 @@
-/**
- * WalletManager - Handles multi-wallet connections and management
- * Supports MetaMask, WalletConnect, and other Web3 wallets
- */
-console.log('Starting wallet manager...');
-console.log('Ethers available:', typeof window.ethers);
+
 
 class WalletManager {
     constructor() {
@@ -16,16 +11,14 @@ class WalletManager {
         this.listeners = new Set();
         this.eventListeners = [];
         
-        // Initialize on construction
+
         this.init();
     }
 
-    /**
-     * Initialize wallet manager
-     */
+
     async init() {
         try {
-            // Check for previously connected wallet
+
             await this.checkPreviousConnection();
             
             // Set up event listeners for wallet changes
