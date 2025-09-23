@@ -6,9 +6,9 @@ class MasterInitializer {
         this.components = new Map();
         this.initializationPromise = null;
         this.isReady = false;
-        
 
-        this.init();
+        console.log('🔧 MasterInitializer created (waiting for manual init)');
+        // Note: init() will be called manually from DOMContentLoaded event
     }
 
     async init() {
@@ -22,7 +22,6 @@ class MasterInitializer {
 
     async initializeSystem() {
         try {
-            await this.loadConfiguration();
             await this.loadConfiguration();
             await this.loadCoreUtilities();
             await this.loadWalletSystems();
@@ -127,7 +126,28 @@ class MasterInitializer {
             console.log('✅ Wallet Manager (Main) initialized');
         }
 
-        // Initialize home page
+        // Initialize contract manager with read-only provider
+        if (window.ContractManager) {
+            window.contractManager = new window.ContractManager();
+            this.components.set('contractManager', window.contractManager);
+            console.log('✅ Contract Manager created');
+
+            // Initialize with read-only provider for data fetching
+            try {
+                console.log('🔄 Initializing ContractManager with read-only provider...');
+                await window.contractManager.initializeReadOnly();
+                console.log('✅ ContractManager initialized with read-only provider');
+
+                // Dispatch event for components waiting for contract manager
+                document.dispatchEvent(new CustomEvent('contractManagerReady', {
+                    detail: { contractManager: window.contractManager }
+                }));
+            } catch (error) {
+                console.error('❌ Failed to initialize ContractManager with read-only provider:', error);
+            }
+        }
+
+        // Initialize home page with contract manager awareness
         if (window.HomePage) {
             window.homePage = new window.HomePage();
             this.components.set('homePage', window.homePage);
@@ -284,6 +304,87 @@ class MasterInitializer {
                 }
             });
         }
+
+        // Set up wallet connection event listeners for contract manager initialization
+        this.setupContractManagerIntegration();
+    }
+
+    /**
+     * Set up contract manager integration with wallet events
+     */
+    setupContractManagerIntegration() {
+        // Listen for wallet connection events
+        document.addEventListener('walletConnected', (event) => {
+            console.log('🔗 Wallet connected event received:', event.detail);
+            this.handleWalletConnection(event.detail);
+        });
+
+        document.addEventListener('walletDisconnected', (event) => {
+            console.log('🔌 Wallet disconnected event received');
+            this.handleWalletDisconnection();
+        });
+    }
+
+    /**
+     * Handle wallet connection and initialize contract manager
+     */
+    async handleWalletConnection(walletDetails) {
+        try {
+            console.log('🔄 Handling wallet connection and initializing contracts...');
+
+            if (window.contractManager && window.walletManager) {
+                const provider = window.walletManager.provider;
+                const signer = window.walletManager.signer;
+
+                if (provider && signer) {
+                    console.log('🔗 Upgrading ContractManager to wallet mode...');
+
+                    if (window.contractManager.isReady()) {
+                        // Already initialized in read-only mode, upgrade to wallet mode
+                        await window.contractManager.upgradeToWalletMode(provider, signer);
+                        console.log('✅ ContractManager upgraded to wallet mode');
+                    } else {
+                        // Initialize with wallet provider
+                        await window.contractManager.initialize(provider, signer);
+                        console.log('✅ ContractManager initialized with wallet');
+                    }
+
+                    // Dispatch event for components waiting for contract manager
+                    document.dispatchEvent(new CustomEvent('contractManagerWalletReady', {
+                        detail: { contractManager: window.contractManager }
+                    }));
+                } else {
+                    console.warn('⚠️ Provider or signer not available from wallet manager');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Failed to initialize contract manager:', error);
+
+            // Dispatch error event
+            document.dispatchEvent(new CustomEvent('contractManagerError', {
+                detail: { error: error.message }
+            }));
+        }
+    }
+
+    /**
+     * Handle wallet disconnection
+     */
+    handleWalletDisconnection() {
+        try {
+            console.log('🔌 Handling wallet disconnection...');
+
+            if (window.contractManager) {
+                // Reset contract manager state
+                window.contractManager.cleanup();
+                console.log('✅ ContractManager cleaned up');
+            }
+
+            // Dispatch event for components
+            document.dispatchEvent(new CustomEvent('contractManagerDisconnected'));
+        } catch (error) {
+            console.error('❌ Error during wallet disconnection:', error);
+        }
     }
 
     async loadScript(src) {
@@ -356,7 +457,7 @@ class MasterInitializer {
                         <strong>System Initialization Failed</strong><br>
                         ${error.message || 'An unknown error occurred'}
                     </div>
-                    <button onclick="location.reload()" style="
+                    <button onclick="window.masterInitializer.retryInitialization()" style="
                         background: #721c24;
                         color: white;
                         border: none;
@@ -368,7 +469,7 @@ class MasterInitializer {
                         gap: 4px;
                     ">
                         <span class="material-icons" style="font-size: 16px;">refresh</span>
-                        Reload
+                        Retry
                     </button>
                 </div>
             `;
@@ -387,11 +488,44 @@ class MasterInitializer {
     getLoadedComponents() {
         return Array.from(this.components.keys());
     }
+
+    // Retry initialization without full page reload
+    async retryInitialization() {
+        console.log('🔄 Retrying system initialization...');
+
+        // Clear error state
+        const errorContainer = document.getElementById('alert-container');
+        if (errorContainer) {
+            errorContainer.innerHTML = '';
+        }
+
+        // Reset initialization state
+        this.isReady = false;
+        this.initializationPromise = null;
+
+        // Retry initialization
+        try {
+            await this.init();
+            console.log('✅ System initialization retry successful');
+        } catch (error) {
+            console.error('❌ System initialization retry failed:', error);
+            this.handleInitializationError(error);
+        }
+    }
 }
 
 // Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 DOM loaded, starting system initialization...');
     window.masterInitializer = new MasterInitializer();
+
+    try {
+        await window.masterInitializer.init();
+        console.log('✅ System initialization completed successfully');
+    } catch (error) {
+        console.error('❌ System initialization failed:', error);
+        window.masterInitializer.handleInitializationError(error);
+    }
 });
 
 // Export for global access

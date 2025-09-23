@@ -363,8 +363,8 @@
                             <li>Network connectivity issues</li>
                         </ul>
                         <div style="margin-top: 1.5rem;">
-                            <button onclick="window.location.reload()" style="background: #c33; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; margin-right: 0.5rem; font-size: 1rem;">
-                                🔄 Refresh Page
+                            <button onclick="window.systemInitializer?.retryInitialization?.()" style="background: #c33; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; margin-right: 0.5rem; font-size: 1rem;">
+                                🔄 Retry System
                             </button>
                             <button onclick="console.log('System errors:', window.systemInitializer?.errors || [])" style="background: #666; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 1rem;">
                                 🔍 Show Debug Info
@@ -448,6 +448,35 @@
                 warning: (message, options) => this.show(message, 'warning', options),
                 info: (message, options) => this.show(message, 'info', options)
             };
+        }
+
+        /**
+         * Retry initialization without page reload
+         */
+        async retryInitialization() {
+            console.log('🔄 Retrying system initialization...');
+
+            // Reset state
+            this.initialized = false;
+            this.errors = [];
+            this.startTime = Date.now();
+
+            // Clear error displays
+            const errorElements = document.querySelectorAll('[id*="error"], [class*="error"]');
+            errorElements.forEach(el => {
+                if (el.textContent.includes('initialization') || el.textContent.includes('system')) {
+                    el.remove();
+                }
+            });
+
+            // Retry initialization
+            try {
+                await this.initialize();
+                console.log('✅ System initialization retry successful');
+            } catch (error) {
+                console.error('❌ System initialization retry failed:', error);
+                this.handleInitializationError(error);
+            }
         }
 
         /**

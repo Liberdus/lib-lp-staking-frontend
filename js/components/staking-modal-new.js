@@ -413,14 +413,17 @@ class StakingModalNew {
         });
     }
 
-    open(pair, tab = 'stake') {
+    async open(pair, tab = 'stake') {
         this.currentPair = pair;
         this.currentTab = tab;
         this.isOpen = true;
 
         // Update pair info
         this.updatePairInfo();
-        
+
+        // Load user balances if contract manager is ready
+        await this.loadUserBalances();
+
         // Switch to specified tab
         this.switchTab(tab);
 
@@ -433,6 +436,59 @@ class StakingModalNew {
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
+    }
+
+    /**
+     * Load user balances from contract manager
+     */
+    async loadUserBalances() {
+        try {
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                console.log('🔄 Contract manager not ready, using default balances');
+                this.userBalance = '0.00';
+                this.userStaked = '0.00';
+                this.pendingRewards = '0.00';
+                return;
+            }
+
+            if (!window.walletManager || !window.walletManager.address) {
+                console.log('🔄 Wallet not connected, using default balances');
+                this.userBalance = '0.00';
+                this.userStaked = '0.00';
+                this.pendingRewards = '0.00';
+                return;
+            }
+
+            const userAddress = window.walletManager.address;
+            const tokenAddress = this.currentPair.address;
+
+            // Get LP token balance
+            const lpTokenContract = await window.contractManager.getLPTokenContract(tokenAddress);
+            if (lpTokenContract) {
+                const balance = await lpTokenContract.balanceOf(userAddress);
+                this.userBalance = window.ethers.formatEther(balance);
+            }
+
+            // Get user stake info
+            const stakeInfo = await window.contractManager.getUserStake(userAddress, tokenAddress);
+            if (stakeInfo) {
+                this.userStaked = window.ethers.formatEther(stakeInfo.amount || '0');
+                this.pendingRewards = window.ethers.formatEther(stakeInfo.rewards || '0');
+            }
+
+            console.log('✅ User balances loaded:', {
+                balance: this.userBalance,
+                staked: this.userStaked,
+                rewards: this.pendingRewards
+            });
+
+        } catch (error) {
+            console.error('❌ Failed to load user balances:', error);
+            // Use fallback values
+            this.userBalance = '0.00';
+            this.userStaked = '0.00';
+            this.pendingRewards = '0.00';
+        }
     }
 
     close() {
@@ -682,17 +738,30 @@ class StakingModalNew {
         if (!this.stakeAmount || parseFloat(this.stakeAmount) === 0) return;
 
         try {
+            // Check if contract manager is ready
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Contract manager not ready. Please connect your wallet first.', 'error');
+                }
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.show('Staking LP tokens...', 'info');
             }
 
-            // Simulate staking transaction
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Execute real staking transaction
+            const amount = window.ethers.parseEther(this.stakeAmount);
+            const txHash = await window.contractManager.stakeLPTokens(
+                this.currentPair.address,
+                amount
+            );
 
             if (window.notificationManager) {
                 window.notificationManager.show('LP tokens staked successfully!', 'success');
             }
 
+            console.log('✅ Staking transaction successful:', txHash);
             this.close();
 
             // Refresh home page data
@@ -701,9 +770,9 @@ class StakingModalNew {
             }
 
         } catch (error) {
-            console.error('Staking failed:', error);
+            console.error('❌ Staking failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('Staking failed', 'error');
+                window.notificationManager.show(`Staking failed: ${error.message}`, 'error');
             }
         }
     }
@@ -712,17 +781,30 @@ class StakingModalNew {
         if (!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0) return;
 
         try {
+            // Check if contract manager is ready
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Contract manager not ready. Please connect your wallet first.', 'error');
+                }
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.show('Unstaking LP tokens...', 'info');
             }
 
-            // Simulate unstaking transaction
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Execute real unstaking transaction
+            const amount = window.ethers.parseEther(this.unstakeAmount);
+            const txHash = await window.contractManager.unstakeLPTokens(
+                this.currentPair.address,
+                amount
+            );
 
             if (window.notificationManager) {
                 window.notificationManager.show('LP tokens unstaked successfully!', 'success');
             }
 
+            console.log('✅ Unstaking transaction successful:', txHash);
             this.close();
 
             // Refresh home page data
@@ -731,9 +813,9 @@ class StakingModalNew {
             }
 
         } catch (error) {
-            console.error('Unstaking failed:', error);
+            console.error('❌ Unstaking failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('Unstaking failed', 'error');
+                window.notificationManager.show(`Unstaking failed: ${error.message}`, 'error');
             }
         }
     }
@@ -742,17 +824,28 @@ class StakingModalNew {
         if (parseFloat(this.pendingRewards) === 0) return;
 
         try {
+            // Check if contract manager is ready
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                if (window.notificationManager) {
+                    window.notificationManager.show('Contract manager not ready. Please connect your wallet first.', 'error');
+                }
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.show('Claiming rewards...', 'info');
             }
 
-            // Simulate claim transaction
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Execute real claim transaction
+            const txHash = await window.contractManager.claimRewards(
+                this.currentPair.address
+            );
 
             if (window.notificationManager) {
                 window.notificationManager.show('Rewards claimed successfully!', 'success');
             }
 
+            console.log('✅ Claim transaction successful:', txHash);
             this.close();
 
             // Refresh home page data
@@ -761,9 +854,9 @@ class StakingModalNew {
             }
 
         } catch (error) {
-            console.error('Claim failed:', error);
+            console.error('❌ Claim failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('Claim failed', 'error');
+                window.notificationManager.show(`Claim failed: ${error.message}`, 'error');
             }
         }
     }

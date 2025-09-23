@@ -20,11 +20,57 @@ class HomePage {
         console.log('🏠 Initializing HomePage component...');
         this.render();
         this.attachEventListeners();
-        this.loadData();
-        this.startAutoRefresh();
+        this.setupContractManagerListeners();
+        this.loadDataWhenReady();
         this.isInitialized = true;
 
         console.log('✅ HomePage component initialized successfully');
+    }
+
+    /**
+     * Set up listeners for contract manager events
+     */
+    setupContractManagerListeners() {
+        // Listen for contract manager ready event
+        document.addEventListener('contractManagerReady', () => {
+            console.log('🏠 HomePage: ContractManager is ready, loading data...');
+            this.loadData();
+            this.startAutoRefresh();
+        });
+
+        // Listen for contract manager error event
+        document.addEventListener('contractManagerError', (event) => {
+            console.error('🏠 HomePage: ContractManager error:', event.detail.error);
+            this.error = `Contract manager initialization failed: ${event.detail.error}`;
+            this.loading = false;
+            this.render();
+        });
+
+        // Listen for wallet disconnection
+        document.addEventListener('contractManagerDisconnected', () => {
+            console.log('🏠 HomePage: ContractManager disconnected, stopping refresh...');
+            this.stopAutoRefresh();
+            this.pairs = [];
+            this.loading = true;
+            this.error = null;
+            this.render();
+        });
+    }
+
+    /**
+     * Load data when contract manager is ready
+     */
+    async loadDataWhenReady() {
+        if (window.contractManager && window.contractManager.isReady()) {
+            console.log('🏠 HomePage: ContractManager already ready, loading data immediately...');
+            this.loadData();
+            this.startAutoRefresh();
+        } else {
+            console.log('🏠 HomePage: Waiting for ContractManager to be ready...');
+            this.loading = true;
+            this.error = null;
+            this.render();
+        }
     }
 
     // Helper method to safely check wallet connection
@@ -272,17 +318,125 @@ class HomePage {
 
             console.log('📊 Loading staking data...');
 
-            // Add delay to ensure wallet manager is fully initialized
-            if (!window.walletManager) {
-                console.log('⏳ Waiting for wallet manager initialization...');
-                await new Promise(resolve => setTimeout(resolve, 500));
+            // Check if contract manager is ready
+            if (!window.contractManager) {
+                throw new Error('Contract manager not available');
             }
 
-            // Simulate API call with realistic delay
-            await new Promise(resolve => setTimeout(resolve, 800));
+            if (!window.contractManager.isReady()) {
+                console.log('⏳ Waiting for contract manager to be ready...');
+                const isReady = await window.contractManager.waitForReady(10000);
+                if (!isReady) {
+                    throw new Error('Contract manager not ready after timeout');
+                }
+            }
 
-            // Check if we should use mock data or real blockchain data
-            if (window.CONFIG?.DEV?.MOCK_DATA) {
+            // Add small delay to ensure everything is settled
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Try to load real blockchain data first
+            try {
+                await this.loadBlockchainData();
+            } catch (blockchainError) {
+                console.warn('📊 Failed to load blockchain data, using fallback:', blockchainError.message);
+                this.loadFallbackData();
+            }
+
+            this.loading = false;
+            this.render();
+
+            console.log('✅ Staking data loaded successfully');
+
+        } catch (error) {
+            console.error('❌ Failed to load staking data:', error);
+            this.error = `Failed to load blockchain data: ${error.message}`;
+            this.loading = false;
+            this.render();
+        }
+    }
+
+    /**
+     * Load real blockchain data from contracts
+     */
+    async loadBlockchainData() {
+        console.log('🔗 Loading real blockchain data...');
+
+        if (!window.contractManager || !window.contractManager.isReady()) {
+            throw new Error('Contract manager not ready');
+        }
+
+        // Get all pairs info from the staking contract
+        const allPairsInfo = await window.contractManager.getAllPairsInfo();
+        console.log('📋 Retrieved pairs from contract:', allPairsInfo);
+
+        this.pairs = [];
+
+        if (allPairsInfo.length === 0) {
+            console.log('⚠️ No pairs configured in the staking contract yet');
+            // Create a placeholder pair to show the UI structure
+            this.pairs = [{
+                id: '1',
+                address: '0x0000000000000000000000000000000000000000',
+                token0Symbol: 'LIB',
+                token1Symbol: 'USDC',
+                name: 'No Pairs Configured',
+                platform: 'Waiting for Setup',
+                apr: '0.00',
+                tvl: 0,
+                userShares: '0.00',
+                userEarnings: '0.00',
+                totalStaked: '0',
+                rewardRate: '0',
+                stakingEnabled: false
+            }];
+        } else {
+            for (let i = 0; i < allPairsInfo.length; i++) {
+                const pairInfo = allPairsInfo[i];
+
+                try {
+                    // Get user stake info if wallet is connected
+                    let userStake = { amount: '0', rewards: '0' };
+                    if (this.isWalletConnected() && pairInfo.address !== '0x0000000000000000000000000000000000000000') {
+                        userStake = await window.contractManager.getUserStake(
+                            window.walletManager.address,
+                            pairInfo.address
+                        );
+                    }
+
+                    // Create pair data from contract info
+                    const pairData = {
+                        id: pairInfo.id || (i + 1).toString(),
+                        address: pairInfo.address,
+                        token0Symbol: 'LIB',
+                        token1Symbol: this.extractTokenSymbol(pairInfo.name) || 'TOKEN',
+                        name: pairInfo.name || `LP Token ${i + 1}`,
+                        platform: pairInfo.platform || 'Unknown',
+                        apr: pairInfo.apr || '0.00',
+                        tvl: pairInfo.tvl || 0,
+                        userShares: userStake.amount || '0.00',
+                        userEarnings: userStake.rewards || '0.00',
+                        totalStaked: pairInfo.totalStaked || '0',
+                        rewardRate: pairInfo.rewardRate || '0',
+                        stakingEnabled: pairInfo.isActive !== false
+                    };
+
+                    this.pairs.push(pairData);
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load data for pair ${pairInfo.address}:`, error.message);
+                }
+            }
+        }
+
+        console.log('✅ Blockchain data loaded:', this.pairs.length, 'pairs');
+    }
+
+    /**
+     * Load fallback data when blockchain data is not available
+     */
+    loadFallbackData() {
+        console.log('📊 Loading fallback data...');
+
+        if (window.CONFIG?.DEV?.MOCK_DATA) {
                 // Enhanced mock data with all features from milestones.md
             this.pairs = [
                 {
@@ -356,84 +510,49 @@ class HomePage {
                     stakingEnabled: true
                 }
             ];
-            } else {
-                // Load real blockchain data
-                try {
-                    if (!window.contractManager || !window.contractManager.isReady()) {
-                        throw new Error('Contract manager not ready');
-                    }
-
-                    // Get all pairs info from the staking contract
-                    const allPairsInfo = await window.contractManager.getAllPairsInfo();
-                    console.log('Retrieved pairs from contract:', allPairsInfo);
-
-                    this.pairs = [];
-                    for (let i = 0; i < allPairsInfo.length; i++) {
-                        const pairInfo = allPairsInfo[i];
-                        try {
-                            const pairData = await this.buildRealPairData(pairInfo, i + 1);
-                            if (pairData) {
-                                this.pairs.push(pairData);
-                            }
-                        } catch (pairError) {
-                            console.error(`Failed to build data for pair ${pairInfo.address}:`, pairError);
-                            continue;
-                        }
-                    }
-
-                    if (this.pairs.length === 0) {
-                        throw new Error('No valid pairs found');
-                    }
-
-                    console.log('✅ Loaded real blockchain data for', this.pairs.length, 'pairs');
-                } catch (blockchainError) {
-                    console.error('Failed to load blockchain data:', blockchainError);
-                    // Fallback to a single placeholder pair
-                    this.pairs = [{
-                        id: '1',
-                        token0Symbol: 'LIB',
-                        token1Symbol: 'USDT',
-                        name: 'LIB/USDT LP',
-                        platform: 'Loading...',
-                        apr: '0.00',
-                        tvl: 0,
-                        userShares: '0.00',
-                        userEarnings: '0.00',
-                        totalStaked: '0',
-                        rewardRate: '0.000',
-                        stakingEnabled: false
-                    }];
+        } else {
+            // Use minimal fallback data when no mock data is configured
+            this.pairs = [
+                {
+                    id: '1',
+                    token0Symbol: 'LIB',
+                    token1Symbol: 'USDC',
+                    name: 'LIB/USDC LP',
+                    platform: 'Uniswap V2',
+                    apr: '0.00',
+                    tvl: 0,
+                    userShares: '0.00',
+                    userEarnings: '0.00',
+                    totalStaked: '0',
+                    rewardRate: '0',
+                    stakingEnabled: false
                 }
-            }
-
-            // Update hourly rate based on total rewards
-            const totalHourlyRate = this.pairs.reduce((sum, pair) => sum + parseFloat(pair.rewardRate), 0);
-            const hourlyRateElement = document.getElementById('hourly-rate');
-            if (hourlyRateElement) {
-                hourlyRateElement.textContent = totalHourlyRate.toFixed(3);
-            }
-
-            this.loading = false;
-            this.render();
-
-            console.log('✅ Staking data loaded successfully');
-
-            // Show success notification if available
-            if (window.notificationManager && this.pairs.length > 0) {
-                window.notificationManager.success(`Loaded ${this.pairs.length} staking pairs`);
-            }
-
-        } catch (error) {
-            console.error('Failed to load data:', error);
-            this.loading = false;
-            this.error = error.message || 'Failed to load staking data';
-            this.render();
-
-            // Show error notification if available
-            if (window.notificationManager) {
-                window.notificationManager.error('Failed to load staking data');
-            }
+            ];
         }
+
+        console.log('📊 Fallback data loaded:', this.pairs.length, 'pairs');
+    }
+
+    /**
+     * Extract token symbol from pair name
+     */
+    extractTokenSymbol(pairName) {
+        if (!pairName) return 'TOKEN';
+
+        // Try to extract the second token from patterns like "LIB/USDC" or "LIB-USDC"
+        const match = pairName.match(/LIB[\/\-](\w+)/i);
+        if (match) {
+            return match[1].toUpperCase();
+        }
+
+        // Fallback patterns
+        if (pairName.toLowerCase().includes('usdc')) return 'USDC';
+        if (pairName.toLowerCase().includes('eth')) return 'ETH';
+        if (pairName.toLowerCase().includes('btc')) return 'BTC';
+        if (pairName.toLowerCase().includes('dai')) return 'DAI';
+        if (pairName.toLowerCase().includes('matic')) return 'MATIC';
+
+        return 'TOKEN';
     }
 
     /**

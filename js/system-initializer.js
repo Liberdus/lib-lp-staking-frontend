@@ -414,10 +414,41 @@
             `;
             
             retryButton.addEventListener('click', () => {
-                location.reload();
+                console.log('🔄 Retrying initialization without page reload...');
+                retryButton.remove();
+                this.retryInitialization();
             });
             
             document.body.appendChild(retryButton);
+        }
+
+        /**
+         * Retry initialization without page reload
+         */
+        async retryInitialization() {
+            this.log('🔄 Retrying system initialization...');
+
+            // Reset state
+            this.initialized = false;
+            this.initializing = false;
+            this.errors = [];
+
+            // Clear any error displays
+            const errorElements = document.querySelectorAll('[id*="error"], [class*="error"]');
+            errorElements.forEach(el => {
+                if (el.textContent.includes('initialization') || el.textContent.includes('failed')) {
+                    el.remove();
+                }
+            });
+
+            // Retry initialization
+            try {
+                await this.initialize();
+                this.log('✅ System initialization retry successful');
+            } catch (error) {
+                this.log('❌ System initialization retry failed:', error);
+                this.handleInitializationError(error);
+            }
         }
 
         /**

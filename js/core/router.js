@@ -986,9 +986,9 @@ class Router {
                         <strong>Error Details:</strong><br>
                         <code style="color: #dc3545;">${error.message || 'Unknown error'}</code>
                     </div>
-                    <button onclick="window.location.reload()"
+                    <button onclick="window.router?.handleRecovery?.()"
                             style="background: #dc3545; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 1rem;">
-                        🔄 Refresh Page
+                        🔄 Retry Navigation
                     </button>
                 </div>
             `;
@@ -1009,6 +1009,38 @@ class Router {
      */
     logError(...args) {
         console.error('[Router]', ...args);
+    }
+
+    /**
+     * Handle recovery from router errors without page reload
+     */
+    handleRecovery() {
+        this.log('🔄 Attempting router recovery...');
+
+        try {
+            // Clear error state
+            this.currentRoute = null;
+            this.isNavigating = false;
+
+            // Clear error displays
+            const errorElements = document.querySelectorAll('[id*="error"], [class*="error"]');
+            errorElements.forEach(el => {
+                if (el.textContent.includes('router') || el.textContent.includes('navigation')) {
+                    el.remove();
+                }
+            });
+
+            // Try to navigate to home
+            this.navigate('/', { replace: true });
+
+            this.log('✅ Router recovery successful');
+        } catch (error) {
+            this.logError('❌ Router recovery failed:', error);
+            // Only as last resort, show a message instead of reloading
+            if (window.notificationManager) {
+                window.notificationManager.error('Navigation Error', 'Please try refreshing the page manually');
+            }
+        }
     }
 }
 

@@ -24,6 +24,9 @@ class ContractManager {
 
         // State management
         this.isInitialized = false;
+        this.isInitializing = false;
+        this.initializationPromise = null;
+        this.readyCallbacks = [];
         this.eventListeners = [];
         this.contractABIs = new Map();
         this.contractAddresses = new Map();
@@ -52,11 +55,9 @@ class ContractManager {
             fallbackRPCs: [
                 // Primary public RPCs for Polygon Amoy testnet
                 'https://rpc-amoy.polygon.technology',
+                'https://polygon-amoy.drpc.org',
                 'https://polygon-amoy-bor-rpc.publicnode.com',
-                'https://endpoints.omniatech.io/v1/matic/amoy/public',
-                // Backup RPCs (replace with your API keys)
-                'https://polygon-amoy.infura.io/v3/YOUR_INFURA_KEY',
-                'https://polygon-amoy.g.alchemy.com/v2/YOUR_ALCHEMY_KEY'
+                'https://endpoints.omniatech.io/v1/matic/amoy/public'
             ],
             networkConfig: {
                 chainId: 80002, // Polygon Amoy testnet
@@ -70,37 +71,254 @@ class ContractManager {
     }
 
     /**
-     * Initialize contract manager with comprehensive provider setup
+     * Initialize the contract manager with read-only provider (no wallet required)
+     */
+    async initializeReadOnly() {
+        if (this.isInitializing) {
+            this.log('⏳ ContractManager initialization already in progress, waiting...');
+            return this.initializationPromise;
+        }
+
+        if (this.isInitialized) {
+            this.log('✅ ContractManager already initialized');
+            return;
+        }
+
+        this.isInitializing = true;
+        this.log('🔄 Starting ContractManager read-only initialization...');
+
+        try {
+            this.initializationPromise = this._initializeReadOnlyInternal();
+            await this.initializationPromise;
+
+            this.isInitialized = true;
+            this.isInitializing = false;
+            this.log('✅ ContractManager read-only initialization completed successfully');
+            this._notifyReadyCallbacks();
+
+        } catch (error) {
+            this.isInitializing = false;
+            this.logError('❌ ContractManager read-only initialization failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Internal read-only initialization logic
+     */
+    async _initializeReadOnlyInternal() {
+        try {
+            // Initialize fallback providers (read-only)
+            this.log('📡 Initializing fallback providers...');
+            await this.initializeFallbackProviders();
+            this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
+
+            // Use the first available fallback provider
+            if (this.fallbackProviders.length > 0) {
+                this.provider = this.fallbackProviders[0];
+                this.signer = null; // No signer in read-only mode
+                this.log('✅ Using read-only provider:', this.provider.connection?.url || 'Unknown');
+            } else {
+                throw new Error('No fallback providers available');
+            }
+
+            // Load contract ABIs
+            this.log('📋 Loading contract ABIs...');
+            await this.loadContractABIs();
+            this.log('📋 Contract ABIs loaded:', this.contractABIs.size);
+
+            // Load contract addresses
+            this.log('📍 Loading contract addresses...');
+            this.loadContractAddresses();
+            this.log('📍 Contract addresses loaded:', this.contractAddresses.size);
+
+            // Initialize contract instances (read-only)
+            this.log('🔗 Initializing contract instances (read-only)...');
+            await this.initializeContractsReadOnly();
+            this.log('🔗 Contract instances initialized');
+
+            // Verify contract connections
+            this.log('🔍 Verifying contract connections...');
+            await this.verifyContractConnections();
+            this.log('🔍 Contract connections verified');
+
+            this.log('✅ ContractManager read-only initialization completed');
+
+        } catch (error) {
+            this.logError('❌ Read-only initialization failed:', error);
+            this.logError('❌ Error stack:', error.stack);
+            throw error;
+        }
+    }
+
+    /**
+     * Initialize contract instances in read-only mode
+     */
+    async initializeContractsReadOnly() {
+        try {
+            this.log('Initializing smart contract instances (read-only)...');
+            let contractsInitialized = 0;
+
+            // Initialize staking contract
+            const stakingAddress = this.contractAddresses.get('STAKING');
+            const stakingABI = this.contractABIs.get('STAKING');
+
+            this.log('🔍 Staking contract details:');
+            this.log('   - Address:', stakingAddress);
+            this.log('   - ABI available:', !!stakingABI);
+            this.log('   - ABI length:', stakingABI?.length);
+            this.log('   - Address valid:', this.isValidContractAddress(stakingAddress));
+            this.log('   - Provider available:', !!this.provider);
+
+            if (stakingAddress && stakingABI && this.isValidContractAddress(stakingAddress)) {
+                try {
+                    this.log('🔄 Creating staking contract instance...');
+                    this.stakingContract = new ethers.Contract(stakingAddress, stakingABI, this.provider);
+                    this.log('✅ Staking contract initialized (read-only):', stakingAddress);
+                    this.log('   - Contract methods available:', Object.keys(this.stakingContract.interface.functions).length);
+                    contractsInitialized++;
+                } catch (contractError) {
+                    this.logError('❌ Failed to create staking contract:', contractError.message);
+                    this.logError('❌ Contract error stack:', contractError.stack);
+                    this.log('Continuing without staking contract...');
+                }
+            } else {
+                this.log('❌ Staking contract address invalid or missing, skipping:', stakingAddress);
+            }
+
+            // Initialize reward token contract
+            const rewardTokenAddress = this.contractAddresses.get('REWARD_TOKEN');
+            const erc20ABI = this.contractABIs.get('ERC20');
+
+            this.log('🔍 Reward token contract details:');
+            this.log('   - Address:', rewardTokenAddress);
+            this.log('   - ABI available:', !!erc20ABI);
+            this.log('   - Address valid:', this.isValidContractAddress(rewardTokenAddress));
+
+            if (rewardTokenAddress && erc20ABI && this.isValidContractAddress(rewardTokenAddress)) {
+                try {
+                    this.log('🔄 Creating reward token contract instance...');
+                    this.rewardTokenContract = new ethers.Contract(rewardTokenAddress, erc20ABI, this.provider);
+                    this.log('✅ Reward token contract initialized (read-only):', rewardTokenAddress);
+                    contractsInitialized++;
+                } catch (contractError) {
+                    this.logError('❌ Failed to create reward token contract:', contractError.message);
+                    this.logError('❌ Contract error stack:', contractError.stack);
+                    this.log('Continuing without reward token contract...');
+                }
+            } else {
+                this.log('❌ Reward token address invalid or missing, skipping:', rewardTokenAddress);
+            }
+
+            this.log(`📊 Contract instances initialized: ${contractsInitialized}`);
+
+            if (contractsInitialized === 0) {
+                throw new Error('No contract instances could be initialized');
+            }
+
+        } catch (error) {
+            this.logError('❌ Failed to initialize contract instances:', error);
+            this.logError('❌ Error stack:', error.stack);
+            throw error;
+        }
+    }
+
+    /**
+     * Upgrade from read-only mode to wallet mode
+     */
+    async upgradeToWalletMode(provider, signer) {
+        try {
+            this.log('🔄 Upgrading ContractManager to wallet mode...');
+
+            // Update provider and signer
+            this.provider = provider;
+            this.signer = signer;
+
+            // Re-initialize contract instances with signer
+            await this.initializeContracts();
+
+            // Initialize additional wallet-dependent components
+            if (this.gasEstimator) {
+                this.gasEstimator.updateProvider(provider);
+            }
+
+            this.log('✅ ContractManager upgraded to wallet mode successfully');
+
+        } catch (error) {
+            this.logError('❌ Failed to upgrade to wallet mode:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Initialize contract manager with comprehensive provider setup (wallet mode)
      */
     async initialize(provider, signer) {
+        // Prevent multiple simultaneous initializations
+        if (this.isInitializing) {
+            this.log('ContractManager initialization already in progress, waiting...');
+            return this.initializationPromise;
+        }
+
+        if (this.isInitialized) {
+            this.log('ContractManager already initialized');
+            return true;
+        }
+
+        this.isInitializing = true;
+        this.initializationPromise = this._performInitialization(provider, signer);
+
         try {
-            this.log('Initializing ContractManager with provider and signer...');
+            const result = await this.initializationPromise;
+            this.isInitializing = false;
+            return result;
+        } catch (error) {
+            this.isInitializing = false;
+            this.initializationPromise = null;
+            throw error;
+        }
+    }
+
+    /**
+     * Internal initialization method
+     */
+    async _performInitialization(provider, signer) {
+        try {
+            this.log('🔄 Starting ContractManager initialization...');
 
             // Set primary provider and signer
             this.provider = provider;
             this.signer = signer;
 
             // Initialize fallback providers
+            this.log('📡 Initializing fallback providers...');
             await this.initializeFallbackProviders();
 
             // Load contract ABIs
+            this.log('📋 Loading contract ABIs...');
             await this.loadContractABIs();
 
             // Load contract addresses
+            this.log('📍 Loading contract addresses...');
             this.loadContractAddresses();
 
             // Initialize contract instances
+            this.log('🔗 Initializing contract instances...');
             await this.initializeContracts();
 
             // Verify contract connections
+            this.log('✅ Verifying contract connections...');
             await this.verifyContractConnections();
 
             this.isInitialized = true;
-            this.log('ContractManager initialized successfully with all features');
+            this.log('✅ ContractManager initialized successfully with all features');
+
+            // Notify all waiting callbacks
+            this._notifyReadyCallbacks();
 
             return true;
         } catch (error) {
-            this.logError('Failed to initialize ContractManager:', error);
+            this.logError('❌ Failed to initialize ContractManager:', error);
             await this.handleInitializationError(error);
             throw error;
         }
@@ -113,20 +331,65 @@ class ContractManager {
         try {
             this.fallbackProviders = [];
 
-            for (const rpcUrl of this.config.fallbackRPCs) {
+            // Get RPC URLs from multiple sources
+            let rpcUrls = [];
+
+            // First try from internal config
+            if (this.config.fallbackRPCs && this.config.fallbackRPCs.length > 0) {
+                rpcUrls = [...this.config.fallbackRPCs];
+                this.log('Using internal fallback RPCs:', rpcUrls.length);
+            }
+
+            // Also try from global CONFIG
+            if (window.CONFIG?.RPC?.POLYGON_AMOY && window.CONFIG.RPC.POLYGON_AMOY.length > 0) {
+                rpcUrls = [...rpcUrls, ...window.CONFIG.RPC.POLYGON_AMOY];
+                this.log('Added global CONFIG RPCs:', window.CONFIG.RPC.POLYGON_AMOY.length);
+            }
+
+            // Remove duplicates
+            rpcUrls = [...new Set(rpcUrls)];
+            this.log('Total unique RPC URLs to test:', rpcUrls.length);
+
+            if (rpcUrls.length === 0) {
+                throw new Error('No RPC URLs available for fallback providers');
+            }
+
+            // Test each RPC URL with timeout
+            for (const rpcUrl of rpcUrls) {
                 try {
-                    const fallbackProvider = new ethers.JsonRpcProvider(rpcUrl);
-                    await fallbackProvider.getNetwork(); // Test connection
+                    this.log('🔄 Testing RPC:', rpcUrl);
+                    const fallbackProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+                    // Test connection with timeout
+                    const networkPromise = fallbackProvider.getNetwork();
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), 5000)
+                    );
+
+                    await Promise.race([networkPromise, timeoutPromise]);
+
                     this.fallbackProviders.push(fallbackProvider);
-                    this.log('Fallback provider added:', rpcUrl);
+                    this.log('✅ Fallback provider added:', rpcUrl);
+
+                    // Stop after we have at least one working provider
+                    if (this.fallbackProviders.length >= 1) {
+                        this.log('✅ Sufficient providers available, stopping tests');
+                        break;
+                    }
                 } catch (error) {
-                    this.log('Fallback provider failed:', rpcUrl, error.message);
+                    this.log('❌ Fallback provider failed:', rpcUrl, error.message);
                 }
             }
 
-            this.log(`Initialized ${this.fallbackProviders.length} fallback providers`);
+            this.log(`📊 Initialized ${this.fallbackProviders.length} fallback providers`);
+
+            if (this.fallbackProviders.length === 0) {
+                throw new Error('No working fallback providers found');
+            }
+
         } catch (error) {
-            this.logError('Failed to initialize fallback providers:', error);
+            this.logError('❌ Failed to initialize fallback providers:', error);
+            throw error;
         }
     }
 
@@ -137,15 +400,15 @@ class ContractManager {
         try {
             this.log('Loading contract ABIs...');
 
-            // LP Staking Contract ABI (simplified for demo)
+            // LP Staking Contract ABI (matching deployed contract)
             const stakingABI = [
                 "function stake(address lpToken, uint256 amount) external",
                 "function unstake(address lpToken, uint256 amount) external",
                 "function claimRewards(address lpToken) external",
-                "function getUserStake(address user, address lpToken) external view returns (uint256)",
-                "function getPendingRewards(address user, address lpToken) external view returns (uint256)",
-                "function getPoolInfo(address lpToken) external view returns (uint256 totalStaked, uint256 rewardRate, uint256 lastUpdateTime)",
-                "function getSupportedTokens() external view returns (address[] memory)",
+                "function getUserStakeInfo(address user, address lpToken) external view returns (uint256 amount, uint256 pendingRewards)",
+                "function getActivePairs() external view returns (address[] memory)",
+                "function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[] memory)",
+                "function getSigners() external view returns (address[] memory)",
                 "event StakeAdded(address indexed user, address indexed lpToken, uint256 amount)",
                 "event StakeRemoved(address indexed user, address indexed lpToken, uint256 amount)",
                 "event RewardsClaimed(address indexed user, address indexed lpToken, uint256 amount)"
@@ -357,10 +620,10 @@ class ContractManager {
             // Test staking contract connection
             if (this.stakingContract) {
                 try {
-                    await this.stakingContract.getSupportedTokens();
+                    await this.stakingContract.getActivePairs();
                     this.log('✅ Staking contract connection verified');
                 } catch (error) {
-                    this.log('⚠️ Staking contract verification failed (may be expected in testnet)');
+                    this.log('⚠️ Staking contract verification failed (may be expected in testnet):', error.message);
                 }
             }
 
@@ -426,6 +689,64 @@ class ContractManager {
     }
 
     /**
+     * Wait for contract manager to be ready
+     */
+    async waitForReady(timeout = 30000) {
+        if (this.isReady()) {
+            return true;
+        }
+
+        if (this.isInitializing && this.initializationPromise) {
+            try {
+                await this.initializationPromise;
+                return this.isReady();
+            } catch (error) {
+                this.logError('ContractManager initialization failed while waiting:', error);
+                return false;
+            }
+        }
+
+        return new Promise((resolve) => {
+            const timeoutId = setTimeout(() => {
+                this.logError('ContractManager readiness timeout after', timeout, 'ms');
+                resolve(false);
+            }, timeout);
+
+            this.readyCallbacks.push(() => {
+                clearTimeout(timeoutId);
+                resolve(this.isReady());
+            });
+        });
+    }
+
+    /**
+     * Add callback to be called when contract manager is ready
+     */
+    onReady(callback) {
+        if (this.isReady()) {
+            callback();
+        } else {
+            this.readyCallbacks.push(callback);
+        }
+    }
+
+    /**
+     * Notify all ready callbacks
+     */
+    _notifyReadyCallbacks() {
+        const callbacks = [...this.readyCallbacks];
+        this.readyCallbacks = [];
+
+        callbacks.forEach(callback => {
+            try {
+                callback();
+            } catch (error) {
+                this.logError('Error in ready callback:', error);
+            }
+        });
+    }
+
+    /**
      * Get staking contract instance
      */
     getStakingContract() {
@@ -464,45 +785,50 @@ class ContractManager {
     // ==================== CONTRACT READ OPERATIONS ====================
 
     /**
-     * Get user's stake amount for a specific LP token
+     * Get user's stake information for a specific LP token
      */
     async getUserStake(userAddress, lpTokenAddress) {
         return await this.executeWithRetry(async () => {
-            const stake = await this.stakingContract.getUserStake(userAddress, lpTokenAddress);
-            return ethers.formatEther(stake);
+            const stakeInfo = await this.stakingContract.getUserStakeInfo(userAddress, lpTokenAddress);
+            return {
+                amount: ethers.formatEther(stakeInfo.amount || '0'),
+                rewards: ethers.formatEther(stakeInfo.pendingRewards || '0')
+            };
         }, 'getUserStake');
     }
 
     /**
-     * Get user's pending rewards for a specific LP token
+     * Get user's pending rewards for a specific LP token (legacy method)
      */
     async getPendingRewards(userAddress, lpTokenAddress) {
         return await this.executeWithRetry(async () => {
-            const rewards = await this.stakingContract.getPendingRewards(userAddress, lpTokenAddress);
-            return ethers.formatEther(rewards);
+            const stakeInfo = await this.stakingContract.getUserStakeInfo(userAddress, lpTokenAddress);
+            return ethers.formatEther(stakeInfo.pendingRewards || '0');
         }, 'getPendingRewards');
     }
 
     /**
-     * Get pool information for a specific LP token
+     * Get pool information for a specific LP token (using available contract methods)
      */
     async getPoolInfo(lpTokenAddress) {
         return await this.executeWithRetry(async () => {
-            const poolInfo = await this.stakingContract.getPoolInfo(lpTokenAddress);
+            // Since getPoolInfo doesn't exist, we'll return basic info
+            // In a real implementation, you might calculate this from other contract data
             return {
-                totalStaked: ethers.formatEther(poolInfo.totalStaked),
-                rewardRate: ethers.formatEther(poolInfo.rewardRate),
-                lastUpdateTime: Number(poolInfo.lastUpdateTime)
+                totalStaked: '0', // Would need to be calculated from contract state
+                rewardRate: '0',  // Would need to be calculated from contract state
+                lastUpdateTime: Date.now() / 1000,
+                apr: '0'
             };
         }, 'getPoolInfo');
     }
 
     /**
-     * Get all supported LP tokens
+     * Get all active LP token pairs
      */
     async getSupportedTokens() {
         return await this.executeWithRetry(async () => {
-            return await this.stakingContract.getSupportedTokens();
+            return await this.stakingContract.getActivePairs();
         }, 'getSupportedTokens');
     }
 
@@ -545,20 +871,29 @@ class ContractManager {
                 throw new Error('Staking contract not initialized');
             }
 
-            // Get active pairs first
-            const activePairs = await this.getActivePairs();
+            // Get pairs info directly from the contract
+            const pairs = await this.stakingContract.getPairs();
             const pairsInfo = [];
 
-            // Get info for each pair
-            for (const pairAddress of activePairs) {
+            // Transform the contract data to the expected format
+            for (let i = 0; i < pairs.length; i++) {
+                const pair = pairs[i];
                 try {
-                    const pairInfo = await this.getPairInfo(pairAddress);
-                    pairsInfo.push({
-                        address: pairAddress,
-                        ...pairInfo
-                    });
+                    const pairInfo = {
+                        id: (i + 1).toString(),
+                        address: pair.lpToken,
+                        name: pair.pairName || `LP Token ${i + 1}`,
+                        platform: pair.platform || 'Unknown',
+                        weight: pair.weight ? ethers.formatEther(pair.weight) : '0',
+                        isActive: pair.isActive,
+                        // Add computed fields
+                        apr: '0', // Would need to be calculated
+                        tvl: 0,   // Would need to be calculated
+                        totalStaked: '0' // Would need to be calculated
+                    };
+                    pairsInfo.push(pairInfo);
                 } catch (error) {
-                    this.logError(`Failed to get info for pair ${pairAddress}:`, error);
+                    this.logError(`Failed to process pair ${pair.lpToken}:`, error.message);
                     continue;
                 }
             }
@@ -1075,7 +1410,8 @@ class ContractManager {
 
             // Get signer if wallet is connected
             if (window.ethereum) {
-                this.signer = new ethers.BrowserProvider(window.ethereum).getSigner();
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                this.signer = provider.getSigner();
             }
 
             // Reinitialize contracts with new provider

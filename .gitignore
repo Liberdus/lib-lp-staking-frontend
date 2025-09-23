@@ -5,12 +5,16 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
-
+DEMO_SCRIPT.md
+FIXES_SUMMARY.md
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+TESTING_GUIDE.md
+TEST_EXECUTION_REPORT.md
+INTEGRATION_VERIFICATION_SUMMARY.md
 
 # Temporary test files
 *-test.html
