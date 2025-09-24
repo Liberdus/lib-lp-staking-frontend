@@ -1,4 +1,8 @@
 
+// Prevent duplicate class declaration
+if (typeof window.WalletManager !== 'undefined') {
+    console.log('⚠️ WalletManager already defined, skipping redeclaration');
+} else {
 
 class WalletManager {
     constructor() {
@@ -10,20 +14,77 @@ class WalletManager {
         this.isConnecting = false;
         this.listeners = new Set();
         this.eventListeners = [];
-        
+
+        // Rate limiting for MetaMask requests
+        this.lastRequestTime = 0;
+        this.requestCooldown = 2000; // 2 seconds between requests (increased)
+        this.connectionAttempts = 0;
+        this.maxConnectionAttempts = 3;
+        this.connectionCooldownTime = 10000; // 10 seconds between connection attempts (increased)
+
+        // Connection state management
+        this.connectionPromise = null; // Track ongoing connection attempts
 
         this.init();
     }
 
+    /**
+     * Rate-limited MetaMask request wrapper to prevent circuit breaker errors
+     */
+    async safeMetaMaskRequest(method, params = [], retryCount = 0) {
+        const maxRetries = 3;
+        const baseDelay = 1000; // 1 second base delay
+
+        // Implement exponential backoff for rate limiting
+        const now = Date.now();
+        const minDelay = this.requestCooldown * (retryCount + 1);
+        if (now - this.lastRequestTime < minDelay) {
+            const waitTime = minDelay - (now - this.lastRequestTime);
+            console.log(`Rate limiting MetaMask request: waiting ${waitTime}ms (attempt ${retryCount + 1})`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        this.lastRequestTime = Date.now();
+
+        try {
+            console.log(`Making MetaMask request: ${method} (attempt ${retryCount + 1})`);
+            return await window.ethereum.request({ method, params });
+        } catch (error) {
+            console.error(`MetaMask request failed (attempt ${retryCount + 1}):`, error);
+
+            // Handle circuit breaker errors specifically
+            if (error.code === -32603 && error.message.includes('circuit breaker')) {
+                if (retryCount < maxRetries) {
+                    const backoffDelay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+                    console.warn(`MetaMask circuit breaker triggered, retrying in ${backoffDelay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, backoffDelay));
+                    return this.safeMetaMaskRequest(method, params, retryCount + 1);
+                } else {
+                    throw new Error('MetaMask is temporarily overloaded. Please wait a few minutes and refresh the page.');
+                }
+            }
+
+            // Handle other common MetaMask errors
+            if (error.code === -32002) {
+                throw new Error('MetaMask is already processing a request. Please wait and try again.');
+            }
+
+            if (error.code === 4001) {
+                throw new Error('Connection cancelled by user.');
+            }
+
+            throw error;
+        }
+    }
 
     async init() {
         try {
 
             await this.checkPreviousConnection();
-            
+
             // Set up event listeners for wallet changes
             this.setupEventListeners();
-            
+
             this.log('WalletManager initialized');
         } catch (error) {
             this.logError('Failed to initialize WalletManager:', error);
@@ -31,66 +92,91 @@ class WalletManager {
     }
 
     /**
-     * CRITICAL FIX: Connect to MetaMask wallet with comprehensive connection guards
+     * General connect method that chooses the best available wallet
+     */
+    async connectWallet(preferredType = 'auto') {
+        try {
+            this.log(`Connecting wallet (preferred: ${preferredType})...`);
+
+            if (preferredType === 'metamask' || (preferredType === 'auto' && window.ethereum)) {
+                return await this.connectMetaMask();
+            } else if (preferredType === 'walletconnect' || preferredType === 'auto') {
+                return await this.connectWalletConnect();
+            } else {
+                throw new Error('No supported wallet found');
+            }
+        } catch (error) {
+            this.logError('Wallet connection failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * CRITICAL FIX: Connect to MetaMask wallet with circuit breaker protection
      */
     async connectMetaMask() {
-        // CRITICAL FIX: Enhanced connection state checking with timeout
-        if (this.isConnecting) {
-            console.warn('MetaMask connection already in progress, waiting for completion...');
+        // Return existing connection promise if one is in progress
+        if (this.connectionPromise) {
+            console.log('Connection already in progress, returning existing promise...');
+            return this.connectionPromise;
+        }
 
-            // Wait for current connection to complete with timeout
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    console.error('Connection timeout - resetting connection state');
-                    this.isConnecting = false;
-                    reject(new Error('Connection timeout - please try again'));
-                }, 30000); // 30 second timeout
+        // Create new connection promise
+        this.connectionPromise = this._performConnection();
 
-                const checkConnection = () => {
-                    if (!this.isConnecting) {
-                        clearTimeout(timeout);
-                        if (this.isConnected()) {
-                            resolve(true);
-                        } else {
-                            reject(new Error('Previous connection attempt failed'));
-                        }
-                    } else {
-                        setTimeout(checkConnection, 500);
-                    }
-                };
-                setTimeout(checkConnection, 500);
-            });
+        try {
+            const result = await this.connectionPromise;
+            return result;
+        } finally {
+            // Clear the connection promise when done (success or failure)
+            this.connectionPromise = null;
+        }
+    }
+
+    /**
+     * Internal method to perform the actual connection
+     */
+    async _performConnection() {
+        // Rate limiting and attempt limiting
+        const now = Date.now();
+        if (this.connectionAttempts >= this.maxConnectionAttempts) {
+            const timeSinceLastAttempt = now - this.lastRequestTime;
+            if (timeSinceLastAttempt < this.connectionCooldownTime) {
+                const waitTime = this.connectionCooldownTime - timeSinceLastAttempt;
+                throw new Error(`Too many connection attempts. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+            } else {
+                // Reset attempts after cooldown
+                this.connectionAttempts = 0;
+            }
         }
 
         // Check if already connected
         if (this.isConnected()) {
             console.log('MetaMask already connected:', this.address);
-            if (window.notificationManager) {
-                window.notificationManager.info('Wallet already connected');
-            }
-            return true;
+            return {
+                success: true,
+                address: this.address,
+                chainId: this.chainId,
+                walletType: this.walletType
+            };
         }
 
         // Check MetaMask availability
         if (!window.ethereum) {
-            const error = new Error('MetaMask not installed. Please install MetaMask to continue.');
-            if (window.notificationManager) {
-                window.notificationManager.error('MetaMask not detected. Please install MetaMask browser extension.');
-            }
-            throw error;
+            this.connectionAttempts++;
+            throw new Error('MetaMask not installed. Please install MetaMask browser extension.');
         }
 
         // Set connection state with timeout protection
         this.isConnecting = true;
+        this.connectionAttempts++;
+
         const connectionTimeout = setTimeout(() => {
             if (this.isConnecting) {
                 console.error('MetaMask connection timeout');
                 this.isConnecting = false;
-                if (window.notificationManager) {
-                    window.notificationManager.error('Connection timeout. Please try again.');
-                }
             }
-        }, 60000); // 60 second timeout
+        }, 30000); // 30 second timeout (reduced from 60)
 
         try {
             this.log('Connecting to MetaMask...');
@@ -100,10 +186,8 @@ class WalletManager {
                 throw new Error('Ethers.js is not loaded. Please refresh the page and try again.');
             }
 
-            // Request account access
-            const accounts = await window.ethereum.request({
-                method: 'eth_requestAccounts'
-            });
+            // Request account access with rate limiting
+            const accounts = await this.safeMetaMaskRequest('eth_requestAccounts');
 
             if (!accounts || accounts.length === 0) {
                 throw new Error('No accounts found. Please unlock MetaMask.');
@@ -138,7 +222,16 @@ class WalletManager {
             }
 
             this.log('MetaMask connected successfully:', this.address);
-            return true;
+
+            // Reset connection attempts on success
+            this.connectionAttempts = 0;
+
+            return {
+                success: true,
+                address: this.address,
+                chainId: this.chainId,
+                walletType: this.walletType
+            };
 
         } catch (error) {
             this.logError('MetaMask connection failed:', error);
@@ -518,9 +611,10 @@ class WalletManager {
     }
 
     /**
-     * Notify all listeners of events
+     * Notify all listeners of events and dispatch DOM events
      */
     notifyListeners(event, data) {
+        // Notify registered listeners
         this.listeners.forEach(callback => {
             try {
                 callback(event, data);
@@ -528,6 +622,36 @@ class WalletManager {
                 this.logError('Listener callback error:', error);
             }
         });
+
+        // Dispatch DOM events for global listening
+        try {
+            let eventName;
+            switch (event) {
+                case 'connected':
+                    eventName = 'walletConnected';
+                    break;
+                case 'disconnected':
+                    eventName = 'walletDisconnected';
+                    break;
+                case 'accountChanged':
+                    eventName = 'walletAccountChanged';
+                    break;
+                case 'chainChanged':
+                    eventName = 'walletChainChanged';
+                    break;
+                default:
+                    eventName = `wallet${event.charAt(0).toUpperCase() + event.slice(1)}`;
+            }
+
+            document.dispatchEvent(new CustomEvent(eventName, {
+                detail: { event, data }
+            }));
+
+            console.log(`📡 Dispatched ${eventName} event:`, data);
+
+        } catch (error) {
+            this.logError('Failed to dispatch DOM event:', error);
+        }
     }
 
     /**
@@ -574,5 +698,28 @@ class WalletManager {
     }
 }
 
-// Create global instance
-window.walletManager = new WalletManager();
+// Export the class to global scope
+window.WalletManager = WalletManager;
+
+// Create global instance (only if not already created)
+if (!window.walletManager) {
+    try {
+        window.walletManager = new WalletManager();
+        console.log('✅ WalletManager instance created successfully');
+
+        // Verify methods are available
+        console.log('🔍 WalletManager methods check:');
+        console.log('  - connectMetaMask:', typeof window.walletManager.connectMetaMask);
+        console.log('  - connectWalletConnect:', typeof window.walletManager.connectWalletConnect);
+        console.log('  - connectWallet:', typeof window.walletManager.connectWallet);
+        console.log('  - isConnected:', typeof window.walletManager.isConnected);
+        console.log('  - disconnect:', typeof window.walletManager.disconnect);
+
+    } catch (error) {
+        console.error('❌ Failed to create WalletManager instance:', error);
+    }
+} else {
+    console.log('⚠️ WalletManager instance already exists');
+}
+
+} // End of duplicate prevention guard

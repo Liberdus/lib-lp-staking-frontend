@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Staking - Admin Panel</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <!-- Meta Tags -->
+    <meta name="description" content="LP Staking Admin Panel - Manage liquidity provider staking contracts">
+    <meta name="keywords" content="DeFi, LP Staking, Admin, Blockchain, Ethereum, Polygon">
+    <meta name="author" content="LP Staking Protocol">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="LP Staking - Admin Panel">
+    <meta property="og:description" content="Administrative interface for LP Staking Protocol">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lpstaking.example.com/admin">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+</head>
+<body>
+    <!-- Admin Panel Container -->
+    <div id="admin-content">
+        <!-- Loading state while initializing -->
+        <div class="admin-loading">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <h2>🔐 Initializing Admin Panel</h2>
+                <p>Verifying administrator privileges...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Boundary -->
+    <div id="error-boundary" style="display: none;">
+        <div class="error-container">
+            <h2>❌ System Error</h2>
+            <p id="error-message">An unexpected error occurred.</p>
+            <button class="btn btn-primary" onclick="location.reload()">
+                Reload Page
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Configuration (load first) -->
+    <script src="js/config/app-config.js"></script>
+    <script src="js/config/dev-config.js"></script>
+
+    <!-- Core Libraries -->
+    <script src="libs/ethers.umd.min.js"></script>
+
+    <!-- Core System -->
+    <script src="js/utils/logger.js"></script>
+    <script src="js/utils/event-manager.js"></script>
+    <script src="js/utils/storage-manager.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/notification-manager.js"></script>
+    
+    <!-- Wallet Integration -->
+    <script src="js/wallet/wallet-manager.js"></script>
+    <script src="js/wallet/metamask-connector.js"></script>
+    <script src="js/wallet/walletconnect-connector.js"></script>
+    
+    <!-- Contract System -->
+    <script src="js/contracts/contract-manager.js"></script>
+    
+    <!-- Admin Components -->
+    <script src="js/components/admin-page.js"></script>
+    
+    <!-- Master Initializer -->
+    <script src="js/master-initializer.js"></script>
+
+    <script>
+        // Prevent duplicate script loading
+        if (window.adminPanelLoaded) {
+            console.log('⚠️ Admin panel already loaded, skipping initialization');
+        } else {
+            window.adminPanelLoaded = true;
+        }
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            showErrorBoundary(event.error.message);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            showErrorBoundary(event.reason.message || 'Promise rejection');
+        });
+
+        function showErrorBoundary(message) {
+            document.getElementById('admin-content').style.display = 'none';
+            document.getElementById('error-boundary').style.display = 'flex';
+            document.getElementById('error-message').textContent = message;
+        }
+
+        // Admin Panel Initialization
+        let adminPage = null;
+
+        async function initializeAdminPanel() {
+            try {
+                console.log('🚀 Starting Admin Panel initialization...');
+
+                // Debug: Check what's available
+                console.log('🔍 System check:');
+                console.log('  - ethers:', !!window.ethers);
+                console.log('  - WalletManager class:', !!window.WalletManager);
+                console.log('  - walletManager instance:', !!window.walletManager);
+                console.log('  - masterInitializer:', !!window.masterInitializer);
+                console.log('  - AdminPage class:', !!window.AdminPage);
+
+                // Wait for master initializer
+                if (!window.masterInitializer) {
+                    console.log('⏳ Waiting for master initializer...');
+                    await waitForMasterInitializer();
+                }
+
+                // Initialize master system
+                if (!window.masterInitializer.isInitialized) {
+                    console.log('🔧 Initializing master system...');
+                    await window.masterInitializer.init();
+                }
+
+                // Debug: Check wallet manager after initialization
+                console.log('🔍 Post-init check:');
+                console.log('  - walletManager:', !!window.walletManager);
+                if (window.walletManager) {
+                    console.log('  - connectWallet method:', typeof window.walletManager.connectWallet);
+                    console.log('  - connectMetaMask method:', typeof window.walletManager.connectMetaMask);
+                    console.log('  - isConnected method:', typeof window.walletManager.isConnected);
+                }
+
+                // Create admin page instance
+                console.log('🔐 Creating admin page...');
+                adminPage = new AdminPage();
+
+                // Make globally accessible
+                window.adminPage = adminPage;
+
+                console.log('✅ Admin Panel initialization complete');
+
+            } catch (error) {
+                console.error('❌ Admin Panel initialization failed:', error);
+                showErrorBoundary(`Initialization failed: ${error.message}`);
+            }
+        }
+
+        function waitForMasterInitializer(timeout = 30000) {
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                
+                const checkInitializer = () => {
+                    if (window.masterInitializer) {
+                        resolve();
+                    } else if (Date.now() - startTime > timeout) {
+                        reject(new Error('Master initializer timeout'));
+                    } else {
+                        setTimeout(checkInitializer, 100);
+                    }
+                };
+                
+                checkInitializer();
+            });
+        }
+
+        // Connect wallet function for admin access (CORS-free approach)
+        async function connectWallet() {
+            try {
+                console.log('🔗 Attempting wallet connection...');
+
+                // Direct MetaMask connection (bypasses wallet manager issues)
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not installed. Please install MetaMask to continue.');
+                }
+
+                console.log('🦊 Connecting directly to MetaMask...');
+
+                // Request account access
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No accounts found. Please unlock MetaMask.');
+                }
+
+                // Create provider and signer
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const address = await signer.getAddress();
+                const network = await provider.getNetwork();
+
+                console.log('✅ Wallet connected successfully');
+                console.log('📍 Address:', address);
+                console.log('🌐 Network:', network.chainId);
+
+                // Store connection info globally
+                window.walletConnection = {
+                    provider,
+                    signer,
+                    address,
+                    network,
+                    isConnected: true
+                };
+
+                // Update wallet manager if available
+                if (window.walletManager) {
+                    window.walletManager.provider = provider;
+                    window.walletManager.signer = signer;
+                    window.walletManager.address = address;
+                    window.walletManager.chainId = network.chainId;
+                    console.log('🔄 Updated wallet manager with connection info');
+                }
+
+                // Wait a moment for state to update
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Reinitialize admin panel after wallet connection
+                if (adminPage) {
+                    console.log('🔄 Reinitializing admin panel...');
+                    await adminPage.init();
+                } else {
+                    console.log('⚠️ Admin page not available, reloading...');
+                    location.reload();
+                }
+
+            } catch (error) {
+                console.error('❌ Wallet connection failed:', error);
+
+                // Show user-friendly error message
+                let errorMessage;
+                if (error.message.includes('User rejected') || error.message.includes('User denied')) {
+                    errorMessage = 'Wallet connection was cancelled by user';
+                } else if (error.message.includes('not installed')) {
+                    errorMessage = 'MetaMask not installed. Please install MetaMask extension.';
+                } else if (error.message.includes('No accounts')) {
+                    errorMessage = 'Please unlock MetaMask and try again.';
+                } else {
+                    errorMessage = `Wallet connection failed: ${error.message}`;
+                }
+
+                alert(errorMessage);
+            }
+        }
+
+        // Auto-initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 DOM loaded, waiting for system initialization...');
+            // Wait a bit for master initializer to complete
+            setTimeout(() => {
+                console.log('🔐 Starting admin panel initialization...');
+                initializeAdminPanel();
+            }, 3000); // Give master initializer time to complete
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (adminPage) {
+                adminPage.destroy();
+            }
+        });
+    </script>
+
+    <style>
+        /* Loading styles for initial state */
+        .admin-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00d4ff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 20px;
+        }
+
+        .loading-container h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .loading-container p {
+            margin: 0;
+            color: #a0a0a0;
+            font-size: 16px;
+        }
+
+        .error-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .error-container h2 {
+            margin: 0 0 15px 0;
+            color: #ff6b6b;
+            font-size: 24px;
+        }
+
+        .error-container p {
+            margin: 0 0 25px 0;
+            color: #a0a0a0;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #error-boundary {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+        }
+    </style>
+</body>
+</html>

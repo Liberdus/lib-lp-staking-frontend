@@ -53,11 +53,12 @@ class ContractManager {
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
             providerTimeout: 10000, // 10 seconds
             fallbackRPCs: [
-                // Primary public RPCs for Polygon Amoy testnet
-                'https://rpc-amoy.polygon.technology',
-                'https://polygon-amoy.drpc.org',
-                'https://polygon-amoy-bor-rpc.publicnode.com',
-                'https://endpoints.omniatech.io/v1/matic/amoy/public'
+                // Optimized list based on connectivity test results (fastest first)
+                'https://rpc-amoy.polygon.technology',                    // ✅ 1643ms - Official & Fastest
+                'https://endpoints.omniatech.io/v1/matic/amoy/public',    // ✅ 1850ms - Fast & Reliable
+                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ 2375ms - Stable
+                'https://polygon-amoy.drpc.org',                          // ✅ 2952ms - Backup
+                // Note: Removed non-working RPCs (ankr, polygonscan, blockpi) based on test results
             ],
             networkConfig: {
                 chainId: 80002, // Polygon Amoy testnet
@@ -108,18 +109,76 @@ class ContractManager {
      */
     async _initializeReadOnlyInternal() {
         try {
-            // Initialize fallback providers (read-only)
-            this.log('📡 Initializing fallback providers...');
-            await this.initializeFallbackProviders();
-            this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
+            this.log('🔄 Starting read-only initialization...');
 
-            // Use the first available fallback provider
-            if (this.fallbackProviders.length > 0) {
-                this.provider = this.fallbackProviders[0];
-                this.signer = null; // No signer in read-only mode
-                this.log('✅ Using read-only provider:', this.provider.connection?.url || 'Unknown');
+            // Check if app config is available
+            if (!window.APP_CONFIG) {
+                this.logError('❌ APP_CONFIG not available - cannot initialize contracts');
+                throw new Error('APP_CONFIG not loaded');
+            }
+
+            this.log('✅ APP_CONFIG available:', window.APP_CONFIG.CONTRACTS);
+
+            // Check if ethers is available
+            if (!window.ethers) {
+                this.logError('❌ Ethers.js not available - cannot initialize contracts');
+                throw new Error('Ethers.js not loaded');
+            }
+
+            this.log('✅ Ethers.js available');
+
+            // Try MetaMask provider first (bypasses CORS issues)
+            if (window.ethereum) {
+                try {
+                    this.log('🦊 Attempting to use MetaMask provider (CORS-free)...');
+                    const metamaskProvider = new ethers.providers.Web3Provider(window.ethereum);
+
+                    // Test the connection with timeout
+                    const networkPromise = metamaskProvider.getNetwork();
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Network detection timeout')), 10000)
+                    );
+
+                    const network = await Promise.race([networkPromise, timeoutPromise]);
+                    this.log('🦊 MetaMask network detected:', network.chainId, network.name);
+
+                    // Use MetaMask provider for read-only operations
+                    this.provider = metamaskProvider;
+                    this.signer = null; // No signer in read-only mode
+                    this.log('✅ Using MetaMask provider (read-only mode)');
+
+                } catch (metamaskError) {
+                    this.log('⚠️ MetaMask provider failed, trying RPC fallbacks:', metamaskError.message);
+
+                    // Fall back to RPC providers
+                    await this.setupFallbackProviders();
+                    await this.initializeFallbackProviders();
+                    this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
+
+                    if (this.fallbackProviders.length > 0) {
+                        this.provider = this.fallbackProviders[0];
+                        this.signer = null;
+                        this.log('✅ Using RPC fallback provider:', this.provider.connection?.url || 'Unknown');
+                    } else {
+                        throw new Error('No fallback providers available');
+                    }
+                }
             } else {
-                throw new Error('No fallback providers available');
+                this.log('🌐 MetaMask not available, using RPC providers...');
+
+                // Initialize fallback providers (read-only)
+                this.log('📡 Initializing fallback providers...');
+                await this.initializeFallbackProviders();
+                this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
+
+                // Use the first available fallback provider
+                if (this.fallbackProviders.length > 0) {
+                    this.provider = this.fallbackProviders[0];
+                    this.signer = null; // No signer in read-only mode
+                    this.log('✅ Using read-only provider:', this.provider.connection?.url || 'Unknown');
+                } else {
+                    throw new Error('No fallback providers available');
+                }
             }
 
             // Load contract ABIs
@@ -325,6 +384,28 @@ class ContractManager {
     }
 
     /**
+     * Setup fallback provider configuration
+     */
+    async setupFallbackProviders() {
+        this.log('🔧 Setting up fallback provider configuration...');
+
+        // Ensure fallback providers array is initialized
+        if (!this.fallbackProviders) {
+            this.fallbackProviders = [];
+        }
+
+        // Setup default RPC URLs if not configured
+        if (!this.config.fallbackRPCs || this.config.fallbackRPCs.length === 0) {
+            this.config.fallbackRPCs = [
+                'https://rpc-amoy.polygon.technology',
+                'https://polygon-amoy.drpc.org',
+                'https://polygon-amoy-bor-rpc.publicnode.com'
+            ];
+            this.log('🔧 Using default fallback RPC URLs');
+        }
+    }
+
+    /**
      * Initialize fallback providers for redundancy
      */
     async initializeFallbackProviders() {
@@ -337,54 +418,108 @@ class ContractManager {
             // First try from internal config
             if (this.config.fallbackRPCs && this.config.fallbackRPCs.length > 0) {
                 rpcUrls = [...this.config.fallbackRPCs];
-                this.log('Using internal fallback RPCs:', rpcUrls.length);
+                this.log('📡 Using internal fallback RPCs:', rpcUrls.length);
             }
 
             // Also try from global CONFIG
             if (window.CONFIG?.RPC?.POLYGON_AMOY && window.CONFIG.RPC.POLYGON_AMOY.length > 0) {
                 rpcUrls = [...rpcUrls, ...window.CONFIG.RPC.POLYGON_AMOY];
-                this.log('Added global CONFIG RPCs:', window.CONFIG.RPC.POLYGON_AMOY.length);
+                this.log('📡 Added global CONFIG RPCs:', window.CONFIG.RPC.POLYGON_AMOY.length);
             }
 
             // Remove duplicates
             rpcUrls = [...new Set(rpcUrls)];
-            this.log('Total unique RPC URLs to test:', rpcUrls.length);
+            this.log('📡 Total unique RPC URLs to test:', rpcUrls.length);
+            this.log('📡 RPC URLs:', rpcUrls);
 
             if (rpcUrls.length === 0) {
                 throw new Error('No RPC URLs available for fallback providers');
             }
 
-            // Test each RPC URL with timeout
-            for (const rpcUrl of rpcUrls) {
-                try {
-                    this.log('🔄 Testing RPC:', rpcUrl);
-                    const fallbackProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+            // Test each RPC URL with enhanced error handling
+            const testResults = [];
 
-                    // Test connection with timeout
+            for (let i = 0; i < rpcUrls.length; i++) {
+                const rpcUrl = rpcUrls[i];
+                const testResult = { url: rpcUrl, success: false, error: null, chainId: null };
+
+                try {
+                    this.log(`🔄 Testing RPC ${i + 1}/${rpcUrls.length}:`, rpcUrl);
+
+                    // Create provider with connection info
+                    const fallbackProvider = new ethers.providers.JsonRpcProvider({
+                        url: rpcUrl,
+                        timeout: 10000 // 10 second timeout
+                    });
+
+                    // Test connection with multiple timeouts
                     const networkPromise = fallbackProvider.getNetwork();
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Timeout')), 5000)
+                        setTimeout(() => reject(new Error('Connection timeout (10s)')), 10000)
                     );
 
-                    await Promise.race([networkPromise, timeoutPromise]);
+                    const network = await Promise.race([networkPromise, timeoutPromise]);
+
+                    // Verify correct network
+                    if (network.chainId !== 80002) {
+                        throw new Error(`Wrong network: expected 80002, got ${network.chainId}`);
+                    }
+
+                    // Test a simple call to ensure provider is fully functional
+                    const blockNumber = await Promise.race([
+                        fallbackProvider.getBlockNumber(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Block number timeout')), 5000))
+                    ]);
 
                     this.fallbackProviders.push(fallbackProvider);
-                    this.log('✅ Fallback provider added:', rpcUrl);
+                    testResult.success = true;
+                    testResult.chainId = network.chainId;
 
-                    // Stop after we have at least one working provider
-                    if (this.fallbackProviders.length >= 1) {
-                        this.log('✅ Sufficient providers available, stopping tests');
+                    this.log(`✅ RPC ${i + 1} SUCCESS:`, rpcUrl, `(Chain: ${network.chainId}, Block: ${blockNumber})`);
+
+                    // Continue testing more providers for redundancy (don't break after first success)
+                    if (this.fallbackProviders.length >= 3) {
+                        this.log('✅ Sufficient providers available (3+), stopping tests');
                         break;
                     }
+
                 } catch (error) {
-                    this.log('❌ Fallback provider failed:', rpcUrl, error.message);
+                    testResult.error = error.message;
+                    this.log(`❌ RPC ${i + 1} FAILED:`, rpcUrl, '→', error.message);
                 }
+
+                testResults.push(testResult);
             }
 
-            this.log(`📊 Initialized ${this.fallbackProviders.length} fallback providers`);
+            // Log detailed test results
+            this.log('📊 RPC Test Results Summary:');
+            testResults.forEach((result, index) => {
+                const status = result.success ? '✅' : '❌';
+                const details = result.success
+                    ? `Chain ID: ${result.chainId}`
+                    : `Error: ${result.error}`;
+                this.log(`  ${status} RPC ${index + 1}: ${result.url} - ${details}`);
+            });
+
+            this.log(`📊 Successfully initialized ${this.fallbackProviders.length} fallback providers`);
 
             if (this.fallbackProviders.length === 0) {
-                throw new Error('No working fallback providers found');
+                // Emergency fallback: try to create a basic provider without testing
+                this.log('🚨 EMERGENCY FALLBACK: Attempting to create provider without testing...');
+
+                try {
+                    const emergencyRpc = 'https://rpc-amoy.polygon.technology';
+                    const emergencyProvider = new ethers.providers.JsonRpcProvider(emergencyRpc);
+                    this.fallbackProviders.push(emergencyProvider);
+                    this.log('🚨 Emergency provider created (untested):', emergencyRpc);
+                    this.log('⚠️ WARNING: Using untested provider - functionality may be limited');
+                } catch (emergencyError) {
+                    const errorMsg = 'No working fallback providers found. All RPC endpoints failed connection tests.';
+                    this.logError('❌ CRITICAL:', errorMsg);
+                    this.logError('❌ Emergency fallback also failed:', emergencyError.message);
+                    this.logError('❌ Test results:', testResults.map(r => `${r.url}: ${r.error || 'Success'}`));
+                    throw new Error(errorMsg);
+                }
             }
 
         } catch (error) {
@@ -400,8 +535,9 @@ class ContractManager {
         try {
             this.log('Loading contract ABIs...');
 
-            // LP Staking Contract ABI (matching deployed contract)
+            // LP Staking Contract ABI (matching deployed contract with admin functions)
             const stakingABI = [
+                // Basic staking functions
                 "function stake(address lpToken, uint256 amount) external",
                 "function unstake(address lpToken, uint256 amount) external",
                 "function claimRewards(address lpToken) external",
@@ -409,9 +545,52 @@ class ContractManager {
                 "function getActivePairs() external view returns (address[] memory)",
                 "function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[] memory)",
                 "function getSigners() external view returns (address[] memory)",
+
+                // Admin role functions
+                "function hasRole(bytes32 role, address account) external view returns (bool)",
+                "function grantRole(bytes32 role, address account) external",
+                "function revokeRole(bytes32 role, address account) external",
+
+                // Multi-signature proposal functions
+                "function proposeSetHourlyRewardRate(uint256 newRate) external returns (uint256)",
+                "function proposeUpdatePairWeights(address[] calldata lpTokens, uint256[] calldata weights) external returns (uint256)",
+                "function proposeAddPair(address lpToken, string calldata pairName, string calldata platform, uint256 weight) external returns (uint256)",
+                "function proposeRemovePair(address lpToken) external returns (uint256)",
+                "function proposeChangeSigner(address oldSigner, address newSigner) external returns (uint256)",
+                "function proposeWithdrawRewards(address recipient, uint256 amount) external returns (uint256)",
+
+                // Multi-signature approval functions
+                "function approveAction(uint256 actionId) external",
+                "function executeAction(uint256 actionId) external",
+                "function rejectAction(uint256 actionId) external",
+
+                // Multi-signature query functions
+                "function actionCounter() external view returns (uint256)",
+                "function getRequiredApprovals() external view returns (uint256)",
+                "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address[] memory pairs, uint256[] memory weights, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, address[] memory approvedBy, uint256 proposedTime, bool rejected)",
+                "function getActionPairs(uint256 actionId) external view returns (address[] memory)",
+                "function getActionWeights(uint256 actionId) external view returns (uint256[] memory)",
+                "function isActionExpired(uint256 actionId) external view returns (bool)",
+
+                // Utility functions
+                "function cleanupExpiredActions() external",
+
+                // Basic staking events
                 "event StakeAdded(address indexed user, address indexed lpToken, uint256 amount)",
                 "event StakeRemoved(address indexed user, address indexed lpToken, uint256 amount)",
-                "event RewardsClaimed(address indexed user, address indexed lpToken, uint256 amount)"
+                "event RewardsClaimed(address indexed user, address indexed lpToken, uint256 amount)",
+
+                // Admin events
+                "event PairAdded(address lpToken, string platform, uint256 weight)",
+                "event PairRemoved(address lpToken)",
+                "event HourlyRateUpdated(uint256 newRate)",
+                "event WeightsUpdated(address[] pairs, uint256[] weights)",
+                "event SignerChanged(address oldSigner, address newSigner)",
+                "event ActionProposed(uint256 actionId, address proposer, uint8 actionType)",
+                "event ActionApproved(uint256 actionId, address approver)",
+                "event ActionExecuted(uint256 actionId)",
+                "event ActionRejected(uint256 actionId, address rejector)",
+                "event ActionExpired(uint256 actionId)"
             ];
 
             // ERC20 Token ABI (standard)
@@ -447,11 +626,20 @@ class ContractManager {
         try {
             this.log('Loading contract addresses...');
 
-            // Load from global config - no fallback to placeholder addresses
+            // Load from global config - check both CONFIG and APP_CONFIG
+            const config = window.APP_CONFIG || window.CONFIG;
+
+            if (!config) {
+                this.logError('❌ No configuration found (APP_CONFIG or CONFIG)');
+                throw new Error('Configuration not available');
+            }
+
+            this.log('✅ Using configuration:', config.CONTRACTS);
+
             const addresses = {
-                STAKING_CONTRACT: window.CONFIG?.CONTRACTS?.STAKING_CONTRACT || null,
-                REWARD_TOKEN: window.CONFIG?.CONTRACTS?.REWARD_TOKEN || null,
-                LP_TOKENS: window.CONFIG?.CONTRACTS?.LP_TOKENS || {}
+                STAKING_CONTRACT: config.CONTRACTS?.STAKING_CONTRACT || null,
+                REWARD_TOKEN: config.CONTRACTS?.REWARD_TOKEN || null,
+                LP_TOKENS: config.CONTRACTS?.LP_TOKENS || {}
             };
 
             // Store addresses only if they are valid
@@ -681,11 +869,24 @@ class ContractManager {
      * Check if contracts are initialized and ready for use
      */
     isReady() {
-        // More lenient check - only require provider and signer
-        // Contracts may not be available if addresses are invalid
-        return this.isInitialized &&
-               this.provider &&
-               this.signer;
+        // Check if initialized and has provider
+        // Signer is optional (null in read-only mode)
+        const ready = !!(this.isInitialized &&
+                        this.provider &&
+                        (this.stakingContract || this.rewardTokenContract));
+
+        // Debug logging
+        if (window.DEV_CONFIG?.VERBOSE_LOGGING) {
+            console.log('🔍 ContractManager.isReady() check:', {
+                isInitialized: this.isInitialized,
+                hasProvider: !!this.provider,
+                hasStakingContract: !!this.stakingContract,
+                hasRewardTokenContract: !!this.rewardTokenContract,
+                ready: ready
+            });
+        }
+
+        return ready;
     }
 
     /**
@@ -830,6 +1031,212 @@ class ContractManager {
         return await this.executeWithRetry(async () => {
             return await this.stakingContract.getActivePairs();
         }, 'getSupportedTokens');
+    }
+
+    // ============ ADMIN CONTRACT FUNCTIONS ============
+
+    /**
+     * Check if an address has admin role
+     */
+    async hasAdminRole(address) {
+        return await this.executeWithRetry(async () => {
+            const ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'; // DEFAULT_ADMIN_ROLE
+            return await this.stakingContract.hasRole(ADMIN_ROLE, address);
+        }, 'hasAdminRole');
+    }
+
+    /**
+     * Get action counter for multi-signature proposals
+     */
+    async getActionCounter() {
+        return await this.executeWithRetry(async () => {
+            const counter = await this.stakingContract.actionCounter();
+            return counter.toNumber();
+        }, 'getActionCounter');
+    }
+
+    /**
+     * Get required approvals for multi-signature actions
+     */
+    async getRequiredApprovals() {
+        return await this.executeWithRetry(async () => {
+            const required = await this.stakingContract.getRequiredApprovals();
+            return required.toNumber();
+        }, 'getRequiredApprovals');
+    }
+
+    /**
+     * Get action details by ID
+     */
+    async getAction(actionId) {
+        return await this.executeWithRetry(async () => {
+            const action = await this.stakingContract.actions(actionId);
+            return {
+                actionType: action.actionType,
+                newHourlyRewardRate: action.newHourlyRewardRate.toString(),
+                pairs: action.pairs,
+                weights: action.weights.map(w => w.toString()),
+                pairToAdd: action.pairToAdd,
+                pairNameToAdd: action.pairNameToAdd,
+                platformToAdd: action.platformToAdd,
+                weightToAdd: action.weightToAdd.toString(),
+                pairToRemove: action.pairToRemove,
+                recipient: action.recipient,
+                withdrawAmount: action.withdrawAmount.toString(),
+                executed: action.executed,
+                expired: action.expired,
+                approvals: action.approvals,
+                approvedBy: action.approvedBy,
+                proposedTime: action.proposedTime.toNumber(),
+                rejected: action.rejected
+            };
+        }, 'getAction');
+    }
+
+    /**
+     * Get action pairs by ID
+     */
+    async getActionPairs(actionId) {
+        return await this.executeWithRetry(async () => {
+            return await this.stakingContract.getActionPairs(actionId);
+        }, 'getActionPairs');
+    }
+
+    /**
+     * Get action weights by ID
+     */
+    async getActionWeights(actionId) {
+        return await this.executeWithRetry(async () => {
+            const weights = await this.stakingContract.getActionWeights(actionId);
+            return weights.map(w => w.toString());
+        }, 'getActionWeights');
+    }
+
+    // ============ ADMIN PROPOSAL FUNCTIONS ============
+
+    /**
+     * Propose setting hourly reward rate
+     */
+    async proposeSetHourlyRewardRate(newRate) {
+        return await this.executeTransactionWithRetry(async () => {
+            const rateWei = ethers.utils.parseEther(newRate.toString());
+            const tx = await this.stakingContract.proposeSetHourlyRewardRate(rateWei);
+            this.log('Propose hourly rate transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeSetHourlyRewardRate');
+    }
+
+    /**
+     * Propose updating pair weights
+     */
+    async proposeUpdatePairWeights(lpTokens, weights) {
+        return await this.executeTransactionWithRetry(async () => {
+            const weightsWei = weights.map(w => ethers.utils.parseEther(w.toString()));
+            const tx = await this.stakingContract.proposeUpdatePairWeights(lpTokens, weightsWei);
+            this.log('Propose update weights transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeUpdatePairWeights');
+    }
+
+    /**
+     * Propose adding a new pair
+     */
+    async proposeAddPair(lpToken, pairName, platform, weight) {
+        return await this.executeTransactionWithRetry(async () => {
+            const weightWei = ethers.utils.parseEther(weight.toString());
+            const tx = await this.stakingContract.proposeAddPair(lpToken, pairName, platform, weightWei);
+            this.log('Propose add pair transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeAddPair');
+    }
+
+    /**
+     * Propose removing a pair
+     */
+    async proposeRemovePair(lpToken) {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.proposeRemovePair(lpToken);
+            this.log('Propose remove pair transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeRemovePair');
+    }
+
+    /**
+     * Propose changing a signer
+     */
+    async proposeChangeSigner(oldSigner, newSigner) {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.proposeChangeSigner(oldSigner, newSigner);
+            this.log('Propose change signer transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeChangeSigner');
+    }
+
+    /**
+     * Propose withdrawing rewards
+     */
+    async proposeWithdrawRewards(recipient, amount) {
+        return await this.executeTransactionWithRetry(async () => {
+            const amountWei = ethers.utils.parseEther(amount.toString());
+            const tx = await this.stakingContract.proposeWithdrawRewards(recipient, amountWei);
+            this.log('Propose withdraw rewards transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'proposeWithdrawRewards');
+    }
+
+    // ============ ADMIN APPROVAL FUNCTIONS ============
+
+    /**
+     * Approve a multi-signature action
+     */
+    async approveAction(actionId) {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.approveAction(actionId);
+            this.log('Approve action transaction sent:', tx.hash, 'Action ID:', actionId);
+            return await tx.wait();
+        }, 'approveAction');
+    }
+
+    /**
+     * Execute a multi-signature action
+     */
+    async executeAction(actionId) {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.executeAction(actionId);
+            this.log('Execute action transaction sent:', tx.hash, 'Action ID:', actionId);
+            return await tx.wait();
+        }, 'executeAction');
+    }
+
+    /**
+     * Reject a multi-signature action
+     */
+    async rejectAction(actionId) {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.rejectAction(actionId);
+            this.log('Reject action transaction sent:', tx.hash, 'Action ID:', actionId);
+            return await tx.wait();
+        }, 'rejectAction');
+    }
+
+    /**
+     * Check if an action is expired
+     */
+    async isActionExpired(actionId) {
+        return await this.executeWithRetry(async () => {
+            return await this.stakingContract.isActionExpired(actionId);
+        }, 'isActionExpired');
+    }
+
+    /**
+     * Clean up expired actions (admin only)
+     */
+    async cleanupExpiredActions() {
+        return await this.executeTransactionWithRetry(async () => {
+            const tx = await this.stakingContract.cleanupExpiredActions();
+            this.log('Cleanup expired actions transaction sent:', tx.hash);
+            return await tx.wait();
+        }, 'cleanupExpiredActions');
     }
 
     /**
@@ -1246,6 +1653,12 @@ class ContractManager {
     async executeWithRetry(operation, operationName, retries = this.config.maxRetries) {
         const context = { operation: operationName, contractManager: true };
 
+        // Safety check for errorHandler availability
+        if (!window.errorHandler || typeof window.errorHandler.executeWithRetry !== 'function') {
+            console.warn('ErrorHandler not available, using fallback retry logic');
+            return await this.fallbackExecuteWithRetry(operation, operationName, retries);
+        }
+
         return await window.errorHandler.executeWithRetry(async () => {
             try {
                 this.log(`Executing ${operationName}`);
@@ -1253,11 +1666,16 @@ class ContractManager {
                 this.log(`${operationName} completed successfully`);
                 return result;
             } catch (error) {
-                // Enhanced error processing
-                const processedError = window.errorHandler.processError(error, context);
+                // Enhanced error processing with safety check
+                let processedError = error;
+                if (window.errorHandler && typeof window.errorHandler.processError === 'function') {
+                    processedError = window.errorHandler.processError(error, context);
+                } else {
+                    console.warn('ErrorHandler.processError not available, using raw error');
+                }
 
                 // Try fallback provider for network errors
-                if (processedError.category === 'network' && this.canUseFallbackProvider()) {
+                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR') && this.canUseFallbackProvider()) {
                     this.log('Network error detected, trying fallback provider...');
                     await this.tryFallbackProvider();
                 }
@@ -1271,10 +1689,52 @@ class ContractManager {
     }
 
     /**
+     * Fallback retry logic when ErrorHandler is not available
+     */
+    async fallbackExecuteWithRetry(operation, operationName, retries = this.config.maxRetries) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= retries + 1; attempt++) {
+            try {
+                this.log(`Fallback: Executing ${operationName} (attempt ${attempt}/${retries + 1})`);
+                const result = await operation();
+
+                if (attempt > 1) {
+                    this.log(`${operationName} succeeded after ${attempt} attempts`);
+                }
+
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.logError(`${operationName} attempt ${attempt} failed:`, error);
+
+                // Don't retry on last attempt
+                if (attempt > retries) {
+                    this.logError(`${operationName} failed after ${attempt} attempts`);
+                    throw error;
+                }
+
+                // Wait before retry with exponential backoff
+                const delay = this.config.retryDelay * Math.pow(2, attempt - 1);
+                this.log(`Retrying ${operationName} in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
+        throw lastError;
+    }
+
+    /**
      * Execute transaction with enhanced retry logic, gas estimation, and error handling
      */
     async executeTransactionWithRetry(operation, operationName, retries = this.config.maxRetries) {
         const context = { operation: operationName, contractManager: true, transaction: true };
+
+        // Safety check for errorHandler availability
+        if (!window.errorHandler || typeof window.errorHandler.executeWithRetry !== 'function') {
+            console.warn('ErrorHandler not available for transaction, using fallback retry logic');
+            return await this.fallbackExecuteWithRetry(operation, operationName, retries);
+        }
 
         return await window.errorHandler.executeWithRetry(async () => {
             try {
@@ -1300,17 +1760,30 @@ class ContractManager {
 
                 return result;
             } catch (error) {
-                // Enhanced error processing with user-friendly messages
-                const processedError = window.errorHandler.processError(error, context);
+                // Enhanced error processing with user-friendly messages and safety checks
+                let processedError = error;
+                if (window.errorHandler && typeof window.errorHandler.processError === 'function') {
+                    processedError = window.errorHandler.processError(error, context);
+                } else {
+                    console.warn('ErrorHandler.processError not available, using raw error');
+                }
 
-                // Display error to user
-                window.errorHandler.displayError(processedError, {
-                    context: { operation: operationName },
-                    showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
-                });
+                // Display error to user with safety check
+                if (window.errorHandler && typeof window.errorHandler.displayError === 'function') {
+                    window.errorHandler.displayError(processedError, {
+                        context: { operation: operationName },
+                        showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
+                    });
+                } else {
+                    console.error(`Transaction ${operationName} failed:`, error.message);
+                    // Fallback notification
+                    if (window.notificationManager) {
+                        window.notificationManager.error(`Transaction Failed`, `${operationName}: ${error.message}`);
+                    }
+                }
 
                 // Try fallback provider for network errors
-                if (processedError.category === 'network' && this.canUseFallbackProvider()) {
+                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR') && this.canUseFallbackProvider()) {
                     this.log('Network error detected, trying fallback provider...');
                     await this.tryFallbackProvider();
                 }

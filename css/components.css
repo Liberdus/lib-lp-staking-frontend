@@ -292,12 +292,32 @@
 .connect-wallet-btn.connected {
     background: var(--liberdus-green);
     border-color: var(--liberdus-green);
+    position: relative;
 }
 
 .connect-wallet-btn.connected:hover {
     background: var(--liberdus-green-light);
     border-color: var(--liberdus-green-light);
     box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+}
+
+.connect-wallet-btn.connected::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--liberdus-green), var(--liberdus-green-light));
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.3;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
 }
 
 .wallet-icon {

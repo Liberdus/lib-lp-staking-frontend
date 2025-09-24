@@ -7,6 +7,9 @@ class MasterInitializer {
         this.initializationPromise = null;
         this.isReady = false;
 
+        // Make instance globally available for testing
+        window.masterInitializer = this;
+
         console.log('🔧 MasterInitializer created (waiting for manual init)');
         // Note: init() will be called manually from DOMContentLoaded event
     }
@@ -98,6 +101,17 @@ class MasterInitializer {
     async initializeComponents() {
         console.log('🔧 Initializing components...');
 
+        // Initialize error handler first (critical for other systems)
+        if (window.ErrorHandler && !window.errorHandler) {
+            try {
+                window.errorHandler = new window.ErrorHandler();
+                this.components.set('errorHandler', window.errorHandler);
+                console.log('✅ Error Handler initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize ErrorHandler:', error);
+            }
+        }
+
         // Initialize theme manager
         if (window.ThemeManagerNew) {
             window.themeManager = new window.ThemeManagerNew();
@@ -112,18 +126,68 @@ class MasterInitializer {
             console.log('✅ Notification Manager initialized');
         }
 
-        // Initialize wallet manager (from theme-manager-new.js)
-        if (window.WalletManagerNew) {
-            window.walletManager = new window.WalletManagerNew();
-            this.components.set('walletManager', window.walletManager);
-            console.log('✅ Wallet Manager (New) initialized');
+        // Initialize wallet manager - check multiple sources
+        console.log('🔍 Checking wallet manager availability...');
+        console.log('  - WalletManagerNew:', !!window.WalletManagerNew);
+        console.log('  - WalletManager:', !!window.WalletManager);
+        console.log('  - walletManager instance:', !!window.walletManager);
+
+        // Try WalletManagerNew first (from theme-manager-new.js)
+        if (window.WalletManagerNew && !window.walletManager) {
+            try {
+                window.walletManager = new window.WalletManagerNew();
+                if (window.walletManager.init) {
+                    await window.walletManager.init(); // Initialize if init method exists
+                }
+                this.components.set('walletManager', window.walletManager);
+                console.log('✅ Wallet Manager (New) initialized');
+
+                // Update button status after wallet manager is ready
+                setTimeout(() => {
+                    if (this.updateConnectButtonStatus) {
+                        this.updateConnectButtonStatus();
+                    }
+                }, 500);
+
+            } catch (error) {
+                console.error('❌ Failed to initialize WalletManagerNew:', error);
+            }
         }
 
-        // Also try the main wallet manager if available
+        // Try the main wallet manager if available and no instance exists
         if (window.WalletManager && !window.walletManager) {
-            window.walletManager = new window.WalletManager();
+            try {
+                window.walletManager = new window.WalletManager();
+                await window.walletManager.init(); // Initialize wallet manager
+                this.components.set('walletManager', window.walletManager);
+                console.log('✅ Wallet Manager (Main) initialized');
+
+                // Update button status after wallet manager is ready
+                setTimeout(() => {
+                    if (this.updateConnectButtonStatus) {
+                        this.updateConnectButtonStatus();
+                    }
+                }, 500);
+
+            } catch (error) {
+                console.error('❌ Failed to initialize WalletManager:', error);
+            }
+        }
+
+        // If wallet manager instance already exists, just register it
+        if (window.walletManager && !this.components.has('walletManager')) {
             this.components.set('walletManager', window.walletManager);
-            console.log('✅ Wallet Manager (Main) initialized');
+            console.log('✅ Existing WalletManager instance registered');
+        }
+
+        // Final verification
+        if (window.walletManager) {
+            console.log('🔍 WalletManager final check:');
+            console.log('  - Instance exists:', !!window.walletManager);
+            console.log('  - connectMetaMask method:', typeof window.walletManager.connectMetaMask);
+            console.log('  - isConnected method:', typeof window.walletManager.isConnected);
+        } else {
+            console.warn('⚠️ No wallet manager available after initialization attempts');
         }
 
         // Initialize contract manager with read-only provider
@@ -161,8 +225,22 @@ class MasterInitializer {
             console.log('✅ Staking Modal initialized');
         }
 
+        // Initialize wallet popup
+        if (window.WalletPopup && !window.walletPopup) {
+            try {
+                window.walletPopup = new window.WalletPopup();
+                this.components.set('walletPopup', window.walletPopup);
+                console.log('✅ Wallet Popup initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize WalletPopup:', error);
+            }
+        }
+
         // Ensure wallet connection is properly set up
         this.setupWalletIntegration();
+
+        // Set up wallet connection status monitoring
+        this.setupWalletStatusMonitoring();
     }
 
     setupWalletIntegration() {
@@ -243,25 +321,133 @@ class MasterInitializer {
                         console.warn('Wallet popup not available');
                     }
                 } else {
-                    // Connect wallet
+                    // Connect wallet with enhanced protection against circuit breaker
                     try {
-                        if (window.walletManager.connect) {
-                            await window.walletManager.connect();
-                        } else if (window.walletManager.toggleConnection) {
-                            await window.walletManager.toggleConnection();
+                        // Prevent rapid connection attempts
+                        if (window.walletManager.isConnecting) {
+                            console.log('Connection already in progress, please wait...');
+                            if (window.notificationManager) {
+                                window.notificationManager.info('Connection in progress', 'Please wait for the current connection attempt to complete');
+                            }
+                            return;
                         }
+
+                        // Check if MetaMask is available
+                        if (!window.ethereum) {
+                            console.error('MetaMask not available');
+                            if (window.notificationManager) {
+                                window.notificationManager.error('MetaMask not installed', 'Please install MetaMask browser extension to connect your wallet');
+                            }
+                            return;
+                        }
+
+                        // Show connecting notification
+                        if (window.notificationManager) {
+                            window.notificationManager.info('Connecting...', 'Please approve the connection in MetaMask');
+                        }
+
+                        // Use safe MetaMask connection with circuit breaker protection
+                        await window.walletManager.connectMetaMask();
+
                     } catch (error) {
                         console.error('Failed to connect wallet:', error);
+
+                        // Show user-friendly error message
+                        if (window.notificationManager) {
+                            let errorMessage = error.message;
+
+                            // Customize error messages for better UX
+                            if (error.message.includes('circuit breaker')) {
+                                errorMessage = 'MetaMask is temporarily busy. Please wait a moment and try again.';
+                            } else if (error.message.includes('already processing')) {
+                                errorMessage = 'MetaMask is processing another request. Please wait and try again.';
+                            } else if (error.message.includes('cancelled')) {
+                                errorMessage = 'Connection was cancelled. Click connect to try again.';
+                            }
+
+                            window.notificationManager.error('Connection failed', errorMessage);
+                        }
                     }
                 }
             });
 
             console.log('✅ Connect button event listener attached');
+
+            // Initial button status update
+            setTimeout(() => {
+                this.updateConnectButtonStatus();
+            }, 1000); // Wait 1 second for wallet manager to be fully ready
+        }
+    }
+
+    setupWalletStatusMonitoring() {
+        // Update connect button based on wallet connection status
+        this.updateConnectButtonStatus();
+
+        // Set up periodic status checking
+        setInterval(() => {
+            this.updateConnectButtonStatus();
+        }, 2000); // Check every 2 seconds
+
+        // Listen for wallet connection events
+        document.addEventListener('walletConnected', (event) => {
+            console.log('Wallet connected event received:', event.detail);
+            this.updateConnectButtonStatus();
+        });
+
+        document.addEventListener('walletDisconnected', (event) => {
+            console.log('Wallet disconnected event received');
+            this.updateConnectButtonStatus();
+        });
+
+        console.log('✅ Wallet status monitoring set up');
+    }
+
+    updateConnectButtonStatus() {
+        const connectBtn = document.getElementById('connect-wallet-btn');
+        if (!connectBtn) return;
+
+        try {
+            // Check if wallet is connected
+            const isConnected = window.walletManager &&
+                              (window.walletManager.isWalletConnected ?
+                               window.walletManager.isWalletConnected() :
+                               window.walletManager.isConnected ? window.walletManager.isConnected() : false);
+
+            if (isConnected && window.walletManager.address) {
+                // Format address for display (first 6 + last 4 characters)
+                const address = window.walletManager.address;
+                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+                // Update button text and style
+                connectBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                    ${shortAddress}
+                `;
+                connectBtn.classList.add('connected');
+                connectBtn.title = `Connected: ${address}`;
+
+            } else {
+                // Update button for disconnected state
+                connectBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                    Connect Wallet
+                `;
+                connectBtn.classList.remove('connected');
+                connectBtn.title = 'Connect your wallet';
+            }
+
+        } catch (error) {
+            console.error('Error updating connect button status:', error);
         }
     }
 
     setupGlobalHandlers() {
-        // Global error handler with SES lockdown protection
+        // Enhanced global error handler with SES lockdown protection
         window.addEventListener('error', (event) => {
             console.error('Global error:', event.error);
 
@@ -271,14 +457,61 @@ class MasterInitializer {
                 return true; // Prevent default error handling
             }
 
+            // Use error handler if available
+            if (window.errorHandler && window.errorHandler.handleError) {
+                window.errorHandler.handleError(event.error, { context: 'global_error' });
+            }
+
+            // Handle specific MetaMask circuit breaker errors
+            if (event.error && event.error.message && event.error.message.includes('circuit breaker')) {
+                if (window.notificationManager) {
+                    window.notificationManager.error(
+                        'Connection Issue',
+                        'MetaMask is temporarily busy. Please wait a moment and try again.'
+                    );
+                }
+                return true; // Prevent default error handling
+            }
+
+            // Generic error notification
             if (window.notificationManager) {
                 window.notificationManager.error('An unexpected error occurred');
             }
         });
 
-        // Unhandled promise rejection handler
+        // Enhanced unhandled promise rejection handler
         window.addEventListener('unhandledrejection', (event) => {
             console.error('Unhandled promise rejection:', event.reason);
+
+            // Use error handler if available
+            if (window.errorHandler && window.errorHandler.handleError) {
+                window.errorHandler.handleError(event.reason, { context: 'unhandled_promise' });
+            }
+
+            // Handle specific MetaMask circuit breaker errors
+            if (event.reason && event.reason.message) {
+                if (event.reason.message.includes('circuit breaker')) {
+                    if (window.notificationManager) {
+                        window.notificationManager.error(
+                            'MetaMask Busy',
+                            'MetaMask is temporarily overloaded. Please wait a moment and try again.'
+                        );
+                    }
+                    event.preventDefault(); // Prevent console spam
+                    return;
+                } else if (event.reason.message.includes('already processing')) {
+                    if (window.notificationManager) {
+                        window.notificationManager.warning(
+                            'Request Pending',
+                            'MetaMask is processing another request. Please wait.'
+                        );
+                    }
+                    event.preventDefault();
+                    return;
+                }
+            }
+
+            // Generic error notification
             if (window.notificationManager) {
                 window.notificationManager.error('An unexpected error occurred');
             }

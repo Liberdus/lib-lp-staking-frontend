@@ -717,18 +717,29 @@ class HomePage {
     }
 
     startAutoRefresh() {
+        // Stop any existing refresh first
+        this.stopAutoRefresh();
+
         // Refresh data every 30 seconds
         this.refreshInterval = setInterval(() => {
             if (!this.loading) {
                 this.loadData();
             }
         }, 30000);
+
+        console.log('🔄 HomePage: Auto-refresh started');
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+            console.log('⏹️ HomePage: Auto-refresh stopped');
+        }
     }
 
     destroy() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-        }
+        this.stopAutoRefresh();
     }
 }
 
