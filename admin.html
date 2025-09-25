@@ -782,6 +782,94 @@
             }
         };
 
+        // Debug proposal system
+        window.debugProposals = function() {
+            console.log('🔧 DEBUG: Testing proposal system...');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            console.log('🔧 AdminPage found, checking mock proposals...');
+            console.log('Mock proposals map:', window.adminPage.mockProposals);
+            console.log('Mock proposals size:', window.adminPage.mockProposals.size);
+
+            // Test getMockProposals
+            const mockProposals = window.adminPage.getMockProposals();
+            console.log('Mock proposals array:', mockProposals);
+
+            // Test loadMockProposals
+            const formattedProposals = window.adminPage.loadMockProposals();
+            console.log('Formatted proposals:', formattedProposals);
+
+            // Force reload proposals
+            console.log('🔧 Force reloading proposals...');
+            window.adminPage.loadMultiSignPanel();
+        };
+
+        // Test mock system initialization
+        window.testMockSystem = function() {
+            console.log('🔧 Testing mock system initialization...');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            // Manually initialize mock system
+            window.adminPage.initializeMockSystem();
+            console.log('✅ Mock system initialized');
+
+            // Debug the results
+            debugProposals();
+        };
+
+        // Test ADD PAIR functionality
+        window.testAddPair = async function() {
+            console.log('🧪 Testing ADD PAIR functionality...');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            try {
+                // Get contract manager
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not available');
+                    return;
+                }
+
+                console.log('🔧 Contract manager found, testing proposeAddPair...');
+
+                // Test the proposeAddPair function
+                const result = await contractManager.proposeAddPair(
+                    '0x1234567890123456789012345678901234567890',
+                    'TEST/USDC',
+                    'Uniswap V3',
+                    100
+                );
+
+                console.log('✅ Contract function result:', result);
+
+                if (result.success) {
+                    console.log('🎉 Proposal creation successful!');
+                    console.log('📋 Transaction hash:', result.transactionHash);
+
+                    // Refresh the admin panel to show new proposal
+                    await window.adminPage.refreshData();
+                    console.log('✅ Admin panel refreshed');
+                } else {
+                    console.log('❌ Contract function failed:', result.error);
+                }
+
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');
