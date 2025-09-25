@@ -1950,7 +1950,8 @@ class ContractManager {
             };
         } catch (error) {
             this.logError(`Failed to get action ${actionId}:`, error);
-            throw error;
+            // Like React version - return null instead of throwing
+            return null;
         }
     }
 

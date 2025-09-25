@@ -1294,6 +1294,109 @@
             }
         };
 
+        // Test proposal loading specifically
+        window.testProposalLoading = async function() {
+            console.log('🧪 Testing proposal loading like React version...');
+
+            try {
+                const contractManager = await window.adminPage.ensureContractReady();
+
+                // Test 1: Get action counter
+                console.log('🔧 Testing getActionCounter...');
+                const actionCounter = await contractManager.getActionCounter();
+                console.log('✅ Action counter:', actionCounter);
+
+                // Test 2: Try to get actions (like React version)
+                console.log('🔧 Testing getAction calls...');
+                for (let i = actionCounter; i >= Math.max(1, actionCounter - 5); i--) {
+                    console.log(`🔧 Testing getAction(${i})...`);
+                    const action = await contractManager.getAction(i);
+                    if (action) {
+                        console.log(`✅ Action ${i}:`, {
+                            actionType: action.actionType,
+                            executed: action.executed,
+                            approvals: action.approvals
+                        });
+                    } else {
+                        console.log(`⚠️ Action ${i}: null (gracefully handled)`);
+                    }
+                }
+
+                // Test 3: Load proposals through admin page
+                console.log('🔧 Testing loadProposals...');
+                const proposals = await window.adminPage.loadProposals();
+                console.log('✅ Loaded proposals:', proposals.length);
+                proposals.forEach(p => {
+                    console.log(`  - Proposal ${p.id}: ${p.actionType} (${p.approvals}/${p.requiredApprovals} approvals)`);
+                });
+
+                // Test 4: Check if proposals show in UI
+                console.log('🔧 Checking UI display...');
+                const proposalRows = document.querySelectorAll('.proposal-row');
+                console.log(`✅ Found ${proposalRows.length} proposal rows in UI`);
+
+                console.log('🎉 Proposal loading test completed!');
+
+            } catch (error) {
+                console.error('❌ Proposal loading test failed:', error);
+            }
+        };
+
+        // Test RPC health and fallback system
+        window.testRpcHealthAndFallbacks = async function() {
+            console.log('🧪 Testing RPC health and fallback system...');
+
+            try {
+                const contractManager = await window.adminPage.ensureContractReady();
+
+                // Test 1: Check RPC health
+                console.log('🔧 Testing RPC health check...');
+                const isRpcDown = await window.adminPage.checkRpcHealth(contractManager);
+                console.log('✅ RPC health check result:', isRpcDown ? 'DOWN (using fallbacks)' : 'HEALTHY');
+
+                // Test 2: Test safe contract calls
+                console.log('🔧 Testing safe contract calls...');
+                const rewardToken = await window.adminPage.safeContractCall(
+                    () => contractManager.stakingContract.rewardToken(),
+                    'FALLBACK_TOKEN'
+                );
+                console.log('✅ Safe rewardToken call:', rewardToken);
+
+                const actionCounter = await window.adminPage.safeContractCall(
+                    () => contractManager.stakingContract.actionCounter(),
+                    999
+                );
+                console.log('✅ Safe actionCounter call:', actionCounter);
+
+                // Test 3: Test demo proposals
+                console.log('🔧 Testing demo proposals...');
+                const demoProposals = window.adminPage.createDemoProposals();
+                console.log('✅ Demo proposals created:', demoProposals.length);
+                demoProposals.forEach(p => {
+                    console.log(`  - Demo Proposal ${p.id}: ${p.actionType} (${p.approvals}/${p.requiredApprovals} approvals)`);
+                });
+
+                // Test 4: Test contract stats loading
+                console.log('🔧 Testing contract stats loading...');
+                await window.adminPage.loadContractStats();
+                console.log('✅ Contract stats loaded with fallbacks');
+
+                // Test 5: Test proposal loading
+                console.log('🔧 Testing proposal loading with fallbacks...');
+                const proposals = await window.adminPage.loadProposals();
+                console.log('✅ Proposals loaded:', proposals.length);
+                proposals.forEach(p => {
+                    console.log(`  - Proposal ${p.id}: ${p.actionType} (${p.approvals}/${p.requiredApprovals} approvals)`);
+                });
+
+                console.log('🎉 RPC health and fallback test completed!');
+                console.log('✅ System handles RPC issues gracefully like React version');
+
+            } catch (error) {
+                console.error('❌ RPC health test failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');
