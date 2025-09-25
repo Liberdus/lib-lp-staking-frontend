@@ -18,7 +18,55 @@ class AdminPage {
         // Development mode from centralized config
         this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? true;
 
+        // Professional Mock Data System
+        this.mockProposals = new Map();
+        this.mockProposalCounter = 1;
+        this.mockVotes = new Map();
+        this.mockApprovals = new Map();
+
         this.init();
+    }
+
+    /**
+     * Initialize Professional Mock System
+     * Creates realistic proposal data that feels completely real
+     */
+    initializeMockSystem() {
+        // Initialize with some realistic existing proposals for demo
+        this.createMockProposal({
+            id: 'PROP-001',
+            type: 'ADD_PAIR',
+            title: 'Add WETH/USDC Pair',
+            description: 'Add Wrapped Ethereum / USD Coin liquidity pair from Uniswap V3',
+            proposer: '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
+            status: 'PENDING',
+            requiredApprovals: 3,
+            currentApprovals: 1,
+            data: {
+                pairAddress: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
+                pairName: 'WETH/USDC',
+                platform: 'Uniswap V3',
+                weight: 500
+            },
+            createdAt: Date.now() - 86400000, // 1 day ago
+            expiresAt: Date.now() + 518400000 // 6 days from now
+        });
+
+        this.createMockProposal({
+            id: 'PROP-002',
+            type: 'UPDATE_RATE',
+            title: 'Update Hourly Reward Rate',
+            description: 'Increase hourly reward rate to 0.5 tokens per hour to boost staking incentives',
+            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+            status: 'APPROVED',
+            requiredApprovals: 3,
+            currentApprovals: 3,
+            data: {
+                newRate: '0.5'
+            },
+            createdAt: Date.now() - 172800000, // 2 days ago
+            expiresAt: Date.now() + 432000000 // 5 days from now
+        });
     }
 
     async init() {
@@ -2989,22 +3037,8 @@ class AdminPage {
             this.validateField(e.target);
         });
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            console.log('🔧 DEBUG: Form submit event triggered for:', formId);
-
-            // Only validate when user actually submits
-            try {
-                if (this.validateForm(formId)) {
-                    console.log('✅ Form validation passed, submitting...');
-                    this.handleFormSubmission(formId);
-                } else {
-                    console.log('❌ Form validation failed');
-                }
-            } catch (error) {
-                console.error('❌ Form validation error:', error);
-            }
-        });
+        // NOTE: Form submission is handled by the main document event listener
+        // No need for individual form listeners to avoid conflicts
     }
 
     validateField(field) {
@@ -3382,17 +3416,51 @@ class AdminPage {
         }
 
         try {
+            console.log('🔧 Calling contract manager proposeAddPair...');
             const contractManager = await this.ensureContractReady();
             const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum, description);
+
+            console.log('🔧 Contract manager response:', result);
 
             if (!result.success) {
                 throw new Error(result.error || 'Failed to create proposal');
             }
 
+            // Show success message
+            console.log('✅ Add pair proposal created successfully!');
+            console.log('📋 Transaction details:', {
+                hash: result.transactionHash,
+                message: result.message
+            });
+
+            // Close modal and show success notification
+            this.closeModal();
+
+            // Show success notification (if notification system exists)
+            if (window.showNotification) {
+                window.showNotification('✅ Add Pair Proposal Created Successfully!', 'success');
+            } else {
+                alert('✅ Add Pair Proposal Created Successfully!\n\nTransaction: ' + (result.transactionHash || 'Mock Transaction'));
+            }
+
+            // Refresh admin data
+            setTimeout(() => {
+                this.loadMultiSignPanel();
+                this.loadContractStats();
+            }, 1000);
+
             return result;
 
         } catch (error) {
-            console.error('Failed to create add pair proposal:', error);
+            console.error('❌ Failed to create add pair proposal:', error);
+
+            // Show error notification
+            if (window.showNotification) {
+                window.showNotification('❌ Failed to create proposal: ' + error.message, 'error');
+            } else {
+                alert('❌ Failed to create proposal:\n\n' + error.message);
+            }
+
             throw error;
         }
     }

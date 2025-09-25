@@ -745,6 +745,43 @@
             }
         };
 
+        // Test contract function directly
+        window.testContractFunction = async function() {
+            console.log('🔧 Testing contract function directly...');
+
+            try {
+                // Get contract manager
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not available');
+                    return;
+                }
+
+                console.log('🔧 Contract manager found, testing proposeAddPair...');
+
+                // Test the proposeAddPair function
+                const result = await contractManager.proposeAddPair(
+                    '0x1234567890123456789012345678901234567890',
+                    'TEST/USDC',
+                    'Uniswap V3',
+                    100,
+                    'Test description'
+                );
+
+                console.log('✅ Contract function result:', result);
+
+                if (result.success) {
+                    console.log('🎉 Mock transaction successful!');
+                    console.log('📋 Transaction hash:', result.transactionHash);
+                } else {
+                    console.log('❌ Contract function failed:', result.error);
+                }
+
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');

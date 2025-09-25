@@ -32,6 +32,8 @@ day6-rewards-system-test.html
 contract-verification-test.html
 quick-contract-test.html
 fixed-contract-test.html
+debug-dashboard.html
+rpc-test.html
 
 # Build and distribution files
 dist/
@@ -68,7 +70,25 @@ cors-server.js
 *-DRAFT.md
 *-WIP.md
 *-TODO.md
+ADMIN_PANEL_DOCUMENTATION.md
+DEVELOPMENT_MODE_GUIDE.md
+milestones.md
 
 # Development configuration backups
 *-config-backup.js
 dev-*.json
+
+# Development config files (keep template versions only)
+js/config/dev-config.js
+js/config/demo-config.js
+
+# Utility files for development only
+js/utils/ses-safe-handler.js
+
+# Documentation folder (if you want to exclude all docs)
+docs/
+
+# Local server files
+*.py
+serve.py
+server.py
