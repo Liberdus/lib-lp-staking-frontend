@@ -7,23 +7,68 @@ node_modules/
 Thumbs.db
 DEMO_SCRIPT.md
 FIXES_SUMMARY.md
+
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Testing and documentation files
 TESTING_GUIDE.md
 TEST_EXECUTION_REPORT.md
 INTEGRATION_VERIFICATION_SUMMARY.md
+URGENT_FIXES_APPLIED.md
+FEATURE_VERIFICATION_REPORT.md
+DAY6-REWARDS-SYSTEM-COMPLETE.md
+DAY7-HOMEPAGE-DASHBOARD-COMPLETE.md
+
+# Test files
 test-admin.html
-# Temporary test files
 *-test.html
 debug*.html
 temp*.html
-
 day6-rewards-system-test.html
-DAY6-REWARDS-SYSTEM-COMPLETE.md
+contract-verification-test.html
+quick-contract-test.html
+fixed-contract-test.html
 
-DAY7-HOMEPAGE-DASHBOARD-COMPLETE.md
+# Build and distribution files
+dist/
+build/
+*.min.js.map
+*.css.map
 
-FEATURE_VERIFICATION_REPORT.md
+# Cache and temporary directories
+.cache/
+.tmp/
+tmp/
+temp/
+
+# OS generated files
+*.tmp
+*.temp
+*~
+.fuse_hidden*
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Development server files
+cors-server.js
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Documentation drafts
+*-DRAFT.md
+*-WIP.md
+*-TODO.md
+
+# Development configuration backups
+*-config-backup.js
+dev-*.json

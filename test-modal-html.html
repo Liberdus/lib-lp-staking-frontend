@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Modal HTML</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: monospace;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .btn:hover { background: #0056b3; }
+        
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        
+        /* Copy exact modal styles from admin.css */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+        }
+        
+        .modal-content {
+            background: white;
+            color: black;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .modal-close {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Modal HTML</h1>
+        <p>Testing the exact modal HTML that should appear in admin panel</p>
+        
+        <div>
+            <button class="btn" onclick="testModalHTML()">Test Modal HTML</button>
+            <button class="btn" onclick="testModalWithRedBackground()">Test with Red Background</button>
+            <button class="btn" onclick="clearModal()">Clear Modal</button>
+        </div>
+        
+        <div>
+            <h3>Debug Info:</h3>
+            <div id="log" class="log">Ready to test modal HTML...\n</div>
+        </div>
+    </div>
+
+    <!-- Modal Container (same as admin.html) -->
+    <div id="modal-container" style="display: none;"></div>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('log');
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function testModalHTML() {
+            log('Testing modal HTML insertion...');
+            
+            const modalContainer = document.getElementById('modal-container');
+            if (!modalContainer) {
+                log('❌ Modal container not found');
+                return;
+            }
+            
+            log('✅ Modal container found');
+            
+            // Insert the exact HTML from admin-page.js
+            modalContainer.innerHTML = `
+                <div class="modal-overlay">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>Update Hourly Rate</h3>
+                            <button class="modal-close" type="button" onclick="clearModal()">×</button>
+                        </div>
+
+                        <div class="modal-body">
+                            <form id="hourly-rate-form" class="admin-form">
+                                <div class="form-group">
+                                    <label for="new-rate">New Hourly Rate (USDC)</label>
+                                    <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
+                                           placeholder="Enter new hourly rate">
+                                    <small class="form-help">Current rate: Loading... USDC/hour</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="rate-description">Description/Reason</label>
+                                    <textarea id="rate-description" class="form-input" rows="3" required
+                                              placeholder="Explain why this rate change is needed..."></textarea>
+                                    <small class="form-help">Minimum 10 characters required</small>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="clearModal()">
+                                Cancel
+                            </button>
+                            <button type="submit" form="hourly-rate-form" class="btn-primary">
+                                Create Proposal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modalContainer.style.display = 'flex';
+            
+            log('✅ Modal HTML inserted and displayed');
+            log(`Modal HTML length: ${modalContainer.innerHTML.length}`);
+            log(`Modal display style: ${modalContainer.style.display}`);
+        }
+        
+        function testModalWithRedBackground() {
+            log('Testing modal with red background...');
+            
+            const modalContainer = document.getElementById('modal-container');
+            if (!modalContainer) {
+                log('❌ Modal container not found');
+                return;
+            }
+            
+            // Same HTML as above
+            modalContainer.innerHTML = `
+                <div class="modal-overlay">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>Update Hourly Rate (Red Background Test)</h3>
+                            <button class="modal-close" type="button" onclick="clearModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p>This modal should have a red background overlay to match the admin panel debug.</p>
+                            <form id="hourly-rate-form" class="admin-form">
+                                <div class="form-group">
+                                    <label for="new-rate">New Hourly Rate (USDC)</label>
+                                    <input type="number" id="new-rate" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rate-description">Description/Reason</label>
+                                    <textarea id="rate-description" rows="3" required></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-secondary" onclick="clearModal()">Cancel</button>
+                            <button type="submit" class="btn-primary">Create Proposal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modalContainer.style.display = 'flex';
+            modalContainer.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
+            modalContainer.style.zIndex = '9999';
+            
+            log('✅ Modal with red background displayed');
+            log(`Modal dimensions: ${modalContainer.offsetWidth}x${modalContainer.offsetHeight}`);
+        }
+        
+        function clearModal() {
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                modalContainer.style.display = 'none';
+                modalContainer.innerHTML = '';
+                modalContainer.style.backgroundColor = '';
+                modalContainer.style.zIndex = '';
+                log('✅ Modal cleared');
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            log('🧪 Modal HTML test loaded');
+            log('📋 Ready to test modal HTML insertion');
+        });
+    </script>
+</body>
+</html>

@@ -50,8 +50,25 @@ class MasterInitializer {
         // Load SES-safe handler first
         await this.loadScript('js/utils/ses-safe-handler.js');
 
+        // Load demo configuration first (if available)
+        try {
+            await this.loadScript('js/config/demo-config.js');
+        } catch (error) {
+            console.log('Demo config not found - running in production mode');
+        }
+
         // Load main configuration
         await this.loadScript('js/config/app-config.js');
+
+        // Load mock service if demo mode is enabled
+        if (window.DEMO_CONFIG && window.DEMO_CONFIG.ENABLED) {
+            try {
+                await this.loadScript('js/services/mock-blockchain-service.js');
+                console.log('🎭 Demo mode active - Mock blockchain service loaded');
+            } catch (error) {
+                console.warn('Failed to load mock blockchain service:', error);
+            }
+        }
 
         // Verify configuration loaded
         if (!window.CONFIG) {

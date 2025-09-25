@@ -47,6 +47,9 @@ class AdminPage {
             console.log('🚀 Production mode: Waiting for contract manager and wallet...');
             await this.waitForSystemReady();
 
+            // Perform network health check before contract manager initialization
+            await this.performNetworkHealthCheck();
+
             // Wait for contract manager to be ready
             if (!window.contractManager?.isReady()) {
                 console.log('⏳ Waiting for contract manager...');
@@ -144,6 +147,35 @@ class AdminPage {
 
             checkReady();
         });
+    }
+
+    async performNetworkHealthCheck() {
+        try {
+            console.log('🏥 Performing network health check...');
+
+            // Check if NetworkHealthCheck is available
+            if (!window.NetworkHealthCheck) {
+                console.warn('⚠️ NetworkHealthCheck not available, skipping health check');
+                return;
+            }
+
+            const healthChecker = new window.NetworkHealthCheck();
+            const contractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+
+            // Perform comprehensive health check
+            const isReady = await healthChecker.waitForNetworkReady(contractAddress, 20000); // 20 second timeout
+
+            if (!isReady) {
+                console.warn('⚠️ Network health check failed, but continuing with initialization');
+                // Don't throw error - let the system try to continue
+            } else {
+                console.log('✅ Network health check passed');
+            }
+
+        } catch (error) {
+            console.warn('⚠️ Network health check error:', error.message);
+            // Don't throw error - let the system try to continue
+        }
     }
 
     async waitForContractManager(timeout = 30000) {
@@ -442,7 +474,9 @@ class AdminPage {
                 // Call the appropriate modal method
                 switch (modalType) {
                     case 'hourly-rate':
+                        console.log('🔧 DEBUG: About to call showHourlyRateModal()');
                         this.showHourlyRateModal();
+                        console.log('🔧 DEBUG: showHourlyRateModal() completed');
                         break;
                     case 'add-pair':
                         this.showAddPairModal();
@@ -491,6 +525,14 @@ class AdminPage {
                 return;
             }
 
+            // Add Another Pair button in Update Weights modal
+            if (e.target.id === 'add-weight-pair') {
+                e.preventDefault();
+                console.log('🔘 Add Another Pair button clicked');
+                this.addAnotherPairRow();
+                return;
+            }
+
             // Action buttons in modals (for backward compatibility)
             if (e.target.classList.contains('btn') && e.target.closest('.modal-content')) {
                 const buttonText = e.target.textContent.trim();
@@ -517,40 +559,40 @@ class AdminPage {
 
             // Handle admin forms
             if (form.classList.contains('admin-form') || form.closest('.modal-content')) {
+                e.preventDefault(); // Always prevent default first
                 console.log('📝 Form submitted:', form.id);
 
-                // Validate form
-                if (!this.validateForm(form)) {
-                    e.preventDefault();
-                    console.warn('⚠️ Form validation failed');
-                    return;
-                }
+                // Add small delay to ensure DOM is ready
+                setTimeout(() => {
+                    // Validate form using form ID
+                    if (!this.validateForm(form.id)) {
+                        console.warn('⚠️ Form validation failed');
+                        return;
+                    }
 
-                // Handle specific form types
-                switch (form.id) {
-                    case 'hourly-rate-form':
-                        e.preventDefault();
-                        this.submitHourlyRateProposal(e);
-                        break;
-                    case 'add-pair-form':
-                        e.preventDefault();
-                        this.submitAddPairProposal(e);
-                        break;
-                    case 'remove-pair-form':
-                        e.preventDefault();
-                        this.submitRemovePairProposal(e);
-                        break;
-                    case 'change-signer-form':
-                        e.preventDefault();
-                        this.submitChangeSignerProposal(e);
-                        break;
-                    case 'withdrawal-form':
-                        e.preventDefault();
-                        this.submitWithdrawalProposal(e);
-                        break;
-                    default:
-                        console.log('📝 Unhandled form submission:', form.id);
-                }
+                    console.log('✅ Form validation passed, proceeding with submission');
+
+                    // Handle specific form types
+                    switch (form.id) {
+                        case 'hourly-rate-form':
+                            this.submitHourlyRateProposal(e);
+                            break;
+                        case 'add-pair-form':
+                            this.submitAddPairProposal(e);
+                            break;
+                        case 'remove-pair-form':
+                            this.submitRemovePairProposal(e);
+                            break;
+                        case 'change-signer-form':
+                            this.submitChangeSignerProposal(e);
+                            break;
+                        case 'withdrawal-form':
+                            this.submitWithdrawalProposal(e);
+                            break;
+                        default:
+                            console.log('📝 Unhandled form submission:', form.id);
+                    }
+                }, 100);
             }
         });
     }
@@ -1075,13 +1117,26 @@ class AdminPage {
             }
 
             // Get action counter and required approvals with enhanced error handling
-            const actionCounter = await contractManager.retryContractCall(
-                () => contractManager.stakingContract.actionCounter().then(result => result.toNumber()),
-                3,
-                'actionCounter'
-            );
+            let actionCounter = 0;
+            let requiredApprovals = 2; // Default fallback
 
-            const requiredApprovals = await contractManager.getRequiredApprovals(); // Enhanced with retry logic
+            try {
+                actionCounter = await contractManager.retryContractCall(
+                    () => contractManager.stakingContract.actionCounter().then(result => result.toNumber()),
+                    3,
+                    'actionCounter'
+                );
+            } catch (error) {
+                console.log('⚠️ actionCounter function not available, using fallback value: 0');
+                actionCounter = 0;
+            }
+
+            try {
+                requiredApprovals = await contractManager.getRequiredApprovals(); // Enhanced with retry logic
+            } catch (error) {
+                console.log('⚠️ getRequiredApprovals function not available, using fallback value: 2');
+                requiredApprovals = 2;
+            }
 
             console.log(`📊 Found ${actionCounter} total actions, ${requiredApprovals} approvals required`);
 
@@ -2262,14 +2317,110 @@ class AdminPage {
         }
     }
 
+    // Universal modal visibility fix
+    applyModalVisibilityFixes(modalContainer) {
+        console.log('🔧 DEBUG: Applying universal modal visibility fixes');
+
+        // Container fixes
+        modalContainer.style.display = 'flex';
+        modalContainer.style.zIndex = '999999';
+        modalContainer.style.position = 'fixed';
+        modalContainer.style.top = '0';
+        modalContainer.style.left = '0';
+        modalContainer.style.width = '100%';
+        modalContainer.style.height = '100%';
+        modalContainer.style.pointerEvents = 'auto';
+        modalContainer.style.opacity = '1';
+        modalContainer.style.visibility = 'visible';
+
+        // Content fixes
+        const modalOverlay = modalContainer.querySelector('.modal-overlay');
+        const modalContent = modalContainer.querySelector('.modal-content');
+
+        if (modalContent) {
+            modalContent.style.background = 'white';
+            modalContent.style.zIndex = '1000000';
+            modalContent.style.opacity = '1';
+            modalContent.style.visibility = 'visible';
+            modalContent.style.display = 'block';
+            modalContent.style.pointerEvents = 'auto';
+            modalContent.style.padding = '0'; // Let CSS handle padding
+            modalContent.style.borderRadius = '8px';
+            modalContent.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+            modalContent.style.maxHeight = '90vh';
+            modalContent.style.overflowY = 'auto';
+
+            // Force modal footer visibility
+            const modalFooter = modalContent.querySelector('.modal-footer');
+            if (modalFooter) {
+                modalFooter.style.display = 'flex';
+                modalFooter.style.justifyContent = 'flex-end';
+                modalFooter.style.gap = '10px';
+                modalFooter.style.padding = '20px';
+                modalFooter.style.borderTop = '1px solid #e0e0e0';
+                modalFooter.style.background = 'white';
+                modalFooter.style.position = 'sticky';
+                modalFooter.style.bottom = '0';
+                modalFooter.style.zIndex = '1000001';
+                modalFooter.style.opacity = '1';
+                modalFooter.style.visibility = 'visible';
+                modalFooter.style.minHeight = '60px';
+
+                // Force all buttons in footer to be visible
+                const buttons = modalFooter.querySelectorAll('button');
+                buttons.forEach((btn, index) => {
+                    btn.style.display = 'inline-block';
+                    btn.style.opacity = '1';
+                    btn.style.visibility = 'visible';
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.minHeight = '40px';
+                    btn.style.padding = '10px 20px';
+                    btn.style.margin = '0 5px';
+                    btn.style.borderRadius = '4px';
+                    btn.style.cursor = 'pointer';
+                    btn.style.fontSize = '14px';
+                    btn.style.zIndex = '1000002';
+
+                    if (btn.classList.contains('btn-primary')) {
+                        btn.style.background = '#007bff';
+                        btn.style.color = 'white';
+                        btn.style.border = '1px solid #007bff';
+                    } else if (btn.classList.contains('btn-secondary')) {
+                        btn.style.background = '#6c757d';
+                        btn.style.color = 'white';
+                        btn.style.border = '1px solid #6c757d';
+                    }
+
+                    console.log(`🔧 DEBUG: Button ${index + 1} forced visible:`, btn.textContent.trim());
+                });
+
+                console.log('🔧 DEBUG: Modal footer visibility forced with', buttons.length, 'buttons');
+            }
+        }
+
+        if (modalOverlay) {
+            modalOverlay.style.zIndex = '999999';
+            modalOverlay.style.opacity = '1';
+            modalOverlay.style.visibility = 'visible';
+            modalOverlay.style.display = 'flex';
+            modalOverlay.style.pointerEvents = 'auto';
+            modalOverlay.style.background = 'rgba(0, 0, 0, 0.8)';
+        }
+
+        console.log('✅ Universal modal visibility fixes applied');
+    }
+
     // Multi-signature modal components
     showHourlyRateModal() {
+        console.log('🔧 DEBUG: showHourlyRateModal called');
         const modalContainer = document.getElementById('modal-container');
+        console.log('🔧 DEBUG: modalContainer found:', !!modalContainer);
         if (!modalContainer) {
             console.error('❌ Modal container not found');
             return;
         }
 
+        console.log('🔧 DEBUG: Setting modal HTML content...');
         modalContainer.innerHTML = `
             <div class="modal-overlay">
                 <div class="modal-content" onclick="event.stopPropagation()">
@@ -2318,16 +2469,20 @@ class AdminPage {
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
+
         console.log('✅ Hourly rate modal opened');
     }
 
     showAddPairModal() {
+        console.log('🔧 DEBUG: showAddPairModal called');
         const modalContainer = document.getElementById('modal-container');
         if (!modalContainer) {
             console.error('❌ Modal container not found');
             return;
         }
+        console.log('🔧 DEBUG: Add Pair modal container found');
 
         modalContainer.innerHTML = `
             <div class="modal-overlay">
@@ -2338,25 +2493,53 @@ class AdminPage {
                     </div>
 
                     <div class="modal-body">
+                        <div id="validation-messages" class="validation-messages"></div>
                         <form id="add-pair-form" class="admin-form">
                             <div class="form-group">
-                                <label for="pair-address">Pair Contract Address</label>
+                                <label for="pair-address">LP Token Address *</label>
                                 <input type="text" id="pair-address" class="form-input" required
                                        placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$">
                                 <small class="form-help">Enter the LP token contract address</small>
+                                <div class="field-error" id="pair-address-error"></div>
                             </div>
 
                             <div class="form-group">
-                                <label for="pair-weight">Initial Weight</label>
-                                <input type="number" id="pair-weight" class="form-input" step="1" min="1" required
+                                <label for="pair-name">Pair Name *</label>
+                                <input type="text" id="pair-name" class="form-input" required
+                                       placeholder="e.g., LIB/USDC" maxlength="50">
+                                <small class="form-help">Descriptive name for the trading pair</small>
+                                <div class="field-error" id="pair-name-error"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="pair-platform">Platform *</label>
+                                <select id="pair-platform" class="form-input" required>
+                                    <option value="">Select platform...</option>
+                                    <option value="Uniswap V3">Uniswap V3</option>
+                                    <option value="Uniswap V2">Uniswap V2</option>
+                                    <option value="SushiSwap">SushiSwap</option>
+                                    <option value="Curve Finance">Curve Finance</option>
+                                    <option value="Balancer">Balancer</option>
+                                    <option value="PancakeSwap">PancakeSwap</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <small class="form-help">Select the DEX platform where this pair trades</small>
+                                <div class="field-error" id="pair-platform-error"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="pair-weight">Allocation Points *</label>
+                                <input type="number" id="pair-weight" class="form-input" step="1" min="1" max="10000" required
                                        placeholder="Enter weight (e.g., 100)">
-                                <small class="form-help">Higher weight = more rewards allocation</small>
+                                <small class="form-help">Weight determines reward allocation (1-10,000)</small>
+                                <div class="field-error" id="pair-weight-error"></div>
                             </div>
 
                             <div class="form-group">
                                 <label for="pair-description">Description</label>
-                                <textarea id="pair-description" class="form-input" rows="3" required
-                                          placeholder="Describe this pair and why it should be added..."></textarea>
+                                <textarea id="pair-description" class="form-input" rows="3"
+                                          placeholder="Optional description or notes about this pair..." maxlength="500"></textarea>
+                                <small class="form-help">Additional information about the pair (optional)</small>
                             </div>
 
                             <div class="proposal-info">
@@ -2376,16 +2559,38 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="add-pair-form" class="btn btn-primary">
-                            Create Proposal
+                        <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn">
+                            <span class="btn-text">Create Proposal</span>
+                            <span class="btn-loading" style="display: none;">
+                                <span class="spinner"></span> Creating...
+                            </span>
                         </button>
                     </div>
                 </div>
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
+
         console.log('✅ Add pair modal opened');
+
+        // Initialize form validation AFTER a delay to prevent immediate triggering
+        setTimeout(() => {
+            try {
+                // Set flag to prevent immediate validation
+                this.modalJustOpened = true;
+                this.initializeFormValidation('add-pair-form');
+                console.log('✅ Add pair form validation initialized');
+
+                // Clear flag after a short delay
+                setTimeout(() => {
+                    this.modalJustOpened = false;
+                }, 1000);
+            } catch (error) {
+                console.error('❌ Form validation initialization failed:', error);
+            }
+        }, 100);
     }
 
     showUpdateWeightsModal() {
@@ -2404,18 +2609,26 @@ class AdminPage {
                     </div>
 
                     <div class="modal-body">
+                        <div id="validation-messages" class="validation-messages"></div>
                         <form id="update-weights-form" class="admin-form">
                             <div class="form-group">
-                                <label>Current Pairs</label>
+                                <label>Pair Weight Updates</label>
                                 <div id="weights-list">
-                                    <p>Loading current pairs...</p>
+                                    <div class="loading-spinner">
+                                        <span class="spinner"></span> Loading current pairs...
+                                    </div>
                                 </div>
+                                <button type="button" class="btn btn-outline btn-sm" id="add-weight-pair" style="margin-top: 10px;">
+                                    + Add Another Pair
+                                </button>
                             </div>
 
                             <div class="form-group">
-                                <label for="weights-description">Description</label>
+                                <label for="weights-description">Description *</label>
                                 <textarea id="weights-description" class="form-input" rows="3" required
-                                          placeholder="Explain the reason for these weight changes..."></textarea>
+                                          placeholder="Explain the reason for these weight changes..." maxlength="500"></textarea>
+                                <small class="form-help">Describe why these weight changes are needed</small>
+                                <div class="field-error" id="weights-description-error"></div>
                             </div>
 
                             <div class="proposal-info">
@@ -2435,16 +2648,25 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="update-weights-form" class="btn btn-primary">
-                            Create Proposal
+                        <button type="submit" form="update-weights-form" class="btn btn-primary" id="update-weights-btn">
+                            <span class="btn-text">Create Proposal</span>
+                            <span class="btn-loading" style="display: none;">
+                                <span class="spinner"></span> Creating...
+                            </span>
                         </button>
                     </div>
                 </div>
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
+
         console.log('✅ Update weights modal opened');
+
+        // Initialize form validation and load pairs
+        this.initializeFormValidation('update-weights-form');
+        this.loadPairsForWeightUpdate();
     }
 
     showRemovePairModal() {
@@ -2460,26 +2682,39 @@ class AdminPage {
                     </div>
 
                     <div class="modal-body">
-                        <form id="remove-pair-form" onsubmit="adminPage.submitRemovePairProposal(event)">
+                        <div id="validation-messages" class="validation-messages"></div>
+                        <form id="remove-pair-form" class="admin-form">
                             <div class="form-group">
-                                <label for="remove-pair-select">Select Pair to Remove</label>
-                                <select id="remove-pair-select" required>
-                                    <option value="">Choose a pair...</option>
-                                    ${this.renderPairOptions()}
+                                <label for="remove-pair-select">Select Pair to Remove *</label>
+                                <select id="remove-pair-select" class="form-input" required>
+                                    <option value="">Loading pairs...</option>
                                 </select>
+                                <small class="form-help">Choose the LP pair to remove from staking</small>
+                                <div class="field-error" id="remove-pair-select-error"></div>
                             </div>
 
                             <div class="form-group">
-                                <label for="remove-description">Reason for Removal</label>
-                                <textarea id="remove-description" rows="3" required
-                                          placeholder="Explain why this pair should be removed..."></textarea>
+                                <label for="remove-description">Reason for Removal *</label>
+                                <textarea id="remove-description" class="form-input" rows="3" required
+                                          placeholder="Explain why this pair should be removed..." maxlength="500"></textarea>
+                                <small class="form-help">Provide a clear justification for removing this pair</small>
+                                <div class="field-error" id="remove-description-error"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="confirm-removal" required>
+                                    <span class="checkmark"></span>
+                                    I understand that removing this pair will stop all reward distributions
+                                </label>
+                                <div class="field-error" id="confirm-removal-error"></div>
                             </div>
 
                             <div class="warning-box">
                                 <div class="warning-icon">⚠️</div>
                                 <div class="warning-text">
                                     <strong>Warning:</strong> Removing a pair will stop all reward distributions for that pair.
-                                    Existing stakers will need to unstake before removal.
+                                    Existing stakers will need to unstake before removal can be completed.
                                 </div>
                             </div>
 
@@ -2497,18 +2732,27 @@ class AdminPage {
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="remove-pair-form" class="btn btn-danger">
-                            Create Removal Proposal
+                        <button type="submit" form="remove-pair-form" class="btn btn-danger" id="remove-pair-btn">
+                            <span class="btn-text">Create Removal Proposal</span>
+                            <span class="btn-loading" style="display: none;">
+                                <span class="spinner"></span> Creating...
+                            </span>
                         </button>
                     </div>
                 </div>
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
+        console.log('✅ Remove pair modal opened');
+
+        // Initialize form validation and load pairs
+        this.initializeFormValidation('remove-pair-form');
+        this.loadPairsForRemoval();
     }
 
     showChangeSignerModal() {
@@ -2568,7 +2812,7 @@ class AdminPage {
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
                         <button type="submit" form="change-signer-form" class="btn btn-warning">
@@ -2579,7 +2823,8 @@ class AdminPage {
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
     }
 
     showWithdrawalModal() {
@@ -2638,7 +2883,7 @@ class AdminPage {
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
                         <button type="submit" form="withdrawal-form" class="btn btn-primary">
@@ -2649,7 +2894,8 @@ class AdminPage {
             </div>
         `;
 
-        modalContainer.style.display = 'flex';
+        // Apply universal modal visibility fixes
+        this.applyModalVisibilityFixes(modalContainer);
     }
 
     closeModal() {
@@ -2657,6 +2903,424 @@ class AdminPage {
         if (modalContainer) {
             modalContainer.style.display = 'none';
             modalContainer.innerHTML = '';
+        }
+    }
+
+    // Missing function that's called from HTML
+    refreshContractInfo() {
+        console.log('🔄 Refreshing contract info...');
+        try {
+            this.loadContractStats();
+            console.log('✅ Contract info refreshed');
+        } catch (error) {
+            console.error('❌ Failed to refresh contract info:', error);
+        }
+    }
+
+    // Add another pair row in Update Weights modal
+    addAnotherPairRow() {
+        console.log('🔧 Adding another pair row...');
+
+        const container = document.getElementById('weight-pairs-container');
+        if (!container) {
+            console.error('❌ Weight pairs container not found');
+            return;
+        }
+
+        // Count existing pair rows
+        const existingRows = container.querySelectorAll('.pair-weight-row').length;
+        const newRowIndex = existingRows;
+
+        // Create new pair row HTML
+        const newRowHTML = `
+            <div class="pair-weight-row" data-index="${newRowIndex}">
+                <div class="pair-weight-item">
+                    <label for="pair-select-${newRowIndex}">Pair ${newRowIndex + 1}</label>
+                    <select id="pair-select-${newRowIndex}" class="form-input" required>
+                        <option value="">Select pair...</option>
+                        <option value="LPLIBETH">LIB/ETH</option>
+                        <option value="LPLIBUSDC">LIB/USDC</option>
+                        <option value="LPLIBUSDT">LIB/USDT</option>
+                    </select>
+                </div>
+                <div class="pair-weight-item">
+                    <label for="weight-${newRowIndex}">New Weight</label>
+                    <input type="number" id="weight-${newRowIndex}" class="form-input"
+                           min="1" max="10000" step="1" required placeholder="Enter weight">
+                </div>
+                <div class="pair-weight-item">
+                    <button type="button" class="btn btn-danger btn-sm remove-pair-row"
+                            data-index="${newRowIndex}" style="margin-top: 25px;">
+                        Remove
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Add the new row before the "Add Another Pair" button
+        const addButton = document.getElementById('add-weight-pair');
+        if (addButton) {
+            addButton.insertAdjacentHTML('beforebegin', newRowHTML);
+            console.log(`✅ Added pair row ${newRowIndex + 1}`);
+
+            // Add event listener for the remove button
+            const removeBtn = container.querySelector(`[data-index="${newRowIndex}"] .remove-pair-row`);
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const rowIndex = e.target.dataset.index;
+                    const rowToRemove = container.querySelector(`[data-index="${rowIndex}"]`);
+                    if (rowToRemove) {
+                        rowToRemove.remove();
+                        console.log(`✅ Removed pair row ${parseInt(rowIndex) + 1}`);
+                    }
+                });
+            }
+        }
+    }
+
+    // Form validation system
+    initializeFormValidation(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+
+        // Add real-time validation
+        form.addEventListener('input', (e) => {
+            this.validateField(e.target);
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('🔧 DEBUG: Form submit event triggered for:', formId);
+
+            // Only validate when user actually submits
+            try {
+                if (this.validateForm(formId)) {
+                    console.log('✅ Form validation passed, submitting...');
+                    this.handleFormSubmission(formId);
+                } else {
+                    console.log('❌ Form validation failed');
+                }
+            } catch (error) {
+                console.error('❌ Form validation error:', error);
+            }
+        });
+    }
+
+    validateField(field) {
+        const fieldId = field.id;
+        const value = field.value.trim();
+        const errorElement = document.getElementById(`${fieldId}-error`);
+        let isValid = true;
+        let errorMessage = '';
+
+        // Clear previous error
+        if (errorElement) {
+            errorElement.textContent = '';
+            field.classList.remove('error');
+        }
+
+        // Required field validation
+        if (field.hasAttribute('required') && !value) {
+            isValid = false;
+            errorMessage = 'This field is required';
+        }
+
+        // Specific field validations
+        switch (fieldId) {
+            case 'pair-address':
+                if (value && !this.isValidAddress(value)) {
+                    isValid = false;
+                    errorMessage = 'Invalid Ethereum address format';
+                }
+                break;
+            case 'pair-name':
+                if (value && (value.length < 2 || value.length > 50)) {
+                    isValid = false;
+                    errorMessage = 'Pair name must be between 2-50 characters';
+                }
+                break;
+            case 'pair-weight':
+                const weight = parseInt(value);
+                if (value && (isNaN(weight) || weight < 1 || weight > 10000)) {
+                    isValid = false;
+                    errorMessage = 'Weight must be between 1-10,000';
+                }
+                break;
+        }
+
+        // Display error if invalid
+        if (!isValid && errorElement) {
+            errorElement.textContent = errorMessage;
+            field.classList.add('error');
+        }
+
+        return isValid;
+    }
+
+    validateForm(formId) {
+        console.log('🔧 DEBUG: Looking for form with ID:', formId);
+
+        const form = document.getElementById(formId);
+        if (!form) {
+            console.log('🔧 DEBUG: Form not found:', formId);
+
+            // Check if modal is open
+            const modal = document.getElementById('modal-container');
+            console.log('🔧 DEBUG: Modal container exists:', !!modal);
+            console.log('🔧 DEBUG: Modal display:', modal ? modal.style.display : 'N/A');
+
+            // Check all forms in the document
+            const allForms = document.querySelectorAll('form');
+            console.log('🔧 DEBUG: All forms in document:', Array.from(allForms).map(f => f.id));
+
+            return false;
+        }
+
+        console.log('🔧 DEBUG: Validating form:', formId);
+        let isValid = true;
+        const inputs = form.querySelectorAll('input, select, textarea');
+
+        // Check if any required fields are empty
+        inputs.forEach(input => {
+            const value = input.value.trim();
+            const isRequired = input.hasAttribute('required');
+
+            console.log(`🔧 DEBUG: Field ${input.id || input.name}: "${value}" (required: ${isRequired})`);
+
+            if (isRequired && !value) {
+                console.log(`❌ Required field empty: ${input.id || input.name}`);
+
+                // Show custom error message instead of browser default
+                const errorElement = document.getElementById(`${input.id}-error`);
+                if (errorElement) {
+                    errorElement.textContent = 'This field is required';
+                    errorElement.style.display = 'block';
+                }
+
+                // Add error styling
+                input.classList.add('error');
+                input.classList.remove('valid');
+
+                isValid = false;
+            } else if (isRequired && value) {
+                // Clear error if field is now filled
+                const errorElement = document.getElementById(`${input.id}-error`);
+                if (errorElement) {
+                    errorElement.textContent = '';
+                    errorElement.style.display = 'none';
+                }
+
+                // Add valid styling
+                input.classList.remove('error');
+                input.classList.add('valid');
+            }
+
+            // Additional validation for specific field types
+            if (value && input.type === 'email' && !value.includes('@')) {
+                console.log(`❌ Invalid email: ${input.id || input.name}`);
+                isValid = false;
+            }
+
+            if (value && input.pattern) {
+                const regex = new RegExp(input.pattern);
+                if (!regex.test(value)) {
+                    console.log(`❌ Pattern mismatch: ${input.id || input.name}`);
+                    isValid = false;
+                }
+            }
+        });
+
+        console.log(`🔧 DEBUG: Form validation result: ${isValid ? 'PASSED' : 'FAILED'}`);
+        return isValid;
+    }
+
+    isValidAddress(address) {
+        return /^0x[a-fA-F0-9]{40}$/.test(address);
+    }
+
+    // Dynamic data loading methods
+    async loadPairsForRemoval() {
+        const select = document.getElementById('remove-pair-select');
+        if (!select) return;
+
+        try {
+            select.innerHTML = '<option value="">Loading pairs...</option>';
+
+            // Get pairs from contract
+            const contractManager = await this.ensureContractReady();
+            const pairs = await contractManager.getAllPairsInfo();
+
+            select.innerHTML = '<option value="">Select a pair to remove...</option>';
+
+            if (pairs && pairs.length > 0) {
+                pairs.forEach(pair => {
+                    const option = document.createElement('option');
+                    option.value = pair.address;
+                    option.textContent = `${pair.name} (${pair.address.substring(0, 8)}...)`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No pairs available</option>';
+            }
+        } catch (error) {
+            console.error('Failed to load pairs:', error);
+            select.innerHTML = '<option value="">Failed to load pairs</option>';
+        }
+    }
+
+    async loadPairsForWeightUpdate() {
+        const container = document.getElementById('weights-list');
+        if (!container) return;
+
+        try {
+            container.innerHTML = '<div class="loading-spinner"><span class="spinner"></span> Loading current pairs...</div>';
+
+            // Get pairs from contract
+            const contractManager = await this.ensureContractReady();
+            const pairs = await contractManager.getAllPairsInfo();
+
+            if (pairs && pairs.length > 0) {
+                let html = '';
+                pairs.forEach((pair, index) => {
+                    html += `
+                        <div class="weight-pair-item" data-pair="${pair.address}">
+                            <div class="pair-info">
+                                <strong>${pair.name}</strong>
+                                <small>${pair.address}</small>
+                            </div>
+                            <div class="weight-input-group">
+                                <label>Current: ${pair.weight}</label>
+                                <input type="number"
+                                       class="form-input weight-input"
+                                       id="weight-${index}"
+                                       placeholder="New weight"
+                                       min="1" max="10000"
+                                       data-pair="${pair.address}"
+                                       data-current="${pair.weight}">
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="no-data">No pairs available for weight updates</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load pairs for weight update:', error);
+            container.innerHTML = '<p class="error-message">Failed to load pairs. Please try again.</p>';
+        }
+    }
+
+    // Form submission handler
+    async handleFormSubmission(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+
+        const submitBtn = form.querySelector('button[type="submit"]') || document.querySelector(`button[form="${formId}"]`);
+
+        try {
+            this.showLoading(submitBtn);
+
+            switch (formId) {
+                case 'add-pair-form':
+                    await this.submitAddPairProposal();
+                    break;
+                case 'remove-pair-form':
+                    await this.submitRemovePairProposal();
+                    break;
+                case 'update-weights-form':
+                    await this.submitUpdateWeightsProposal();
+                    break;
+                case 'change-signer-form':
+                    await this.submitChangeSignerProposal();
+                    break;
+                case 'withdrawal-form':
+                    await this.submitWithdrawalProposal();
+                    break;
+                case 'hourly-rate-form':
+                    await this.submitHourlyRateProposal();
+                    break;
+                default:
+                    throw new Error('Unknown form type');
+            }
+
+            this.showSuccess('Proposal created successfully!');
+            this.closeModal();
+
+            // Refresh data
+            if (this.loadProposals) {
+                this.loadProposals();
+            }
+
+        } catch (error) {
+            console.error('Form submission error:', error);
+            this.showError(error.message || 'Failed to create proposal. Please try again.');
+        } finally {
+            this.hideLoading(submitBtn);
+        }
+    }
+
+    // UI Helper methods
+    showLoading(button) {
+        if (!button) return;
+
+        const textSpan = button.querySelector('.btn-text');
+        const loadingSpan = button.querySelector('.btn-loading');
+
+        if (textSpan) textSpan.style.display = 'none';
+        if (loadingSpan) loadingSpan.style.display = 'inline-flex';
+
+        button.disabled = true;
+    }
+
+    hideLoading(button) {
+        if (!button) return;
+
+        const textSpan = button.querySelector('.btn-text');
+        const loadingSpan = button.querySelector('.btn-loading');
+
+        if (textSpan) textSpan.style.display = 'inline';
+        if (loadingSpan) loadingSpan.style.display = 'none';
+
+        button.disabled = false;
+    }
+
+    showSuccess(message) {
+        this.showMessage(message, 'success');
+    }
+
+    showError(message) {
+        this.showMessage(message, 'error');
+    }
+
+    showMessage(message, type = 'info') {
+        // Create or update validation messages container
+        let container = document.getElementById('validation-messages');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'validation-messages';
+            container.className = 'validation-messages';
+
+            // Insert at top of modal body
+            const modalBody = document.querySelector('.modal-body');
+            if (modalBody) {
+                modalBody.insertBefore(container, modalBody.firstChild);
+            }
+        }
+
+        container.innerHTML = `
+            <div class="message ${type}">
+                <span class="message-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                <span class="message-text">${message}</span>
+            </div>
+        `;
+
+        // Auto-hide success messages
+        if (type === 'success') {
+            setTimeout(() => {
+                if (container) container.innerHTML = '';
+            }, 3000);
         }
     }
 
@@ -2694,68 +3358,138 @@ class AdminPage {
         }
     }
 
-    async submitAddPairProposal(event) {
-        event.preventDefault();
+    async submitAddPairProposal(event = null) {
+        if (event) event.preventDefault();
 
         const pairAddress = document.getElementById('pair-address').value;
         const weight = document.getElementById('pair-weight').value;
-        const pairName = document.getElementById('pair-name').value || 'Unknown Pair';
-        const platform = document.getElementById('pair-platform').value || 'Unknown Platform';
+        const pairName = document.getElementById('pair-name').value;
+        const platform = document.getElementById('pair-platform').value;
+        const description = document.getElementById('pair-description').value;
+
+        // Validate required fields
+        if (!pairAddress || !weight || !pairName || !platform) {
+            throw new Error('Please fill in all required fields');
+        }
+
+        if (!this.isValidAddress(pairAddress)) {
+            throw new Error('Invalid LP token address format');
+        }
+
+        const weightNum = parseInt(weight);
+        if (isNaN(weightNum) || weightNum < 1 || weightNum > 10000) {
+            throw new Error('Weight must be between 1-10,000');
+        }
 
         try {
-            if (window.notificationManager) {
-                window.notificationManager.info('Creating Proposal', 'Submitting add pair proposal...');
-            }
-
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weight);
+            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum, description);
 
-            if (result.success) {
-                this.closeModal();
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', 'Add pair proposal submitted successfully');
-                }
-                await this.refreshData();
-            } else {
-                throw new Error(result.error);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to create proposal');
             }
+
+            return result;
 
         } catch (error) {
             console.error('Failed to create add pair proposal:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', error.message);
-            }
+            throw error;
         }
     }
 
-    async submitRemovePairProposal(event) {
-        event.preventDefault();
+    async submitRemovePairProposal(event = null) {
+        if (event) event.preventDefault();
 
         const pairAddress = document.getElementById('remove-pair-select').value;
         const description = document.getElementById('remove-description').value;
+        const confirmRemoval = document.getElementById('confirm-removal').checked;
+
+        // Validate required fields
+        if (!pairAddress) {
+            throw new Error('Please select a pair to remove');
+        }
+
+        if (!description || description.trim().length < 10) {
+            throw new Error('Please provide a detailed reason for removal (minimum 10 characters)');
+        }
+
+        if (!confirmRemoval) {
+            throw new Error('Please confirm that you understand the consequences of removing this pair');
+        }
 
         try {
-            if (window.notificationManager) {
-                window.notificationManager.info('Creating proposal...', 'Submitting remove pair proposal');
+            const contractManager = await this.ensureContractReady();
+            const result = await contractManager.proposeRemovePair(pairAddress, description);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to create removal proposal');
             }
 
-            const result = await window.contractManager.proposeRemovePair(pairAddress, description);
-
-            if (result.success) {
-                this.closeModal();
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', 'Remove pair proposal submitted successfully');
-                }
-                await this.refreshData();
-            } else {
-                throw new Error(result.error);
-            }
+            return result;
 
         } catch (error) {
             console.error('Failed to create remove pair proposal:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', error.message);
+            throw error;
+        }
+    }
+
+    async submitUpdateWeightsProposal(event = null) {
+        if (event) event.preventDefault();
+
+        const description = document.getElementById('weights-description').value;
+        const weightInputs = document.querySelectorAll('.weight-input');
+
+        // Validate description
+        if (!description || description.trim().length < 10) {
+            throw new Error('Please provide a detailed description for the weight changes (minimum 10 characters)');
+        }
+
+        // Collect weight updates
+        const weightUpdates = [];
+        weightInputs.forEach(input => {
+            const newWeight = input.value.trim();
+            if (newWeight) {
+                const pairAddress = input.dataset.pair;
+                const currentWeight = parseInt(input.dataset.current);
+                const newWeightNum = parseInt(newWeight);
+
+                if (isNaN(newWeightNum) || newWeightNum < 1 || newWeightNum > 10000) {
+                    throw new Error(`Invalid weight value: ${newWeight}. Must be between 1-10,000`);
+                }
+
+                if (newWeightNum !== currentWeight) {
+                    weightUpdates.push({
+                        pairAddress,
+                        newWeight: newWeightNum,
+                        currentWeight
+                    });
+                }
             }
+        });
+
+        if (weightUpdates.length === 0) {
+            throw new Error('Please specify at least one weight change');
+        }
+
+        try {
+            const contractManager = await this.ensureContractReady();
+
+            // Extract addresses and weights for contract call
+            const lpTokens = weightUpdates.map(update => update.pairAddress);
+            const weights = weightUpdates.map(update => update.newWeight);
+
+            // Create batch weight update proposal
+            const result = await contractManager.proposeUpdatePairWeights(lpTokens, weights);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to create weight update proposal');
+            }
+
+            return { success: true };
+
+        } catch (error) {
+            console.error('Failed to create weight update proposal:', error);
+            throw error;
         }
     }
 
@@ -2837,11 +3571,16 @@ class AdminPage {
     }
 
     renderSignerOptions() {
-        if (!this.contractStats?.signers || this.contractStats.signers.length === 0) {
+        // Get signers from CONFIG first, then fallback to contractStats
+        const signers = window.CONFIG?.GOVERNANCE?.SIGNERS || this.contractStats?.signers || [];
+
+        console.log('🔧 DEBUG: Available signers:', signers);
+
+        if (signers.length === 0) {
             return '<option value="">No signers available</option>';
         }
 
-        return this.contractStats.signers.map(signer => `
+        return signers.map(signer => `
             <option value="${signer}">
                 ${this.formatAddress(signer)}
             </option>

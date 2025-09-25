@@ -8,25 +8,41 @@
 window.CONFIG = {
     // Network Configuration
     NETWORK: {
-        CHAIN_ID: 31337, // Local Hardhat Network
-        NAME: 'Localhost 8545',
-        RPC_URL: 'http://127.0.0.1:8545',
+        CHAIN_ID: 80002, // Polygon Amoy Testnet
+        NAME: 'Polygon Amoy Testnet',
+        RPC_URL: 'https://rpc-amoy.polygon.technology',
         FALLBACK_RPCS: [
-            'http://127.0.0.1:8545'
+            'https://rpc-amoy.polygon.technology',
+            'https://polygon-amoy-bor-rpc.publicnode.com'
         ],
-        BLOCK_EXPLORER: 'http://localhost:8545', // No block explorer for local
+        BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
         NATIVE_CURRENCY: {
-            name: 'ETH',
-            symbol: 'ETH',
+            name: 'MATIC',
+            symbol: 'MATIC',
             decimals: 18
         }
     },
 
-    // Contract Addresses (Local Hardhat Deployment)
+    // Contract Addresses (Polygon Amoy Testnet Deployment)
     CONTRACTS: {
-        STAKING_CONTRACT: '0x5FbDB2315678afecb367f032d93F642f64180aa3', // Updated with local deployment
-        REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76', // LIB Token from deployment
-        LP_TOKEN: '0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827' // Placeholder - update with actual LP token
+        STAKING_CONTRACT: '0x1cAcD190b8a9223f24F6aBFb7Ba6D598B3E513f0',
+        REWARD_TOKEN: '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c', // Mock LibToken
+        LP_TOKENS: {
+            LPLIBETH: '0x34370487063aE6e02400Db1336f1724f28EF4cDC',
+            LPLIBUSDC: '0x020393f1E32DFeeE19D3889aa55205E6e4733623',
+            LPLIBUSDT: '0xE797b9130527BF6972Ee0a1e84D31e076f76f278'
+        }
+    },
+
+    // Governance Configuration
+    GOVERNANCE: {
+        SIGNERS: [
+            '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
+            '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+            '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F',
+            '0xd3ac493dc0dA16077CC589A838ac473bC010324F'
+        ],
+        REQUIRED_APPROVALS: 3
     },
 
     // Application Settings

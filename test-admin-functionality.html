@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Functionality Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .test-result { padding: 10px; margin: 5px 0; border-radius: 4px; font-family: monospace; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .contract-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Admin Functionality Test Suite</h1>
+    <p>This page tests all admin panel functionality including multisig operations.</p>
+
+    <div class="contract-info">
+        <h3>📄 Contract Information</h3>
+        <div><strong>Network:</strong> Localhost 8545 (Chain ID: 31337)</div>
+        <div><strong>Contract Address:</strong> 0x5FbDB2315678afecb367f032d93F642f64180aa3</div>
+        <div><strong>Status:</strong> <span id="contract-status">Checking...</span></div>
+    </div>
+
+    <div class="grid">
+        <div class="test-section">
+            <h3>🔧 System Tests</h3>
+            <button onclick="runSystemTests()">Run System Tests</button>
+            <div id="system-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Admin Access Tests</h3>
+            <button onclick="runAdminTests()">Run Admin Tests</button>
+            <div id="admin-results"></div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="test-section">
+            <h3>📋 Contract Query Tests</h3>
+            <button onclick="runQueryTests()">Run Query Tests</button>
+            <div id="query-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏛️ Multisig Tests</h3>
+            <button onclick="runMultisigTests()">Run Multisig Tests</button>
+            <div id="multisig-results"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Full Integration Test</h3>
+        <button onclick="runFullTest()">Run Complete Test Suite</button>
+        <div id="full-results"></div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="libs/ethers.umd.min.js"></script>
+    <script src="js/config/app-config.js"></script>
+    <script src="js/utils/network-health-check.js"></script>
+
+    <script>
+        let contractManager;
+        let provider;
+        let signer;
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            container.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function initializeSystem() {
+            try {
+                addResult('system-results', '🔄 Initializing system...', 'info');
+                
+                // Check if ethers is available
+                if (!window.ethers) {
+                    throw new Error('Ethers.js not loaded');
+                }
+                
+                // Check if config is available
+                if (!window.CONFIG) {
+                    throw new Error('Configuration not loaded');
+                }
+                
+                // Create provider
+                provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+                
+                // Test network connection
+                const network = await provider.getNetwork();
+                addResult('system-results', `✅ Connected to network: Chain ID ${network.chainId}`, 'success');
+                
+                // Update contract status
+                document.getElementById('contract-status').textContent = 'Connected';
+                
+                return true;
+            } catch (error) {
+                addResult('system-results', `❌ System initialization failed: ${error.message}`, 'error');
+                document.getElementById('contract-status').textContent = 'Failed';
+                return false;
+            }
+        }
+
+        async function runSystemTests() {
+            clearResults('system-results');
+            
+            try {
+                // Test 1: System initialization
+                const systemReady = await initializeSystem();
+                if (!systemReady) return;
+                
+                // Test 2: Contract deployment check
+                const contractAddress = window.CONFIG.CONTRACTS.STAKING_CONTRACT;
+                const code = await provider.getCode(contractAddress);
+                
+                if (code === '0x') {
+                    addResult('system-results', '❌ Contract not deployed', 'error');
+                    return;
+                }
+                
+                addResult('system-results', `✅ Contract deployed (${code.length} bytes)`, 'success');
+                
+                // Test 3: Contract interface test
+                const abi = [
+                    'function rewardToken() external view returns (address)',
+                    'function hourlyRewardRate() external view returns (uint256)',
+                    'function actionCounter() external view returns (uint256)'
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                
+                const rewardToken = await contract.rewardToken();
+                addResult('system-results', `✅ Reward token: ${rewardToken}`, 'success');
+                
+                const hourlyRate = await contract.hourlyRewardRate();
+                addResult('system-results', `✅ Hourly rate: ${ethers.utils.formatEther(hourlyRate)} tokens/hour`, 'success');
+                
+                const actionCounter = await contract.actionCounter();
+                addResult('system-results', `✅ Action counter: ${actionCounter.toString()}`, 'success');
+                
+                addResult('system-results', '🎉 All system tests passed!', 'success');
+                
+            } catch (error) {
+                addResult('system-results', `❌ System test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAdminTests() {
+            clearResults('admin-results');
+            
+            try {
+                addResult('admin-results', '🔄 Testing admin access...', 'info');
+                
+                // Check if MetaMask is available
+                if (!window.ethereum) {
+                    addResult('admin-results', '⚠️ MetaMask not available - cannot test admin access', 'warning');
+                    return;
+                }
+                
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
+                
+                addResult('admin-results', `✅ Connected wallet: ${userAddress}`, 'success');
+                
+                // Test admin role check
+                const contractAddress = window.CONFIG.CONTRACTS.STAKING_CONTRACT;
+                const abi = [
+                    'function hasRole(bytes32 role, address account) external view returns (bool)',
+                    'function getSigners() external view returns (address[])'
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                
+                // Check if user has admin role
+                const ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                const hasAdminRole = await contract.hasRole(ADMIN_ROLE, userAddress);
+                
+                if (hasAdminRole) {
+                    addResult('admin-results', '✅ User has admin role', 'success');
+                } else {
+                    addResult('admin-results', '⚠️ User does not have admin role', 'warning');
+                }
+                
+                // Get signers
+                const signers = await contract.getSigners();
+                addResult('admin-results', `✅ Contract signers: ${signers.length} found`, 'success');
+                signers.forEach((signer, index) => {
+                    addResult('admin-results', `   ${index + 1}. ${signer}`, 'info');
+                });
+                
+            } catch (error) {
+                addResult('admin-results', `❌ Admin test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runQueryTests() {
+            clearResults('query-results');
+            
+            try {
+                addResult('query-results', '🔄 Testing contract queries...', 'info');
+                
+                const contractAddress = window.CONFIG.CONTRACTS.STAKING_CONTRACT;
+                const abi = [
+                    'function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[])',
+                    'function getActivePairs() external view returns (address[])',
+                    'function totalWeight() external view returns (uint256)',
+                    'function REQUIRED_APPROVALS() external view returns (uint256)'
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                
+                // Test getPairs
+                const pairs = await contract.getPairs();
+                addResult('query-results', `✅ Total pairs: ${pairs.length}`, 'success');
+                
+                // Test getActivePairs
+                const activePairs = await contract.getActivePairs();
+                addResult('query-results', `✅ Active pairs: ${activePairs.length}`, 'success');
+                
+                // Test totalWeight
+                const totalWeight = await contract.totalWeight();
+                addResult('query-results', `✅ Total weight: ${totalWeight.toString()}`, 'success');
+                
+                // Test required approvals
+                const requiredApprovals = await contract.REQUIRED_APPROVALS();
+                addResult('query-results', `✅ Required approvals: ${requiredApprovals.toString()}`, 'success');
+                
+                addResult('query-results', '🎉 All query tests passed!', 'success');
+                
+            } catch (error) {
+                addResult('query-results', `❌ Query test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runMultisigTests() {
+            clearResults('multisig-results');
+            
+            try {
+                addResult('multisig-results', '🔄 Testing multisig functionality...', 'info');
+                
+                const contractAddress = window.CONFIG.CONTRACTS.STAKING_CONTRACT;
+                const abi = [
+                    'function actionCounter() external view returns (uint256)',
+                    'function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address[] memory pairs, uint256[] memory weights, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, address[] memory approvedBy, uint256 proposedTime, bool rejected)'
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                
+                // Test action counter
+                const actionCounter = await contract.actionCounter();
+                const actionCount = actionCounter.toNumber();
+                addResult('multisig-results', `✅ Total actions: ${actionCount}`, 'success');
+                
+                // Test getting actions (if any exist)
+                if (actionCount > 0) {
+                    for (let i = 1; i <= Math.min(actionCount, 5); i++) { // Test first 5 actions
+                        try {
+                            const action = await contract.actions(i);
+                            addResult('multisig-results', `✅ Action ${i}: Type ${action.actionType}, Executed: ${action.executed}`, 'success');
+                        } catch (error) {
+                            addResult('multisig-results', `⚠️ Could not get action ${i}: ${error.message}`, 'warning');
+                        }
+                    }
+                } else {
+                    addResult('multisig-results', '📝 No actions found (this is normal for a new deployment)', 'info');
+                }
+                
+                addResult('multisig-results', '🎉 Multisig tests completed!', 'success');
+                
+            } catch (error) {
+                addResult('multisig-results', `❌ Multisig test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runFullTest() {
+            clearResults('full-results');
+            addResult('full-results', '🚀 Starting complete test suite...', 'info');
+            
+            await runSystemTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runAdminTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runQueryTests();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runMultisigTests();
+            
+            addResult('full-results', '✅ Complete test suite finished!', 'success');
+        }
+
+        // Auto-run system tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runSystemTests, 1000);
+        });
+    </script>
+</body>
+</html>

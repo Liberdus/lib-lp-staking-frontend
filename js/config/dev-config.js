@@ -11,8 +11,11 @@ window.DEV_CONFIG = {
 
     // Authorized Admin Addresses (for production mode)
     AUTHORIZED_ADMINS: [
-        '0x0B046B290C50f3FDf1C61ecE442d42D9D79BD814', // Your wallet
-        '0x1234567890123456789012345678901234567890'  // Mock address
+        '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61', // Governance Signer 1
+        '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC', // Governance Signer 2
+        '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F', // Governance Signer 3
+        '0xd3ac493dc0dA16077CC589A838ac473bC010324F', // Governance Signer 4
+        '0x0B046B290C50f3FDf1C61ecE442d42D9D79BD814'  // Your wallet
     ],
     
     // Contract Settings

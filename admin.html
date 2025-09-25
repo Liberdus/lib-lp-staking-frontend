@@ -64,13 +64,44 @@
     <script src="js/config/app-config.js"></script>
     <script src="js/config/dev-config.js"></script>
 
-    <!-- Core Libraries -->
-    <script src="libs/ethers.umd.min.js"></script>
+    <!-- Core Libraries with fallbacks -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" onerror="loadEthersFallback()"></script>
+    <script>
+        function loadEthersFallback() {
+            console.log('Primary ethers CDN failed, trying local fallback...');
+            const script = document.createElement('script');
+            script.src = 'libs/ethers.umd.min.js';
+            script.onerror = () => {
+                console.error('❌ All ethers sources failed');
+                document.getElementById('error-boundary').style.display = 'flex';
+                document.getElementById('error-boundary').innerHTML = `
+                    <div class="error-container">
+                        <h2>❌ Critical Error</h2>
+                        <p>Ethers.js library failed to load. Please refresh the page or check your internet connection.</p>
+                    </div>
+                `;
+            };
+            document.head.appendChild(script);
+        }
+
+        // Verify ethers loaded
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (typeof ethers === 'undefined') {
+                    console.error('❌ Ethers.js not loaded after page load');
+                    loadEthersFallback();
+                } else {
+                    console.log('✅ Ethers.js loaded successfully:', ethers.version);
+                }
+            }, 1000);
+        });
+    </script>
 
     <!-- Core System -->
     <script src="js/utils/logger.js"></script>
     <script src="js/utils/event-manager.js"></script>
     <script src="js/utils/storage-manager.js"></script>
+    <script src="js/utils/network-health-check.js"></script>
     <script src="js/core/error-handler.js"></script>
     <script src="js/core/notification-manager.js"></script>
     
@@ -92,6 +123,54 @@
     <script src="js/master-initializer.js"></script>
 
     <script>
+        // Debug initialization
+        console.log('🔧 ADMIN DEBUG: Page scripts loading...');
+
+        // Check dependencies periodically
+        let checkCount = 0;
+        const maxChecks = 20;
+
+        function checkDependencies() {
+            checkCount++;
+            console.log(`🔧 ADMIN DEBUG: Dependency check ${checkCount}/${maxChecks}`);
+            console.log('🔧 ADMIN DEBUG: Dependencies status:', {
+                ethers: typeof window.ethers !== 'undefined',
+                CONFIG: typeof window.CONFIG !== 'undefined',
+                contractManager: typeof window.contractManager !== 'undefined',
+                adminPage: typeof window.adminPage !== 'undefined'
+            });
+
+            if (typeof window.ethers !== 'undefined' &&
+                typeof window.CONFIG !== 'undefined') {
+
+                // Try to initialize ContractManager if it doesn't exist
+                if (typeof window.contractManager === 'undefined') {
+                    console.log('🔧 ADMIN DEBUG: Initializing ContractManager...');
+                    try {
+                        window.contractManager = new ContractManager();
+                        console.log('✅ ADMIN DEBUG: ContractManager created');
+                    } catch (error) {
+                        console.error('❌ ADMIN DEBUG: Failed to create ContractManager:', error);
+                    }
+                }
+
+                if (typeof window.contractManager !== 'undefined') {
+                    console.log('✅ ADMIN DEBUG: All dependencies loaded!');
+                    return true;
+                }
+            }
+
+            if (checkCount < maxChecks) {
+                setTimeout(checkDependencies, 500);
+            } else {
+                console.error('❌ ADMIN DEBUG: Dependencies failed to load after 10 seconds');
+            }
+            return false;
+        }
+
+        // Start checking after a short delay
+        setTimeout(checkDependencies, 1000);
+
         // Prevent duplicate script loading and initialization
         if (window.adminPanelLoaded) {
             console.log('⚠️ Admin panel already loaded, skipping initialization');
@@ -286,6 +365,437 @@
                 initializeAdminPanel();
             }, 3000); // Give master initializer time to complete
         });
+
+        // Network switcher function
+        window.switchToPolygonAmoy = async function() {
+            console.log('🔄 Switching to Polygon Amoy...');
+
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x13882' }], // 80002 in hex
+                });
+                console.log('✅ Switched to Polygon Amoy');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    // Network not added, add it
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x13882',
+                                chainName: 'Polygon Amoy Testnet',
+                                nativeCurrency: {
+                                    name: 'MATIC',
+                                    symbol: 'MATIC',
+                                    decimals: 18
+                                },
+                                rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                                blockExplorerUrls: ['https://amoy.polygonscan.com']
+                            }]
+                        });
+                        console.log('✅ Added and switched to Polygon Amoy');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } catch (addError) {
+                        console.error('❌ Failed to add network:', addError);
+                        alert('❌ Failed to add Polygon Amoy network');
+                    }
+                } else {
+                    console.error('❌ Failed to switch network:', switchError);
+                    alert('❌ Failed to switch to Polygon Amoy');
+                }
+            }
+        };
+
+        // Z-index debugging function
+        window.debugZIndex = function() {
+            console.log('🔍 Z-INDEX DEBUG: Checking all elements with high z-index...');
+
+            const allElements = document.querySelectorAll('*');
+            const highZElements = [];
+
+            allElements.forEach(el => {
+                const zIndex = window.getComputedStyle(el).zIndex;
+                if (zIndex !== 'auto' && parseInt(zIndex) > 100) {
+                    highZElements.push({
+                        element: el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ').join('.') : ''),
+                        zIndex: zIndex,
+                        position: window.getComputedStyle(el).position
+                    });
+                }
+            });
+
+            console.log('🔍 Elements with high z-index:', highZElements);
+
+            // Check modal container specifically
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                const style = window.getComputedStyle(modalContainer);
+                console.log('🔍 Modal container styles:', {
+                    display: style.display,
+                    zIndex: style.zIndex,
+                    position: style.position,
+                    opacity: style.opacity,
+                    visibility: style.visibility
+                });
+            }
+        };
+
+        // Modal button visibility test
+        window.testModalButtons = function() {
+            console.log('🔍 TESTING: Modal button visibility...');
+
+            const modalContainer = document.getElementById('modal-container');
+            if (!modalContainer) {
+                console.error('❌ Modal container not found');
+                return;
+            }
+
+            const modalFooter = modalContainer.querySelector('.modal-footer');
+            const buttons = modalContainer.querySelectorAll('.modal-footer button');
+
+            console.log('🔍 Modal footer found:', !!modalFooter);
+            console.log('🔍 Buttons found:', buttons.length);
+
+            if (modalFooter) {
+                const footerStyle = window.getComputedStyle(modalFooter);
+                console.log('🔍 Modal footer styles:', {
+                    display: footerStyle.display,
+                    visibility: footerStyle.visibility,
+                    opacity: footerStyle.opacity,
+                    height: footerStyle.height,
+                    position: footerStyle.position
+                });
+            }
+
+            buttons.forEach((btn, index) => {
+                const btnStyle = window.getComputedStyle(btn);
+                console.log(`🔍 Button ${index + 1}:`, {
+                    text: btn.textContent.trim(),
+                    display: btnStyle.display,
+                    visibility: btnStyle.visibility,
+                    opacity: btnStyle.opacity
+                });
+            });
+        };
+
+        // Test all admin modals
+        window.testAllModals = function() {
+            console.log('🧪 TESTING: All admin modals...');
+
+            // First check if admin interface is loaded
+            const adminContainer = document.querySelector('.admin-grid-main');
+            if (!adminContainer) {
+                console.log('❌ Admin interface not loaded yet. Wait a moment and try again.');
+                return;
+            }
+
+            const modalTypes = [
+                'hourly-rate',
+                'add-pair',
+                'remove-pair',
+                'update-weights',
+                'change-signer',
+                'withdraw-rewards'
+            ];
+
+            // Check all buttons exist first
+            console.log('🔍 Checking button availability...');
+            modalTypes.forEach(type => {
+                const button = document.querySelector(`[data-modal="${type}"]`);
+                console.log(`🔍 Button [data-modal="${type}"]:`, button ? '✅ Found' : '❌ Not found');
+            });
+
+            modalTypes.forEach((type, index) => {
+                setTimeout(() => {
+                    console.log(`🧪 Testing modal: ${type}`);
+
+                    // Simulate button click
+                    const button = document.querySelector(`[data-modal="${type}"]`);
+                    if (button) {
+                        console.log(`✅ Clicking button for: ${type}`);
+                        button.click();
+
+                        setTimeout(() => {
+                            const modal = document.getElementById('modal-container');
+                            const buttons = modal ? modal.querySelectorAll('.modal-footer button') : [];
+                            console.log(`✅ ${type} modal: ${buttons.length} buttons found`);
+
+                            // Log button details
+                            buttons.forEach((btn, btnIndex) => {
+                                console.log(`  Button ${btnIndex + 1}: "${btn.textContent.trim()}"`);
+                            });
+
+                            // Close modal
+                            if (modal) {
+                                modal.style.display = 'none';
+                                modal.innerHTML = '';
+                            }
+                        }, 800);
+                    } else {
+                        console.log(`❌ Button not found for: ${type}`);
+                        // Try alternative selector
+                        const altButton = document.querySelector(`.proposal-btn:contains("${type}")`);
+                        console.log(`🔍 Alternative search result:`, altButton ? '✅ Found' : '❌ Not found');
+                    }
+                }, index * 1500);
+            });
+        };
+
+        // Test individual modal
+        window.testModal = function(modalType) {
+            console.log(`🧪 Testing individual modal: ${modalType}`);
+
+            const button = document.querySelector(`[data-modal="${modalType}"]`);
+            if (button) {
+                console.log(`✅ Found button for: ${modalType}`);
+                button.click();
+
+                setTimeout(() => {
+                    const modal = document.getElementById('modal-container');
+                    const buttons = modal ? modal.querySelectorAll('.modal-footer button') : [];
+                    const footer = modal ? modal.querySelector('.modal-footer') : null;
+
+                    console.log(`📊 Modal Results for ${modalType}:`);
+                    console.log(`  - Modal container: ${modal ? '✅ Found' : '❌ Not found'}`);
+                    console.log(`  - Modal footer: ${footer ? '✅ Found' : '❌ Not found'}`);
+                    console.log(`  - Footer buttons: ${buttons.length}`);
+
+                    if (footer) {
+                        const footerStyle = window.getComputedStyle(footer);
+                        console.log(`  - Footer display: ${footerStyle.display}`);
+                        console.log(`  - Footer visibility: ${footerStyle.visibility}`);
+                        console.log(`  - Footer opacity: ${footerStyle.opacity}`);
+                    }
+
+                    buttons.forEach((btn, index) => {
+                        const btnStyle = window.getComputedStyle(btn);
+                        console.log(`  - Button ${index + 1}: "${btn.textContent.trim()}" (display: ${btnStyle.display}, visibility: ${btnStyle.visibility})`);
+                    });
+                }, 1000);
+            } else {
+                console.log(`❌ Button not found for: ${modalType}`);
+                console.log('Available buttons:');
+                document.querySelectorAll('.proposal-btn').forEach(btn => {
+                    console.log(`  - ${btn.textContent.trim()} [data-modal="${btn.dataset.modal}"]`);
+                });
+            }
+        };
+
+        // Test cancel buttons
+        window.testCancelButtons = function() {
+            console.log('🧪 Testing cancel button functionality...');
+
+            const modalTypes = ['hourly-rate', 'add-pair', 'remove-pair', 'update-weights', 'change-signer', 'withdraw-rewards'];
+
+            modalTypes.forEach((type, index) => {
+                setTimeout(() => {
+                    console.log(`🧪 Testing cancel for: ${type}`);
+
+                    // Open modal
+                    const button = document.querySelector(`[data-modal="${type}"]`);
+                    if (button) {
+                        button.click();
+
+                        setTimeout(() => {
+                            // Find and test cancel button
+                            const modal = document.getElementById('modal-container');
+                            const cancelBtn = modal ? modal.querySelector('.btn-secondary, .modal-cancel') : null;
+
+                            if (cancelBtn) {
+                                console.log(`✅ Cancel button found for ${type}:`, cancelBtn.textContent.trim());
+                                console.log(`  - Classes: ${cancelBtn.className}`);
+                                console.log(`  - OnClick: ${cancelBtn.getAttribute('onclick')}`);
+
+                                // Test click
+                                cancelBtn.click();
+
+                                setTimeout(() => {
+                                    const modalAfter = document.getElementById('modal-container');
+                                    const isHidden = !modalAfter || modalAfter.style.display === 'none' || modalAfter.innerHTML === '';
+                                    console.log(`  - Cancel worked: ${isHidden ? '✅ YES' : '❌ NO'}`);
+                                }, 200);
+                            } else {
+                                console.log(`❌ Cancel button not found for: ${type}`);
+                            }
+                        }, 500);
+                    }
+                }, index * 2000);
+            });
+        };
+
+        // Add Polygon Amoy network to MetaMask
+        window.addPolygonAmoyNetwork = async function() {
+            console.log('🔧 Adding Polygon Amoy network to MetaMask...');
+
+            try {
+                // First try to switch to existing network
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x13882' }] // 80002 in hex
+                });
+                console.log('✅ Switched to existing Polygon Amoy network');
+            } catch (switchError) {
+                // If network doesn't exist, add it
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x13882', // 80002 in hex
+                                chainName: 'Polygon Amoy Testnet',
+                                nativeCurrency: {
+                                    name: 'MATIC',
+                                    symbol: 'MATIC',
+                                    decimals: 18
+                                },
+                                rpcUrls: [
+                                    'https://rpc-amoy.polygon.technology',
+                                    'https://polygon-amoy-bor-rpc.publicnode.com'
+                                ],
+                                blockExplorerUrls: ['https://amoy.polygonscan.com']
+                            }]
+                        });
+                        console.log('✅ Polygon Amoy network added successfully');
+                    } catch (addError) {
+                        console.error('❌ Failed to add Polygon Amoy network:', addError);
+                    }
+                } else {
+                    console.log('✅ Network already exists, switch successful');
+                }
+            }
+        };
+
+        // Switch to Polygon Amoy network
+        window.switchToPolygonAmoy = async function() {
+            console.log('🔧 Switching to Polygon Amoy network...');
+
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x13882' }] // 80002 in hex
+                });
+                console.log('✅ Switched to Polygon Amoy network');
+            } catch (error) {
+                if (error.code === 4902) {
+                    // Network not added, add it first
+                    await addPolygonAmoyNetwork();
+                } else {
+                    console.error('❌ Failed to switch network:', error);
+                }
+            }
+        };
+
+        // Debug form validation directly
+        window.debugFormValidation = function() {
+            console.log('🔧 DEBUG: Testing form validation...');
+
+            // Check if modal is open
+            const modal = document.getElementById('modal-container');
+            console.log('Modal container:', modal);
+            console.log('Modal display:', modal ? modal.style.display : 'N/A');
+            console.log('Modal innerHTML length:', modal ? modal.innerHTML.length : 0);
+
+            // Check for forms
+            const allForms = document.querySelectorAll('form');
+            console.log('All forms in document:', allForms.length);
+            allForms.forEach((form, index) => {
+                console.log(`Form ${index + 1}:`, {
+                    id: form.id,
+                    classes: form.className,
+                    parent: form.parentElement?.tagName,
+                    visible: form.offsetParent !== null
+                });
+            });
+
+            // Try to find add-pair-form specifically
+            const addPairForm = document.getElementById('add-pair-form');
+            console.log('add-pair-form found:', !!addPairForm);
+            if (addPairForm) {
+                console.log('Form details:', {
+                    id: addPairForm.id,
+                    visible: addPairForm.offsetParent !== null,
+                    inputs: addPairForm.querySelectorAll('input, select, textarea').length
+                });
+            }
+        };
+
+        // Test form submission directly
+        window.testFormSubmission = function() {
+            console.log('🔧 Testing form submission...');
+
+            // Open add pair modal first
+            const addPairBtn = document.querySelector('[data-modal="add-pair"]');
+            if (addPairBtn) {
+                console.log('Opening add pair modal...');
+                addPairBtn.click();
+
+                setTimeout(() => {
+                    debugFormValidation();
+
+                    // Try to submit form
+                    const form = document.getElementById('add-pair-form');
+                    if (form) {
+                        console.log('Attempting to submit form...');
+                        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                        form.dispatchEvent(submitEvent);
+                    }
+                }, 1000);
+            }
+        };
+
+        // Emergency modal test function
+        window.testEmergencyModal = function() {
+            console.log('🧪 EMERGENCY: Testing modal system...');
+
+            const modalContainer = document.getElementById('modal-container');
+            if (!modalContainer) {
+                console.error('❌ EMERGENCY: Modal container not found!');
+                alert('❌ Modal container not found!');
+                return;
+            }
+
+            console.log('✅ EMERGENCY: Modal container found');
+
+            modalContainer.innerHTML = `
+                <div style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 255, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 99999;
+                " onclick="document.getElementById('modal-container').style.display='none'; document.getElementById('modal-container').innerHTML='';">
+                    <div style="
+                        background: white;
+                        padding: 30px;
+                        border-radius: 10px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                        max-width: 500px;
+                        width: 90%;
+                        text-align: center;
+                        color: black;
+                        font-family: Arial, sans-serif;
+                    " onclick="event.stopPropagation();">
+                        <h2 style="color: #28a745; margin-bottom: 20px;">🧪 EMERGENCY MODAL TEST</h2>
+                        <p style="margin-bottom: 20px;">If you can see this modal, the modal system is working!</p>
+                        <p style="margin-bottom: 20px; color: #666;">This means the issue is with the admin modal HTML or CSS.</p>
+                        <button onclick="document.getElementById('modal-container').style.display='none'; document.getElementById('modal-container').innerHTML='';"
+                                style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                            Close Test Modal
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modalContainer.style.display = 'flex';
+            console.log('✅ EMERGENCY: Test modal displayed');
+        };
 
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {

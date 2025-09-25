@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Admin Dependencies</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: monospace;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .btn:hover { background: #0056b3; }
+        
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Admin Dependencies</h1>
+        <p>Testing if all required dependencies load correctly</p>
+        
+        <div class="section">
+            <h2>📋 Dependency Status</h2>
+            <div id="status-container">
+                <div class="status warning">⏳ Checking dependencies...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🧪 Manual Tests</h2>
+            <button class="btn" onclick="testEthers()">Test Ethers.js</button>
+            <button class="btn" onclick="testConfig()">Test CONFIG</button>
+            <button class="btn" onclick="testContractManager()">Test Contract Manager</button>
+            <button class="btn" onclick="testAdminPage()">Test Admin Page</button>
+            <button class="btn" onclick="testModalContainer()">Test Modal Container</button>
+        </div>
+        
+        <div class="section">
+            <h2>📝 Test Log</h2>
+            <button class="btn" onclick="clearLog()" style="background: #6c757d;">Clear Log</button>
+            <div id="log" class="log">Dependency test started...\n</div>
+        </div>
+    </div>
+
+    <!-- Load the same scripts as admin.html -->
+    <script src="js/config/app-config.js"></script>
+    <script src="js/config/dev-config.js"></script>
+    
+    <!-- Core Libraries with fallbacks -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" onerror="loadEthersFallback()"></script>
+    <script>
+        function loadEthersFallback() {
+            console.log('Primary ethers CDN failed, trying local fallback...');
+            const script = document.createElement('script');
+            script.src = 'libs/ethers.umd.min.js';
+            script.onerror = () => {
+                console.error('❌ All ethers sources failed');
+                log('❌ All ethers sources failed', 'error');
+            };
+            document.head.appendChild(script);
+        }
+    </script>
+    
+    <script src="js/utils/logger.js"></script>
+    <script src="js/utils/event-manager.js"></script>
+    <script src="js/utils/storage-manager.js"></script>
+    <script src="js/utils/network-health-check.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/notification-manager.js"></script>
+    <script src="js/wallet/wallet-manager.js"></script>
+    <script src="js/wallet/metamask-connector.js"></script>
+    <script src="js/wallet/walletconnect-connector.js"></script>
+    <script src="js/contracts/contract-manager.js"></script>
+    <script src="js/components/admin-page.js"></script>
+    <script src="js/utils/admin-test.js"></script>
+    <script src="js/master-initializer.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('log');
+            const colors = {
+                error: '#ff6b6b',
+                success: '#51cf66',
+                warning: '#ffd43b',
+                info: '#74c0fc'
+            };
+            const color = colors[type] || colors.info;
+            logElement.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = 'Log cleared...\n';
+        }
+        
+        function updateStatus() {
+            const statusContainer = document.getElementById('status-container');
+            const dependencies = {
+                'Ethers.js': typeof window.ethers !== 'undefined',
+                'CONFIG': typeof window.CONFIG !== 'undefined',
+                'ContractManager': typeof window.contractManager !== 'undefined',
+                'AdminPage': typeof window.adminPage !== 'undefined',
+                'WalletManager': typeof window.walletManager !== 'undefined',
+                'NotificationManager': typeof window.notificationManager !== 'undefined'
+            };
+            
+            let html = '';
+            let allLoaded = true;
+            
+            for (const [name, loaded] of Object.entries(dependencies)) {
+                const statusClass = loaded ? 'success' : 'error';
+                const icon = loaded ? '✅' : '❌';
+                html += `<div class="status ${statusClass}">${icon} ${name}: ${loaded ? 'Loaded' : 'Not Found'}</div>`;
+                if (!loaded) allLoaded = false;
+            }
+            
+            if (allLoaded) {
+                html += '<div class="status success">🎉 All dependencies loaded successfully!</div>';
+            }
+            
+            statusContainer.innerHTML = html;
+        }
+        
+        function testEthers() {
+            log('Testing Ethers.js...');
+            if (typeof window.ethers !== 'undefined') {
+                log(`✅ Ethers.js loaded: v${ethers.version}`, 'success');
+                
+                // Test basic functionality
+                try {
+                    const provider = new ethers.providers.JsonRpcProvider('https://rpc-amoy.polygon.technology');
+                    log('✅ Can create provider', 'success');
+                } catch (error) {
+                    log(`❌ Error creating provider: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ Ethers.js not found', 'error');
+            }
+        }
+        
+        function testConfig() {
+            log('Testing CONFIG...');
+            if (typeof window.CONFIG !== 'undefined') {
+                log('✅ CONFIG loaded', 'success');
+                log(`Network: ${window.CONFIG.NETWORK?.NAME || 'Unknown'}`, 'info');
+                log(`Staking Contract: ${window.CONFIG.CONTRACTS?.STAKING_CONTRACT || 'Unknown'}`, 'info');
+            } else {
+                log('❌ CONFIG not found', 'error');
+            }
+        }
+        
+        function testContractManager() {
+            log('Testing Contract Manager...');
+            if (typeof window.contractManager !== 'undefined') {
+                log('✅ ContractManager found', 'success');
+                
+                if (typeof window.contractManager.isReady === 'function') {
+                    const isReady = window.contractManager.isReady();
+                    log(`Contract Manager ready: ${isReady}`, isReady ? 'success' : 'warning');
+                } else {
+                    log('⚠️ isReady method not found', 'warning');
+                }
+                
+                if (typeof window.contractManager.getAllPairsInfo === 'function') {
+                    log('✅ getAllPairsInfo method exists', 'success');
+                } else {
+                    log('❌ getAllPairsInfo method not found', 'error');
+                }
+            } else {
+                log('❌ ContractManager not found', 'error');
+            }
+        }
+        
+        function testAdminPage() {
+            log('Testing Admin Page...');
+            if (typeof window.adminPage !== 'undefined') {
+                log('✅ AdminPage found', 'success');
+                
+                if (typeof window.adminPage.showHourlyRateModal === 'function') {
+                    log('✅ showHourlyRateModal method exists', 'success');
+                } else {
+                    log('❌ showHourlyRateModal method not found', 'error');
+                }
+            } else {
+                log('❌ AdminPage not found', 'error');
+            }
+        }
+        
+        function testModalContainer() {
+            log('Testing Modal Container...');
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                log('❌ Modal container found in test page (should not exist)', 'warning');
+            } else {
+                log('✅ No modal container in test page (expected)', 'success');
+                log('ℹ️ Modal container should exist in admin.html', 'info');
+            }
+        }
+        
+        // Auto-update status every 2 seconds
+        setInterval(updateStatus, 2000);
+        
+        // Initial status update
+        setTimeout(updateStatus, 1000);
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            log('🧪 Dependency test suite loaded');
+            log('📋 Checking all required dependencies...');
+            
+            setTimeout(() => {
+                log('🔍 Final dependency check after 5 seconds...');
+                updateStatus();
+                
+                const allDeps = [
+                    typeof window.ethers !== 'undefined',
+                    typeof window.CONFIG !== 'undefined',
+                    typeof window.contractManager !== 'undefined',
+                    typeof window.adminPage !== 'undefined'
+                ];
+                
+                if (allDeps.every(dep => dep)) {
+                    log('🎉 All critical dependencies loaded successfully!', 'success');
+                    log('✅ Admin panel should work correctly', 'success');
+                } else {
+                    log('❌ Some dependencies missing - admin panel may not work', 'error');
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
