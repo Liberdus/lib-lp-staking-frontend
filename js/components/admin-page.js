@@ -3409,6 +3409,51 @@ class AdminPage {
         return /^0x[a-fA-F0-9]{40}$/.test(address);
     }
 
+    // Helper methods for error and success handling
+    showError(message) {
+        console.error('❌ Error:', message);
+        if (window.notificationManager) {
+            window.notificationManager.error('Error', message);
+        } else {
+            alert('❌ Error: ' + message);
+        }
+    }
+
+    showSuccess(message) {
+        console.log('✅ Success:', message);
+        if (window.notificationManager) {
+            window.notificationManager.success('Success', message);
+        } else {
+            alert('✅ ' + message);
+        }
+    }
+
+    // Refresh admin data once without causing infinite loops
+    refreshAdminDataOnce() {
+        // Use a flag to prevent multiple simultaneous refreshes
+        if (this.isRefreshing) {
+            console.log('⏳ Refresh already in progress, skipping...');
+            return;
+        }
+
+        this.isRefreshing = true;
+        console.log('🔄 Refreshing admin data once...');
+
+        setTimeout(() => {
+            try {
+                this.loadMultiSignPanel();
+                this.loadContractStats();
+            } catch (error) {
+                console.error('❌ Error refreshing admin data:', error);
+            } finally {
+                // Reset flag after a delay
+                setTimeout(() => {
+                    this.isRefreshing = false;
+                }, 2000);
+            }
+        }, 500);
+    }
+
     // Dynamic data loading methods
     async loadPairsForRemoval() {
         const select = document.getElementById('remove-pair-select');
@@ -3596,10 +3641,22 @@ class AdminPage {
 
     // Proposal submission methods
     async submitHourlyRateProposal(event) {
-        event.preventDefault();
+        if (event) event.preventDefault();
 
         const rate = document.getElementById('new-rate').value;
         const description = document.getElementById('rate-description').value;
+
+        // Validate inputs
+        if (!rate || !description) {
+            this.showError('Please fill in all required fields');
+            return;
+        }
+
+        const rateNum = parseFloat(rate);
+        if (isNaN(rateNum) || rateNum <= 0) {
+            this.showError('Rate must be a positive number');
+            return;
+        }
 
         try {
             if (window.notificationManager) {
@@ -3608,23 +3665,33 @@ class AdminPage {
 
             // Call contract method to create proposal
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeSetHourlyRewardRate(rate);
+            const result = await contractManager.proposeSetHourlyRewardRate(rateNum);
 
             if (result.success) {
+                // Close modal first
                 this.closeModal();
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', 'Hourly rate change proposal submitted successfully');
+
+                // Show success message
+                let successMessage = 'Hourly rate change proposal submitted successfully';
+                if (result.isDemo) {
+                    successMessage += ' (Demo Mode)';
                 }
-                await this.refreshData();
+
+                if (window.notificationManager) {
+                    window.notificationManager.success('Proposal Created', successMessage);
+                } else {
+                    alert('✅ ' + successMessage);
+                }
+
+                // Refresh data once without causing loops
+                this.refreshAdminDataOnce();
             } else {
-                throw new Error(result.error);
+                this.showError(result.error || 'Failed to create proposal');
             }
 
         } catch (error) {
             console.error('Failed to create hourly rate proposal:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', error.message);
-            }
+            this.showError('Failed to create proposal: ' + error.message);
         }
     }
 
@@ -3639,16 +3706,19 @@ class AdminPage {
 
         // Validate required fields
         if (!pairAddress || !weight || !pairName || !platform) {
-            throw new Error('Please fill in all required fields');
+            this.showError('Please fill in all required fields');
+            return;
         }
 
         if (!this.isValidAddress(pairAddress)) {
-            throw new Error('Invalid LP token address format');
+            this.showError('Invalid LP token address format');
+            return;
         }
 
         const weightNum = parseInt(weight);
         if (isNaN(weightNum) || weightNum < 1 || weightNum > 10000) {
-            throw new Error('Weight must be between 1-10,000');
+            this.showError('Weight must be between 1-10,000');
+            return;
         }
 
         try {
@@ -3659,7 +3729,8 @@ class AdminPage {
             console.log('🔧 Contract manager response:', result);
 
             if (!result.success) {
-                throw new Error(result.error || 'Failed to create proposal');
+                this.showError(result.error || 'Failed to create proposal');
+                return;
             }
 
             // Add to mock proposal system for realistic demo
@@ -3704,32 +3775,17 @@ class AdminPage {
                 alertMessage += '\nTransaction: ' + result.transactionHash;
             }
 
-            // Show success notification (if notification system exists)
-            if (window.showNotification) {
-                window.showNotification(successMessage, 'success');
-            } else {
-                alert(alertMessage);
-            }
+            // Show success notification
+            this.showSuccess(successMessage);
 
-            // Refresh admin data
-            setTimeout(() => {
-                this.loadMultiSignPanel();
-                this.loadContractStats();
-            }, 1000);
+            // Refresh admin data once without causing loops
+            this.refreshAdminDataOnce();
 
             return result;
 
         } catch (error) {
             console.error('❌ Failed to create add pair proposal:', error);
-
-            // Show error notification
-            if (window.showNotification) {
-                window.showNotification('❌ Failed to create proposal: ' + error.message, 'error');
-            } else {
-                alert('❌ Failed to create proposal:\n\n' + error.message);
-            }
-
-            throw error;
+            this.showError('Failed to create proposal: ' + error.message);
         }
     }
 

@@ -1240,6 +1240,60 @@
             }
         };
 
+        // Test the actual forms like React version
+        window.testFormsLikeReact = async function() {
+            console.log('🧪 Testing forms with React-like patterns...');
+
+            try {
+                // Test 1: Test hourly rate form
+                console.log('🔧 Testing hourly rate form...');
+
+                // Fill form fields
+                const rateInput = document.getElementById('new-rate');
+                const descInput = document.getElementById('rate-description');
+
+                if (rateInput && descInput) {
+                    rateInput.value = '0.5';
+                    descInput.value = 'Test hourly rate proposal';
+
+                    // Simulate form submission
+                    const result = await window.adminPage.submitHourlyRateProposal({preventDefault: () => {}});
+                    console.log('✅ Hourly rate form test result:', result);
+                } else {
+                    console.log('⚠️ Hourly rate form fields not found - open the modal first');
+                }
+
+                // Test 2: Test add pair form
+                console.log('🔧 Testing add pair form...');
+
+                const pairAddressInput = document.getElementById('pair-address');
+                const pairNameInput = document.getElementById('pair-name');
+                const pairPlatformInput = document.getElementById('pair-platform');
+                const pairWeightInput = document.getElementById('pair-weight');
+                const pairDescInput = document.getElementById('pair-description');
+
+                if (pairAddressInput && pairNameInput && pairPlatformInput && pairWeightInput) {
+                    pairAddressInput.value = '0x1234567890123456789012345678901234567890';
+                    pairNameInput.value = 'TEST/USDC';
+                    pairPlatformInput.value = 'Uniswap V3';
+                    pairWeightInput.value = '100';
+                    if (pairDescInput) pairDescInput.value = 'Test add pair proposal';
+
+                    // Simulate form submission
+                    const result = await window.adminPage.submitAddPairProposal({preventDefault: () => {}});
+                    console.log('✅ Add pair form test result:', result);
+                } else {
+                    console.log('⚠️ Add pair form fields not found - open the modal first');
+                }
+
+                console.log('🎉 Form testing completed!');
+                console.log('✅ Both forms should now work without errors');
+
+            } catch (error) {
+                console.error('❌ Form testing failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');
