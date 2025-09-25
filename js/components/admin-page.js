@@ -1398,14 +1398,28 @@ class AdminPage {
                     'actionCounter'
                 );
             } catch (error) {
-                console.log('⚠️ actionCounter function not available, using fallback value: 0');
+                // Handle different types of errors
+                if (error.message && error.message.includes('missing trie node')) {
+                    console.log('⚠️ RPC node sync issue, using fallback actionCounter: 0');
+                } else if (error.code === 'CALL_EXCEPTION') {
+                    console.log('⚠️ Contract call failed, using fallback actionCounter: 0');
+                } else {
+                    console.log('⚠️ actionCounter function not available, using fallback value: 0');
+                }
                 actionCounter = 0;
             }
 
             try {
                 requiredApprovals = await contractManager.getRequiredApprovals(); // Enhanced with retry logic
             } catch (error) {
-                console.log('⚠️ getRequiredApprovals function not available, using fallback value: 2');
+                // Handle different types of errors
+                if (error.message && error.message.includes('missing trie node')) {
+                    console.log('⚠️ RPC node sync issue, using fallback requiredApprovals: 2');
+                } else if (error.code === 'CALL_EXCEPTION') {
+                    console.log('⚠️ Contract call failed, using fallback requiredApprovals: 2');
+                } else {
+                    console.log('⚠️ getRequiredApprovals function not available, using fallback value: 2');
+                }
                 requiredApprovals = 2;
             }
 
@@ -1442,12 +1456,8 @@ class AdminPage {
 
             console.log(`✅ Loaded ${proposals.length} real proposals from contract`);
 
-            // If no real proposals found, use mock proposals for demo
-            if (proposals.length === 0 && this.mockProposals.size > 0) {
-                console.log('📋 No real proposals found, falling back to mock proposals for demo');
-                return this.loadMockProposals();
-            }
-
+            // Always return real proposals, even if empty
+            // This ensures we show actual blockchain state
             return proposals;
 
         } catch (error) {
@@ -1509,46 +1519,44 @@ class AdminPage {
 
     getActionTypeName(actionType) {
         const types = {
-            0: 'SET_HOURLY_REWARD_RATE',
-            1: 'UPDATE_PAIR_WEIGHTS',
-            2: 'ADD_PAIR',
-            3: 'REMOVE_PAIR',
-            4: 'CHANGE_SIGNER',
-            5: 'WITHDRAW_REWARDS'
+            0: 'Set Hourly Reward Rate',
+            1: 'Update Pair Weights',
+            2: 'Add Pair',
+            3: 'Remove Pair',
+            4: 'Change Signer',
+            5: 'Withdraw Rewards'
         };
-        return types[actionType] || 'UNKNOWN';
+        return types[actionType] || `Unknown Action (${actionType})`;
     }
 
     formatActionDetails(action) {
-        const actionType = this.getActionTypeName(action.actionType);
-
-        switch (actionType) {
-            case 'SET_HOURLY_REWARD_RATE':
+        switch (action.actionType) {
+            case 0: // SET_HOURLY_REWARD_RATE
                 return {
                     newHourlyRewardRate: ethers.utils.formatEther(action.newHourlyRewardRate)
                 };
-            case 'UPDATE_PAIR_WEIGHTS':
+            case 1: // UPDATE_PAIR_WEIGHTS
                 return {
                     pairs: action.pairs,
                     weights: action.weights.map(w => ethers.utils.formatEther(w))
                 };
-            case 'ADD_PAIR':
+            case 2: // ADD_PAIR
                 return {
                     pairToAdd: action.pairToAdd,
                     pairNameToAdd: action.pairNameToAdd,
                     platformToAdd: action.platformToAdd,
                     weightToAdd: ethers.utils.formatEther(action.weightToAdd)
                 };
-            case 'REMOVE_PAIR':
+            case 3: // REMOVE_PAIR
                 return {
                     pairToRemove: action.pairToRemove
                 };
-            case 'CHANGE_SIGNER':
+            case 4: // CHANGE_SIGNER
                 return {
                     // Note: old/new signer info would need to be extracted from pairs array
                     pairs: action.pairs
                 };
-            case 'WITHDRAW_REWARDS':
+            case 5: // WITHDRAW_REWARDS
                 return {
                     recipient: action.recipient,
                     withdrawAmount: ethers.utils.formatEther(action.withdrawAmount)
@@ -3677,17 +3685,30 @@ class AdminPage {
             console.log('📋 Transaction details:', {
                 hash: result.transactionHash,
                 message: result.message,
-                proposalId: newProposal.id
+                proposalId: newProposal.id,
+                isDemo: result.isDemo
             });
 
             // Close modal and show success notification
             this.closeModal();
 
+            // Determine success message based on result type
+            let successMessage = '✅ Add Pair Proposal Created Successfully!';
+            let alertMessage = successMessage;
+
+            if (result.isDemo) {
+                successMessage += ' (Demo Mode)';
+                alertMessage += '\n\n⚠️ Demo Mode: ' + (result.message || 'Network issues prevented real transaction');
+                alertMessage += '\nTransaction: ' + result.transactionHash;
+            } else {
+                alertMessage += '\nTransaction: ' + result.transactionHash;
+            }
+
             // Show success notification (if notification system exists)
             if (window.showNotification) {
-                window.showNotification('✅ Add Pair Proposal Created Successfully!', 'success');
+                window.showNotification(successMessage, 'success');
             } else {
-                alert('✅ Add Pair Proposal Created Successfully!\n\nTransaction: ' + (result.transactionHash || 'Mock Transaction'));
+                alert(alertMessage);
             }
 
             // Refresh admin data
@@ -3911,18 +3932,12 @@ class AdminPage {
                 window.notificationManager.info('Approving proposal...', `Submitting approval for proposal #${proposalId}`);
             }
 
-            // Try real contract first, fall back to mock
+            // Use real contract for approval
             let result;
             try {
-                // Check if the contract has the approveAction function
-                if (window.contractManager &&
-                    typeof window.contractManager.stakingContract?.approveAction === 'function') {
-                    console.log('🔧 Using real contract approveAction');
-                    result = await window.contractManager.approveProposal(proposalId);
-                } else {
-                    console.log('🔧 Contract approveAction function not available, using mock approval');
-                    result = this.mockApproveProposal(proposalId);
-                }
+                console.log('🔧 Using real contract approveAction for proposal:', proposalId);
+                result = await window.contractManager.approveProposal(proposalId);
+                console.log('✅ Real contract approval result:', result);
             } catch (error) {
                 console.log('🔧 Contract approval failed, using mock approval:', error.message);
                 result = this.mockApproveProposal(proposalId);
@@ -3958,18 +3973,12 @@ class AdminPage {
                 window.notificationManager.info('Rejecting proposal...', `Submitting rejection for proposal #${proposalId}`);
             }
 
-            // Try real contract first, fall back to mock
+            // Use real contract for rejection
             let result;
             try {
-                // Check if the contract has the rejectAction function
-                if (window.contractManager &&
-                    typeof window.contractManager.stakingContract?.rejectAction === 'function') {
-                    console.log('🔧 Using real contract rejectAction');
-                    result = await window.contractManager.rejectProposal(proposalId);
-                } else {
-                    console.log('🔧 Contract rejectAction function not available, using mock rejection');
-                    result = this.mockRejectProposal(proposalId);
-                }
+                console.log('🔧 Using real contract rejectAction for proposal:', proposalId);
+                result = await window.contractManager.rejectProposal(proposalId);
+                console.log('✅ Real contract rejection result:', result);
             } catch (error) {
                 console.log('🔧 Contract rejection failed, using mock rejection:', error.message);
                 result = this.mockRejectProposal(proposalId);

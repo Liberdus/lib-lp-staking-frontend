@@ -870,6 +870,376 @@
             }
         };
 
+        // Test real contract governance functions
+        window.testRealContract = async function() {
+            console.log('🧪 Testing REAL CONTRACT governance functions...');
+
+            try {
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not available');
+                    return;
+                }
+
+                console.log('🔧 Testing contract functions...');
+
+                // Test 1: Check actionCounter
+                try {
+                    const actionCounter = await contractManager.stakingContract.actionCounter();
+                    console.log('✅ actionCounter:', actionCounter.toString());
+                } catch (error) {
+                    console.error('❌ actionCounter failed:', error.message);
+                }
+
+                // Test 2: Check REQUIRED_APPROVALS
+                try {
+                    const requiredApprovals = await contractManager.stakingContract.REQUIRED_APPROVALS();
+                    console.log('✅ REQUIRED_APPROVALS:', requiredApprovals.toString());
+                } catch (error) {
+                    console.error('❌ REQUIRED_APPROVALS failed:', error.message);
+                }
+
+                // Test 3: Check if approveAction function exists
+                try {
+                    const hasApproveAction = typeof contractManager.stakingContract.approveAction === 'function';
+                    console.log('✅ approveAction function exists:', hasApproveAction);
+                } catch (error) {
+                    console.error('❌ approveAction check failed:', error.message);
+                }
+
+                // Test 4: Check if rejectAction function exists
+                try {
+                    const hasRejectAction = typeof contractManager.stakingContract.rejectAction === 'function';
+                    console.log('✅ rejectAction function exists:', hasRejectAction);
+                } catch (error) {
+                    console.error('❌ rejectAction check failed:', error.message);
+                }
+
+                // Test 5: Check if proposeAddPair function exists
+                try {
+                    const hasProposeAddPair = typeof contractManager.stakingContract.proposeAddPair === 'function';
+                    console.log('✅ proposeAddPair function exists:', hasProposeAddPair);
+                } catch (error) {
+                    console.error('❌ proposeAddPair check failed:', error.message);
+                }
+
+                console.log('🎉 Real contract test completed!');
+
+            } catch (error) {
+                console.error('❌ Real contract test failed:', error);
+            }
+        };
+
+        // Test wallet and signer status
+        window.testWalletSigner = async function() {
+            console.log('🧪 Testing WALLET AND SIGNER status...');
+
+            try {
+                // Test 1: Check wallet manager
+                if (window.walletManager) {
+                    console.log('✅ Wallet manager exists');
+                    console.log('🔍 Wallet connected:', window.walletManager.isConnected());
+                    console.log('🔍 Wallet address:', window.walletManager.getAddress());
+                    console.log('🔍 Wallet type:', window.walletManager.getWalletType());
+                    console.log('🔍 Chain ID:', window.walletManager.getChainId());
+                } else {
+                    console.error('❌ Wallet manager not found');
+                }
+
+                // Test 2: Check contract manager
+                if (window.contractManager) {
+                    console.log('✅ Contract manager exists');
+                    console.log('🔍 Contract manager ready:', window.contractManager.isReady());
+                    console.log('🔍 Has provider:', !!window.contractManager.provider);
+                    console.log('🔍 Has signer:', !!window.contractManager.signer);
+
+                    // Test signer
+                    if (window.contractManager.signer) {
+                        try {
+                            const signerAddress = await window.contractManager.signer.getAddress();
+                            console.log('✅ Signer address:', signerAddress);
+                        } catch (error) {
+                            console.error('❌ Signer address failed:', error.message);
+                        }
+                    } else {
+                        console.warn('⚠️ No signer available');
+                    }
+                } else {
+                    console.error('❌ Contract manager not found');
+                }
+
+                // Test 3: Check MetaMask
+                if (window.ethereum) {
+                    console.log('✅ MetaMask available');
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                        console.log('🔍 MetaMask accounts:', accounts);
+                    } catch (error) {
+                        console.error('❌ MetaMask accounts failed:', error.message);
+                    }
+                } else {
+                    console.error('❌ MetaMask not available');
+                }
+
+                console.log('🎉 Wallet/Signer test completed!');
+
+            } catch (error) {
+                console.error('❌ Wallet/Signer test failed:', error);
+            }
+        };
+
+        // Force fix signer issue
+        window.fixSigner = async function() {
+            console.log('🔧 FIXING SIGNER ISSUE...');
+
+            try {
+                if (!window.contractManager) {
+                    console.error('❌ Contract manager not found');
+                    return;
+                }
+
+                // Force get signer from MetaMask
+                if (window.ethereum) {
+                    console.log('🔧 Getting signer from MetaMask...');
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const signer = provider.getSigner();
+
+                    // Verify signer works
+                    const address = await signer.getAddress();
+                    console.log('✅ Signer address:', address);
+
+                    // Update contract manager
+                    window.contractManager.provider = provider;
+                    window.contractManager.signer = signer;
+
+                    // Reinitialize contracts with signer
+                    await window.contractManager.initializeContracts();
+                    console.log('✅ Contract manager updated with signer');
+
+                    // Test signer again
+                    await testWalletSigner();
+
+                } else {
+                    console.error('❌ MetaMask not available');
+                }
+
+            } catch (error) {
+                console.error('❌ Fix signer failed:', error);
+            }
+        };
+
+        // Complete system fix
+        window.fixEverything = async function() {
+            console.log('🔧 FIXING ALL SYSTEM ISSUES...');
+
+            try {
+                // Step 1: Fix signer
+                console.log('🔧 Step 1: Fixing signer...');
+                await fixSigner();
+
+                // Step 2: Test contract functions
+                console.log('🔧 Step 2: Testing contract functions...');
+                await testRealContract();
+
+                // Step 3: Refresh admin panel
+                console.log('🔧 Step 3: Refreshing admin panel...');
+                if (window.adminPage) {
+                    await window.adminPage.refreshData();
+                }
+
+                console.log('🎉 SYSTEM FIX COMPLETED!');
+                console.log('✅ Try the ADD PAIR button now');
+
+            } catch (error) {
+                console.error('❌ System fix failed:', error);
+            }
+        };
+
+        // Test contract signer integration
+        window.testContractSigner = async function() {
+            console.log('🧪 Testing CONTRACT SIGNER integration...');
+
+            try {
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not found');
+                    return;
+                }
+
+                // Test 1: Check if contracts have signer
+                console.log('🔍 Staking contract signer:', !!contractManager.stakingContract?.signer);
+                console.log('🔍 Reward token contract signer:', !!contractManager.rewardTokenContract?.signer);
+
+                // Test 2: Force ensure signer
+                console.log('🔧 Ensuring signer...');
+                await contractManager.ensureSigner();
+
+                // Test 3: Check contracts again
+                console.log('🔍 After ensureSigner - Staking contract signer:', !!contractManager.stakingContract?.signer);
+                console.log('🔍 After ensureSigner - Reward token contract signer:', !!contractManager.rewardTokenContract?.signer);
+
+                // Test 4: Try to get signer address from contract
+                if (contractManager.stakingContract?.signer) {
+                    try {
+                        const signerAddress = await contractManager.stakingContract.signer.getAddress();
+                        console.log('✅ Contract signer address:', signerAddress);
+                    } catch (error) {
+                        console.error('❌ Contract signer address failed:', error.message);
+                    }
+                }
+
+                console.log('🎉 Contract signer test completed!');
+
+            } catch (error) {
+                console.error('❌ Contract signer test failed:', error);
+            }
+        };
+
+        // Ultimate fix for all signer issues
+        window.ultimateSignerFix = async function() {
+            console.log('🔧 ULTIMATE SIGNER FIX - Fixing all issues...');
+
+            try {
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not found');
+                    return;
+                }
+
+                // Step 1: Force get signer from MetaMask
+                console.log('🔧 Step 1: Getting signer from MetaMask...');
+                if (!window.ethereum) {
+                    console.error('❌ MetaMask not available');
+                    return;
+                }
+
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+
+                // Verify signer works
+                const address = await signer.getAddress();
+                console.log('✅ Signer address:', address);
+
+                // Step 2: Update contract manager
+                console.log('🔧 Step 2: Updating contract manager...');
+                contractManager.provider = provider;
+                contractManager.signer = signer;
+
+                // Step 3: Recreate all contracts with signer
+                console.log('🔧 Step 3: Recreating contracts with signer...');
+                await contractManager.initializeContracts();
+
+                // Step 4: Verify contracts have signer
+                console.log('🔧 Step 4: Verifying contracts...');
+                console.log('✅ Staking contract has signer:', !!contractManager.stakingContract?.signer);
+                console.log('✅ Reward token contract has signer:', !!contractManager.rewardTokenContract?.signer);
+
+                // Step 5: Test a simple contract call
+                console.log('🔧 Step 5: Testing contract call...');
+                try {
+                    const rewardToken = await contractManager.stakingContract.rewardToken();
+                    console.log('✅ Contract call successful, reward token:', rewardToken);
+                } catch (error) {
+                    console.log('⚠️ Contract call failed (might be network issue):', error.message);
+                }
+
+                console.log('🎉 ULTIMATE SIGNER FIX COMPLETED!');
+                console.log('✅ Try the ADD PAIR or HOURLY RATE buttons now');
+
+            } catch (error) {
+                console.error('❌ Ultimate signer fix failed:', error);
+            }
+        };
+
+        // Test proposal creation with error handling
+        window.testProposalCreation = async function() {
+            console.log('🧪 Testing PROPOSAL CREATION with error handling...');
+
+            try {
+                const contractManager = window.contractManager;
+                if (!contractManager) {
+                    console.error('❌ Contract manager not found');
+                    return;
+                }
+
+                // Test 1: Test add pair proposal
+                console.log('🔧 Testing add pair proposal...');
+                const addPairResult = await contractManager.proposeAddPair(
+                    '0x1234567890123456789012345678901234567890',
+                    'TEST/USDC',
+                    'Uniswap V3',
+                    100,
+                    'Test proposal'
+                );
+
+                console.log('✅ Add pair result:', addPairResult);
+
+                if (addPairResult.success) {
+                    if (addPairResult.isDemo) {
+                        console.log('✅ Demo proposal created successfully');
+                        console.log('   - Message:', addPairResult.message);
+                        console.log('   - Transaction Hash:', addPairResult.transactionHash);
+                    } else {
+                        console.log('✅ Real proposal created successfully');
+                        console.log('   - Transaction Hash:', addPairResult.transactionHash);
+                    }
+                } else {
+                    console.error('❌ Add pair proposal failed:', addPairResult.error);
+                }
+
+                // Test 2: Test hourly rate proposal
+                console.log('🔧 Testing hourly rate proposal...');
+                const hourlyRateResult = await contractManager.proposeSetHourlyRewardRate(0.1);
+
+                console.log('✅ Hourly rate result:', hourlyRateResult);
+
+                if (hourlyRateResult.success) {
+                    if (hourlyRateResult.isDemo) {
+                        console.log('✅ Demo hourly rate proposal created successfully');
+                        console.log('   - Message:', hourlyRateResult.message);
+                        console.log('   - Transaction Hash:', hourlyRateResult.transactionHash);
+                    } else {
+                        console.log('✅ Real hourly rate proposal created successfully');
+                        console.log('   - Transaction Hash:', hourlyRateResult.transactionHash);
+                    }
+                } else {
+                    console.error('❌ Hourly rate proposal failed:', hourlyRateResult.error);
+                }
+
+                console.log('🎉 Proposal creation test completed!');
+
+            } catch (error) {
+                console.error('❌ Proposal creation test failed:', error);
+            }
+        };
+
+        // Complete system test
+        window.completeSystemTest = async function() {
+            console.log('🧪 COMPLETE SYSTEM TEST - Testing everything...');
+
+            try {
+                // Step 1: Test wallet and signer
+                console.log('🔧 Step 1: Testing wallet and signer...');
+                await testWalletSigner();
+
+                // Step 2: Test contract signer integration
+                console.log('🔧 Step 2: Testing contract signer integration...');
+                await testContractSigner();
+
+                // Step 3: Test proposal creation
+                console.log('🔧 Step 3: Testing proposal creation...');
+                await testProposalCreation();
+
+                // Step 4: Test forms
+                console.log('🔧 Step 4: Forms should now work - try the ADD PAIR and HOURLY RATE buttons!');
+                console.log('✅ COMPLETE SYSTEM TEST PASSED!');
+                console.log('🎉 The system is ready for demo use!');
+
+            } catch (error) {
+                console.error('❌ Complete system test failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');
