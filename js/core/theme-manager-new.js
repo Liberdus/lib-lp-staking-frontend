@@ -42,14 +42,71 @@ class ThemeManagerNew {
 
     applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
-        
-        // Update theme toggle icon
+
+        // Apply CSS custom properties for the theme
+        this.applyCSSVariables(theme);
+
+        // Update theme toggle icon with smooth transition
         const themeToggle = document.getElementById('theme-toggle');
         if (themeToggle) {
             const icon = themeToggle.querySelector('.material-icons-outlined');
             if (icon) {
-                icon.textContent = theme === 'light' ? 'light_mode' : 'bedtime';
+                // Add transition class
+                icon.style.transition = 'transform 0.3s ease';
+                icon.style.transform = 'rotate(180deg)';
+
+                setTimeout(() => {
+                    icon.textContent = theme === 'light' ? 'light_mode' : 'bedtime';
+                    icon.style.transform = 'rotate(0deg)';
+                }, 150);
             }
+        }
+
+        // Dispatch theme change event
+        document.dispatchEvent(new CustomEvent('themeChanged', {
+            detail: { theme, previousTheme: this.currentTheme === 'light' ? 'dark' : 'light' }
+        }));
+    }
+
+    applyCSSVariables(theme) {
+        const root = document.documentElement;
+
+        if (theme === 'dark') {
+            // Dark theme variables
+            root.style.setProperty('--background-default', '#121212');
+            root.style.setProperty('--background-paper', '#1e1e1e');
+            root.style.setProperty('--surface-hover', 'rgba(255, 255, 255, 0.08)');
+            root.style.setProperty('--action-selected', 'rgba(25, 118, 210, 0.16)');
+            root.style.setProperty('--action-hover', 'rgba(255, 255, 255, 0.08)');
+
+            root.style.setProperty('--text-primary', 'rgba(255, 255, 255, 0.87)');
+            root.style.setProperty('--text-secondary', 'rgba(255, 255, 255, 0.6)');
+            root.style.setProperty('--text-disabled', 'rgba(255, 255, 255, 0.38)');
+
+            root.style.setProperty('--divider', 'rgba(255, 255, 255, 0.12)');
+
+            // Dark theme shadows
+            root.style.setProperty('--shadow-1', '0px 2px 1px -1px rgba(0,0,0,0.4), 0px 1px 1px 0px rgba(0,0,0,0.28), 0px 1px 3px 0px rgba(0,0,0,0.24)');
+            root.style.setProperty('--shadow-4', '0px 2px 4px -1px rgba(0,0,0,0.4), 0px 4px 5px 0px rgba(0,0,0,0.28), 0px 1px 10px 0px rgba(0,0,0,0.24)');
+            root.style.setProperty('--shadow-8', '0px 5px 5px -3px rgba(0,0,0,0.4), 0px 8px 10px 1px rgba(0,0,0,0.28), 0px 3px 14px 2px rgba(0,0,0,0.24)');
+        } else {
+            // Light theme variables (reset to defaults)
+            root.style.setProperty('--background-default', '#ffffff');
+            root.style.setProperty('--background-paper', '#ffffff');
+            root.style.setProperty('--surface-hover', 'rgba(0, 0, 0, 0.04)');
+            root.style.setProperty('--action-selected', 'rgba(25, 118, 210, 0.08)');
+            root.style.setProperty('--action-hover', 'rgba(0, 0, 0, 0.04)');
+
+            root.style.setProperty('--text-primary', 'rgba(0, 0, 0, 0.87)');
+            root.style.setProperty('--text-secondary', 'rgba(0, 0, 0, 0.6)');
+            root.style.setProperty('--text-disabled', 'rgba(0, 0, 0, 0.38)');
+
+            root.style.setProperty('--divider', 'rgba(0, 0, 0, 0.12)');
+
+            // Light theme shadows
+            root.style.setProperty('--shadow-1', '0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12)');
+            root.style.setProperty('--shadow-4', '0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12)');
+            root.style.setProperty('--shadow-8', '0px 5px 5px -3px rgba(0,0,0,0.2), 0px 8px 10px 1px rgba(0,0,0,0.14), 0px 3px 14px 2px rgba(0,0,0,0.12)');
         }
     }
 

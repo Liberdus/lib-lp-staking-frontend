@@ -64,7 +64,12 @@ class MasterInitializer {
     async loadCoreUtilities() {
         const coreScripts = [
             'js/core/theme-manager-new.js',
-            'js/core/notification-manager-new.js'
+            'js/core/notification-manager-new.js',
+            'js/core/loading-manager.js',
+            'js/core/accessibility-manager.js',
+            'js/core/animation-manager.js',
+            'js/utils/rpc-test.js',
+            'js/utils/admin-test.js'
         ];
 
         for (const script of coreScripts) {

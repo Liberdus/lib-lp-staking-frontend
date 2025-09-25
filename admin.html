@@ -45,6 +45,9 @@
         </div>
     </div>
 
+    <!-- Modal Container (ADDED) -->
+    <div id="modal-container" style="display: none;"></div>
+
     <!-- Error Boundary -->
     <div id="error-boundary" style="display: none;">
         <div class="error-container">
@@ -81,7 +84,10 @@
     
     <!-- Admin Components -->
     <script src="js/components/admin-page.js"></script>
-    
+
+    <!-- Admin Testing Utility -->
+    <script src="js/utils/admin-test.js"></script>
+
     <!-- Master Initializer -->
     <script src="js/master-initializer.js"></script>
 
@@ -125,16 +131,27 @@
                 console.log('  - masterInitializer:', !!window.masterInitializer);
                 console.log('  - AdminPage class:', !!window.AdminPage);
 
-                // Wait for master initializer
-                if (!window.masterInitializer) {
-                    console.log('⏳ Waiting for master initializer...');
-                    await waitForMasterInitializer();
-                }
+                // ENHANCED: More flexible initialization with timeout
+                try {
+                    if (!window.masterInitializer) {
+                        console.log('⏳ Waiting for master initializer...');
+                        await waitForMasterInitializer(15000); // Shorter timeout
+                    }
 
-                // Initialize master system
-                if (!window.masterInitializer.isInitialized) {
-                    console.log('🔧 Initializing master system...');
-                    await window.masterInitializer.init();
+                    // Initialize master system
+                    if (window.masterInitializer && !window.masterInitializer.isInitialized) {
+                        console.log('🔧 Initializing master system...');
+                        await window.masterInitializer.init();
+                    }
+                } catch (initError) {
+                    console.warn('⚠️ Master initialization failed, proceeding with basic setup:', initError.message);
+
+                    // Basic fallback initialization
+                    if (!window.contractManager && window.ContractManager) {
+                        console.log('🔗 Creating contract manager directly...');
+                        window.contractManager = new ContractManager();
+                        await window.contractManager.init();
+                    }
                 }
 
                 // Debug: Check wallet manager after initialization

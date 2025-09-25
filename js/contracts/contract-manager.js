@@ -21,6 +21,7 @@ class ContractManager {
         this.signer = null;
         this.fallbackProviders = [];
         this.currentProviderIndex = 0;
+        this.disabledFeatures = new Set(); // Track disabled features due to contract limitations
 
         // State management
         this.isInitialized = false;
@@ -112,12 +113,12 @@ class ContractManager {
             this.log('🔄 Starting read-only initialization...');
 
             // Check if app config is available
-            if (!window.APP_CONFIG) {
-                this.logError('❌ APP_CONFIG not available - cannot initialize contracts');
-                throw new Error('APP_CONFIG not loaded');
+            if (!window.CONFIG) {
+                this.logError('❌ CONFIG not available - cannot initialize contracts');
+                throw new Error('CONFIG not loaded');
             }
 
-            this.log('✅ APP_CONFIG available:', window.APP_CONFIG.CONTRACTS);
+            this.log('✅ CONFIG available:', window.CONFIG.CONTRACTS);
 
             // Check if ethers is available
             if (!window.ethers) {
@@ -171,14 +172,11 @@ class ContractManager {
                 await this.initializeFallbackProviders();
                 this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
 
-                // Use the first available fallback provider
-                if (this.fallbackProviders.length > 0) {
-                    this.provider = this.fallbackProviders[0];
-                    this.signer = null; // No signer in read-only mode
-                    this.log('✅ Using read-only provider:', this.provider.connection?.url || 'Unknown');
-                } else {
-                    throw new Error('No fallback providers available');
-                }
+                // Use working provider (ENHANCED)
+                this.log('🔄 Finding working RPC provider...');
+                this.provider = await this.getWorkingProvider();
+                this.signer = null; // No signer in read-only mode
+                this.log('✅ Using working provider:', this.provider.connection?.url || 'Unknown');
             }
 
             // Load contract ABIs
@@ -196,10 +194,15 @@ class ContractManager {
             await this.initializeContractsReadOnly();
             this.log('🔗 Contract instances initialized');
 
-            // Verify contract connections
-            this.log('🔍 Verifying contract connections...');
-            await this.verifyContractConnections();
-            this.log('🔍 Contract connections verified');
+            // Verify contract deployment and functions
+            this.log('🔍 Verifying contract deployment...');
+            await this.verifyContractDeployment();
+            this.log('🔍 Contract deployment verified');
+
+            // Verify contract function availability
+            this.log('🔍 Verifying contract functions...');
+            await this.verifyContractFunctions();
+            this.log('🔍 Contract functions verified');
 
             this.log('✅ ContractManager read-only initialization completed');
 
@@ -384,6 +387,85 @@ class ContractManager {
     }
 
     /**
+     * Get a working provider with comprehensive RPC testing (ENHANCED)
+     */
+    async getWorkingProvider() {
+        const rpcUrls = this.getAllRPCUrls();
+
+        this.log(`🔄 Testing ${rpcUrls.length} RPC endpoints for reliability...`);
+
+        for (let i = 0; i < rpcUrls.length; i++) {
+            const rpcUrl = rpcUrls[i];
+            try {
+                this.log(`🔄 Testing RPC ${i + 1}/${rpcUrls.length}: ${rpcUrl}`);
+
+                const provider = new ethers.providers.JsonRpcProvider({
+                    url: rpcUrl,
+                    timeout: 8000 // 8 second timeout
+                });
+
+                // Test basic connectivity
+                const networkPromise = provider.getNetwork();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Network timeout')), 8000)
+                );
+
+                const network = await Promise.race([networkPromise, timeoutPromise]);
+
+                // Verify correct network
+                if (network.chainId !== 80002) {
+                    throw new Error(`Wrong network: expected 80002, got ${network.chainId}`);
+                }
+
+                // Test block number retrieval (tests node sync)
+                const blockNumber = await Promise.race([
+                    provider.getBlockNumber(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Block number timeout')), 5000))
+                ]);
+
+                this.log(`✅ RPC ${i + 1} working: Chain ${network.chainId}, Block ${blockNumber}`);
+                return provider;
+
+            } catch (error) {
+                this.log(`❌ RPC ${i + 1} failed: ${error.message}`);
+                continue;
+            }
+        }
+
+        throw new Error('All RPC endpoints failed - no working provider available');
+    }
+
+    /**
+     * Get all available RPC URLs from configuration
+     */
+    getAllRPCUrls() {
+        const rpcUrls = [];
+
+        // Primary RPC from CONFIG
+        if (window.CONFIG?.NETWORK?.RPC_URL) {
+            rpcUrls.push(window.CONFIG.NETWORK.RPC_URL);
+        }
+
+        // Fallback RPCs from CONFIG
+        if (window.CONFIG?.NETWORK?.FALLBACK_RPCS) {
+            rpcUrls.push(...window.CONFIG.NETWORK.FALLBACK_RPCS);
+        }
+
+        // Legacy RPC format
+        if (window.CONFIG?.RPC?.POLYGON_AMOY) {
+            rpcUrls.push(...window.CONFIG.RPC.POLYGON_AMOY);
+        }
+
+        // Internal fallback RPCs
+        if (this.config.fallbackRPCs) {
+            rpcUrls.push(...this.config.fallbackRPCs);
+        }
+
+        // Remove duplicates and return
+        return [...new Set(rpcUrls)];
+    }
+
+    /**
      * Setup fallback provider configuration
      */
     async setupFallbackProviders() {
@@ -421,10 +503,16 @@ class ContractManager {
                 this.log('📡 Using internal fallback RPCs:', rpcUrls.length);
             }
 
-            // Also try from global CONFIG
+            // Also try from global CONFIG (new FALLBACK_RPCS format)
+            if (window.CONFIG?.NETWORK?.FALLBACK_RPCS && window.CONFIG.NETWORK.FALLBACK_RPCS.length > 0) {
+                rpcUrls = [...rpcUrls, ...window.CONFIG.NETWORK.FALLBACK_RPCS];
+                this.log('📡 Added global CONFIG FALLBACK_RPCS:', window.CONFIG.NETWORK.FALLBACK_RPCS.length);
+            }
+
+            // Legacy support for old RPC format
             if (window.CONFIG?.RPC?.POLYGON_AMOY && window.CONFIG.RPC.POLYGON_AMOY.length > 0) {
                 rpcUrls = [...rpcUrls, ...window.CONFIG.RPC.POLYGON_AMOY];
-                this.log('📡 Added global CONFIG RPCs:', window.CONFIG.RPC.POLYGON_AMOY.length);
+                this.log('📡 Added legacy CONFIG RPCs:', window.CONFIG.RPC.POLYGON_AMOY.length);
             }
 
             // Remove duplicates
@@ -529,90 +617,86 @@ class ContractManager {
     }
 
     /**
-     * Load contract ABIs from configuration or external sources
+     * Load contract ABIs from configuration or external sources (FIXED)
      */
     async loadContractABIs() {
         try {
             this.log('Loading contract ABIs...');
 
-            // LP Staking Contract ABI (matching deployed contract with admin functions)
-            const stakingABI = [
-                // Basic staking functions
-                "function stake(address lpToken, uint256 amount) external",
-                "function unstake(address lpToken, uint256 amount) external",
-                "function claimRewards(address lpToken) external",
-                "function getUserStakeInfo(address user, address lpToken) external view returns (uint256 amount, uint256 pendingRewards)",
-                "function getActivePairs() external view returns (address[] memory)",
-                "function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[] memory)",
-                "function getSigners() external view returns (address[] memory)",
+            // FIXED: Use ABI from CONFIG instead of hardcoded
+            let stakingABI;
 
-                // Admin role functions
-                "function hasRole(bytes32 role, address account) external view returns (bool)",
-                "function grantRole(bytes32 role, address account) external",
-                "function revokeRole(bytes32 role, address account) external",
+            if (window.CONFIG?.ABIS?.STAKING_CONTRACT) {
+                this.log('✅ Using ABI from CONFIG');
+                stakingABI = window.CONFIG.ABIS.STAKING_CONTRACT;
+            } else {
+                this.log('⚠️ CONFIG ABI not found, using fallback ABI');
+                // Fallback ABI with essential functions only
+                stakingABI = [
+                    "function rewardToken() external view returns (address)",
+                    "function hourlyRewardRate() external view returns (uint256)",
+                    "function REQUIRED_APPROVALS() external view returns (uint256)",
+                    "function actionCounter() external view returns (uint256)",
+                    "function stake(address lpToken, uint256 amount) external",
+                    "function unstake(address lpToken, uint256 amount) external",
+                    "function claimRewards(address lpToken) external",
 
-                // Multi-signature proposal functions
-                "function proposeSetHourlyRewardRate(uint256 newRate) external returns (uint256)",
-                "function proposeUpdatePairWeights(address[] calldata lpTokens, uint256[] calldata weights) external returns (uint256)",
-                "function proposeAddPair(address lpToken, string calldata pairName, string calldata platform, uint256 weight) external returns (uint256)",
-                "function proposeRemovePair(address lpToken) external returns (uint256)",
-                "function proposeChangeSigner(address oldSigner, address newSigner) external returns (uint256)",
-                "function proposeWithdrawRewards(address recipient, uint256 amount) external returns (uint256)",
+                    // Admin role functions
+                    "function hasRole(bytes32 role, address account) external view returns (bool)",
+                    "function grantRole(bytes32 role, address account) external",
+                    "function revokeRole(bytes32 role, address account) external",
 
-                // Multi-signature approval functions
-                "function approveAction(uint256 actionId) external",
-                "function executeAction(uint256 actionId) external",
-                "function rejectAction(uint256 actionId) external",
+                    // Multi-signature proposal functions
+                    "function proposeSetHourlyRewardRate(uint256 newRate) external returns (uint256)",
+                    "function proposeUpdatePairWeights(address[] calldata lpTokens, uint256[] calldata weights) external returns (uint256)",
+                    "function proposeAddPair(address lpToken, string calldata pairName, string calldata platform, uint256 weight) external returns (uint256)",
+                    "function proposeRemovePair(address lpToken) external returns (uint256)",
+                    "function proposeChangeSigner(address oldSigner, address newSigner) external returns (uint256)",
+                    "function proposeWithdrawRewards(address recipient, uint256 amount) external returns (uint256)",
 
-                // Multi-signature query functions
-                "function actionCounter() external view returns (uint256)",
-                "function getRequiredApprovals() external view returns (uint256)",
-                "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address[] memory pairs, uint256[] memory weights, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, address[] memory approvedBy, uint256 proposedTime, bool rejected)",
-                "function getActionPairs(uint256 actionId) external view returns (address[] memory)",
-                "function getActionWeights(uint256 actionId) external view returns (uint256[] memory)",
-                "function isActionExpired(uint256 actionId) external view returns (bool)",
+                    // Multi-signature approval functions
+                    "function approveAction(uint256 actionId) external",
+                    "function executeAction(uint256 actionId) external",
+                    "function rejectAction(uint256 actionId) external",
 
-                // Utility functions
-                "function cleanupExpiredActions() external",
+                    // Multi-signature query functions
+                    "function actionCounter() external view returns (uint256)",
+                    "function REQUIRED_APPROVALS() external view returns (uint256)",
+                    "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address[] memory pairs, uint256[] memory weights, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, address[] memory approvedBy, uint256 proposedTime, bool rejected)",
+                    "function getActionPairs(uint256 actionId) external view returns (address[] memory)",
+                    "function getActionWeights(uint256 actionId) external view returns (uint256[] memory)",
+                    "function isActionExpired(uint256 actionId) external view returns (bool)",
 
-                // Basic staking events
-                "event StakeAdded(address indexed user, address indexed lpToken, uint256 amount)",
-                "event StakeRemoved(address indexed user, address indexed lpToken, uint256 amount)",
-                "event RewardsClaimed(address indexed user, address indexed lpToken, uint256 amount)",
+                    // Utility functions
+                    "function cleanupExpiredActions() external"
+                ];
+            }
 
-                // Admin events
-                "event PairAdded(address lpToken, string platform, uint256 weight)",
-                "event PairRemoved(address lpToken)",
-                "event HourlyRateUpdated(uint256 newRate)",
-                "event WeightsUpdated(address[] pairs, uint256[] weights)",
-                "event SignerChanged(address oldSigner, address newSigner)",
-                "event ActionProposed(uint256 actionId, address proposer, uint8 actionType)",
-                "event ActionApproved(uint256 actionId, address approver)",
-                "event ActionExecuted(uint256 actionId)",
-                "event ActionRejected(uint256 actionId, address rejector)",
-                "event ActionExpired(uint256 actionId)"
-            ];
-
-            // ERC20 Token ABI (standard)
-            const erc20ABI = [
-                "function balanceOf(address owner) external view returns (uint256)",
-                "function allowance(address owner, address spender) external view returns (uint256)",
-                "function approve(address spender, uint256 amount) external returns (bool)",
-                "function transfer(address to, uint256 amount) external returns (bool)",
-                "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
-                "function name() external view returns (string)",
-                "function symbol() external view returns (string)",
-                "function decimals() external view returns (uint8)",
-                "function totalSupply() external view returns (uint256)",
-                "event Transfer(address indexed from, address indexed to, uint256 value)",
-                "event Approval(address indexed owner, address indexed spender, uint256 value)"
-            ];
+            // ERC20 Token ABI (FIXED: Use CONFIG or fallback)
+            let erc20ABI;
+            if (window.CONFIG?.ABIS?.ERC20) {
+                erc20ABI = window.CONFIG.ABIS.ERC20;
+            } else {
+                erc20ABI = [
+                    "function balanceOf(address owner) external view returns (uint256)",
+                    "function allowance(address owner, address spender) external view returns (uint256)",
+                    "function approve(address spender, uint256 amount) external returns (bool)",
+                    "function transfer(address to, uint256 amount) external returns (bool)",
+                    "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
+                    "function name() external view returns (string)",
+                    "function symbol() external view returns (string)",
+                    "function decimals() external view returns (uint8)",
+                    "function totalSupply() external view returns (uint256)"
+                ];
+            }
 
             // Store ABIs
             this.contractABIs.set('STAKING', stakingABI);
             this.contractABIs.set('ERC20', erc20ABI);
 
-            this.log('Contract ABIs loaded successfully');
+            this.log('✅ Contract ABIs loaded successfully');
+            this.log(`   - Staking ABI functions: ${stakingABI.length}`);
+            this.log(`   - ERC20 ABI functions: ${erc20ABI.length}`);
         } catch (error) {
             this.logError('Failed to load contract ABIs:', error);
             throw error;
@@ -626,11 +710,11 @@ class ContractManager {
         try {
             this.log('Loading contract addresses...');
 
-            // Load from global config - check both CONFIG and APP_CONFIG
-            const config = window.APP_CONFIG || window.CONFIG;
+            // Load from global config
+            const config = window.CONFIG;
 
             if (!config) {
-                this.logError('❌ No configuration found (APP_CONFIG or CONFIG)');
+                this.logError('❌ No configuration found (CONFIG)');
                 throw new Error('Configuration not available');
             }
 
@@ -799,36 +883,95 @@ class ContractManager {
     }
 
     /**
-     * Verify contract connections and basic functionality
+     * Verify contract deployment exists (ENHANCED)
+     */
+    async verifyContractDeployment() {
+        try {
+            this.log('🔍 Verifying contract deployment...');
+
+            const stakingAddress = this.contractAddresses.get('STAKING');
+            if (!stakingAddress) {
+                throw new Error('No staking contract address configured');
+            }
+
+            // Get working provider
+            const provider = this.provider || await this.getWorkingProvider();
+
+            // Check if contract is deployed
+            const code = await provider.getCode(stakingAddress);
+            if (code === '0x') {
+                throw new Error(`Contract not deployed at address: ${stakingAddress}`);
+            }
+
+            this.log(`✅ Contract verified at ${stakingAddress} (${code.length} bytes)`);
+            return true;
+        } catch (error) {
+            this.logError('❌ Contract deployment verification failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify contract function availability (NEW)
+     */
+    async verifyContractFunctions() {
+        try {
+            this.log('🔍 Verifying contract functions...');
+
+            if (!this.stakingContract) {
+                throw new Error('Staking contract not initialized');
+            }
+
+            // Test required functions with timeout
+            const requiredFunctions = [
+                { name: 'rewardToken', test: () => this.stakingContract.rewardToken() },
+                { name: 'hourlyRewardRate', test: () => this.stakingContract.hourlyRewardRate() },
+                { name: 'REQUIRED_APPROVALS', test: () => this.stakingContract.REQUIRED_APPROVALS() },
+                { name: 'actionCounter', test: () => this.stakingContract.actionCounter() }
+            ];
+
+            let workingFunctions = 0;
+            for (const func of requiredFunctions) {
+                try {
+                    // Add timeout to prevent hanging
+                    const result = await Promise.race([
+                        func.test(),
+                        new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('Function call timeout')), 10000)
+                        )
+                    ]);
+                    this.log(`✅ Function ${func.name}: ${result}`);
+                    workingFunctions++;
+                } catch (error) {
+                    this.logError(`❌ Function ${func.name} failed:`, error.message);
+                    throw new Error(`Required function ${func.name} not available: ${error.message}`);
+                }
+            }
+
+            this.log(`✅ Contract functions verified: ${workingFunctions}/${requiredFunctions.length} required functions working`);
+            return true;
+        } catch (error) {
+            this.logError('❌ Contract function verification failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify contract connections and basic functionality (ENHANCED)
      */
     async verifyContractConnections() {
         try {
-            this.log('Verifying contract connections...');
+            this.log('🔍 Verifying contract connections...');
 
-            // Test staking contract connection
-            if (this.stakingContract) {
-                try {
-                    await this.stakingContract.getActivePairs();
-                    this.log('✅ Staking contract connection verified');
-                } catch (error) {
-                    this.log('⚠️ Staking contract verification failed (may be expected in testnet):', error.message);
-                }
-            }
+            // Call the new verification methods
+            await this.verifyContractDeployment();
+            await this.verifyContractFunctions();
 
-            // Test reward token contract connection
-            if (this.rewardTokenContract) {
-                try {
-                    await this.rewardTokenContract.name();
-                    this.log('✅ Reward token contract connection verified');
-                } catch (error) {
-                    this.log('⚠️ Reward token contract verification failed (may be expected in testnet)');
-                }
-            }
-
-            this.log('Contract connection verification completed');
+            this.log('✅ Contract connection verification completed');
         } catch (error) {
-            this.logError('Contract verification failed:', error);
-            // Don't throw here as this is just verification
+            this.logError('❌ Contract verification failed:', error);
+            // Don't throw here as this is just verification - let the system continue
+            this.log('⚠️ Continuing with limited functionality...');
         }
     }
 
@@ -1056,13 +1199,65 @@ class ContractManager {
     }
 
     /**
-     * Get required approvals for multi-signature actions
+     * Retry contract call with exponential backoff (ENHANCED)
+     */
+    async retryContractCall(contractFunction, maxRetries = 3, functionName = 'unknown') {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                this.log(`🔄 Calling ${functionName} (attempt ${attempt}/${maxRetries})`);
+                const result = await Promise.race([
+                    contractFunction(),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Contract call timeout')), 15000)
+                    )
+                ]);
+                this.log(`✅ ${functionName} succeeded on attempt ${attempt}`);
+                return result;
+            } catch (error) {
+                this.log(`❌ ${functionName} failed on attempt ${attempt}: ${error.message}`);
+
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+
+                // Check if it's an RPC error that might be retryable
+                if (error.code === -32603 ||
+                    error.message.includes('missing trie node') ||
+                    error.message.includes('timeout') ||
+                    error.message.includes('CALL_EXCEPTION')) {
+                    const delay = 1000 * Math.pow(2, attempt - 1); // Exponential backoff
+                    this.log(`⏳ Retrying ${functionName} in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                // Non-retryable error
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * Get required approvals for multi-signature actions (ENHANCED)
      */
     async getRequiredApprovals() {
-        return await this.executeWithRetry(async () => {
-            const required = await this.stakingContract.getRequiredApprovals();
-            return required.toNumber();
-        }, 'getRequiredApprovals');
+        try {
+            if (!this.stakingContract) {
+                throw new Error('Staking contract not initialized');
+            }
+
+            // Use enhanced retry logic
+            return await this.retryContractCall(
+                () => this.stakingContract.REQUIRED_APPROVALS().then(result => result.toNumber()),
+                3,
+                'REQUIRED_APPROVALS'
+            );
+        } catch (error) {
+            this.logError('Failed to get required approvals:', error);
+            // Return fallback value instead of throwing
+            this.log('⚠️ Using fallback value for required approvals: 2');
+            return 2;
+        }
     }
 
     /**

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Staking - Admin Panel Testing & Diagnostics</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <style>
+        .test-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            padding: 2rem;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .test-header h1 {
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .test-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .test-panel h3 {
+            color: #00d4ff;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .test-btn {
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .test-btn:hover {
+            background: #00b8e6;
+            transform: translateY(-1px);
+        }
+
+        .test-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        .test-btn.danger {
+            background: #ff6b6b;
+            color: #ffffff;
+        }
+
+        .log-container {
+            background: #000;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            word-wrap: break-word;
+        }
+
+        .log-entry.info { color: #00d4ff; }
+        .log-entry.success { color: #4caf50; }
+        .log-entry.warning { color: #ff9800; }
+        .log-entry.error { color: #f44336; }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-card.online {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .status-card.offline {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .status-card.warning {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.online { background: #4caf50; }
+        .status-indicator.offline { background: #f44336; }
+        .status-indicator.warning { background: #ff9800; }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .clear-logs {
+            float: right;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-page">
+        <div class="test-container">
+            <!-- Header -->
+            <div class="test-header">
+                <h1>🧪 LP Staking Admin Panel Testing & Diagnostics</h1>
+                <p>Comprehensive testing suite for admin panel functionality</p>
+            </div>
+
+            <!-- System Status -->
+            <div class="status-grid" id="status-grid">
+                <!-- Status cards will be populated by JavaScript -->
+            </div>
+
+            <!-- Test Panels -->
+            <div class="test-grid">
+                <!-- Quick Tests -->
+                <div class="test-panel">
+                    <h3>🚀 Quick Tests</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="runQuickTest()">Quick Test</button>
+                        <button class="test-btn" onclick="testSystemReady()">System Ready</button>
+                        <button class="test-btn" onclick="testRPCs()">Test RPCs</button>
+                        <button class="test-btn" onclick="testContract()">Test Contract</button>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Tests -->
+                <div class="test-panel">
+                    <h3>🔬 Comprehensive Tests</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="runAllTests()">Full Test Suite</button>
+                        <button class="test-btn secondary" onclick="testModalFunctionality()">Test Modals</button>
+                        <button class="test-btn secondary" onclick="testButtonHandlers()">Test Buttons</button>
+                        <button class="test-btn secondary" onclick="testContractFunctions()">Contract Functions</button>
+                    </div>
+                </div>
+
+                <!-- Admin Panel Actions -->
+                <div class="test-panel">
+                    <h3>🔐 Admin Panel Actions</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="openAdminPanel()">Open Admin Panel</button>
+                        <button class="test-btn secondary" onclick="testAdminModals()">Test Admin Modals</button>
+                        <button class="test-btn secondary" onclick="simulateProposal()">Simulate Proposal</button>
+                        <button class="test-btn danger" onclick="resetAdminPanel()">Reset Admin Panel</button>
+                    </div>
+                </div>
+
+                <!-- Debugging Tools -->
+                <div class="test-panel">
+                    <h3>🐛 Debugging Tools</h3>
+                    <div class="test-buttons">
+                        <button class="test-btn" onclick="inspectGlobalState()">Inspect Globals</button>
+                        <button class="test-btn secondary" onclick="checkDependencies()">Check Dependencies</button>
+                        <button class="test-btn secondary" onclick="validateConfiguration()">Validate Config</button>
+                        <button class="test-btn danger" onclick="clearAllData()">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Output -->
+            <div class="test-panel full-width">
+                <h3>
+                    📋 Test Logs & Output
+                    <button class="clear-logs" onclick="clearLogs()">Clear Logs</button>
+                </h3>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry info">🧪 Testing system initialized. Click any test button to begin.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-container" style="display: none;"></div>
+
+    <!-- Scripts -->
+    <!-- Configuration -->
+    <script src="js/config/app-config.js"></script>
+    <script src="js/config/dev-config.js"></script>
+
+    <!-- Core Libraries -->
+    <script src="libs/ethers.umd.min.js"></script>
+
+    <!-- Core System -->
+    <script src="js/utils/logger.js"></script>
+    <script src="js/utils/event-manager.js"></script>
+    <script src="js/utils/storage-manager.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/notification-manager.js"></script>
+    
+    <!-- Wallet Integration -->
+    <script src="js/wallet/wallet-manager.js"></script>
+    <script src="js/wallet/metamask-connector.js"></script>
+    <script src="js/wallet/walletconnect-connector.js"></script>
+    
+    <!-- Contract System -->
+    <script src="js/contracts/contract-manager.js"></script>
+    
+    <!-- Admin Components -->
+    <script src="js/components/admin-page.js"></script>
+    
+    <!-- Admin Testing Utility -->
+    <script src="js/utils/admin-test.js"></script>
+    
+    <!-- Master Initializer -->
+    <script src="js/master-initializer.js"></script>
+
+    <script>
+        // Test page functionality
+        let testLogger = {
+            logs: [],
+            
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = { timestamp, message, type };
+                this.logs.push(logEntry);
+                this.displayLog(logEntry);
+            },
+            
+            displayLog(entry) {
+                const container = document.getElementById('log-container');
+                const logDiv = document.createElement('div');
+                logDiv.className = `log-entry ${entry.type}`;
+                logDiv.textContent = `[${entry.timestamp}] ${entry.message}`;
+                container.appendChild(logDiv);
+                container.scrollTop = container.scrollHeight;
+            },
+            
+            clear() {
+                this.logs = [];
+                document.getElementById('log-container').innerHTML = '';
+            }
+        };
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function(...args) {
+            testLogger.log(args.join(' '), 'info');
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            testLogger.log(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            testLogger.log(args.join(' '), 'warning');
+            originalWarn.apply(console, args);
+        };
+
+        // Test functions will be added in the next part...
+    </script>
+</body>
+</html>

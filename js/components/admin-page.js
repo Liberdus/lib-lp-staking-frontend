@@ -96,7 +96,7 @@ class AdminPage {
         }
     }
 
-    async waitForSystemReady(timeout = 60000) {
+    async waitForSystemReady(timeout = 30000) {
         console.log('⏳ Waiting for system components to be ready...');
 
         const startTime = Date.now();
@@ -107,27 +107,38 @@ class AdminPage {
 
                 // Check if timeout exceeded
                 if (elapsed > timeout) {
-                    reject(new Error(`System readiness timeout after ${timeout}ms`));
+                    console.warn(`⚠️ System readiness timeout after ${timeout}ms - proceeding with available components`);
+                    // Don't reject, just resolve with what we have
+                    resolve();
                     return;
                 }
 
-                // Check system components
-                const contractManagerReady = window.contractManager?.isReady();
-                const walletConnected = window.walletManager?.isConnected();
+                // Check system components (ENHANCED: More flexible requirements)
                 const ethersAvailable = !!window.ethers;
+                const configAvailable = !!window.CONFIG;
+                const contractManagerExists = !!window.contractManager;
 
                 console.log(`🔍 System check (${Math.round(elapsed/1000)}s):`, {
-                    contractManager: contractManagerReady,
-                    wallet: walletConnected,
-                    ethers: ethersAvailable
+                    ethers: ethersAvailable,
+                    config: configAvailable,
+                    contractManager: contractManagerExists,
+                    contractManagerReady: contractManagerExists ? window.contractManager.isReady() : false
                 });
 
-                if (contractManagerReady && walletConnected && ethersAvailable) {
-                    console.log('✅ All system components ready');
+                // ENHANCED: More flexible requirements - proceed if we have basic components
+                if (ethersAvailable && configAvailable) {
+                    console.log('✅ Basic system components ready - proceeding with initialization');
                     resolve();
                 } else {
-                    // Continue checking
-                    setTimeout(checkReady, 2000);
+                    // Show what's missing
+                    const missing = [];
+                    if (!ethersAvailable) missing.push('ethers');
+                    if (!configAvailable) missing.push('config');
+
+                    console.log(`⏳ Still waiting for: ${missing.join(', ')}`);
+
+                    // Continue checking with shorter interval
+                    setTimeout(checkReady, 1000);
                 }
             };
 
@@ -405,6 +416,36 @@ class AdminPage {
             }
         });
 
+        // ENHANCED: Global click handler for modal buttons
+        document.addEventListener('click', (e) => {
+            // Modal close buttons
+            if (e.target.classList.contains('modal-close') ||
+                e.target.closest('.modal-close')) {
+                e.preventDefault();
+                this.closeModal();
+                return;
+            }
+
+            // Modal overlay click (close modal)
+            if (e.target.classList.contains('modal-overlay')) {
+                e.preventDefault();
+                this.closeModal();
+                return;
+            }
+
+            // Action buttons in modals
+            if (e.target.classList.contains('btn') && e.target.closest('.modal-content')) {
+                const buttonText = e.target.textContent.trim();
+                const form = e.target.closest('form');
+
+                if (buttonText === 'Cancel' || e.target.classList.contains('btn-secondary')) {
+                    e.preventDefault();
+                    this.closeModal();
+                    return;
+                }
+            }
+        });
+
         // Form validation listeners
         document.addEventListener('input', (e) => {
             if (e.target.classList.contains('form-input')) {
@@ -412,12 +453,45 @@ class AdminPage {
             }
         });
 
-        // Form submission prevention for invalid forms
+        // ENHANCED: Form submission handling
         document.addEventListener('submit', (e) => {
-            if (e.target.classList.contains('admin-form')) {
-                if (!this.validateForm(e.target)) {
+            const form = e.target;
+
+            // Handle admin forms
+            if (form.classList.contains('admin-form') || form.closest('.modal-content')) {
+                console.log('📝 Form submitted:', form.id);
+
+                // Validate form
+                if (!this.validateForm(form)) {
                     e.preventDefault();
                     console.warn('⚠️ Form validation failed');
+                    return;
+                }
+
+                // Handle specific form types
+                switch (form.id) {
+                    case 'hourly-rate-form':
+                        e.preventDefault();
+                        this.submitHourlyRateProposal(e);
+                        break;
+                    case 'add-pair-form':
+                        e.preventDefault();
+                        this.submitAddPairProposal(e);
+                        break;
+                    case 'remove-pair-form':
+                        e.preventDefault();
+                        this.submitRemovePairProposal(e);
+                        break;
+                    case 'change-signer-form':
+                        e.preventDefault();
+                        this.submitChangeSignerProposal(e);
+                        break;
+                    case 'withdrawal-form':
+                        e.preventDefault();
+                        this.submitWithdrawalProposal(e);
+                        break;
+                    default:
+                        console.log('📝 Unhandled form submission:', form.id);
                 }
             }
         });
@@ -935,9 +1009,21 @@ class AdminPage {
         try {
             const contractManager = await this.ensureContractReady();
 
-            // Get action counter and required approvals
-            const actionCounter = await contractManager.getActionCounter();
-            const requiredApprovals = await contractManager.getRequiredApprovals();
+            // Check if governance features are disabled
+            if (contractManager.disabledFeatures?.has('getProposals')) {
+                console.log('📋 Governance features disabled - contract does not support proposals');
+                this.displayNoGovernance();
+                return [];
+            }
+
+            // Get action counter and required approvals with enhanced error handling
+            const actionCounter = await contractManager.retryContractCall(
+                () => contractManager.stakingContract.actionCounter().then(result => result.toNumber()),
+                3,
+                'actionCounter'
+            );
+
+            const requiredApprovals = await contractManager.getRequiredApprovals(); // Enhanced with retry logic
 
             console.log(`📊 Found ${actionCounter} total actions, ${requiredApprovals} approvals required`);
 
@@ -976,10 +1062,33 @@ class AdminPage {
         } catch (error) {
             console.error('❌ Failed to load proposals from contract:', error);
 
+            // Enhanced error handling
+            if (error.code === 'CALL_EXCEPTION' || error.message.includes('CALL_EXCEPTION')) {
+                console.error('🔍 Contract call failed - governance functions may not be available');
+                console.error('🔍 Error details:', {
+                    code: error.code,
+                    method: error.method,
+                    data: error.data,
+                    reason: error.reason
+                });
+
+                // Display no governance message
+                this.displayNoGovernance();
+                return [];
+            }
+
             // Fallback to mock data in development mode
             if (this.DEVELOPMENT_MODE) {
                 console.log('🔧 Using mock proposals in development mode');
                 return this.getMockProposals();
+            }
+
+            // Show user-friendly error
+            if (window.notificationManager) {
+                window.notificationManager.error(
+                    'Contract Error',
+                    'Failed to load proposals. Please check your connection and try again.'
+                );
             }
 
             return [];
@@ -1235,18 +1344,90 @@ class AdminPage {
 
             console.log('📊 Contract manager ready, loading stats...');
 
-            // Get active pairs using the contract manager method
-            const activePairs = await contractManager.getActivePairs();
-            this.contractStats.activePairs = activePairs.length;
-            console.log('📊 Active pairs loaded:', activePairs.length);
+            // Initialize stats object
+            this.contractStats = {
+                activePairs: 0,
+                totalPairs: 0,
+                totalTVL: 0,
+                totalStakers: 0,
+                totalRewards: 0,
+                rewardToken: null,
+                hourlyRewardRate: 0,
+                requiredApprovals: 0,
+                actionCounter: 0
+            };
 
-            // Get all pairs for more detailed stats
+            // Get basic contract info (ENHANCED with proper error handling)
+            try {
+                // Validate contract initialization first
+                if (!contractManager.stakingContract) {
+                    throw new Error('Staking contract not initialized');
+                }
+
+                // Test contract functions individually with fallbacks
+                const contractCalls = [
+                    {
+                        name: 'rewardToken',
+                        call: () => contractManager.stakingContract.rewardToken(),
+                        fallback: 'Contract Error'
+                    },
+                    {
+                        name: 'hourlyRewardRate',
+                        call: () => contractManager.stakingContract.hourlyRewardRate(),
+                        fallback: '0'
+                    },
+                    {
+                        name: 'requiredApprovals',
+                        call: () => contractManager.stakingContract.REQUIRED_APPROVALS(),
+                        fallback: 2
+                    },
+                    {
+                        name: 'actionCounter',
+                        call: () => contractManager.stakingContract.actionCounter(),
+                        fallback: 0
+                    }
+                ];
+
+                // Execute calls with individual error handling
+                for (const contractCall of contractCalls) {
+                    try {
+                        const result = await contractCall.call();
+                        let value = result;
+
+                        // Handle BigInt conversion
+                        if (typeof result === 'bigint') {
+                            value = Number(result);
+                        } else if (result && typeof result.toNumber === 'function') {
+                            value = result.toNumber();
+                        } else if (result && typeof result.toString === 'function') {
+                            value = result.toString();
+                        }
+
+                        this.contractStats[contractCall.name] = value;
+                        console.log(`📊 ${contractCall.name}:`, value);
+                    } catch (callError) {
+                        console.warn(`⚠️ ${contractCall.name} failed:`, callError.message);
+                        this.contractStats[contractCall.name] = contractCall.fallback;
+                    }
+                }
+
+            } catch (error) {
+                console.warn('⚠️ Could not load basic contract info:', error.message);
+                // Set all fallback values
+                this.contractStats.rewardToken = 'Contract Error';
+                this.contractStats.hourlyRewardRate = '0';
+                this.contractStats.requiredApprovals = 2;
+                this.contractStats.actionCounter = 0;
+            }
+
+            // Get pairs information (with error handling)
             try {
                 const allPairs = await contractManager.stakingContract.getPairs();
                 this.contractStats.totalPairs = allPairs.length;
-                console.log('📊 Total pairs loaded:', allPairs.length);
+                this.contractStats.activePairs = allPairs.filter(pair => pair.isActive).length;
+                console.log('📊 Total pairs:', allPairs.length, 'Active:', this.contractStats.activePairs);
             } catch (error) {
-                console.warn('⚠️ Could not load all pairs (may not be implemented):', error.message);
+                console.warn('⚠️ Could not load pairs info:', error.message);
                 this.contractStats.totalPairs = this.contractStats.activePairs;
             }
 
@@ -2687,6 +2868,45 @@ class AdminPage {
         this.contractStats = {};
 
         console.log('🧹 Admin Panel destroyed');
+    }
+
+    /**
+     * Display message when governance features are not available
+     */
+    displayNoGovernance() {
+        const governanceSection = document.querySelector('.governance-section');
+        if (governanceSection) {
+            governanceSection.innerHTML = `
+                <div class="no-governance-message" style="text-align: center; padding: 2rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="color: var(--text-primary); margin-bottom: 1rem;">🏛️ Governance Features</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Governance features are not available for this contract.</p>
+                    <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">This may be because:</p>
+                        <ul style="color: var(--text-secondary); padding-left: 1.5rem;">
+                            <li>The contract doesn't implement multi-signature governance</li>
+                            <li>Governance functions are not yet deployed</li>
+                            <li>You don't have the required permissions</li>
+                            <li>Network connectivity issues</li>
+                        </ul>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                        Basic staking functions should still work normally.
+                    </p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Format numbers for display
+     */
+    formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(2) + 'M';
+        } else if (num >= 1000) {
+            return (num / 1000).toFixed(2) + 'K';
+        }
+        return num.toFixed(2);
     }
 }
 

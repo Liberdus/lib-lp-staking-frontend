@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css?family=Exo:400,500,600,700,800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <!-- Day 10 Enhanced CSS -->
+    <link rel="stylesheet" href="css/day10-enhancements.css">
     <style>
         :root {
 
@@ -591,60 +594,60 @@
 </head>
 <body>
 
-    <header class="header">
+    <header class="header" role="banner">
         <div class="container-lg">
             <div class="header-toolbar">
 
-                <a href="/" class="logo-section">
+                <a href="/" class="logo-section" aria-label="Liberdus LP Staking - Home">
                     <img src="assets/logo.png" alt="Liberdus LP Staking" class="logo">
                     <span class="logo-text">Liberdus LP Staking</span>
                 </a>
-                
 
-                <div class="nav-section">
-                    <a href="/" class="nav-button active">
-                        <span class="material-icons">home</span>
+
+                <nav class="nav-section" role="navigation" aria-label="Main navigation">
+                    <a href="/" class="nav-button active" aria-current="page">
+                        <span class="material-icons" aria-hidden="true">home</span>
                         <span>Home</span>
                     </a>
                     <a href="/admin.html" class="nav-button">
-                        <span class="material-icons">admin_panel_settings</span>
+                        <span class="material-icons" aria-hidden="true">admin_panel_settings</span>
                         <span>Admin Panel</span>
                     </a>
-                    
 
-                    <button id="connect-wallet-btn" class="connect-wallet-btn">
-                        <span class="material-icons">account_balance_wallet</span>
+
+                    <button id="connect-wallet-btn" class="connect-wallet-btn" aria-describedby="wallet-status">
+                        <span class="material-icons" aria-hidden="true">account_balance_wallet</span>
                         <span>Connect Wallet</span>
                     </button>
-                    
 
-                    <button id="theme-toggle" class="theme-toggle">
-                        <span class="material-icons-outlined">light_mode</span>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light theme">
+                        <span class="material-icons-outlined" aria-hidden="true">light_mode</span>
                     </button>
-                </div>
+                </nav>
             </div>
         </div>
     </header>
 
 
-    <main class="main-content">
+    <main class="main-content" role="main" id="main-content">
         <div class="container-xl">
 
             <div class="page-title">
                 <h1>LP Staking</h1>
                 <div class="reward-info">
-                    <span class="material-icons">access_time</span>
-                    <span class="reward-rate">Hourly Reward Rate: <span id="hourly-rate">0.00</span> LIB</span>
-                    <button id="refresh-button" class="refresh-button">
-                        <span class="material-icons">refresh</span>
+                    <span class="material-icons" aria-hidden="true">access_time</span>
+                    <span class="reward-rate">Hourly Reward Rate: <span id="hourly-rate" aria-live="polite">0.00</span> LIB</span>
+                    <button id="refresh-button" class="refresh-button" aria-label="Refresh data">
+                        <span class="material-icons" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
 
 
-            <div id="alert-container"></div>
+            <div id="alert-container" role="alert" aria-live="assertive"></div>
 
-            <div id="content-container">
+            <div id="content-container" class="animate-fade-in">
             </div>
         </div>
     </main>
