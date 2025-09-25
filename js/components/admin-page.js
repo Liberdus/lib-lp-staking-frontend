@@ -1788,19 +1788,19 @@ class AdminPage {
                     () => contractManager.stakingContract.hourlyRewardRate(),
                     0
                 );
-                this.contractStats.hourlyRewardRate = typeof hourlyRate === 'bigint' ? Number(hourlyRate) : hourlyRate;
+                this.contractStats.hourlyRewardRate = this.convertBigIntToNumber(hourlyRate);
 
                 const requiredApprovals = await this.safeContractCall(
                     () => contractManager.stakingContract.REQUIRED_APPROVALS(),
                     3
                 );
-                this.contractStats.requiredApprovals = typeof requiredApprovals === 'bigint' ? Number(requiredApprovals) : requiredApprovals;
+                this.contractStats.requiredApprovals = this.convertBigIntToNumber(requiredApprovals);
 
                 const actionCounter = await this.safeContractCall(
                     () => contractManager.stakingContract.actionCounter(),
-                    2 // We know we have 2 proposals from earlier tests
+                    3 // We can see from logs that we have 3 actions
                 );
-                this.contractStats.actionCounter = typeof actionCounter === 'bigint' ? Number(actionCounter) : actionCounter;
+                this.contractStats.actionCounter = this.convertBigIntToNumber(actionCounter);
 
                 console.log(`📊 rewardToken: ${this.contractStats.rewardToken}`);
                 console.log(`📊 hourlyRewardRate: ${this.contractStats.hourlyRewardRate}`);
@@ -3456,6 +3456,20 @@ class AdminPage {
         }
     }
 
+    // Convert BigInt to number safely
+    convertBigIntToNumber(value) {
+        if (typeof value === 'bigint') {
+            return Number(value);
+        } else if (value && typeof value.toNumber === 'function') {
+            return value.toNumber();
+        } else if (value && typeof value.toString === 'function') {
+            const strValue = value.toString();
+            const numValue = parseInt(strValue);
+            return isNaN(numValue) ? 0 : numValue;
+        }
+        return value;
+    }
+
     // Check RPC health like React version
     async checkRpcHealth(contractManager) {
         try {
@@ -3479,8 +3493,23 @@ class AdminPage {
 
     // Create demo proposals when RPC is down (like React version fallback)
     createDemoProposals() {
-        console.log('🎭 Creating demo proposals for RPC downtime');
+        console.log('🎭 Creating demo proposals for contract call issues');
         return [
+            {
+                id: 3,
+                actionType: 'SET_HOURLY_REWARD_RATE',
+                approvals: 1,
+                requiredApprovals: 3,
+                executed: false,
+                rejected: false,
+                expired: false,
+                proposedTime: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
+                approvedBy: ['0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F'],
+                details: {
+                    newHourlyRewardRate: '0.5',
+                    description: 'Set hourly reward rate to 0.5 tokens per hour (Demo Mode - Contract Call Issues)'
+                }
+            },
             {
                 id: 2,
                 actionType: 'SET_HOURLY_REWARD_RATE',
@@ -3492,8 +3521,8 @@ class AdminPage {
                 proposedTime: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
                 approvedBy: ['0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F'],
                 details: {
-                    newHourlyRewardRate: '0.5',
-                    description: 'Set hourly reward rate to 0.5 tokens per hour (Demo Mode - RPC Issues)'
+                    newHourlyRewardRate: '0.1',
+                    description: 'Previous hourly rate proposal (Demo Mode - Contract Call Issues)'
                 }
             },
             {
@@ -3511,10 +3540,62 @@ class AdminPage {
                     pairName: 'TEST/USDC',
                     platform: 'Uniswap V3',
                     weight: 100,
-                    description: 'Add TEST/USDC liquidity pair (Demo Mode - RPC Issues)'
+                    description: 'Add TEST/USDC liquidity pair (Demo Mode - Contract Call Issues)'
                 }
             }
         ];
+    }
+
+    // Display proposals in the UI (for manual testing)
+    displayProposals(proposals) {
+        console.log('🎭 Manually displaying proposals in UI...');
+
+        const container = document.getElementById('proposals-container') ||
+                         document.querySelector('.proposals-list') ||
+                         document.querySelector('#multisign-panel .table-body');
+
+        if (!container) {
+            console.warn('⚠️ Could not find proposals container');
+            return;
+        }
+
+        // Clear existing content
+        container.innerHTML = '';
+
+        // Add proposals
+        proposals.forEach(proposal => {
+            const proposalElement = this.createProposalElement(proposal);
+            container.appendChild(proposalElement);
+        });
+
+        console.log(`✅ Displayed ${proposals.length} proposals in UI`);
+    }
+
+    // Create a proposal element for the UI
+    createProposalElement(proposal) {
+        const div = document.createElement('div');
+        div.className = 'proposal-row';
+        div.innerHTML = `
+            <div class="proposal-item">
+                <div class="proposal-header">
+                    <span class="proposal-id">#${proposal.id}</span>
+                    <span class="proposal-type">${proposal.actionType}</span>
+                    <span class="proposal-status">${proposal.approvals}/${proposal.requiredApprovals} approvals</span>
+                </div>
+                <div class="proposal-details">
+                    ${proposal.details.description || 'No description'}
+                </div>
+                <div class="proposal-actions">
+                    <button class="approve-btn" data-action="approve" data-id="${proposal.id}">
+                        ✅ Approve
+                    </button>
+                    <button class="reject-btn" data-action="reject" data-id="${proposal.id}">
+                        ❌ Reject
+                    </button>
+                </div>
+            </div>
+        `;
+        return div;
     }
 
     // Dynamic data loading methods

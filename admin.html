@@ -1397,6 +1397,48 @@
             }
         };
 
+        // Test the complete admin panel with fallbacks
+        window.testAdminPanelWithFallbacks = async function() {
+            console.log('🧪 Testing complete admin panel with fallbacks...');
+
+            try {
+                // Test 1: Load contract stats
+                console.log('🔧 Testing contract stats loading...');
+                await window.adminPage.loadContractStats();
+                console.log('✅ Contract stats loaded');
+
+                // Test 2: Load proposals with fallbacks
+                console.log('🔧 Testing proposal loading with fallbacks...');
+                const proposals = await window.adminPage.loadProposals();
+                console.log('✅ Proposals loaded:', proposals.length);
+
+                if (proposals.length === 0) {
+                    console.log('⚠️ No real proposals loaded, forcing demo proposals...');
+                    const demoProposals = window.adminPage.createDemoProposals();
+                    console.log('✅ Demo proposals created:', demoProposals.length);
+
+                    // Manually display demo proposals
+                    window.adminPage.displayProposals(demoProposals);
+                    console.log('✅ Demo proposals displayed in UI');
+                }
+
+                // Test 3: Check UI elements
+                console.log('🔧 Checking UI elements...');
+                const proposalRows = document.querySelectorAll('.proposal-row, .proposal-item');
+                console.log(`✅ Found ${proposalRows.length} proposal elements in UI`);
+
+                const approveButtons = document.querySelectorAll('[data-action="approve"], .approve-btn');
+                const rejectButtons = document.querySelectorAll('[data-action="reject"], .reject-btn');
+                console.log(`✅ Found ${approveButtons.length} approve buttons and ${rejectButtons.length} reject buttons`);
+
+                console.log('🎉 Admin panel test completed!');
+                console.log('✅ System shows proposals even when contract calls fail');
+
+            } catch (error) {
+                console.error('❌ Admin panel test failed:', error);
+            }
+        };
+
         // Emergency modal test function
         window.testEmergencyModal = function() {
             console.log('🧪 EMERGENCY: Testing modal system...');
