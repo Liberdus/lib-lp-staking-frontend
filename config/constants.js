@@ -2,8 +2,8 @@
 window.CONFIG = {
 
     CONTRACTS: {
-        STAKING_CONTRACT: '0xc24e28db325D2EEe5e4bc21C53b91A26eC9471f2',
-        REWARD_TOKEN: '0x568939fD09f57408dfeEccc3f7F2f7EA95D22249',
+        STAKING_CONTRACT: '0x5FbDB2315678afecb367f032d93F642f64180aa3', // Updated with local deployment
+        REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76', // LIB Token from deployment
         LP_TOKENS: {
 
         }
@@ -11,6 +11,17 @@ window.CONFIG = {
 
 
     NETWORKS: {
+        LOCAL_HARDHAT: {
+            chainId: 31337,
+            name: 'Localhost 8545',
+            rpcUrl: 'http://127.0.0.1:8545',
+            blockExplorer: 'http://localhost:8545', // No block explorer for local
+            nativeCurrency: {
+                name: 'ETH',
+                symbol: 'ETH',
+                decimals: 18
+            }
+        },
         POLYGON_AMOY: {
             chainId: 80002,
             name: 'Polygon Amoy Testnet',
@@ -25,10 +36,13 @@ window.CONFIG = {
     },
 
 
-    DEFAULT_NETWORK: 80002,
+    DEFAULT_NETWORK: 31337, // Changed to local Hardhat network
 
 
     RPC: {
+        LOCAL_HARDHAT: [
+            'http://127.0.0.1:8545'
+        ],
         POLYGON_AMOY: [
             'https://rpc-amoy.polygon.technology',
             'https://polygon-amoy-bor-rpc.publicnode.com',
@@ -81,7 +95,7 @@ window.CONFIG = {
     // Error Messages
     ERRORS: {
         WALLET_NOT_CONNECTED: 'Please connect your wallet first',
-        WRONG_NETWORK: 'Please switch to Polygon Amoy Testnet',
+        WRONG_NETWORK: 'Please switch to Localhost 8545 (Hardhat Network)',
         INSUFFICIENT_BALANCE: 'Insufficient balance for this transaction',
         TRANSACTION_REJECTED: 'Transaction was rejected by user',
         NETWORK_ERROR: 'Network error. Please try again.',

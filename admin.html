@@ -92,11 +92,12 @@
     <script src="js/master-initializer.js"></script>
 
     <script>
-        // Prevent duplicate script loading
+        // Prevent duplicate script loading and initialization
         if (window.adminPanelLoaded) {
             console.log('⚠️ Admin panel already loaded, skipping initialization');
         } else {
             window.adminPanelLoaded = true;
+            console.log('🔐 Admin panel scripts loading...');
         }
 
         // Global error handler

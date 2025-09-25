@@ -418,10 +418,58 @@ class AdminPage {
 
         // ENHANCED: Global click handler for modal buttons
         document.addEventListener('click', (e) => {
+            // Debug: Log all clicks to see what's being clicked
+            console.log('🔘 Click detected:', {
+                target: e.target.tagName,
+                classes: e.target.className,
+                id: e.target.id,
+                dataset: e.target.dataset
+            });
+            // Refresh button
+            if (e.target.classList.contains('refresh-btn')) {
+                e.preventDefault();
+                console.log('🔘 Refresh button clicked');
+                this.refreshData();
+                return;
+            }
+
+            // Proposal buttons (main admin panel buttons)
+            if (e.target.classList.contains('proposal-btn') && e.target.dataset.modal) {
+                e.preventDefault();
+                const modalType = e.target.dataset.modal;
+                console.log(`🔘 Proposal button clicked: ${modalType}`);
+
+                // Call the appropriate modal method
+                switch (modalType) {
+                    case 'hourly-rate':
+                        this.showHourlyRateModal();
+                        break;
+                    case 'add-pair':
+                        this.showAddPairModal();
+                        break;
+                    case 'remove-pair':
+                        this.showRemovePairModal();
+                        break;
+                    case 'update-weights':
+                        this.showUpdateWeightsModal();
+                        break;
+                    case 'change-signer':
+                        this.showChangeSignerModal();
+                        break;
+                    case 'withdraw-rewards':
+                        this.showWithdrawalModal();
+                        break;
+                    default:
+                        console.warn(`Unknown modal type: ${modalType}`);
+                }
+                return;
+            }
+
             // Modal close buttons
             if (e.target.classList.contains('modal-close') ||
                 e.target.closest('.modal-close')) {
                 e.preventDefault();
+                console.log('🔘 Modal close button clicked');
                 this.closeModal();
                 return;
             }
@@ -429,17 +477,27 @@ class AdminPage {
             // Modal overlay click (close modal)
             if (e.target.classList.contains('modal-overlay')) {
                 e.preventDefault();
+                console.log('🔘 Modal overlay clicked');
                 this.closeModal();
                 return;
             }
 
-            // Action buttons in modals
+            // Cancel buttons in modals
+            if (e.target.classList.contains('modal-cancel') ||
+                (e.target.classList.contains('btn-secondary') && e.target.closest('.modal-content'))) {
+                e.preventDefault();
+                console.log('🔘 Modal cancel button clicked');
+                this.closeModal();
+                return;
+            }
+
+            // Action buttons in modals (for backward compatibility)
             if (e.target.classList.contains('btn') && e.target.closest('.modal-content')) {
                 const buttonText = e.target.textContent.trim();
-                const form = e.target.closest('form');
 
-                if (buttonText === 'Cancel' || e.target.classList.contains('btn-secondary')) {
+                if (buttonText === 'Cancel') {
                     e.preventDefault();
+                    console.log('🔘 Modal cancel button clicked (text match)');
                     this.closeModal();
                     return;
                 }
@@ -839,22 +897,22 @@ class AdminPage {
                             <!-- Stack direction="column" spacing={2} -->
                             <div class="proposal-actions">
                                 <!-- Button variant="contained" color="primary" -->
-                                <button class="proposal-btn" onclick="adminPage.openModal('hourly-rate')">
+                                <button class="proposal-btn" data-modal="hourly-rate" type="button">
                                     Update Hourly Rate
                                 </button>
-                                <button class="proposal-btn" onclick="adminPage.openModal('add-pair')">
+                                <button class="proposal-btn" data-modal="add-pair" type="button">
                                     Add Pair
                                 </button>
-                                <button class="proposal-btn" onclick="adminPage.openModal('remove-pair')">
+                                <button class="proposal-btn" data-modal="remove-pair" type="button">
                                     Remove Pair
                                 </button>
-                                <button class="proposal-btn" onclick="adminPage.openModal('update-weights')">
+                                <button class="proposal-btn" data-modal="update-weights" type="button">
                                     Update Pair Weight
                                 </button>
-                                <button class="proposal-btn" onclick="adminPage.openModal('change-signer')">
+                                <button class="proposal-btn" data-modal="change-signer" type="button">
                                     Change Signer
                                 </button>
-                                <button class="proposal-btn" onclick="adminPage.openModal('withdraw-rewards')">
+                                <button class="proposal-btn" data-modal="withdraw-rewards" type="button">
                                     Withdraw Rewards
                                 </button>
                             </div>
@@ -872,7 +930,7 @@ class AdminPage {
                 <div class="admin-footer">
                     <div class="refresh-status">
                         <span id="last-refresh">Last updated: Loading...</span>
-                        <button class="btn btn-sm" onclick="adminPage.refreshData()">
+                        <button class="btn btn-sm refresh-btn" type="button">
                             🔄 Refresh
                         </button>
                     </div>
@@ -2207,28 +2265,31 @@ class AdminPage {
     // Multi-signature modal components
     showHourlyRateModal() {
         const modalContainer = document.getElementById('modal-container');
-        if (!modalContainer) return;
+        if (!modalContainer) {
+            console.error('❌ Modal container not found');
+            return;
+        }
 
         modalContainer.innerHTML = `
-            <div class="modal-overlay" onclick="adminPage.closeModal()">
+            <div class="modal-overlay">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Update Hourly Rate</h3>
-                        <button class="modal-close" onclick="adminPage.closeModal()">×</button>
+                        <button class="modal-close" type="button">×</button>
                     </div>
 
                     <div class="modal-body">
-                        <form id="hourly-rate-form" onsubmit="adminPage.submitHourlyRateProposal(event)">
+                        <form id="hourly-rate-form" class="admin-form">
                             <div class="form-group">
                                 <label for="new-rate">New Hourly Rate (USDC)</label>
-                                <input type="number" id="new-rate" step="0.01" min="0" required
+                                <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
                                 <small class="form-help">Current rate: ${this.contractStats?.hourlyRate || 'Loading...'} USDC/hour</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="rate-description">Description</label>
-                                <textarea id="rate-description" rows="3" required
+                                <textarea id="rate-description" class="form-input" rows="3" required
                                           placeholder="Explain the reason for this rate change..."></textarea>
                             </div>
 
@@ -2246,7 +2307,7 @@ class AdminPage {
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
                         <button type="submit" form="hourly-rate-form" class="btn btn-primary">
@@ -2258,39 +2319,43 @@ class AdminPage {
         `;
 
         modalContainer.style.display = 'flex';
+        console.log('✅ Hourly rate modal opened');
     }
 
     showAddPairModal() {
         const modalContainer = document.getElementById('modal-container');
-        if (!modalContainer) return;
+        if (!modalContainer) {
+            console.error('❌ Modal container not found');
+            return;
+        }
 
         modalContainer.innerHTML = `
-            <div class="modal-overlay" onclick="adminPage.closeModal()">
+            <div class="modal-overlay">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Add New Pair</h3>
-                        <button class="modal-close" onclick="adminPage.closeModal()">×</button>
+                        <button class="modal-close" type="button">×</button>
                     </div>
 
                     <div class="modal-body">
-                        <form id="add-pair-form" onsubmit="adminPage.submitAddPairProposal(event)">
+                        <form id="add-pair-form" class="admin-form">
                             <div class="form-group">
                                 <label for="pair-address">Pair Contract Address</label>
-                                <input type="text" id="pair-address" required
+                                <input type="text" id="pair-address" class="form-input" required
                                        placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$">
                                 <small class="form-help">Enter the LP token contract address</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="pair-weight">Initial Weight</label>
-                                <input type="number" id="pair-weight" step="1" min="1" required
+                                <input type="number" id="pair-weight" class="form-input" step="1" min="1" required
                                        placeholder="Enter weight (e.g., 100)">
                                 <small class="form-help">Higher weight = more rewards allocation</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="pair-description">Description</label>
-                                <textarea id="pair-description" rows="3" required
+                                <textarea id="pair-description" class="form-input" rows="3" required
                                           placeholder="Describe this pair and why it should be added..."></textarea>
                             </div>
 
@@ -2308,7 +2373,7 @@ class AdminPage {
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
                         <button type="submit" form="add-pair-form" class="btn btn-primary">
@@ -2320,6 +2385,66 @@ class AdminPage {
         `;
 
         modalContainer.style.display = 'flex';
+        console.log('✅ Add pair modal opened');
+    }
+
+    showUpdateWeightsModal() {
+        const modalContainer = document.getElementById('modal-container');
+        if (!modalContainer) {
+            console.error('❌ Modal container not found');
+            return;
+        }
+
+        modalContainer.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Update Pair Weights</h3>
+                        <button class="modal-close" type="button">×</button>
+                    </div>
+
+                    <div class="modal-body">
+                        <form id="update-weights-form" class="admin-form">
+                            <div class="form-group">
+                                <label>Current Pairs</label>
+                                <div id="weights-list">
+                                    <p>Loading current pairs...</p>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="weights-description">Description</label>
+                                <textarea id="weights-description" class="form-input" rows="3" required
+                                          placeholder="Explain the reason for these weight changes..."></textarea>
+                            </div>
+
+                            <div class="proposal-info">
+                                <div class="info-item">
+                                    <span class="info-label">Required Approvals:</span>
+                                    <span class="info-value">3 of 4 signers</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Proposal Expiry:</span>
+                                    <span class="info-value">7 days from creation</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary modal-cancel">
+                            Cancel
+                        </button>
+                        <button type="submit" form="update-weights-form" class="btn btn-primary">
+                            Create Proposal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modalContainer.style.display = 'flex';
+        console.log('✅ Update weights modal opened');
     }
 
     showRemovePairModal() {

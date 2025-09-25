@@ -227,6 +227,7 @@
                         <button class="test-btn" onclick="inspectGlobalState()">Inspect Globals</button>
                         <button class="test-btn secondary" onclick="checkDependencies()">Check Dependencies</button>
                         <button class="test-btn secondary" onclick="validateConfiguration()">Validate Config</button>
+                        <button class="test-btn secondary" onclick="testButtonClickability()">Test Button Clicks</button>
                         <button class="test-btn danger" onclick="clearAllData()">Clear All Data</button>
                     </div>
                 </div>
@@ -327,7 +328,431 @@
             originalWarn.apply(console, args);
         };
 
-        // Test functions will be added in the next part...
+        // System Status Updates
+        function updateSystemStatus() {
+            const statusGrid = document.getElementById('status-grid');
+            const statuses = [
+                { name: 'Ethers.js', status: !!window.ethers, key: 'ethers' },
+                { name: 'Configuration', status: !!window.CONFIG, key: 'config' },
+                { name: 'Contract Manager', status: !!window.contractManager, key: 'contractManager' },
+                { name: 'Wallet Manager', status: !!window.walletManager, key: 'walletManager' },
+                { name: 'Admin Page', status: !!window.adminPage, key: 'adminPage' },
+                { name: 'Admin Tester', status: !!window.adminTester, key: 'adminTester' }
+            ];
+
+            statusGrid.innerHTML = statuses.map(item => {
+                const statusClass = item.status ? 'online' : 'offline';
+                const statusText = item.status ? 'Online' : 'Offline';
+                return `
+                    <div class="status-card ${statusClass}">
+                        <div>
+                            <span class="status-indicator ${statusClass}"></span>
+                            ${item.name}
+                        </div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Test Functions
+        async function runQuickTest() {
+            testLogger.log('🚀 Starting Quick Test...', 'info');
+            try {
+                if (window.quickTestAdmin) {
+                    await window.quickTestAdmin();
+                } else {
+                    testLogger.log('❌ quickTestAdmin function not available', 'error');
+                }
+            } catch (error) {
+                testLogger.log(`❌ Quick test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSystemReady() {
+            testLogger.log('🔍 Testing system readiness...', 'info');
+            const checks = [
+                { name: 'Ethers.js', check: () => !!window.ethers },
+                { name: 'Configuration', check: () => !!window.CONFIG },
+                { name: 'Contract Manager', check: () => !!window.contractManager },
+                { name: 'Admin Page Class', check: () => !!window.AdminPage }
+            ];
+
+            checks.forEach(item => {
+                const result = item.check();
+                const status = result ? '✅' : '❌';
+                testLogger.log(`${status} ${item.name}: ${result ? 'Ready' : 'Not Available'}`, result ? 'success' : 'error');
+            });
+
+            updateSystemStatus();
+        }
+
+        async function testRPCs() {
+            testLogger.log('🌐 Testing RPC Connectivity...', 'info');
+            try {
+                if (window.testRPCs) {
+                    await window.testRPCs();
+                } else {
+                    testLogger.log('❌ testRPCs function not available', 'error');
+                }
+            } catch (error) {
+                testLogger.log(`❌ RPC test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testContract() {
+            testLogger.log('📄 Testing Contract Connection...', 'info');
+            try {
+                if (window.contractManager) {
+                    const isReady = await window.contractManager.isReady();
+                    testLogger.log(`Contract Manager Ready: ${isReady}`, isReady ? 'success' : 'error');
+
+                    if (window.contractManager.stakingContract) {
+                        testLogger.log('✅ Staking contract instance available', 'success');
+                    } else {
+                        testLogger.log('❌ Staking contract instance not available', 'error');
+                    }
+                } else {
+                    testLogger.log('❌ Contract manager not available', 'error');
+                }
+            } catch (error) {
+                testLogger.log(`❌ Contract test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            testLogger.log('🔬 Starting Full Test Suite...', 'info');
+            try {
+                if (window.testAdmin) {
+                    await window.testAdmin();
+                } else {
+                    testLogger.log('❌ testAdmin function not available', 'error');
+                }
+            } catch (error) {
+                testLogger.log(`❌ Full test suite failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testModalFunctionality() {
+            testLogger.log('🪟 Testing Modal Functionality...', 'info');
+
+            // Check modal container
+            const modalContainer = document.getElementById('modal-container');
+            if (!modalContainer) {
+                testLogger.log('❌ Modal container not found', 'error');
+                return;
+            }
+            testLogger.log('✅ Modal container found', 'success');
+
+            // Test admin page modal methods
+            if (window.adminPage) {
+                try {
+                    testLogger.log('🧪 Testing modal methods...', 'info');
+
+                    // Test each modal type
+                    const modalTests = [
+                        { name: 'Hourly Rate Modal', method: 'showHourlyRateModal' },
+                        { name: 'Add Pair Modal', method: 'showAddPairModal' },
+                        { name: 'Remove Pair Modal', method: 'showRemovePairModal' }
+                    ];
+
+                    for (const test of modalTests) {
+                        if (typeof window.adminPage[test.method] === 'function') {
+                            testLogger.log(`✅ ${test.name} method available`, 'success');
+                        } else {
+                            testLogger.log(`❌ ${test.name} method not found`, 'error');
+                        }
+                    }
+                } catch (error) {
+                    testLogger.log(`❌ Modal test error: ${error.message}`, 'error');
+                }
+            } else {
+                testLogger.log('❌ Admin page not available for modal testing', 'error');
+            }
+        }
+
+        async function testButtonHandlers() {
+            testLogger.log('🔘 Testing Button Handlers...', 'info');
+
+            // Test if event listeners are properly attached (Chrome DevTools only)
+            try {
+                if (typeof getEventListeners !== 'undefined') {
+                    const testEvents = ['click', 'submit', 'keydown'];
+                    testEvents.forEach(eventType => {
+                        const listeners = getEventListeners(document);
+                        const hasListeners = listeners[eventType] && listeners[eventType].length > 0;
+                        testLogger.log(`${hasListeners ? '✅' : '❌'} ${eventType} listeners: ${hasListeners ? 'Attached' : 'Not found'}`, hasListeners ? 'success' : 'warning');
+                    });
+                } else {
+                    testLogger.log('⚠️ getEventListeners not available (Chrome DevTools required)', 'warning');
+
+                    // Alternative test: Check if AdminPage has event listeners setup
+                    if (window.adminPage && typeof window.adminPage.setupModalListeners === 'function') {
+                        testLogger.log('✅ AdminPage modal listeners method available', 'success');
+                    } else {
+                        testLogger.log('❌ AdminPage modal listeners not available', 'error');
+                    }
+                }
+            } catch (error) {
+                testLogger.log(`❌ Button handler test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testContractFunctions() {
+            testLogger.log('📄 Testing Contract Functions...', 'info');
+
+            if (!window.contractManager) {
+                testLogger.log('❌ Contract manager not available', 'error');
+                return;
+            }
+
+            const contractTests = [
+                'rewardToken',
+                'hourlyRewardRate',
+                'REQUIRED_APPROVALS',
+                'actionCounter'
+            ];
+
+            for (const funcName of contractTests) {
+                try {
+                    if (window.testFunction) {
+                        testLogger.log(`🧪 Testing ${funcName}...`, 'info');
+                        await window.testFunction(funcName);
+                    }
+                } catch (error) {
+                    testLogger.log(`❌ ${funcName} test failed: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function openAdminPanel() {
+            testLogger.log('🔐 Opening Admin Panel...', 'info');
+            window.open('/admin.html', '_blank');
+        }
+
+        function testAdminModals() {
+            testLogger.log('🪟 Testing Admin Modals...', 'info');
+
+            // First try to initialize AdminPage if not available
+            if (!window.adminPage) {
+                initializeAdminPage();
+            }
+
+            if (window.adminPage) {
+                try {
+                    // Test if modal methods exist
+                    const modalMethods = ['showHourlyRateModal', 'showAddPairModal', 'closeModal'];
+                    let methodsAvailable = 0;
+
+                    modalMethods.forEach(method => {
+                        if (typeof window.adminPage[method] === 'function') {
+                            testLogger.log(`✅ ${method} method available`, 'success');
+                            methodsAvailable++;
+                        } else {
+                            testLogger.log(`❌ ${method} method not found`, 'error');
+                        }
+                    });
+
+                    if (methodsAvailable > 0) {
+                        // Try to open a modal
+                        if (typeof window.adminPage.showHourlyRateModal === 'function') {
+                            window.adminPage.showHourlyRateModal();
+                            testLogger.log('✅ Hourly rate modal opened', 'success');
+
+                            setTimeout(() => {
+                                if (typeof window.adminPage.closeModal === 'function') {
+                                    window.adminPage.closeModal();
+                                    testLogger.log('✅ Modal closed', 'success');
+                                }
+                            }, 2000);
+                        }
+                    }
+                } catch (error) {
+                    testLogger.log(`❌ Modal test failed: ${error.message}`, 'error');
+                }
+            } else {
+                testLogger.log('❌ Admin page not available - trying to create instance...', 'error');
+                initializeAdminPage();
+            }
+        }
+
+        function simulateProposal() {
+            testLogger.log('📝 Simulating Proposal Creation...', 'info');
+            // This would simulate creating a proposal
+            testLogger.log('⚠️ Proposal simulation not implemented yet', 'warning');
+        }
+
+        function resetAdminPanel() {
+            testLogger.log('🔄 Resetting Admin Panel...', 'warning');
+            if (window.adminPage) {
+                window.adminPage.closeModal();
+                testLogger.log('✅ Admin panel reset', 'success');
+            }
+        }
+
+        function inspectGlobalState() {
+            testLogger.log('🔍 Inspecting Global State...', 'info');
+
+            const globals = [
+                'ethers', 'CONFIG', 'contractManager', 'walletManager',
+                'adminPage', 'adminTester', 'masterInitializer'
+            ];
+
+            globals.forEach(globalName => {
+                const value = window[globalName];
+                const type = typeof value;
+                const status = value ? '✅' : '❌';
+                testLogger.log(`${status} window.${globalName}: ${type}`, value ? 'success' : 'error');
+
+                if (value && typeof value === 'object') {
+                    const keys = Object.keys(value).slice(0, 5); // Show first 5 keys
+                    if (keys.length > 0) {
+                        testLogger.log(`   Properties: ${keys.join(', ')}${keys.length === 5 ? '...' : ''}`, 'info');
+                    }
+                }
+            });
+        }
+
+        function checkDependencies() {
+            testLogger.log('📦 Checking Dependencies...', 'info');
+
+            const dependencies = [
+                { name: 'Ethers.js', check: () => window.ethers?.version },
+                { name: 'Contract ABI', check: () => window.CONFIG?.ABIS?.STAKING_CONTRACT?.length },
+                { name: 'Contract Address', check: () => window.CONFIG?.CONTRACTS?.STAKING_CONTRACT },
+                { name: 'Network Config', check: () => window.CONFIG?.NETWORK?.CHAIN_ID }
+            ];
+
+            dependencies.forEach(dep => {
+                const result = dep.check();
+                const status = result ? '✅' : '❌';
+                testLogger.log(`${status} ${dep.name}: ${result || 'Not available'}`, result ? 'success' : 'error');
+            });
+        }
+
+        function validateConfiguration() {
+            testLogger.log('⚙️ Validating Configuration...', 'info');
+
+            if (!window.CONFIG) {
+                testLogger.log('❌ Configuration not loaded', 'error');
+                return;
+            }
+
+            const configChecks = [
+                { path: 'CONTRACTS.STAKING_CONTRACT', name: 'Staking Contract Address' },
+                { path: 'CONTRACTS.REWARD_TOKEN', name: 'Reward Token Address' },
+                { path: 'NETWORK.CHAIN_ID', name: 'Chain ID' },
+                { path: 'ABIS.STAKING_CONTRACT', name: 'Staking Contract ABI' }
+            ];
+
+            configChecks.forEach(check => {
+                const value = check.path.split('.').reduce((obj, key) => obj?.[key], window.CONFIG);
+                const status = value ? '✅' : '❌';
+                testLogger.log(`${status} ${check.name}: ${value ? 'Configured' : 'Missing'}`, value ? 'success' : 'error');
+            });
+        }
+
+        function clearAllData() {
+            testLogger.log('🗑️ Clearing All Data...', 'warning');
+
+            // Clear localStorage
+            localStorage.clear();
+            testLogger.log('✅ LocalStorage cleared', 'success');
+
+            // Clear sessionStorage
+            sessionStorage.clear();
+            testLogger.log('✅ SessionStorage cleared', 'success');
+
+            testLogger.log('⚠️ Page reload recommended', 'warning');
+        }
+
+        function clearLogs() {
+            testLogger.clear();
+            testLogger.log('🧪 Test logs cleared. Ready for new tests.', 'info');
+        }
+
+        // Test button clickability
+        function testButtonClickability() {
+            testLogger.log('🔘 Testing button clickability...', 'info');
+
+            // Check if AdminPage exists
+            if (!window.adminPage) {
+                testLogger.log('❌ AdminPage not available, trying to create...', 'error');
+                initializeAdminPage();
+
+                if (!window.adminPage) {
+                    testLogger.log('❌ Failed to create AdminPage instance', 'error');
+                    return;
+                }
+            }
+
+            // Test if proposal buttons exist in DOM
+            const proposalButtons = document.querySelectorAll('.proposal-btn');
+            testLogger.log(`Found ${proposalButtons.length} proposal buttons`, proposalButtons.length > 0 ? 'success' : 'error');
+
+            if (proposalButtons.length > 0) {
+                proposalButtons.forEach((btn, index) => {
+                    const modalType = btn.dataset.modal;
+                    const isClickable = !btn.disabled && btn.style.pointerEvents !== 'none';
+                    testLogger.log(`Button ${index + 1}: ${modalType} - ${isClickable ? 'Clickable' : 'Not clickable'}`, isClickable ? 'success' : 'error');
+                });
+
+                // Test clicking the first button
+                testLogger.log('🧪 Testing first button click...', 'info');
+                try {
+                    proposalButtons[0].click();
+                    testLogger.log('✅ Button click executed', 'success');
+                } catch (error) {
+                    testLogger.log(`❌ Button click failed: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Make test function globally available
+        window.testButtonClickability = testButtonClickability;
+
+        // Initialize AdminPage if available
+        function initializeAdminPage() {
+            if (window.AdminPage && !window.adminPage) {
+                try {
+                    testLogger.log('🔐 Creating AdminPage instance...', 'info');
+                    window.adminPage = new AdminPage();
+                    testLogger.log('✅ AdminPage instance created successfully', 'success');
+                } catch (error) {
+                    testLogger.log(`❌ Failed to create AdminPage: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            testLogger.log('🧪 Test page loaded successfully', 'success');
+            updateSystemStatus();
+
+            // Try to initialize AdminPage after a short delay
+            setTimeout(() => {
+                initializeAdminPage();
+                updateSystemStatus();
+            }, 2000);
+
+            // Update status every 5 seconds
+            setInterval(() => {
+                updateSystemStatus();
+                // Try to initialize AdminPage if not yet available
+                if (!window.adminPage) {
+                    initializeAdminPage();
+                }
+            }, 5000);
+        });
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            testLogger.log(`💥 Global Error: ${event.error.message}`, 'error');
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            testLogger.log(`💥 Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
     </script>
 </body>
 </html>
