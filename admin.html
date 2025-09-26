@@ -1970,6 +1970,126 @@
             }
         };
 
+        // Test pair loading for modals
+        window.testPairLoading = async function() {
+            console.log('🔍 TESTING PAIR LOADING FOR MODALS');
+            console.log('==================================');
+
+            try {
+                const contractManager = await window.adminPage.ensureContractReady();
+
+                // Test 1: Check contract methods
+                console.log('🔧 Step 1: Testing contract pair methods...');
+
+                try {
+                    const pairs1 = await contractManager.stakingContract.getPairs();
+                    console.log('   ✅ getPairs() result:', pairs1);
+                } catch (error) {
+                    console.log('   ❌ getPairs() failed:', error.message);
+                }
+
+                try {
+                    const pairs2 = await contractManager.stakingContract.getActivePairs();
+                    console.log('   ✅ getActivePairs() result:', pairs2);
+                } catch (error) {
+                    console.log('   ❌ getActivePairs() failed:', error.message);
+                }
+
+                // Test 2: Check getAllPairsInfo method
+                console.log('🔧 Step 2: Testing getAllPairsInfo...');
+                try {
+                    const allPairs = await contractManager.getAllPairsInfo();
+                    console.log('   ✅ getAllPairsInfo() result:', allPairs);
+                    console.log('   📊 Number of pairs found:', allPairs.length);
+
+                    if (allPairs.length > 0) {
+                        allPairs.forEach((pair, index) => {
+                            console.log(`   📋 Pair ${index + 1}: ${pair.name} (${pair.address}) - Weight: ${pair.weight}`);
+                        });
+                    }
+                } catch (error) {
+                    console.error('   ❌ getAllPairsInfo() failed:', error);
+                }
+
+                // Test 3: Check approved proposals
+                console.log('🔧 Step 3: Checking approved Add Pair proposals...');
+                try {
+                    const actionCounter = await contractManager.getActionCounter();
+                    console.log('   📊 Total actions:', actionCounter);
+
+                    let approvedPairs = 0;
+                    for (let i = actionCounter; i > Math.max(actionCounter - 10, 0); i--) {
+                        try {
+                            const action = await contractManager.getActions(i);
+                            if (action && action.actionType === 2) { // Add Pair
+                                console.log(`   📋 Action ${i}: ${action.executed ? '✅ Executed' : '⏳ Pending'} - ${action.pairNameToAdd} (${action.pairToAdd})`);
+                                if (action.executed && !action.rejected) {
+                                    approvedPairs++;
+                                }
+                            }
+                        } catch (error) {
+                            // Skip failed actions
+                        }
+                    }
+                    console.log(`   📊 Approved pairs found: ${approvedPairs}`);
+                } catch (error) {
+                    console.error('   ❌ Failed to check proposals:', error);
+                }
+
+                console.log('🎉 PAIR LOADING TEST COMPLETED!');
+
+            } catch (error) {
+                console.error('❌ Pair loading test failed:', error);
+            }
+        };
+
+        // Test the fixed pair loading
+        window.testFixedPairLoading = async function() {
+            console.log('🔧 TESTING FIXED PAIR LOADING');
+            console.log('=============================');
+
+            try {
+                const contractManager = await window.adminPage.ensureContractReady();
+
+                // Test the fixed getAllPairsInfo method
+                console.log('🔧 Testing fixed getAllPairsInfo...');
+                const allPairs = await contractManager.getAllPairsInfo();
+                console.log('   ✅ Fixed getAllPairsInfo() result:', allPairs);
+                console.log('   📊 Number of pairs found:', allPairs.length);
+
+                if (allPairs.length > 0) {
+                    allPairs.forEach((pair, index) => {
+                        console.log(`   📋 Pair ${index + 1}:`);
+                        console.log(`      Name: ${pair.name}`);
+                        console.log(`      Address: ${pair.address}`);
+                        console.log(`      Platform: ${pair.platform}`);
+                        console.log(`      Weight: ${pair.weight}`);
+                        console.log(`      Active: ${pair.isActive}`);
+                    });
+
+                    // Test modal loading
+                    console.log('🔧 Testing modal pair loading...');
+
+                    // Test remove pair modal
+                    console.log('   📋 Testing loadPairsForRemoval...');
+                    await window.adminPage.loadPairsForRemoval();
+
+                    // Test weight update modal
+                    console.log('   📋 Testing loadPairsForWeightUpdate...');
+                    await window.adminPage.loadPairsForWeightUpdate();
+
+                    console.log('   ✅ Modal loading tests completed');
+                } else {
+                    console.log('   ⚠️ No pairs found - modals will show "No pairs available"');
+                }
+
+                console.log('🎉 FIXED PAIR LOADING TEST COMPLETED!');
+
+            } catch (error) {
+                console.error('❌ Fixed pair loading test failed:', error);
+            }
+        };
+
         // Test all the fixes comprehensively
         window.testAllFixes = async function() {
             console.log('🧪 Testing all fixes comprehensively...');

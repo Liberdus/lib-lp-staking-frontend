@@ -2234,35 +2234,110 @@ class ContractManager {
                 throw new Error('Staking contract not initialized');
             }
 
-            // Get pairs info directly from the contract
-            const pairs = await this.stakingContract.getPairs();
-            const pairsInfo = [];
+            this.log('🔍 Getting all pairs info from contract...');
 
-            // Transform the contract data to the expected format
-            for (let i = 0; i < pairs.length; i++) {
-                const pair = pairs[i];
+            try {
+                // Try multiple methods to get pairs
+                let pairs = [];
+
+                // Method 1: Try getPairs() if it exists
                 try {
-                    const pairInfo = {
-                        id: (i + 1).toString(),
-                        address: pair.lpToken,
-                        name: pair.pairName || `LP Token ${i + 1}`,
-                        platform: pair.platform || 'Unknown',
-                        weight: pair.weight ? ethers.formatEther(pair.weight) : '0',
-                        isActive: pair.isActive,
-                        // Add computed fields
-                        apr: '0', // Would need to be calculated
-                        tvl: 0,   // Would need to be calculated
-                        totalStaked: '0' // Would need to be calculated
-                    };
-                    pairsInfo.push(pairInfo);
+                    pairs = await this.stakingContract.getPairs();
+                    this.log('✅ Got pairs from getPairs():', pairs.length);
                 } catch (error) {
-                    this.logError(`Failed to process pair ${pair.lpToken}:`, error.message);
+                    this.log('⚠️ getPairs() not available:', error.message);
+                }
+
+                // Method 2: If no pairs, try getActivePairs()
+                if (!pairs || pairs.length === 0) {
+                    try {
+                        pairs = await this.stakingContract.getActivePairs();
+                        this.log('✅ Got pairs from getActivePairs():', pairs.length);
+                    } catch (error) {
+                        this.log('⚠️ getActivePairs() not available:', error.message);
+                    }
+                }
+
+                // Method 3: If still no pairs, extract from approved "Add Pair" proposals
+                if (!pairs || pairs.length === 0) {
+                    this.log('🔍 No pairs from contract methods, checking approved proposals...');
+                    pairs = await this.getPairsFromApprovedProposals();
+                    this.log('✅ Got pairs from approved proposals:', pairs.length);
+                }
+
+                const pairsInfo = [];
+
+                // Transform the contract data to the expected format
+                for (let i = 0; i < pairs.length; i++) {
+                    const pair = pairs[i];
+                    try {
+                        const pairInfo = {
+                            id: (i + 1).toString(),
+                            address: pair.lpToken || pair.pairToAdd || pair.address || pair[0],
+                            name: pair.pairName || pair.pairNameToAdd || pair.name || pair[1] || `LP Token ${i + 1}`,
+                            platform: pair.platform || pair.platformToAdd || pair[2] || 'Unknown',
+                            weight: pair.weight ? ethers.utils.formatEther(pair.weight) : (pair.weightToAdd ? ethers.utils.formatEther(pair.weightToAdd) : (pair[3] ? ethers.utils.formatEther(pair[3]) : '0')),
+                            isActive: pair.isActive !== undefined ? pair.isActive : (pair[4] !== undefined ? pair[4] : true),
+                            // Add computed fields
+                            apr: '0', // Would need to be calculated
+                            tvl: 0,   // Would need to be calculated
+                            totalStaked: '0' // Would need to be calculated
+                        };
+                        pairsInfo.push(pairInfo);
+                        this.log(`✅ Processed pair: ${pairInfo.name} (${pairInfo.address})`);
+                    } catch (error) {
+                        this.logError(`Failed to process pair ${pair.lpToken || pair.address}:`, error.message);
+                        continue;
+                    }
+                }
+
+                this.log(`✅ Returning ${pairsInfo.length} pairs`);
+                return pairsInfo;
+
+            } catch (error) {
+                this.logError('❌ Failed to get pairs info:', error);
+                return [];
+            }
+        }, 'getAllPairsInfo');
+    }
+
+    /**
+     * Get pairs from approved "Add Pair" proposals
+     */
+    async getPairsFromApprovedProposals() {
+        try {
+            const actionCounter = await this.getActionCounter();
+            const pairs = [];
+
+            // Check recent proposals for approved "Add Pair" actions
+            for (let i = actionCounter; i > Math.max(actionCounter - 50, 0); i--) {
+                try {
+                    const action = await this.getActions(i);
+                    if (action && action.actionType === 2 && action.executed && !action.rejected) { // ActionType 2 = Add Pair
+                        pairs.push({
+                            address: action.pairToAdd,
+                            pairToAdd: action.pairToAdd,
+                            pairNameToAdd: action.pairNameToAdd,
+                            platformToAdd: action.platformToAdd,
+                            weightToAdd: action.weightToAdd,
+                            name: action.pairNameToAdd,
+                            platform: action.platformToAdd,
+                            weight: action.weightToAdd,
+                            isActive: true
+                        });
+                        this.log(`✅ Found approved pair from proposal ${i}: ${action.pairNameToAdd}`);
+                    }
+                } catch (error) {
+                    // Skip failed actions
                     continue;
                 }
             }
 
-            return pairsInfo;
-        }, 'getAllPairsInfo');
+            return pairs;
+        } catch (error) {
+            this.logError('Failed to get pairs from proposals:', error);
+            return [];
+        }
     }
 
     /**
