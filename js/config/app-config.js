@@ -13,7 +13,8 @@ window.CONFIG = {
         RPC_URL: 'https://rpc-amoy.polygon.technology',
         FALLBACK_RPCS: [
             'https://rpc-amoy.polygon.technology',
-            'https://polygon-amoy-bor-rpc.publicnode.com'
+            'https://polygon-amoy-bor-rpc.publicnode.com',
+            'https://polygon-amoy.drpc.org'
         ],
         BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
         NATIVE_CURRENCY: {
@@ -159,6 +160,7 @@ window.CONFIG.ABIS = {
         'function rewardToken() external view returns (address)',
         'function hourlyRewardRate() external view returns (uint256)',
         'function totalWeight() external view returns (uint256)',
+        'function getTotalWeight() external view returns (uint256)',
         'function getSigners() external view returns (address[])',
 
         // Access control
@@ -182,7 +184,7 @@ window.CONFIG.ABIS = {
         // Multi-signature query functions
         'function actionCounter() external view returns (uint256)',
         'function REQUIRED_APPROVALS() external view returns (uint256)',
-        'function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address[] memory pairs, uint256[] memory weights, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, address[] memory approvedBy, uint256 proposedTime, bool rejected)',
+        'function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, uint256 proposedTime, bool rejected)',
         'function getActionPairs(uint256 actionId) external view returns (address[] memory)',
         'function getActionWeights(uint256 actionId) external view returns (uint256[] memory)',
         'function isActionExpired(uint256 actionId) external view returns (bool)'

@@ -23,6 +23,16 @@ class ContractManager {
         this.currentProviderIndex = 0;
         this.disabledFeatures = new Set(); // Track disabled features due to contract limitations
 
+        // Enhanced RPC Failover System
+        this.currentRpcIndex = 0;
+        this.rpcUrls = window.CONFIG?.NETWORK?.FALLBACK_RPCS || [
+            'https://rpc-amoy.polygon.technology',
+            'https://polygon-amoy-bor-rpc.publicnode.com',
+            'https://polygon-amoy.drpc.org'
+        ];
+        this.rpcHealthStatus = new Map(); // Track RPC health
+        this.lastRpcSwitch = 0; // Prevent rapid switching
+
         // State management
         this.isInitialized = false;
         this.isInitializing = false;
@@ -54,12 +64,11 @@ class ContractManager {
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
             providerTimeout: 10000, // 10 seconds
             fallbackRPCs: [
-                // Optimized list based on connectivity test results (fastest first)
-                'https://rpc-amoy.polygon.technology',                    // ✅ 1643ms - Official & Fastest
-                'https://endpoints.omniatech.io/v1/matic/amoy/public',    // ✅ 1850ms - Fast & Reliable
-                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ 2375ms - Stable
-                'https://polygon-amoy.drpc.org',                          // ✅ 2952ms - Backup
-                // Note: Removed non-working RPCs (ankr, polygonscan, blockpi) based on test results
+                // Browser-compatible RPCs only (no CORS issues)
+                'https://rpc-amoy.polygon.technology',                    // ✅ Official & Fastest
+                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ Stable
+                'https://polygon-amoy.drpc.org',                          // ✅ Backup
+                // Note: Removed CORS-problematic RPCs (omniatech, alchemy demo, ankr, polygonscan)
             ],
             networkConfig: {
                 chainId: 80002, // Polygon Amoy testnet
@@ -1255,13 +1264,57 @@ class ContractManager {
     }
 
     /**
-     * Get action counter for multi-signature proposals
+     * Get action counter for multi-signature proposals with RPC failover
      */
     async getActionCounter() {
-        return await this.executeWithRetry(async () => {
-            const counter = await this.stakingContract.actionCounter();
-            return counter.toNumber();
-        }, 'getActionCounter');
+        return await this.safeContractCall(
+            async () => {
+                const counter = await this.stakingContract.actionCounter();
+                return counter.toNumber();
+            },
+            0, // Return 0 as fallback
+            'getActionCounter'
+        );
+    }
+
+    /**
+     * Get signers (like React version) with RPC failover
+     */
+    async getSigners() {
+        return await this.safeContractCall(
+            () => this.stakingContract.getSigners(),
+            window.CONFIG?.GOVERNANCE?.SIGNERS || [], // Fallback signers from config
+            'getSigners'
+        );
+    }
+
+    /**
+     * Get total weight (like React version) with RPC failover
+     */
+    async getTotalWeight() {
+        return await this.safeContractCall(
+            async () => {
+                // Try getTotalWeight first, then fallback to totalWeight
+                try {
+                    return await this.stakingContract.getTotalWeight();
+                } catch (e) {
+                    return await this.stakingContract.totalWeight();
+                }
+            },
+            BigInt(0), // Fallback value
+            'getTotalWeight'
+        );
+    }
+
+    /**
+     * Get pairs (like React version) with RPC failover
+     */
+    async getPairs() {
+        return await this.safeContractCall(
+            () => this.stakingContract.getPairs(),
+            [], // Fallback empty array
+            'getPairs'
+        );
     }
 
     /**
@@ -1304,32 +1357,27 @@ class ContractManager {
     }
 
     /**
-     * Get required approvals for multi-signature actions (ENHANCED)
+     * Get required approvals for multi-signature actions with RPC failover
      */
     async getRequiredApprovals() {
-        try {
-            if (!this.stakingContract) {
-                throw new Error('Staking contract not initialized');
-            }
+        return await this.safeContractCall(
+            async () => {
+                if (!this.stakingContract) {
+                    throw new Error('Staking contract not initialized');
+                }
 
-            // Check if function exists first
-            if (typeof this.stakingContract.REQUIRED_APPROVALS !== 'function') {
-                console.log('⚠️ REQUIRED_APPROVALS function not available in contract');
-                return 2; // Default fallback value
-            }
+                // Check if function exists first
+                if (typeof this.stakingContract.REQUIRED_APPROVALS !== 'function') {
+                    this.log('⚠️ REQUIRED_APPROVALS function not available in contract');
+                    return 3; // Default fallback value (updated to match config)
+                }
 
-            // Use enhanced retry logic
-            return await this.retryContractCall(
-                () => this.stakingContract.REQUIRED_APPROVALS().then(result => result.toNumber()),
-                3,
-                'REQUIRED_APPROVALS'
-            );
-        } catch (error) {
-            this.logError('Failed to get required approvals:', error);
-            // Return fallback value instead of throwing
-            this.log('⚠️ Using fallback value for required approvals: 2');
-            return 2;
-        }
+                const result = await this.stakingContract.REQUIRED_APPROVALS();
+                return result.toNumber();
+            },
+            window.CONFIG?.GOVERNANCE?.REQUIRED_APPROVALS || 3, // Fallback from config
+            'getRequiredApprovals'
+        );
     }
 
     /**
@@ -1361,28 +1409,116 @@ class ContractManager {
     }
 
     /**
-     * Get action pairs by ID
+     * Get action pairs by ID with RPC failover
      */
     async getActionPairs(actionId) {
-        return await this.executeWithRetry(async () => {
-            return await this.stakingContract.getActionPairs(actionId);
-        }, 'getActionPairs');
+        return await this.safeContractCall(
+            () => this.stakingContract.getActionPairs(actionId),
+            [], // React version returns [] on error
+            `getActionPairs(${actionId})`
+        );
     }
 
     /**
-     * Get action weights by ID
+     * Get action weights by ID with RPC failover
      */
     async getActionWeights(actionId) {
-        return await this.executeWithRetry(async () => {
-            const weights = await this.stakingContract.getActionWeights(actionId);
-            return weights.map(w => w.toString());
-        }, 'getActionWeights');
+        return await this.safeContractCall(
+            async () => {
+                const weights = await this.stakingContract.getActionWeights(actionId);
+                return weights.map(w => w.toString());
+            },
+            [], // React version returns [] on error
+            `getActionWeights(${actionId})`
+        );
+    }
+
+    /**
+     * Get specific action by ID (like React version) with RPC failover
+     */
+    async getActions(actionId) {
+        return await this.safeContractCall(
+            async () => {
+                try {
+                    const rawAction = await this.stakingContract.actions(BigInt(actionId));
+                    this.log(`🔍 Raw action ${actionId}:`, rawAction);
+
+                    // Handle different return formats
+                    if (rawAction) {
+                        // If it's already an object with properties
+                        if (rawAction.actionType !== undefined) {
+                            this.log(`✅ Action ${actionId} is object format`);
+                            return rawAction;
+                        }
+
+                        // If it's a tuple array (correct ABI structure - 14 fields)
+                        if (Array.isArray(rawAction) && rawAction.length >= 14) {
+                            this.log(`✅ Action ${actionId} is tuple format, converting...`);
+                            return {
+                                actionType: rawAction[0],
+                                newHourlyRewardRate: rawAction[1],
+                                pairToAdd: rawAction[2],
+                                pairNameToAdd: rawAction[3],
+                                platformToAdd: rawAction[4],
+                                weightToAdd: rawAction[5],
+                                pairToRemove: rawAction[6],
+                                recipient: rawAction[7],
+                                withdrawAmount: rawAction[8],
+                                executed: rawAction[9],
+                                expired: rawAction[10],
+                                approvals: rawAction[11],
+                                proposedTime: rawAction[12],
+                                rejected: rawAction[13],
+                                // Arrays need to be fetched separately
+                                pairs: [],
+                                weights: [],
+                                approvedBy: []
+                            };
+                        }
+
+                        // If it's a struct-like object (ethers.js sometimes returns this)
+                        if (typeof rawAction === 'object' && rawAction[0] !== undefined) {
+                            this.log(`✅ Action ${actionId} is indexed object format, converting...`);
+                            return {
+                                actionType: rawAction[0],
+                                newHourlyRewardRate: rawAction[1],
+                                pairToAdd: rawAction[2],
+                                pairNameToAdd: rawAction[3],
+                                platformToAdd: rawAction[4],
+                                weightToAdd: rawAction[5],
+                                pairToRemove: rawAction[6],
+                                recipient: rawAction[7],
+                                withdrawAmount: rawAction[8],
+                                executed: rawAction[9],
+                                expired: rawAction[10],
+                                approvals: rawAction[11],
+                                proposedTime: rawAction[12],
+                                rejected: rawAction[13],
+                                // Arrays need to be fetched separately
+                                pairs: [],
+                                weights: [],
+                                approvedBy: []
+                            };
+                        }
+                    }
+
+                    this.logError(`❌ Action ${actionId} unknown format:`, rawAction);
+                    return null;
+
+                } catch (error) {
+                    this.logError(`❌ Failed to get action ${actionId}:`, error.message);
+                    throw error; // Let safeContractCall handle the retry logic
+                }
+            },
+            null, // Return null on error
+            `getActions(${actionId})`
+        );
     }
 
     /**
      * Get all actions for admin panel
      */
-    async getActions() {
+    async getAllActions() {
         return await this.executeWithRetry(async () => {
             const counter = await this.stakingContract.actionCounter();
             const actionCount = counter.toNumber();
@@ -1402,7 +1538,7 @@ class ContractManager {
             }
 
             return actions;
-        }, 'getActions');
+        }, 'getAllActions');
     }
 
     /**
@@ -1628,40 +1764,78 @@ class ContractManager {
      * Ensure we have a proper signer for transactions
      */
     async ensureSigner() {
-        if (!this.signer) {
-            console.log('🔧 No signer found, attempting to get signer from provider...');
+        try {
+            // First ensure MetaMask is connected
+            if (typeof window.ethereum === 'undefined') {
+                throw new Error('MetaMask not installed');
+            }
 
-            if (this.provider && typeof this.provider.getSigner === 'function') {
-                try {
-                    this.signer = this.provider.getSigner();
-                    console.log('✅ Signer obtained from provider');
-                } catch (error) {
-                    console.error('❌ Failed to get signer from provider:', error);
-                    throw new Error('Unable to get wallet signer. Please ensure wallet is connected.');
+            // Check if accounts are connected
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length === 0) {
+                console.log('🔐 Requesting MetaMask connection...');
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+            }
+
+            // Get or create signer
+            if (!this.signer) {
+                console.log('🔧 No signer found, attempting to get signer from provider...');
+
+                if (this.provider && typeof this.provider.getSigner === 'function') {
+                    try {
+                        this.signer = this.provider.getSigner();
+                        console.log('✅ Signer obtained from provider');
+                    } catch (error) {
+                        console.error('❌ Failed to get signer from provider:', error);
+                        throw new Error('Unable to get wallet signer. Please ensure wallet is connected.');
+                    }
+                } else if (window.ethereum) {
+                    // Try to get signer directly from MetaMask
+                    try {
+                        const provider = new ethers.providers.Web3Provider(window.ethereum);
+                        this.signer = provider.getSigner();
+                        this.provider = provider;
+                        console.log('✅ Signer obtained from MetaMask');
+                    } catch (error) {
+                        console.error('❌ Failed to get signer from MetaMask:', error);
+                        throw new Error('Unable to get wallet signer from MetaMask.');
+                    }
+                } else {
+                    throw new Error('No provider available for signing transactions');
                 }
-            } else if (window.ethereum) {
-                // Try to get signer directly from MetaMask
-                try {
+            }
+
+            // Verify signer is connected
+            try {
+                const address = await this.signer.getAddress();
+                console.log('✅ Signer verified, address:', address);
+            } catch (error) {
+                console.error('❌ Signer verification failed:', error);
+
+                // If verification fails, try to recreate signer
+                if (window.ethereum) {
+                    console.log('🔧 Recreating signer...');
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
                     this.signer = provider.getSigner();
                     this.provider = provider;
-                    console.log('✅ Signer obtained from MetaMask');
-                } catch (error) {
-                    console.error('❌ Failed to get signer from MetaMask:', error);
-                    throw new Error('Unable to get wallet signer from MetaMask.');
-                }
-            } else {
-                throw new Error('No provider available for signing transactions');
-            }
-        }
 
-        // Verify signer is connected
-        try {
-            const address = await this.signer.getAddress();
-            console.log('✅ Signer verified, address:', address);
+                    // Try verification again
+                    const address = await this.signer.getAddress();
+                    console.log('✅ Signer recreated and verified, address:', address);
+                } else {
+                    throw new Error('Signer not properly connected');
+                }
+            }
+
         } catch (error) {
-            console.error('❌ Signer verification failed:', error);
-            throw new Error('Signer not properly connected');
+            console.error('❌ ensureSigner failed:', error);
+
+            // If it's a user rejection, throw specific error
+            if (error.code === 4001) {
+                throw new Error('User rejected MetaMask connection');
+            }
+
+            throw new Error('Signer not properly connected: ' + error.message);
         }
 
         // Recreate contracts with signer - CRITICAL FIX
@@ -1804,14 +1978,37 @@ class ContractManager {
             // Ensure we have a proper signer
             await this.ensureSigner();
 
-            return await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionWithRetry(async () => {
                 const tx = await this.stakingContract.approveAction(actionId);
                 this.log('Approve action transaction sent:', tx.hash, 'Action ID:', actionId);
                 return await tx.wait();
             }, 'approveAction');
+
+            return {
+                success: true,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber
+            };
         } catch (error) {
             this.logError('Failed to approve action:', error);
-            throw error;
+
+            // Extract user-friendly error message
+            let errorMessage = 'Failed to approve action';
+            if (error.reason && error.reason.includes('Already approved')) {
+                errorMessage = 'Already approved';
+            } else if (error.reason && error.reason.includes('Cannot reject after approving')) {
+                errorMessage = 'Cannot reject after approving';
+            } else if (error.message && error.message.includes('Already approved')) {
+                errorMessage = 'Already approved';
+            } else if (error.technicalMessage && error.technicalMessage.includes('Already approved')) {
+                errorMessage = 'Already approved';
+            }
+
+            return {
+                success: false,
+                error: errorMessage,
+                originalError: error
+            };
         }
     }
 
@@ -1912,14 +2109,37 @@ class ContractManager {
             // Ensure we have a proper signer
             await this.ensureSigner();
 
-            return await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionWithRetry(async () => {
                 const tx = await this.stakingContract.rejectAction(actionId);
                 this.log('Reject action transaction sent:', tx.hash, 'Action ID:', actionId);
                 return await tx.wait();
             }, 'rejectAction');
+
+            return {
+                success: true,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber
+            };
         } catch (error) {
             this.logError('Failed to reject action:', error);
-            throw error;
+
+            // Extract user-friendly error message
+            let errorMessage = 'Failed to reject action';
+            if (error.reason && error.reason.includes('Cannot reject after approving')) {
+                errorMessage = 'Cannot reject after approving';
+            } else if (error.reason && error.reason.includes('Already rejected')) {
+                errorMessage = 'Already rejected';
+            } else if (error.message && error.message.includes('Cannot reject after approving')) {
+                errorMessage = 'Cannot reject after approving';
+            } else if (error.technicalMessage && error.technicalMessage.includes('Cannot reject after approving')) {
+                errorMessage = 'Cannot reject after approving';
+            }
+
+            return {
+                success: false,
+                error: errorMessage,
+                originalError: error
+            };
         }
     }
 
@@ -2444,6 +2664,31 @@ class ContractManager {
                 lastError = error;
                 this.logError(`${operationName} attempt ${attempt} failed:`, error);
 
+                // Check for RPC errors that should trigger provider switch
+                const isRpcError = error.code === -32603 ||
+                                 (error.error && error.error.code === -32603) ||
+                                 error.message.includes('missing trie node') ||
+                                 error.message.includes('Internal JSON-RPC error') ||
+                                 error.message.includes('network error') ||
+                                 error.message.includes('timeout') ||
+                                 error.message.includes('could not detect network');
+
+                if (isRpcError && attempt <= retries) {
+                    this.log(`🔄 RPC error detected in fallback, switching provider and retrying...`);
+                    await this.switchToNextProvider();
+
+                    // Recreate signer with new provider for transactions
+                    if (operationName.includes('propose') || operationName.includes('approve') || operationName.includes('reject') || operationName.includes('execute')) {
+                        try {
+                            this.signer = this.provider.getSigner();
+                            await this.initializeContracts();
+                            this.log('✅ Provider switched and signer recreated in fallback');
+                        } catch (signerError) {
+                            this.logError('❌ Failed to recreate signer in fallback:', signerError);
+                        }
+                    }
+                }
+
                 // Don't retry on last attempt
                 if (attempt > retries) {
                     this.logError(`${operationName} failed after ${attempt} attempts`);
@@ -2518,10 +2763,28 @@ class ContractManager {
                     }
                 }
 
-                // Try fallback provider for network errors
-                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR') && this.canUseFallbackProvider()) {
-                    this.log('Network error detected, trying fallback provider...');
-                    await this.tryFallbackProvider();
+                // Try fallback provider for network errors and RPC errors
+                const isRpcError = error.code === -32603 ||
+                                 (error.error && error.error.code === -32603) ||
+                                 error.message.includes('missing trie node') ||
+                                 error.message.includes('Internal JSON-RPC error') ||
+                                 error.message.includes('network error') ||
+                                 error.message.includes('timeout') ||
+                                 error.message.includes('could not detect network');
+
+                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR' || isRpcError) && this.canUseFallbackProvider()) {
+                    this.log('🔄 Network/RPC error detected in transaction, trying fallback provider...');
+                    await this.switchToNextProvider();
+
+                    // Recreate signer with new provider
+                    try {
+                        this.log('🔧 Recreating signer with new provider for transaction retry...');
+                        this.signer = this.provider.getSigner();
+                        await this.initializeContracts();
+                        this.log('✅ Signer and contracts recreated for transaction retry');
+                    } catch (signerError) {
+                        this.logError('❌ Failed to recreate signer for transaction retry:', signerError);
+                    }
                 }
 
                 throw error; // Re-throw for retry logic
@@ -2962,6 +3225,132 @@ class ContractManager {
      */
     logError(...args) {
         console.error('[ContractManager]', ...args);
+    }
+
+    /**
+     * Safe contract call with RPC failover and error handling
+     */
+    async safeContractCall(contractFunction, errorFallback = null, functionName = 'unknown') {
+        const maxRetries = 2;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await contractFunction();
+
+            } catch (error) {
+                const isRpcError = error.code === -32603 ||
+                                 error.code === 'NETWORK_ERROR' ||
+                                 error.code === 'SERVER_ERROR' ||
+                                 error.message.includes('missing trie node') ||
+                                 error.message.includes('Internal JSON-RPC error') ||
+                                 error.message.includes('missing revert data') ||
+                                 error.message.includes('NETWORK_ERROR') ||
+                                 error.message.includes('SERVER_ERROR') ||
+                                 error.message.includes('could not detect network') ||
+                                 (error.error && error.error.code === -32603);
+
+                if (isRpcError && attempt < maxRetries - 1) {
+                    this.log(`🔄 RPC error detected in ${functionName} (code: ${error.code}), switching provider and retrying...`);
+
+                    // Try to switch to next provider
+                    try {
+                        await this.switchToNextProvider();
+                        continue; // Retry with new provider
+                    } catch (switchError) {
+                        this.logError(`Failed to switch provider: ${switchError.message}`);
+                    }
+                } else {
+                    this.logError(`❌ Contract call failed for ${functionName}:`, error.message);
+                    return errorFallback;
+                }
+            }
+        }
+
+        return errorFallback;
+    }
+
+    /**
+     * Switch to next available RPC provider
+     */
+    async switchToNextProvider() {
+        const rpcSources = [
+            this.config.fallbackRPCs,
+            window.CONFIG?.NETWORK?.FALLBACK_RPCS,
+            this.rpcUrls
+        ].filter(rpcs => rpcs && rpcs.length > 0);
+
+        for (const rpcs of rpcSources) {
+            if (rpcs.length > 1) {
+                this.currentProviderIndex = (this.currentProviderIndex + 1) % rpcs.length;
+                const newRpcUrl = rpcs[this.currentProviderIndex];
+
+                this.log(`🔄 Switching to RPC: ${newRpcUrl}`);
+
+                try {
+                    // Create new provider with timeout
+                    this.provider = new ethers.providers.JsonRpcProvider({
+                        url: newRpcUrl,
+                        timeout: 5000 // 5 second timeout
+                    });
+
+                    // Test the new provider with timeout
+                    const testPromise = this.provider.getBlockNumber();
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Provider test timeout')), 3000)
+                    );
+
+                    await Promise.race([testPromise, timeoutPromise]);
+
+                    // Reinitialize contracts with new provider
+                    if (this.stakingContract) {
+                        this.stakingContract = new ethers.Contract(
+                            this.stakingContract.address,
+                            this.stakingContract.interface,
+                            this.signer || this.provider
+                        );
+                    }
+
+                    if (this.rewardTokenContract) {
+                        this.rewardTokenContract = new ethers.Contract(
+                            this.rewardTokenContract.address,
+                            this.rewardTokenContract.interface,
+                            this.signer || this.provider
+                        );
+                    }
+
+                    this.log(`✅ Successfully switched to RPC: ${newRpcUrl}`);
+                    return; // Success, exit
+
+                } catch (testError) {
+                    this.logError(`❌ Failed to switch to RPC ${newRpcUrl}: ${testError.message}`);
+                    // Continue to try next RPC
+                }
+            }
+        }
+
+        throw new Error('No working RPC providers available');
+    }
+
+    /**
+     * Get current signer address
+     */
+    async getCurrentSigner() {
+        try {
+            if (!this.signer) {
+                await this.ensureSigner();
+            }
+            return await this.signer.getAddress();
+        } catch (error) {
+            this.logError('Failed to get current signer address:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get current signer address (alias)
+     */
+    async getCurrentSignerAddress() {
+        return await this.getCurrentSigner();
     }
 }
 
