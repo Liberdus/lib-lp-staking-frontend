@@ -1320,6 +1320,56 @@
     border: 1px solid #6c757d !important;
 }
 
+/* SUBMIT BUTTON VISIBILITY FIXES */
+.modal-footer .btn-danger,
+.modal-footer .btn-warning,
+.modal-footer button[type="submit"],
+.modal-footer button[form="remove-pair-form"],
+.modal-footer button[form="change-signer-form"] {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 1000003 !important;
+    min-width: 150px !important;
+    height: auto !important;
+    line-height: normal !important;
+}
+
+/* Specific styling for Remove Pair submit button */
+.modal-footer .btn-danger {
+    background: #dc3545 !important;
+    color: white !important;
+    border: 1px solid #dc3545 !important;
+}
+
+.modal-footer .btn-danger:hover {
+    background: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+/* Specific styling for Change Signer submit button */
+.modal-footer .btn-warning {
+    background: #ffc107 !important;
+    color: #212529 !important;
+    border: 1px solid #ffc107 !important;
+}
+
+.modal-footer .btn-warning:hover {
+    background: #e0a800 !important;
+    border-color: #d39e00 !important;
+}
+
+/* Force visibility for specific button IDs */
+#remove-pair-btn,
+button[form="change-signer-form"] {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
 .form-group {
     margin-bottom: 20px;
 }

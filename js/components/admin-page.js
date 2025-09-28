@@ -3553,7 +3553,7 @@ class AdminPage {
                         btn.style.background = '#6c757d';
                         btn.style.color = 'white';
                         btn.style.border = '1px solid #6c757d';
-                    }
+                    } 
 
                     console.log(`🔧 DEBUG: Button ${index + 1} forced visible:`, btn.textContent.trim());
                 });
