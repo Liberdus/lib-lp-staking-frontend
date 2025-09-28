@@ -14,7 +14,9 @@ window.CONFIG = {
         FALLBACK_RPCS: [
             'https://rpc-amoy.polygon.technology',
             'https://polygon-amoy-bor-rpc.publicnode.com',
-            'https://polygon-amoy.drpc.org'
+            'https://polygon-amoy.drpc.org',
+            'https://rpc.ankr.com/polygon_amoy',
+            'https://polygon-amoy.blockpi.network/v1/rpc/public'
         ],
         BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
         NATIVE_CURRENCY: {
@@ -160,7 +162,6 @@ window.CONFIG.ABIS = {
         'function rewardToken() external view returns (address)',
         'function hourlyRewardRate() external view returns (uint256)',
         'function totalWeight() external view returns (uint256)',
-        'function getTotalWeight() external view returns (uint256)',
         'function getSigners() external view returns (address[])',
 
         // Access control

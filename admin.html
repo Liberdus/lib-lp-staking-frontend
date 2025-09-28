@@ -98,6 +98,7 @@
     </script>
 
     <!-- Core System -->
+    <script src="js/debug-logger.js"></script>
     <script src="js/utils/logger.js"></script>
     <script src="js/utils/event-manager.js"></script>
     <script src="js/utils/storage-manager.js"></script>
@@ -113,6 +114,12 @@
     <!-- Contract System -->
     <script src="js/contracts/contract-manager.js"></script>
     
+    <!-- Performance Optimization Components -->
+    <script src="js/components/optimized-admin-state.js"></script>
+    <script src="js/components/optimistic-ui-updates.js"></script>
+    <script src="js/components/efficient-dom-updates.js"></script>
+    <script src="js/components/performance-monitor.js"></script>
+
     <!-- Admin Components -->
     <script src="js/components/admin-page.js"></script>
 
@@ -243,6 +250,11 @@
                     console.log('  - isConnected method:', typeof window.walletManager.isConnected);
                 }
 
+                // Check if AdminPage is available
+                if (typeof AdminPage === 'undefined') {
+                    throw new Error('AdminPage class not loaded. Check if admin-page.js is loading correctly.');
+                }
+
                 // Create admin page instance
                 console.log('🔐 Creating admin page...');
                 adminPage = new AdminPage();
@@ -362,7 +374,34 @@
             // Wait a bit for master initializer to complete
             setTimeout(() => {
                 console.log('🔐 Starting admin panel initialization...');
-                initializeAdminPanel();
+
+                // Check if all required classes are loaded
+                const requiredClasses = ['AdminPage', 'ContractManager', 'WalletManager'];
+                const missingClasses = requiredClasses.filter(className => typeof window[className] === 'undefined');
+
+                if (missingClasses.length > 0) {
+                    console.error('❌ Missing required classes:', missingClasses);
+
+                    // Check if scripts are still loading
+                    const scripts = document.querySelectorAll('script[src*="admin-page.js"], script[src*="contract-manager.js"], script[src*="wallet-manager.js"]');
+                    console.log('📜 Script elements found:', scripts.length);
+
+                    // Try a few more times with increasing delays
+                    let retryCount = parseInt(sessionStorage.getItem('adminInitRetryCount') || '0');
+                    if (retryCount < 3) {
+                        sessionStorage.setItem('adminInitRetryCount', (retryCount + 1).toString());
+                        console.log(`🔄 Retry attempt ${retryCount + 1}/3 in ${(retryCount + 1) * 2} seconds...`);
+                        setTimeout(initializeAdminPanel, (retryCount + 1) * 2000);
+                    } else {
+                        console.error('❌ Max retries reached. Script loading failed.');
+                        showErrorBoundary('Failed to load required scripts. Please refresh the page.');
+                        sessionStorage.removeItem('adminInitRetryCount');
+                    }
+                } else {
+                    console.log('✅ All required classes loaded');
+                    sessionStorage.removeItem('adminInitRetryCount');
+                    initializeAdminPanel();
+                }
             }, 3000); // Give master initializer time to complete
         });
 
@@ -2088,6 +2127,308 @@
             } catch (error) {
                 console.error('❌ Fixed pair loading test failed:', error);
             }
+        };
+
+        // Test modal functionality
+        window.testModalFunctionality = async function() {
+            console.log('🔧 TESTING MODAL FUNCTIONALITY');
+            console.log('==============================');
+
+            try {
+                // Test 1: Check if modals open and show buttons
+                console.log('🔧 Step 1: Testing modal button visibility...');
+
+                const modalTypes = [
+                    { name: 'Change Signer', action: 'change-signer' },
+                    { name: 'Remove Pair', action: 'remove-pair' },
+                    { name: 'Update Pair Weights', action: 'update-weights' }
+                ];
+
+                for (const modal of modalTypes) {
+                    console.log(`   📋 Testing ${modal.name} modal...`);
+
+                    // Find and click the button
+                    const button = document.querySelector(`[data-action="${modal.action}"]`);
+                    if (button) {
+                        button.click();
+
+                        // Wait for modal to open
+                        await new Promise(resolve => setTimeout(resolve, 500));
+
+                        // Check modal elements
+                        const modalContainer = document.getElementById('modal-container');
+                        const modalFooter = modalContainer?.querySelector('.modal-footer');
+                        const buttons = modalContainer?.querySelectorAll('.modal-footer button');
+
+                        console.log(`     - Modal container: ${modalContainer ? '✅ Found' : '❌ Not found'}`);
+                        console.log(`     - Modal footer: ${modalFooter ? '✅ Found' : '❌ Not found'}`);
+                        console.log(`     - Footer buttons: ${buttons?.length || 0}`);
+
+                        if (buttons && buttons.length > 0) {
+                            buttons.forEach((btn, index) => {
+                                console.log(`       Button ${index + 1}: "${btn.textContent.trim()}" (visible: ${btn.offsetWidth > 0 && btn.offsetHeight > 0})`);
+                            });
+                        }
+
+                        // Close modal
+                        const closeBtn = modalContainer?.querySelector('.modal-close');
+                        if (closeBtn) {
+                            closeBtn.click();
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                    } else {
+                        console.log(`     ❌ Button not found for ${modal.name}`);
+                    }
+                }
+
+                console.log('🎉 MODAL FUNCTIONALITY TEST COMPLETED!');
+
+            } catch (error) {
+                console.error('❌ Modal functionality test failed:', error);
+            }
+        };
+
+        // Test AdminPage loading
+        window.testAdminPageLoading = function() {
+            console.log('🔧 TESTING ADMINPAGE LOADING');
+            console.log('============================');
+
+            console.log('📋 Checking class availability:');
+            console.log('  - AdminPage:', typeof AdminPage !== 'undefined' ? '✅ Available' : '❌ Missing');
+            console.log('  - ContractManager:', typeof ContractManager !== 'undefined' ? '✅ Available' : '❌ Missing');
+            console.log('  - WalletManager:', typeof WalletManager !== 'undefined' ? '✅ Available' : '❌ Missing');
+
+            console.log('📋 Checking window objects:');
+            console.log('  - window.AdminPage:', typeof window.AdminPage !== 'undefined' ? '✅ Available' : '❌ Missing');
+            console.log('  - window.adminPage:', typeof window.adminPage !== 'undefined' ? '✅ Available' : '❌ Missing');
+
+            if (typeof AdminPage !== 'undefined') {
+                try {
+                    console.log('🔧 Testing AdminPage instantiation...');
+                    const testInstance = new AdminPage();
+                    console.log('✅ AdminPage can be instantiated successfully');
+                    console.log('📋 Instance properties:', {
+                        isInitialized: testInstance.isInitialized,
+                        isAuthorized: testInstance.isAuthorized,
+                        DEVELOPMENT_MODE: testInstance.DEVELOPMENT_MODE
+                    });
+                } catch (error) {
+                    console.error('❌ AdminPage instantiation failed:', error);
+                }
+            }
+
+            console.log('🎉 ADMINPAGE LOADING TEST COMPLETED!');
+        };
+
+        // Test enhanced proposal display
+        window.testEnhancedProposalDisplay = function() {
+            console.log('🎨 TESTING ENHANCED PROPOSAL DISPLAY');
+            console.log('===================================');
+
+            try {
+                if (!window.adminPage) {
+                    console.error('❌ AdminPage not available');
+                    return;
+                }
+
+                console.log('📋 Checking proposal display enhancements:');
+
+                // Check if proposals are loaded
+                const proposalsTable = document.querySelector('#proposals-tbody');
+                if (!proposalsTable) {
+                    console.warn('⚠️ Proposals table not found');
+                    return;
+                }
+
+                const proposalRows = proposalsTable.querySelectorAll('.proposal-row');
+                console.log(`  - Found ${proposalRows.length} proposal rows`);
+
+                proposalRows.forEach((row, index) => {
+                    const proposalId = row.querySelector('.proposal-id')?.textContent;
+                    const proposalSummary = row.querySelector('.proposal-summary')?.textContent;
+                    const actionType = row.querySelector('.action-type')?.textContent;
+                    const expandBtn = row.querySelector('.expand-btn');
+
+                    console.log(`  📋 Proposal ${index + 1}:`);
+                    console.log(`    - ID: ${proposalId}`);
+                    console.log(`    - Type: ${actionType}`);
+                    console.log(`    - Summary: ${proposalSummary}`);
+                    console.log(`    - Expandable: ${expandBtn ? '✅ Yes' : '❌ No'}`);
+
+                    // Check if details row exists
+                    const detailsRowId = proposalId ? `details-${proposalId.replace('#', '')}` : null;
+                    const detailsRow = detailsRowId ? document.getElementById(detailsRowId) : null;
+                    console.log(`    - Details row: ${detailsRow ? '✅ Found' : '❌ Missing'}`);
+                });
+
+                // Test expand functionality
+                const firstExpandBtn = document.querySelector('.expand-btn');
+                if (firstExpandBtn) {
+                    console.log('🔧 Testing expand functionality...');
+                    firstExpandBtn.click();
+
+                    setTimeout(() => {
+                        const expandedDetails = document.querySelector('.proposal-details-row[style*="table-row"]');
+                        console.log(`  - Expansion works: ${expandedDetails ? '✅ Yes' : '❌ No'}`);
+
+                        if (expandedDetails) {
+                            const parameterCards = expandedDetails.querySelectorAll('.parameter-card');
+                            console.log(`  - Parameter cards: ${parameterCards.length}`);
+
+                            parameterCards.forEach((card, cardIndex) => {
+                                const label = card.querySelector('.parameter-label')?.textContent;
+                                const value = card.querySelector('.parameter-value')?.textContent;
+                                console.log(`    Card ${cardIndex + 1}: ${label} = ${value}`);
+                            });
+                        }
+
+                        console.log('🎉 ENHANCED PROPOSAL DISPLAY TEST COMPLETED!');
+                    }, 500);
+                } else {
+                    console.log('🎉 ENHANCED PROPOSAL DISPLAY TEST COMPLETED!');
+                }
+
+            } catch (error) {
+                console.error('❌ Enhanced proposal display test failed:', error);
+            }
+        };
+
+        // Quick test to verify mock proposals have enhanced data
+        window.testMockProposalData = function() {
+            console.log('🔍 TESTING MOCK PROPOSAL DATA');
+            console.log('============================');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            // Get mock proposals
+            const mockProposals = window.adminPage.getMockProposals();
+            console.log(`📋 Found ${mockProposals.length} mock proposals`);
+
+            mockProposals.forEach((proposal, index) => {
+                console.log(`\n📋 Mock Proposal ${index + 1}:`);
+                console.log(`  - ID: ${proposal.id}`);
+                console.log(`  - Type: ${proposal.type}`);
+                console.log(`  - Title: ${proposal.title}`);
+                console.log(`  - Data:`, proposal.data);
+            });
+
+            // Test formatted proposals
+            console.log('\n🔄 Testing formatted proposals...');
+            window.adminPage.loadMockProposals().then(formattedProposals => {
+                console.log(`📋 Found ${formattedProposals.length} formatted proposals`);
+
+                formattedProposals.forEach((proposal, index) => {
+                    console.log(`\n📋 Formatted Proposal ${index + 1}:`);
+                    console.log(`  - ID: ${proposal.id}`);
+                    console.log(`  - Action Type: ${proposal.actionType}`);
+                    console.log(`  - Enhanced Data:`);
+
+                    // Show enhanced data fields
+                    const enhancedFields = ['pairToAdd', 'pairNameToAdd', 'platformToAdd', 'weightToAdd',
+                                          'newHourlyRewardRate', 'pairToRemove', 'recipient', 'withdrawAmount'];
+                    enhancedFields.forEach(field => {
+                        if (proposal[field] !== undefined) {
+                            console.log(`    - ${field}: ${proposal[field]}`);
+                        }
+                    });
+
+                    // Test summary generation
+                    const summary = window.adminPage.getProposalSummary(proposal);
+                    console.log(`  - Generated Summary: "${summary}"`);
+                });
+
+                console.log('🎉 MOCK PROPOSAL DATA TEST COMPLETED!');
+            });
+        };
+
+        // Force refresh proposals to see enhanced display
+        window.forceRefreshProposals = function() {
+            console.log('🔄 FORCING PROPOSAL REFRESH');
+            console.log('===========================');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            console.log('🔄 Refreshing proposals...');
+            window.adminPage.loadProposals().then(proposals => {
+                console.log(`📋 Loaded ${proposals.length} proposals`);
+
+                proposals.forEach((proposal, index) => {
+                    console.log(`\n📋 Proposal ${index + 1}:`);
+                    console.log(`  - ID: ${proposal.id}`);
+                    console.log(`  - Action Type: ${proposal.actionType}`);
+                    console.log(`  - Summary: ${window.adminPage.getProposalSummary(proposal)}`);
+
+                    // Show enhanced data
+                    const enhancedFields = ['pairToAdd', 'pairNameToAdd', 'platformToAdd', 'weightToAdd',
+                                          'newHourlyRewardRate', 'pairToRemove', 'recipient', 'withdrawAmount'];
+                    enhancedFields.forEach(field => {
+                        if (proposal[field] !== undefined) {
+                            console.log(`  - ${field}: ${proposal[field]}`);
+                        }
+                    });
+                });
+
+                // Refresh the UI
+                console.log('🔄 Refreshing UI...');
+                window.adminPage.loadMultiSignPanel();
+
+                console.log('🎉 FORCE REFRESH COMPLETED!');
+            }).catch(error => {
+                console.error('❌ Force refresh failed:', error);
+            });
+        };
+
+        // Force use mock proposals (bypass all contract calls)
+        window.forceMockProposals = function() {
+            console.log('🎭 FORCING MOCK PROPOSALS');
+            console.log('========================');
+
+            if (!window.adminPage) {
+                console.error('❌ AdminPage not available');
+                return;
+            }
+
+            console.log('🎭 Loading enhanced mock proposals directly...');
+            window.adminPage.loadMockProposals().then(proposals => {
+                console.log(`📋 Loaded ${proposals.length} mock proposals`);
+
+                proposals.forEach((proposal, index) => {
+                    console.log(`\n📋 Mock Proposal ${index + 1}:`);
+                    console.log(`  - ID: ${proposal.id}`);
+                    console.log(`  - Action Type: ${proposal.actionType}`);
+                    console.log(`  - Summary: ${window.adminPage.getProposalSummary(proposal)}`);
+
+                    // Show enhanced data
+                    const enhancedFields = ['pairToAdd', 'pairNameToAdd', 'platformToAdd', 'weightToAdd',
+                                          'newHourlyRewardRate', 'pairToRemove', 'recipient', 'withdrawAmount'];
+                    enhancedFields.forEach(field => {
+                        if (proposal[field] !== undefined) {
+                            console.log(`  - ${field}: ${proposal[field]}`);
+                        }
+                    });
+                });
+
+                // Force update the UI with mock proposals
+                console.log('🔄 Updating UI with mock proposals...');
+                const proposalsHtml = window.adminPage.renderProposalsRows(proposals);
+                const tbody = document.getElementById('proposals-tbody');
+                if (tbody) {
+                    tbody.innerHTML = proposalsHtml;
+                    console.log('✅ UI updated with enhanced mock proposals');
+                } else {
+                    console.warn('⚠️ Could not find proposals tbody');
+                }
+
+                console.log('🎉 FORCE MOCK PROPOSALS COMPLETED!');
+            }).catch(error => {
+                console.error('❌ Force mock proposals failed:', error);
+            });
         };
 
         // Test all the fixes comprehensively

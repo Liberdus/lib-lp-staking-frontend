@@ -2,10 +2,10 @@
 window.CONFIG = {
 
     CONTRACTS: {
-        STAKING_CONTRACT: '0x5FbDB2315678afecb367f032d93F642f64180aa3', // Updated with local deployment
+        STAKING_CONTRACT: '0x1cAcD190b8a9223f24F6aBFb7Ba6D598B3E513f0', // Deployed on Polygon Amoy
         REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76', // LIB Token from deployment
         LP_TOKENS: {
-
+            // Add LP token addresses here when available
         }
     },
 
@@ -36,7 +36,7 @@ window.CONFIG = {
     },
 
 
-    DEFAULT_NETWORK: 31337, // Changed to local Hardhat network
+    DEFAULT_NETWORK: 80002, // Polygon Amoy Testnet
 
 
     RPC: {
@@ -45,8 +45,9 @@ window.CONFIG = {
         ],
         POLYGON_AMOY: [
             'https://rpc-amoy.polygon.technology',
-            'https://polygon-amoy-bor-rpc.publicnode.com',
-            'https://polygon-amoy.drpc.org'
+            'https://polygon-amoy.gateway.tenderly.co',
+            'https://rpc.ankr.com/polygon_amoy',
+            'https://polygon-amoy-bor-rpc.publicnode.com'
         ],
         FALLBACK_TIMEOUT: 5000, // 5 seconds
         MAX_RETRIES: 3
@@ -95,7 +96,7 @@ window.CONFIG = {
     // Error Messages
     ERRORS: {
         WALLET_NOT_CONNECTED: 'Please connect your wallet first',
-        WRONG_NETWORK: 'Please switch to Localhost 8545 (Hardhat Network)',
+        WRONG_NETWORK: 'Please switch to Polygon Amoy Testnet',
         INSUFFICIENT_BALANCE: 'Insufficient balance for this transaction',
         TRANSACTION_REJECTED: 'Transaction was rejected by user',
         NETWORK_ERROR: 'Network error. Please try again.',
@@ -108,7 +109,7 @@ window.CONFIG = {
     // Success Messages
     SUCCESS: {
         WALLET_CONNECTED: 'Wallet connected successfully',
-        NETWORK_SWITCHED: 'Network switched successfully',
+        NETWORK_SWITCHED: 'Switched to Polygon Amoy Testnet successfully',
         STAKE_SUCCESS: 'Tokens staked successfully',
         UNSTAKE_SUCCESS: 'Tokens unstaked successfully',
         CLAIM_SUCCESS: 'Rewards claimed successfully',

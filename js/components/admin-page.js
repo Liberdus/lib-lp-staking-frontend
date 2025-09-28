@@ -27,7 +27,11 @@ class AdminPage {
         // Initialize mock system immediately
         this.initializeMockSystem();
 
-        this.init();
+        // Initialize asynchronously (don't await in constructor)
+        this.init().catch(error => {
+            console.error('❌ AdminPage initialization failed:', error);
+            this.showInitializationError(error);
+        });
     }
 
     /**
@@ -59,18 +63,35 @@ class AdminPage {
 
         this.createMockProposal({
             id: 'PROP-002',
-            type: 'UPDATE_RATE',
-            title: 'Update Hourly Reward Rate',
-            description: 'Increase hourly reward rate to 0.5 tokens per hour to boost staking incentives',
+            type: 'WITHDRAW_REWARDS',
+            title: 'Withdraw Rewards',
+            description: 'Withdraw accumulated rewards to treasury wallet',
             proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'APPROVED',
+            status: 'REJECTED',
             requiredApprovals: 3,
-            currentApprovals: 3,
+            currentApprovals: 1,
             data: {
-                newRate: '0.5'
+                recipient: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+                amount: '500000000000000000000' // 500 tokens
             },
             createdAt: Date.now() - 172800000, // 2 days ago
             expiresAt: Date.now() + 432000000 // 5 days from now
+        });
+
+        this.createMockProposal({
+            id: 'PROP-003',
+            type: 'SET_HOURLY_REWARD_RATE',
+            title: 'Set Hourly Reward Rate',
+            description: 'Update hourly reward rate to boost staking incentives',
+            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+            status: 'REJECTED',
+            requiredApprovals: 3,
+            currentApprovals: 1,
+            data: {
+                newRate: '0.5'
+            },
+            createdAt: Date.now() - 259200000, // 3 days ago
+            expiresAt: Date.now() + 345600000 // 4 days from now
         });
 
         console.log('✅ Professional mock system initialized with realistic proposals');
@@ -143,6 +164,28 @@ class AdminPage {
                 ...voteData
             }))
         }));
+    }
+
+    /**
+     * Show initialization error to user
+     */
+    showInitializationError(error) {
+        const adminContent = document.getElementById('admin-content');
+        if (adminContent) {
+            adminContent.innerHTML = `
+                <div class="error-container">
+                    <div class="error-icon">❌</div>
+                    <h2>Initialization Failed</h2>
+                    <p>The admin panel failed to initialize properly.</p>
+                    <div class="error-details">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        Reload Page
+                    </button>
+                </div>
+            `;
+        }
     }
 
     async init() {
@@ -446,6 +489,9 @@ class AdminPage {
     async loadAdminInterface() {
         console.log('🎨 Loading admin interface...');
 
+        // Initialize performance optimization components
+        this.initializeOptimizedComponents();
+
         // Create admin layout
         this.createAdminLayout();
 
@@ -464,6 +510,52 @@ class AdminPage {
 
         // Start auto-refresh
         this.startAutoRefresh();
+    }
+
+    /**
+     * Initialize optimized performance components
+     */
+    initializeOptimizedComponents() {
+        console.log('⚡ Initializing performance optimization components...');
+
+        try {
+            // Initialize optimized state management
+            if (window.OptimizedAdminState) {
+                this.optimizedAdminState = new window.OptimizedAdminState();
+                console.log('✅ OptimizedAdminState initialized');
+            }
+
+            // Initialize efficient DOM updates
+            if (window.EfficientDOMUpdates && this.optimizedAdminState) {
+                this.efficientDOM = new window.EfficientDOMUpdates(this.optimizedAdminState);
+                console.log('✅ EfficientDOMUpdates initialized');
+            }
+
+            // Initialize optimistic UI updates
+            if (window.OptimisticUIUpdates && this.optimizedAdminState) {
+                this.optimisticUI = new window.OptimisticUIUpdates(this.optimizedAdminState);
+                console.log('✅ OptimisticUIUpdates initialized');
+            }
+
+            // Initialize performance monitor
+            if (window.PerformanceMonitor) {
+                this.performanceMonitor = new window.PerformanceMonitor();
+                console.log('✅ PerformanceMonitor initialized');
+
+                // Log performance report every 5 minutes
+                setInterval(() => {
+                    if (this.performanceMonitor) {
+                        this.performanceMonitor.generateReport();
+                    }
+                }, 300000); // 5 minutes
+            }
+
+            console.log('🎉 All performance optimization components initialized successfully');
+
+        } catch (error) {
+            console.warn('⚠️ Failed to initialize some optimization components:', error);
+            console.log('📋 Falling back to legacy admin panel behavior');
+        }
     }
 
     /**
@@ -709,7 +801,7 @@ class AdminPage {
                 console.log('📝 Form submitted:', form.id);
 
                 // Add small delay to ensure DOM is ready
-                setTimeout(() => {
+                setTimeout(async () => {
                     // Validate form using form ID
                     if (!this.validateForm(form.id)) {
                         console.warn('⚠️ Form validation failed');
@@ -718,25 +810,33 @@ class AdminPage {
 
                     console.log('✅ Form validation passed, proceeding with submission');
 
-                    // Handle specific form types
-                    switch (form.id) {
-                        case 'hourly-rate-form':
-                            this.submitHourlyRateProposal(e);
-                            break;
-                        case 'add-pair-form':
-                            this.submitAddPairProposal(e);
-                            break;
-                        case 'remove-pair-form':
-                            this.submitRemovePairProposal(e);
-                            break;
-                        case 'change-signer-form':
-                            this.submitChangeSignerProposal(e);
-                            break;
-                        case 'withdrawal-form':
-                            this.submitWithdrawalProposal(e);
-                            break;
-                        default:
-                            console.log('📝 Unhandled form submission:', form.id);
+                    // Handle specific form types with proper error handling
+                    try {
+                        switch (form.id) {
+                            case 'hourly-rate-form':
+                                await this.submitHourlyRateProposal(e);
+                                break;
+                            case 'add-pair-form':
+                                await this.submitAddPairProposal(e);
+                                break;
+                            case 'remove-pair-form':
+                                await this.submitRemovePairProposal(e);
+                                break;
+                            case 'update-weights-form':
+                                await this.submitUpdateWeightsProposal(e);
+                                break;
+                            case 'change-signer-form':
+                                await this.submitChangeSignerProposal(e);
+                                break;
+                            case 'withdrawal-form':
+                                await this.submitWithdrawalProposal(e);
+                                break;
+                            default:
+                                console.log('📝 Unhandled form submission:', form.id);
+                        }
+                    } catch (error) {
+                        console.error('❌ Form submission failed:', error);
+                        this.showError(error.message || 'Failed to submit form');
                     }
                 }, 100);
             }
@@ -1147,6 +1247,9 @@ class AdminPage {
                             <div class="panel-stats">
                                 <span class="stat-chip">Total Proposals: ${proposals.length}</span>
                                 <span class="stat-chip">Required Approvals: ${this.contractStats.requiredApprovals || 2}</span>
+                                <span class="stat-chip data-source-indicator" id="data-source-indicator">
+                                    ${this.isUsingRealData ? '🔗 Live Data' : '🎭 Demo Data'}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1173,13 +1276,60 @@ class AdminPage {
 
         } catch (error) {
             console.error('❌ Failed to load MultiSign Panel:', error);
+
+            // Provide more detailed error information and fallback UI
+            const isContractError = error.message.includes('Contract') || error.message.includes('not available');
+            const isNetworkError = error.message.includes('network') || error.message.includes('RPC');
+
+            let errorTitle = '⚠️ Failed to load proposals';
+            let errorMessage = error.message;
+            let suggestions = '';
+
+            if (isContractError) {
+                errorTitle = '🔗 Contract Connection Issue';
+                suggestions = `
+                    <div class="error-suggestions">
+                        <p><strong>Possible solutions:</strong></p>
+                        <ul>
+                            <li>Check if your wallet is connected to the correct network</li>
+                            <li>Verify contract addresses in configuration</li>
+                            <li>Try refreshing the page</li>
+                        </ul>
+                    </div>
+                `;
+            } else if (isNetworkError) {
+                errorTitle = '🌐 Network Connection Issue';
+                suggestions = `
+                    <div class="error-suggestions">
+                        <p><strong>Possible solutions:</strong></p>
+                        <ul>
+                            <li>Check your internet connection</li>
+                            <li>Try switching to a different RPC endpoint</li>
+                            <li>Wait a moment and retry</li>
+                        </ul>
+                    </div>
+                `;
+            }
+
             panelDiv.innerHTML = `
                 <div class="error-panel">
-                    <h3>⚠️ Failed to load proposals</h3>
-                    <p>${error.message}</p>
-                    <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
-                        🔄 Retry
-                    </button>
+                    <h3>${errorTitle}</h3>
+                    <p class="error-message">${errorMessage}</p>
+                    ${suggestions}
+                    <div class="error-actions">
+                        <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
+                            🔄 Retry
+                        </button>
+                        <button class="btn btn-outline" onclick="adminPage.checkNetworkConnectivity().then(ok => console.log('Network check result:', ok))">
+                            🌐 Check Network
+                        </button>
+                        <button class="btn btn-outline" onclick="adminPage.forceLoadRealProposals()">
+                            🔗 Try Real Data
+                        </button>
+                        <button class="btn btn-outline" onclick="adminPage.loadMockProposals().then(proposals => adminPage.renderProposalsRows(proposals))">
+                            📋 Load Demo Data
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -1252,34 +1402,80 @@ class AdminPage {
     /**
      * Load professional mock proposals that look completely real
      */
-    loadMockProposals() {
-        console.log('📋 Loading professional mock proposals...');
+    async loadMockProposals() {
+        console.log('📋 Loading enhanced mock proposals...');
         console.log('🔧 DEBUG: Mock proposals map size:', this.mockProposals.size);
         console.log('🔧 DEBUG: Mock proposals keys:', Array.from(this.mockProposals.keys()));
 
         const mockProposals = this.getMockProposals();
         console.log('🔧 DEBUG: getMockProposals returned:', mockProposals.length, 'proposals');
 
-        // Convert to the format expected by the UI
-        const formattedProposals = mockProposals.map(proposal => ({
-            id: proposal.id,
-            actionType: proposal.type,
-            approvals: proposal.currentApprovals,
-            requiredApprovals: proposal.requiredApprovals,
-            executed: proposal.status === 'EXECUTED',
-            rejected: proposal.status === 'REJECTED',
-            expired: proposal.expiresAt < Date.now(),
-            proposedTime: Math.floor(proposal.createdAt / 1000), // Convert to seconds
-            approvedBy: Array.from(this.mockApprovals.get(proposal.id) || []),
-            details: this.formatMockProposalDetails(proposal),
-            title: proposal.title,
-            description: proposal.description,
-            proposer: proposal.proposer,
-            transactionHash: proposal.transactionHash,
-            votes: proposal.votes
-        }));
+        // Convert to the format expected by the UI with enhanced data
+        const formattedProposals = mockProposals.map(proposal => {
+            // Ensure actionType is always defined and valid
+            let actionType = proposal.actionType || proposal.type || 'UNKNOWN';
+            if (typeof actionType !== 'string') {
+                console.warn('⚠️ Invalid actionType for proposal:', proposal);
+                actionType = 'UNKNOWN';
+            }
+
+            const baseProposal = {
+                id: proposal.id || Math.floor(Math.random() * 1000),
+                actionType: actionType, // Ensure this is always a string
+                approvals: proposal.approvals || proposal.currentApprovals || 1,
+                requiredApprovals: proposal.requiredApprovals || 2,
+                executed: proposal.executed || proposal.status === 'EXECUTED',
+                rejected: proposal.rejected || proposal.status === 'REJECTED',
+                expired: proposal.expired || (proposal.expiresAt && proposal.expiresAt < Date.now()),
+                proposedTime: proposal.proposedTime || Math.floor((proposal.createdAt || Date.now()) / 1000),
+                approvedBy: proposal.approvedBy || Array.from(this.mockApprovals.get(proposal.id) || []),
+                title: proposal.title || `Proposal #${proposal.id}`,
+                description: proposal.description || 'Mock proposal for testing',
+                proposer: proposal.proposer || '0x1234567890123456789012345678901234567890',
+                transactionHash: proposal.transactionHash || '0x' + Math.random().toString(16).substr(2, 64),
+                votes: proposal.votes || []
+            };
+
+            // Add enhanced data based on proposal type for detailed display
+            switch (proposal.actionType) { // Fixed: was proposal.type
+                case 'ADD_PAIR':
+                    return {
+                        ...baseProposal,
+                        pairToAdd: proposal.details?.pairToAdd || '0x1234567890123456789012345678901234567890',
+                        pairNameToAdd: proposal.details?.pairNameToAdd || 'TEST/USDC',
+                        platformToAdd: proposal.details?.platformToAdd || 'Uniswap V3',
+                        weightToAdd: BigInt(proposal.details?.weightToAdd || 100)
+                    };
+                case 'UPDATE_RATE':
+                case 'SET_HOURLY_REWARD_RATE':
+                    return {
+                        ...baseProposal,
+                        newHourlyRewardRate: BigInt(Math.floor(parseFloat(proposal.details?.newHourlyRewardRate || '100') * 1e18))
+                    };
+                case 'REMOVE_PAIR':
+                    return {
+                        ...baseProposal,
+                        pairToRemove: proposal.details?.pairToRemove || '0x1234567890123456789012345678901234567890',
+                        pairNameToRemove: proposal.details?.pairNameToRemove || 'OLD/USDC'
+                    };
+                case 'WITHDRAW_REWARDS':
+                    return {
+                        ...baseProposal,
+                        recipient: proposal.details?.recipient || proposal.proposer || '0x1234567890123456789012345678901234567890',
+                        withdrawAmount: BigInt(proposal.details?.withdrawAmount || '500000000000000000000')
+                    };
+                case 'CHANGE_SIGNER':
+                    return {
+                        ...baseProposal,
+                        newSigner: proposal.details?.newSigner || '0x1234567890123456789012345678901234567890'
+                    };
+                default:
+                    return baseProposal;
+            }
+        });
 
         console.log(`✅ Loaded ${formattedProposals.length} mock proposals`);
+        console.log('🔧 DEBUG: Formatted proposals:', formattedProposals.map(p => ({ id: p.id, actionType: p.actionType })));
         return formattedProposals;
     }
 
@@ -1378,189 +1574,303 @@ class AdminPage {
 
     async loadProposals() {
         console.log('📋 Loading proposals...');
-        console.log('🔧 DEBUG: Mock proposals map size:', this.mockProposals.size);
-        console.log('🔧 DEBUG: Mock proposals:', Array.from(this.mockProposals.keys()));
+        console.log('🚀 loadProposals method called - starting proposal loading process');
 
         try {
+            // First try to load real proposals from the contract
             const contractManager = await this.ensureContractReady();
 
-            // Check if governance features are disabled
-            if (contractManager.disabledFeatures?.has('getProposals')) {
-                console.log('📋 Governance features disabled - using professional mock data');
-                return this.loadMockProposals();
-            }
+            console.log('🔍 Contract Manager Debug:', {
+                contractManager: !!contractManager,
+                hasGetAllActions: !!(contractManager && contractManager.getAllActions),
+                hasIsStakingContractReady: !!(contractManager && contractManager.isStakingContractReady),
+                stakingContractReady: contractManager && contractManager.isStakingContractReady ? contractManager.isStakingContractReady() : 'N/A',
+                stakingContract: !!(contractManager && contractManager.stakingContract)
+            });
 
-            // Get action counter and required approvals with enhanced error handling
-            let actionCounter = 0;
-            let requiredApprovals = 2; // Default fallback
+            if (contractManager && contractManager.getAllActions) {
+                console.log('🔗 Attempting to load real proposals from contract...');
 
-            try {
-                actionCounter = await contractManager.retryContractCall(
-                    () => contractManager.stakingContract.actionCounter().then(result => result.toNumber()),
-                    3,
-                    'actionCounter'
-                );
-            } catch (error) {
-                // Handle different types of errors
-                if (error.message && error.message.includes('missing trie node')) {
-                    console.log('⚠️ RPC node sync issue, using fallback actionCounter: 0');
-                } else if (error.code === 'CALL_EXCEPTION') {
-                    console.log('⚠️ Contract call failed, using fallback actionCounter: 0');
-                } else {
-                    console.log('⚠️ actionCounter function not available, using fallback value: 0');
-                }
-                actionCounter = 0;
-            }
-
-            try {
-                requiredApprovals = await contractManager.getRequiredApprovals(); // Enhanced with retry logic
-            } catch (error) {
-                // Handle different types of errors
-                if (error.message && error.message.includes('missing trie node')) {
-                    console.log('⚠️ RPC node sync issue, using fallback requiredApprovals: 2');
-                } else if (error.code === 'CALL_EXCEPTION') {
-                    console.log('⚠️ Contract call failed, using fallback requiredApprovals: 2');
-                } else {
-                    console.log('⚠️ getRequiredApprovals function not available, using fallback value: 2');
-                }
-                requiredApprovals = 2;
-            }
-
-            console.log(`📊 Found ${actionCounter} total actions, ${requiredApprovals} approvals required`);
-
-            const proposals = [];
-
-            // Load recent proposals (last 20 or all if less)
-            const startId = Math.max(1, actionCounter - 19);
-
-            // Load proposals exactly like React version (counter down to max(counter-100, 0))
-            if (actionCounter > 0) {
-                console.log(`📊 Found ${actionCounter} actions, loading like React version...`);
-
-                let loadedCount = 0;
-                for (let i = actionCounter; i > Math.max(actionCounter - 100, 0); i--) {
-                    try {
-                        console.log(`📋 Loading action ${i} (React-like)...`);
-
-                        // Call getActions with actionId like React version
-                        const proposal = await contractManager.getActions(i);
-
-                        // Check if proposal exists (now returns null on error)
-                        if (!proposal) {
-                            console.warn(`⚠️ Action ${i} does not exist or failed to load`);
-                            continue;
-                        }
-
-                        const pairs = await contractManager.getActionPairs(i);
-                        const weights = await contractManager.getActionWeights(i);
-
-                        // Handle both array and object formats
-                        let proposalData;
-                        if (Array.isArray(proposal)) {
-                            // Convert array format to object
-                            proposalData = {
-                                actionType: proposal[0],
-                                newHourlyRewardRate: proposal[1],
-                                pairToAdd: proposal[2],
-                                pairNameToAdd: proposal[3],
-                                platformToAdd: proposal[4],
-                                weightToAdd: proposal[5],
-                                pairToRemove: proposal[6],
-                                recipient: proposal[7],
-                                withdrawAmount: proposal[8],
-                                executed: proposal[9],
-                                expired: proposal[10],
-                                approvals: proposal[11],
-                                proposedTime: proposal[12],
-                                rejected: proposal[13],
-                                pairs: pairs,
-                                weights: weights,
-                                approvedBy: [] // Will be fetched separately if needed
-                            };
-                        } else {
-                            // Already object format
-                            proposalData = proposal;
-                        }
-
-                        // Build proposal object exactly like React version
-                        const proposalObj = {
-                            id: i,
-                            actionType: this.getActionTypeName(proposalData.actionType), // Convert numeric to readable
-                            actionTypeRaw: proposalData.actionType, // Keep raw for processing
-                            newHourlyRewardRate: proposalData.newHourlyRewardRate,
-                            pairs: pairs.map(pair => pair.toString()),
-                            weights: weights.map(weight => BigInt(weight)),
-                            pairToAdd: proposalData.pairToAdd,
-                            pairNameToAdd: proposalData.pairNameToAdd,
-                            platformToAdd: proposalData.platformToAdd,
-                            weightToAdd: proposalData.weightToAdd,
-                            pairToRemove: proposalData.pairToRemove,
-                            recipient: proposalData.recipient,
-                            withdrawAmount: proposalData.withdrawAmount,
-                            executed: proposalData.executed,
-                            expired: proposalData.expired,
-                            approvals: proposalData.approvals,
-                            approvedBy: proposalData.approvedBy || [],
-                            rejected: proposalData.rejected,
-                            proposedTime: proposalData.proposedTime,
-                            requiredApprovals: requiredApprovals
-                        };
-
-                        proposals.push(proposalObj);
-                        loadedCount++;
-                        console.log(`✅ Loaded action ${i}:`, proposalObj.actionType);
-
-                    } catch (error) {
-                        console.warn(`⚠️ Failed to load action ${i}:`, error.message);
-                        // Continue with other actions like React version
-                        continue;
-                    }
+                // Check if staking contract is available
+                if (!contractManager.isStakingContractReady || !contractManager.isStakingContractReady()) {
+                    throw new Error('Staking contract not properly initialized');
                 }
 
-                // If we couldn't load any actions but actionCounter > 0, show demo proposals
-                if (loadedCount === 0 && actionCounter > 0) {
-                    console.log(`⚠️ Could not load any of ${actionCounter} actions, showing demo proposals`);
-                    return this.createDemoProposals();
-                }
-            }
-
-            console.log(`✅ Loaded ${proposals.length} real proposals from contract`);
-
-            // Always return real proposals, even if empty
-            // This ensures we show actual blockchain state
-            return proposals;
-
-        } catch (error) {
-            console.error('❌ Failed to load proposals from contract:', error);
-
-            // Enhanced error handling
-            if (error.code === 'CALL_EXCEPTION' || error.message.includes('CALL_EXCEPTION')) {
-                console.error('🔍 Contract call failed - governance functions may not be available');
-                console.error('🔍 Error details:', {
-                    code: error.code,
-                    method: error.method,
-                    data: error.data,
-                    reason: error.reason
+                console.log('📞 Calling contractManager.getAllActions()...');
+                const realProposals = await contractManager.getAllActions();
+                console.log('📊 getAllActions result:', {
+                    type: typeof realProposals,
+                    isArray: Array.isArray(realProposals),
+                    length: realProposals ? realProposals.length : 'N/A',
+                    firstItem: realProposals && realProposals[0] ? realProposals[0] : 'N/A'
                 });
 
-                // Display no governance message
-                this.displayNoGovernance();
-                return [];
+                if (realProposals && Array.isArray(realProposals)) {
+                    console.log(`✅ Loaded ${realProposals.length} real proposals from contract`);
+
+                    // Set flag to indicate we're using real data
+                    this.isUsingRealData = true;
+
+                    // PERFORMANCE OPTIMIZATION: Initialize optimized state with proposals
+                    const formattedProposals = this.formatRealProposals(realProposals);
+
+                    if (this.optimizedAdminState) {
+                        this.optimizedAdminState.initializeProposals(formattedProposals);
+                        console.log('🎯 Proposals initialized in optimized state management');
+
+                        // Track performance
+                        if (this.performanceMonitor) {
+                            this.performanceMonitor.trackNetworkCall('full-refresh', {
+                                reason: 'initial-load',
+                                proposalCount: realProposals.length
+                            });
+                        }
+                    }
+
+                    // Show success notification
+                    if (window.notificationManager) {
+                        if (realProposals.length > 0) {
+                            window.notificationManager.success(
+                                'Real Data Loaded',
+                                `Successfully loaded ${realProposals.length} proposals from blockchain`
+                            );
+                        } else {
+                            window.notificationManager.info(
+                                'Real Data Connected',
+                                'Connected to blockchain - no proposals exist yet'
+                            );
+                        }
+                    }
+
+                    return formattedProposals;
+                } else {
+                    console.log('⚠️ Invalid response from getAllActions:', realProposals);
+                    throw new Error('Invalid response from contract getAllActions method');
+                }
+            } else {
+                throw new Error('Contract manager or getAllActions method not available');
+            }
+        } catch (error) {
+            console.warn('⚠️ Failed to load real proposals, falling back to mock data:', error.message);
+            console.error('❌ Full error details:', error);
+
+            // Check if it's a network-related error
+            let errorMessage = error.message;
+            if (error.message.includes('could not detect network') || error.message.includes('NETWORK_ERROR')) {
+                errorMessage = 'Network connection issue - please check your wallet connection and network settings';
+            } else if (error.message.includes('call revert exception')) {
+                errorMessage = 'Contract call failed - contract may not be deployed or accessible';
             }
 
-            // Fallback to professional mock data
-            console.log('🔧 Contract governance not available - using professional mock data');
+            // Show warning notification
+            if (window.notificationManager) {
+                window.notificationManager.warning(
+                    'Using Demo Data',
+                    `Could not load real proposals: ${errorMessage}`
+                );
+            }
+        }
 
-            // Show user-friendly error
+        // Fallback to mock proposals if real ones can't be loaded
+        console.log('🎭 Using mock proposals as fallback');
+        this.isUsingRealData = false;
+        return await this.loadMockProposals();
+    }
+
+    /**
+     * Check network connectivity and wallet connection
+     */
+    async checkNetworkConnectivity() {
+        console.log('🌐 Checking network connectivity...');
+
+        try {
+            // Check if wallet is connected
+            if (!window.walletManager || !window.walletManager.isConnected()) {
+                throw new Error('Wallet not connected');
+            }
+
+            // Check if we're on the correct network
+            const currentChainId = await window.walletManager.getCurrentChainId();
+            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
+
+            console.log('🔗 Network check:', {
+                currentChainId,
+                expectedChainId,
+                match: currentChainId === expectedChainId
+            });
+
+            if (currentChainId !== expectedChainId) {
+                throw new Error(`Wrong network. Expected ${expectedChainId}, got ${currentChainId}`);
+            }
+
+            // Try a simple contract call to test connectivity
+            const contractManager = await this.ensureContractReady();
+            if (contractManager && contractManager.stakingContract) {
+                // Try to get action counter (simple read operation)
+                await contractManager.stakingContract.actionCounter();
+                console.log('✅ Network connectivity check passed');
+                return true;
+            } else {
+                throw new Error('Contract manager not available');
+            }
+
+        } catch (error) {
+            console.error('❌ Network connectivity check failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Force attempt to load real proposals (for manual retry)
+     */
+    async forceLoadRealProposals() {
+        console.log('🔗 Force attempting to load real proposals...');
+
+        try {
+            // Show loading notification
+            if (window.notificationManager) {
+                window.notificationManager.info('Loading Real Data', 'Checking network connectivity...');
+            }
+
+            // First check network connectivity
+            const networkOk = await this.checkNetworkConnectivity();
+            if (!networkOk) {
+                throw new Error('Network connectivity check failed - please check wallet connection and network');
+            }
+
+            if (window.notificationManager) {
+                window.notificationManager.info('Loading Real Data', 'Network OK - loading proposals from blockchain...');
+            }
+
+            const contractManager = await this.ensureContractReady();
+
+            if (!contractManager || !contractManager.getAllActions) {
+                throw new Error('Contract manager or getAllActions method not available');
+            }
+
+            // Force check contract readiness
+            if (!contractManager.isStakingContractReady || !contractManager.isStakingContractReady()) {
+                throw new Error('Staking contract not properly initialized');
+            }
+
+            const realProposals = await contractManager.getAllActions();
+
+            if (realProposals && realProposals.length >= 0) {
+                console.log(`✅ Successfully loaded ${realProposals.length} real proposals`);
+                this.isUsingRealData = true;
+
+                const formattedProposals = this.formatRealProposals(realProposals);
+
+                // Update the UI
+                await this.loadMultiSignPanel();
+
+                if (window.notificationManager) {
+                    window.notificationManager.success(
+                        'Real Data Loaded',
+                        `Successfully loaded ${realProposals.length} proposals from blockchain`
+                    );
+                }
+
+                return formattedProposals;
+            } else {
+                throw new Error('No proposals returned from contract');
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to force load real proposals:', error);
+            this.isUsingRealData = false;
+
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Contract Error',
-                    'Failed to load proposals. Please check your connection and try again.'
+                    'Failed to Load Real Data',
+                    `Could not load real proposals: ${error.message}`
                 );
             }
 
-            return this.loadMockProposals();
+            // Fall back to mock data
+            await this.loadMultiSignPanel();
         }
+    }
+
+    /**
+     * Format real contract proposals for UI display
+     */
+    formatRealProposals(realProposals) {
+        console.log('🔄 Formatting real proposals for UI...', {
+            count: realProposals.length,
+            proposals: realProposals
+        });
+
+        if (!Array.isArray(realProposals)) {
+            console.error('❌ realProposals is not an array:', realProposals);
+            return [];
+        }
+
+        if (realProposals.length === 0) {
+            console.log('📭 No proposals to format - returning empty array');
+            return [];
+        }
+
+        return realProposals.map(proposal => {
+            // Map contract action types to UI-friendly names
+            const actionTypeMap = {
+                0: 'SET_HOURLY_REWARD_RATE',
+                1: 'UPDATE_PAIR_WEIGHTS',
+                2: 'ADD_PAIR',
+                3: 'REMOVE_PAIR',
+                4: 'CHANGE_SIGNER',
+                5: 'WITHDRAW_REWARDS'
+            };
+
+            const actionType = actionTypeMap[proposal.actionType] || 'UNKNOWN';
+
+            // Convert BigNumber values to regular numbers/strings safely
+            const formatBigNumber = (value) => {
+                if (!value) return 0;
+                if (typeof value === 'object' && value._isBigNumber) {
+                    // Use toString() instead of toNumber() to avoid overflow
+                    const strValue = value.toString();
+                    const numValue = parseFloat(strValue);
+                    // Return as string if too large for safe integer
+                    return numValue > Number.MAX_SAFE_INTEGER ? strValue : numValue;
+                }
+                if (typeof value === 'string' && value.startsWith('0x')) {
+                    const bigIntValue = BigInt(value);
+                    const numValue = Number(bigIntValue);
+                    return numValue > Number.MAX_SAFE_INTEGER ? bigIntValue.toString() : numValue;
+                }
+                return value;
+            };
+
+            const formattedProposal = {
+                id: proposal.id || formatBigNumber(proposal.actionId),
+                actionType: actionType,
+                approvals: formatBigNumber(proposal.approvals) || 0,
+                requiredApprovals: this.contractStats?.requiredApprovals || 3,
+                executed: proposal.executed || false,
+                rejected: proposal.rejected || false,
+                expired: proposal.expired || false,
+                proposedTime: formatBigNumber(proposal.proposedTime) || Math.floor(Date.now() / 1000),
+                approvedBy: proposal.approvedBy || [],
+
+                // Action-specific details
+                newHourlyRewardRate: proposal.newHourlyRewardRate ?
+                    ethers.utils.formatEther(proposal.newHourlyRewardRate) : null,
+                pairToAdd: proposal.pairToAdd || null,
+                pairNameToAdd: proposal.pairNameToAdd || null,
+                platformToAdd: proposal.platformToAdd || null,
+                weightToAdd: formatBigNumber(proposal.weightToAdd) || null,
+                pairToRemove: proposal.pairToRemove || null,
+                recipient: proposal.recipient || null,
+                withdrawAmount: proposal.withdrawAmount ?
+                    ethers.utils.formatEther(proposal.withdrawAmount) : null,
+                pairs: proposal.pairs || [],
+                weights: proposal.weights ? proposal.weights.map(w => formatBigNumber(w)) : []
+            };
+
+            console.log(`📋 Formatted proposal ${formattedProposal.id}:`, formattedProposal);
+            return formattedProposal;
+        });
     }
 
     getMockProposals() {
@@ -1665,41 +1975,248 @@ class AdminPage {
         }
 
         return proposals.map(proposal => {
+            // Ensure actionType is defined with fallback - more robust checking
+            if (!proposal || typeof proposal !== 'object') {
+                console.warn('⚠️ Invalid proposal object:', proposal);
+                return '<tr><td colspan="6" class="error-row">Invalid proposal data</td></tr>';
+            }
+
+            // Ensure actionType is always a string
+            if (!proposal.actionType || typeof proposal.actionType !== 'string') {
+                console.warn('⚠️ Proposal missing or invalid actionType:', proposal);
+                proposal.actionType = 'UNKNOWN';
+            }
+
+            // Ensure other required fields have defaults
+            proposal.approvals = proposal.approvals || 0;
+            proposal.requiredApprovals = proposal.requiredApprovals || 2;
+            proposal.executed = proposal.executed || false;
+            proposal.rejected = proposal.rejected || false;
+            proposal.id = proposal.id || 'unknown';
+
             const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
             const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
-            const statusText = proposal.executed ? 'Executed' : proposal.rejected ? 'Rejected' : canExecute ? 'Ready' : 'Pending';
+            const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
+
+            // Add visual indicator for ready-to-execute proposals
+            if (canExecute) {
+                console.log(`🚀 ATTENTION: Proposal #${proposal.id} is ready for execution!`);
+            }
+
+            // Enhanced action type display with icons
+            const actionTypeDisplay = this.getActionTypeDisplay(proposal.actionType);
+
+            // Enhanced proposal summary
+            const proposalSummary = this.getProposalSummary(proposal);
 
             return `
                 <tr class="proposal-row ${statusClass}">
                     <td>
-                        <button class="expand-btn" onclick="adminPage.toggleProposal(${proposal.id})">
-                            ▶
+                        <button class="expand-btn" onclick="adminPage.toggleProposal('${proposal.id}')" title="View Details">
+                            <span class="expand-icon">▶</span>
                         </button>
                     </td>
-                    <td><span class="proposal-id">${proposal.id}</span></td>
-                    <td><span class="action-type">${proposal.actionType}</span></td>
-                    <td><span class="approvals">${proposal.approvals} / ${proposal.requiredApprovals}</span></td>
-                    <td><span class="status ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <div class="proposal-id-container">
+                            <span class="proposal-id">#${proposal.id}</span>
+                            <div class="proposal-summary">${proposalSummary}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-type-container">
+                            <span class="action-type ${proposal.actionType.toLowerCase()}">${actionTypeDisplay}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="approvals-container">
+                            <div class="approval-progress">
+                                <div class="approval-bar">
+                                    <div class="approval-fill" style="width: ${(proposal.approvals / proposal.requiredApprovals) * 100}%"></div>
+                                </div>
+                                <span class="approval-text">${proposal.approvals} / ${proposal.requiredApprovals}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </td>
                     <td>
                         <div class="action-buttons">
                             ${!proposal.executed && !proposal.rejected ? `
-                                <button class="btn btn-sm btn-success" onclick="adminPage.approveAction(${proposal.id})" title="Approve">
-                                    ✓
+                                <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
+                                    <span class="btn-icon">✓</span>
+                                    <span class="btn-text">Approve</span>
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction(${proposal.id})" title="Reject">
-                                    ✗
+                                <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
+                                    <span class="btn-icon">✗</span>
+                                    <span class="btn-text">Reject</span>
                                 </button>
                                 ${canExecute ? `
-                                    <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction(${proposal.id})" title="Execute">
-                                        ▶
+                                    <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
+                                        <span class="btn-icon">🚀</span>
+                                        <span class="btn-text">Execute</span>
                                     </button>
                                 ` : ''}
                             ` : ''}
                         </div>
                     </td>
                 </tr>
+                <tr id="details-${proposal.id}" class="proposal-details-row" style="display: none;">
+                    <td colspan="6">
+                        <div class="proposal-details">
+                            <div class="details-header">
+                                <h4>📋 Proposal Details</h4>
+                            </div>
+                            <div class="details-content">
+                                ${this.renderProposalParameters(proposal.actionType, proposal)}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
             `;
         }).join('');
+    }
+
+    /**
+     * Get enhanced action type display with icons
+     */
+    getActionTypeDisplay(actionType) {
+        const actionTypes = {
+            'ADD_PAIR': '➕ Add Pair',
+            'REMOVE_PAIR': '➖ Remove Pair',
+            'UPDATE_WEIGHTS': '⚖️ Update Weights',
+            'CHANGE_SIGNER': '🔑 Change Signer',
+            'UPDATE_HOURLY_RATE': '💰 Update Rate',
+            'SET_HOURLY_REWARD_RATE': '💰 Set Reward Rate',
+            'WITHDRAW_REWARDS': '💸 Withdraw',
+            'HOURLY_RATE': '💰 Update Rate',
+            'HOURLY-RATE': '💰 Update Rate',
+            'UNKNOWN': '❓ Unknown Action'
+        };
+
+        return actionTypes[actionType] || `❓ ${actionType || 'Unknown'}`;
+    }
+
+    /**
+     * Get detailed proposal summary showing actual form inputs
+     */
+    getProposalSummary(proposal) {
+        try {
+            switch (proposal.actionType) {
+                case 'ADD_PAIR':
+                    // Show detailed pair information from form inputs
+                    let summary = '';
+                    if (proposal.pairNameToAdd) {
+                        summary = `Add ${proposal.pairNameToAdd} LP pair`;
+                        if (proposal.platformToAdd) {
+                            summary += ` from ${proposal.platformToAdd}`;
+                        }
+                        if (proposal.weightToAdd) {
+                            const weight = typeof proposal.weightToAdd === 'bigint'
+                                ? proposal.weightToAdd.toString()
+                                : proposal.weightToAdd;
+                            summary += ` (weight: ${weight})`;
+                        }
+                    } else if (proposal.pairToAdd) {
+                        summary = `Add LP pair ${this.formatAddress(proposal.pairToAdd)}`;
+                    } else {
+                        summary = 'Add new LP trading pair';
+                    }
+                    return summary;
+
+                case 'REMOVE_PAIR':
+                    if (proposal.pairToRemove) {
+                        // Try to get pair name from existing pairs or show address
+                        const pairName = this.getPairNameByAddress(proposal.pairToRemove);
+                        if (pairName) {
+                            return `Remove ${pairName} LP pair`;
+                        } else {
+                            return `Remove LP pair ${this.formatAddress(proposal.pairToRemove)}`;
+                        }
+                    }
+                    return 'Remove LP trading pair';
+
+                case 'UPDATE_WEIGHTS':
+                    if (proposal.pairs && proposal.weights && proposal.pairs.length > 0) {
+                        const pairCount = proposal.pairs.length;
+                        if (pairCount === 1) {
+                            const pairName = this.getPairNameByAddress(proposal.pairs[0]);
+                            const weight = proposal.weights[0];
+                            return `Update ${pairName || this.formatAddress(proposal.pairs[0])} weight to ${weight}`;
+                        } else {
+                            return `Update weights for ${pairCount} LP pairs`;
+                        }
+                    }
+                    return 'Update LP pair weights';
+
+                case 'CHANGE_SIGNER':
+                    if (proposal.newSigner) {
+                        return `Change signer to ${this.formatAddress(proposal.newSigner)}`;
+                    }
+                    return 'Change authorized signer';
+
+                case 'UPDATE_HOURLY_RATE':
+                case 'HOURLY_RATE':
+                case 'HOURLY-RATE':
+                    if (proposal.newHourlyRewardRate) {
+                        const rate = typeof proposal.newHourlyRewardRate === 'bigint'
+                            ? ethers.utils.formatEther(proposal.newHourlyRewardRate)
+                            : proposal.newHourlyRewardRate;
+                        return `Set reward rate to ${rate} tokens/hour`;
+                    }
+                    return 'Update hourly reward rate';
+
+                case 'WITHDRAW_REWARDS':
+                    let withdrawSummary = 'Withdraw rewards';
+                    if (proposal.withdrawAmount) {
+                        const amount = typeof proposal.withdrawAmount === 'bigint'
+                            ? ethers.utils.formatEther(proposal.withdrawAmount)
+                            : proposal.withdrawAmount;
+                        withdrawSummary = `Withdraw ${amount} tokens`;
+                    }
+                    if (proposal.recipient) {
+                        withdrawSummary += ` to ${this.formatAddress(proposal.recipient)}`;
+                    }
+                    return withdrawSummary;
+
+                default:
+                    return proposal.description || 'Governance proposal';
+            }
+        } catch (error) {
+            console.warn('Error generating proposal summary:', error);
+            return proposal.description || 'Governance proposal';
+        }
+    }
+
+    /**
+     * Get pair name by address from existing pairs or contract data
+     */
+    getPairNameByAddress(address) {
+        try {
+            // Try to find in existing contract pairs
+            if (this.contractStats && this.contractStats.pairs) {
+                const pair = this.contractStats.pairs.find(p =>
+                    p.address && p.address.toLowerCase() === address.toLowerCase()
+                );
+                if (pair && pair.name) {
+                    return pair.name;
+                }
+            }
+
+            // Try to find in mock proposals data
+            for (const [, proposal] of this.mockProposals) {
+                if (proposal.data && proposal.data.pairAddress &&
+                    proposal.data.pairAddress.toLowerCase() === address.toLowerCase() &&
+                    proposal.data.pairName) {
+                    return proposal.data.pairName;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.warn('Error getting pair name by address:', error);
+            return null;
+        }
     }
 
     renderPairsList(pairs) {
@@ -1711,7 +2228,7 @@ class AdminPage {
             <div class="pair-item">
                 <div class="pair-name">${pair.name}</div>
                 <div class="pair-address">${this.formatAddress(pair.address)}</div>
-                <div class="pair-weight">Weight: ${pair.weight}</div>
+                <div class="pair-weight">Weight: ${this.formatWeight(pair.weight)}</div>
             </div>
         `).join('');
     }
@@ -1887,14 +2404,30 @@ class AdminPage {
             
         } catch (error) {
             console.error('❌ Failed to load contract stats:', error);
-            // Set default values
+
+            // Provide fallback demo values instead of zeros for better UX
             this.contractStats = {
-                activePairs: 0,
-                totalPairs: 0,
-                totalTVL: 0,
-                totalStakers: 0,
-                totalRewards: 0
+                activePairs: 3,
+                totalPairs: 5,
+                totalTVL: 125000,
+                totalStakers: 89,
+                totalRewards: 15000,
+                rewardToken: '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c',
+                hourlyRewardRate: 0.1,
+                requiredApprovals: 3,
+                actionCounter: 2,
+                isDemo: true // Flag to indicate these are demo values
             };
+
+            // Show user-friendly notification about using demo data
+            if (window.notificationManager) {
+                window.notificationManager.warning(
+                    'Using Demo Data',
+                    'Contract data unavailable. Displaying demo values for interface testing.'
+                );
+            }
+
+            console.log('📊 Using demo contract stats due to error:', this.contractStats);
         }
     }
 
@@ -1911,6 +2444,11 @@ class AdminPage {
     }
 
     updateDashboardDisplay() {
+        // Add demo data indicator if using fallback values
+        if (this.contractStats.isDemo) {
+            this.addDemoDataIndicator();
+        }
+
         // Update stat values
         const elements = {
             'active-pairs-count': this.contractStats.activePairs || 0,
@@ -1940,6 +2478,71 @@ class AdminPage {
             return (num / 1000).toFixed(1) + 'K';
         }
         return num.toString();
+    }
+
+    /**
+     * Add demo data indicator to the UI
+     */
+    addDemoDataIndicator() {
+        // Check if indicator already exists
+        if (document.querySelector('.demo-data-indicator')) {
+            return;
+        }
+
+        // Create demo data indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'demo-data-indicator';
+        indicator.innerHTML = `
+            <div class="demo-banner">
+                <span class="demo-icon">🎭</span>
+                <span class="demo-text">Demo Mode: Contract data unavailable, showing sample values</span>
+                <button class="demo-retry-btn" onclick="adminPage.retryContractConnection()">
+                    🔄 Retry Connection
+                </button>
+            </div>
+        `;
+
+        // Add to the top of the admin container
+        const adminContainer = document.querySelector('.admin-container') || document.body;
+        adminContainer.insertBefore(indicator, adminContainer.firstChild);
+    }
+
+    /**
+     * Retry contract connection
+     */
+    async retryContractConnection() {
+        console.log('🔄 Retrying contract connection...');
+
+        // Remove demo indicator
+        const indicator = document.querySelector('.demo-data-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+
+        // Show loading state
+        if (window.notificationManager) {
+            window.notificationManager.info('Reconnecting', 'Attempting to reconnect to contracts...');
+        }
+
+        try {
+            // Reinitialize contract manager
+            if (window.contractManager && window.contractManager.initializeReadOnly) {
+                await window.contractManager.initializeReadOnly();
+            }
+
+            // Reload admin data
+            await this.loadContractStats();
+            await this.loadMultiSignPanel();
+
+            if (window.notificationManager) {
+                window.notificationManager.success('Connected', 'Successfully reconnected to contracts!');
+            }
+        } catch (error) {
+            console.error('❌ Failed to reconnect:', error);
+            if (window.notificationManager) {
+                window.notificationManager.error('Connection Failed', 'Could not reconnect to contracts. Using demo data.');
+            }
+        }
     }
 
     showError(title, message) {
@@ -2231,23 +2834,75 @@ class AdminPage {
         console.log(`✅ Approving proposal ${proposalId}`);
 
         try {
-            // Show loading notification
-            if (window.notificationManager) {
-                window.notificationManager.info('Approving Proposal', `Submitting approval for proposal #${proposalId}...`);
-            }
-
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.approveAction(proposalId);
 
-            console.log('✅ Approval transaction completed:', result);
+            // PERFORMANCE OPTIMIZATION: Use optimistic updates for immediate feedback
+            if (this.optimisticUI && this.performanceMonitor) {
+                const startTime = Date.now();
 
-            // Show success notification
-            if (window.notificationManager) {
-                window.notificationManager.success('Proposal Approved', `Successfully approved proposal #${proposalId}`);
+                // Get user address for optimistic update
+                const userAddress = contractManager.signer ? await contractManager.signer.getAddress() : null;
+
+                // Track UI response time
+                this.performanceMonitor.trackUIResponse('button-click', startTime);
+
+                // Use optimistic update system
+                const result = await this.optimisticUI.handleOptimisticApprove(proposalId, userAddress, contractManager);
+
+                // Track optimistic update success
+                this.performanceMonitor.trackOptimisticUpdate(true, proposalId, 'approve');
+
+                console.log('✅ Optimistic approval completed:', result);
+                return result;
+
+            } else {
+                // Fallback to legacy behavior
+                console.log('📋 Using legacy approval flow...');
+
+                // Show loading notification
+                if (window.notificationManager) {
+                    window.notificationManager.info('Approving Proposal', `Submitting approval for proposal #${proposalId}...`);
+                }
+
+                const result = await contractManager.approveAction(proposalId);
+
+                console.log('✅ Approval transaction completed:', result);
+
+                // Show success notification
+                if (window.notificationManager) {
+                    window.notificationManager.success('Proposal Approved', `Successfully approved proposal #${proposalId}`);
+                }
             }
 
-            // Refresh the proposals list
-            await this.loadMultiSignPanel();
+            // PERFORMANCE OPTIMIZATION: Update only the specific proposal instead of full refresh
+            setTimeout(async () => {
+                if (this.optimizedAdminState && this.optimisticUI) {
+                    // Use single action update instead of full refresh
+                    try {
+                        const updatedAction = await contractManager.getSingleActionForUpdate(proposalId);
+                        this.optimizedAdminState.updateSingleProposal(proposalId, updatedAction);
+                        this.efficientDOM.updateSingleProposalRow(proposalId, updatedAction);
+
+                        // Track performance improvement
+                        if (this.performanceMonitor) {
+                            this.performanceMonitor.trackNetworkCall('single-update', { proposalId, action: 'approve' });
+                        }
+
+                        console.log('🎯 Single proposal updated after approve action (OPTIMIZED)');
+                    } catch (error) {
+                        console.warn('⚠️ Single update failed, falling back to full refresh:', error);
+                        await this.loadMultiSignPanel();
+
+                        if (this.performanceMonitor) {
+                            this.performanceMonitor.trackNetworkCall('full-refresh', { reason: 'single-update-fallback' });
+                        }
+                    }
+                } else {
+                    // Fallback to original behavior
+                    await this.loadMultiSignPanel();
+                    console.log('🔄 Proposals refreshed after approve action (LEGACY)');
+                }
+            }, 3000);
 
         } catch (error) {
             console.error('❌ Failed to approve proposal:', error);
@@ -2277,8 +2932,35 @@ class AdminPage {
                 window.notificationManager.success('Proposal Rejected', `Successfully rejected proposal #${proposalId}`);
             }
 
-            // Refresh the proposals list
-            await this.loadMultiSignPanel();
+            // PERFORMANCE OPTIMIZATION: Update only the specific proposal instead of full refresh
+            setTimeout(async () => {
+                if (this.optimizedAdminState && this.optimisticUI) {
+                    // Use single action update instead of full refresh
+                    try {
+                        const updatedAction = await contractManager.getSingleActionForUpdate(proposalId);
+                        this.optimizedAdminState.updateSingleProposal(proposalId, updatedAction);
+                        this.efficientDOM.updateSingleProposalRow(proposalId, updatedAction);
+
+                        // Track performance improvement
+                        if (this.performanceMonitor) {
+                            this.performanceMonitor.trackNetworkCall('single-update', { proposalId, action: 'reject' });
+                        }
+
+                        console.log('🎯 Single proposal updated after reject action (OPTIMIZED)');
+                    } catch (error) {
+                        console.warn('⚠️ Single update failed, falling back to full refresh:', error);
+                        await this.loadMultiSignPanel();
+
+                        if (this.performanceMonitor) {
+                            this.performanceMonitor.trackNetworkCall('full-refresh', { reason: 'single-update-fallback' });
+                        }
+                    }
+                } else {
+                    // Fallback to original behavior
+                    await this.loadMultiSignPanel();
+                    console.log('🔄 Proposals refreshed after reject action (LEGACY)');
+                }
+            }, 3000);
 
         } catch (error) {
             console.error('❌ Failed to reject proposal:', error);
@@ -2308,9 +2990,12 @@ class AdminPage {
                 window.notificationManager.success('Proposal Executed', `Successfully executed proposal #${proposalId}`);
             }
 
-            // Refresh the proposals list and contract stats
-            await this.loadMultiSignPanel();
-            await this.loadContractStats();
+            // Refresh the proposals list and contract stats with delay
+            setTimeout(async () => {
+                await this.loadMultiSignPanel();
+                await this.loadContractStats();
+                console.log('🔄 Proposals and stats refreshed after execute action');
+            }, 3000);
 
         } catch (error) {
             console.error('❌ Failed to execute proposal:', error);
@@ -2323,7 +3008,25 @@ class AdminPage {
 
     toggleProposal(proposalId) {
         console.log(`🔄 Toggling proposal ${proposalId} details`);
-        // TODO: Implement expand/collapse functionality
+        const detailsRow = document.getElementById(`details-${proposalId}`);
+        const expandBtn = document.querySelector(`[onclick="adminPage.toggleProposal('${proposalId}')"]`) ||
+                         document.querySelector(`[onclick="adminPage.toggleProposal(${proposalId})"]`);
+        const expandIcon = expandBtn?.querySelector('.expand-icon');
+
+        if (detailsRow) {
+            const isVisible = detailsRow.style.display !== 'none';
+            detailsRow.style.display = isVisible ? 'none' : 'table-row';
+
+            if (expandIcon) {
+                expandIcon.textContent = isVisible ? '▶' : '▼';
+            }
+
+            // Add/remove expanded class for additional styling
+            const proposalRow = expandBtn?.closest('.proposal-row');
+            if (proposalRow) {
+                proposalRow.classList.toggle('expanded', !isVisible);
+            }
+        }
     }
 
     // Form Submission Methods
@@ -2473,15 +3176,33 @@ class AdminPage {
         }
     }
 
-    // Contract readiness check
+    // Contract readiness check with graceful fallback
     async ensureContractReady() {
         if (!window.contractManager) {
+            console.log('⚠️ Contract manager not available - will use mock data');
             throw new Error('Contract manager not available');
         }
 
-        if (!window.contractManager.isReady()) {
+        // Get detailed contract status
+        const status = window.contractManager.getContractStatus ?
+                      window.contractManager.getContractStatus() :
+                      { isReady: window.contractManager.isReady() };
+
+        console.log('🔍 Contract status check:', status);
+
+        if (!status.isReady) {
             console.log('⏳ Waiting for contract manager to be ready...');
-            await this.waitForContractManager();
+            try {
+                await this.waitForContractManager();
+            } catch (error) {
+                console.log('⚠️ Contract manager failed to initialize - will use mock data');
+                throw new Error('Contract manager initialization failed');
+            }
+        }
+
+        // Additional check for specific contract availability
+        if (!status.stakingContract && !status.rewardTokenContract) {
+            console.warn('⚠️ No contracts initialized, operations may fail');
         }
 
         return window.contractManager;
@@ -2566,84 +3287,197 @@ class AdminPage {
         }).join('');
     }
 
-    renderProposalParameters(type, parameters) {
-        if (!parameters) return '<div class="no-parameters">No parameters</div>';
+    renderProposalParameters(type, proposal) {
+        // Use the full proposal object instead of just parameters
+        if (!proposal) return '<div class="no-parameters">📋 No additional parameters</div>';
 
         switch (type.toLowerCase()) {
             case 'hourly-rate':
             case 'update-hourly-rate':
+            case 'hourly_rate':
+                const rate = proposal.newHourlyRewardRate
+                    ? (typeof proposal.newHourlyRewardRate === 'bigint'
+                        ? ethers.utils.formatEther(proposal.newHourlyRewardRate)
+                        : proposal.newHourlyRewardRate)
+                    : 'Not specified';
                 return `
-                    <div class="parameter-item">
-                        <strong>New Hourly Rate:</strong>
-                        <span class="parameter-value">${parameters.rate} USDC/hour</span>
+                    <div class="parameters-container">
+                        <div class="parameter-card">
+                            <div class="parameter-icon">💰</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">New Hourly Rate</div>
+                                <div class="parameter-value highlight">${rate} tokens/hour</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
             case 'add-pair':
+            case 'add_pair':
+                const weight = proposal.weightToAdd
+                    ? (typeof proposal.weightToAdd === 'bigint'
+                        ? proposal.weightToAdd.toString()
+                        : proposal.weightToAdd)
+                    : 'Not specified';
                 return `
-                    <div class="parameter-item">
-                        <strong>Pair Address:</strong>
-                        <span class="parameter-value address-display">${parameters.pairAddress}</span>
-                    </div>
-                    <div class="parameter-item">
-                        <strong>Weight:</strong>
-                        <span class="parameter-value">${parameters.weight}</span>
+                    <div class="parameters-container">
+                        <div class="parameter-card">
+                            <div class="parameter-icon">🏷️</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Pair Name</div>
+                                <div class="parameter-value">${proposal.pairNameToAdd || 'Not specified'}</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📍</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">LP Token Address</div>
+                                <div class="parameter-value address-display">${proposal.pairToAdd ? this.formatAddress(proposal.pairToAdd) : 'Not specified'}</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
+                            <div class="parameter-icon">⚖️</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Allocation Weight</div>
+                                <div class="parameter-value highlight">${weight}</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
+                            <div class="parameter-icon">🏢</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Platform</div>
+                                <div class="parameter-value">${proposal.platformToAdd || 'Not specified'}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
             case 'remove-pair':
+            case 'remove_pair':
+                const pairName = proposal.pairToRemove ? this.getPairNameByAddress(proposal.pairToRemove) : null;
                 return `
-                    <div class="parameter-item">
-                        <strong>Pair Address:</strong>
-                        <span class="parameter-value address-display">${parameters.pairAddress}</span>
+                    <div class="parameters-container">
+                        <div class="parameter-card">
+                            <div class="parameter-icon">🏷️</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Pair to Remove</div>
+                                <div class="parameter-value">${pairName || 'Unknown Pair'}</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📍</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">LP Token Address</div>
+                                <div class="parameter-value address-display">${proposal.pairToRemove ? this.formatAddress(proposal.pairToRemove) : 'Not specified'}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
             case 'update-weights':
             case 'update-pair-weight':
-                return `
-                    <div class="parameter-item">
-                        <strong>Pair Address:</strong>
-                        <span class="parameter-value address-display">${parameters.pairAddress}</span>
-                    </div>
-                    <div class="parameter-item">
-                        <strong>New Weight:</strong>
-                        <span class="parameter-value">${parameters.newWeight}</span>
-                    </div>
-                `;
+            case 'update_weights':
+                if (proposal.pairs && proposal.weights && proposal.pairs.length > 0) {
+                    const pairCards = proposal.pairs.map((pairAddress, index) => {
+                        const pairName = this.getPairNameByAddress(pairAddress);
+                        const rawWeight = proposal.weights[index];
+                        const weight = rawWeight ? this.formatWeight(rawWeight) : 'Not specified';
+                        return `
+                            <div class="parameter-card">
+                                <div class="parameter-icon">⚖️</div>
+                                <div class="parameter-content">
+                                    <div class="parameter-label">${pairName || this.formatAddress(pairAddress)}</div>
+                                    <div class="parameter-value highlight">Weight: ${weight}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `<div class="parameters-container">${pairCards}</div>`;
+                } else {
+                    return `
+                        <div class="parameters-container">
+                            <div class="parameter-card">
+                                <div class="parameter-icon">⚖️</div>
+                                <div class="parameter-content">
+                                    <div class="parameter-label">Weight Updates</div>
+                                    <div class="parameter-value">No weight data available</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
 
             case 'change-signer':
+            case 'change_signer':
                 return `
-                    <div class="parameter-item">
-                        <strong>Old Signer:</strong>
-                        <span class="parameter-value address-display">${parameters.oldSigner}</span>
-                    </div>
-                    <div class="parameter-item">
-                        <strong>New Signer:</strong>
-                        <span class="parameter-value address-display">${parameters.newSigner}</span>
+                    <div class="parameters-container">
+                        <div class="parameter-card">
+                            <div class="parameter-icon">🔑</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">New Signer Address</div>
+                                <div class="parameter-value address-display">${proposal.newSigner ? this.formatAddress(proposal.newSigner) : 'Not specified'}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
             case 'withdraw-rewards':
             case 'withdrawal':
+                const withdrawAmount = proposal.withdrawAmount
+                    ? (typeof proposal.withdrawAmount === 'bigint'
+                        ? ethers.utils.formatEther(proposal.withdrawAmount)
+                        : proposal.withdrawAmount)
+                    : 'Not specified';
                 return `
-                    <div class="parameter-item">
-                        <strong>Amount:</strong>
-                        <span class="parameter-value">${parameters.amount} USDC</span>
-                    </div>
-                    <div class="parameter-item">
-                        <strong>To Address:</strong>
-                        <span class="parameter-value address-display">${parameters.toAddress}</span>
+                    <div class="parameters-container">
+                        <div class="parameter-card">
+                            <div class="parameter-icon">💰</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Withdrawal Amount</div>
+                                <div class="parameter-value highlight">${withdrawAmount} tokens</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📍</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Recipient Address</div>
+                                <div class="parameter-value address-display">${proposal.recipient ? this.formatAddress(proposal.recipient) : 'Not specified'}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
             default:
-                return Object.entries(parameters).map(([key, value]) => `
-                    <div class="parameter-item">
-                        <strong>${key}:</strong>
-                        <span class="parameter-value">${value}</span>
+                // For unknown types, show all available proposal data
+                const relevantData = {};
+                Object.keys(proposal).forEach(key => {
+                    if (key !== 'id' && key !== 'actionType' && key !== 'executed' &&
+                        key !== 'expired' && key !== 'approvals' && key !== 'rejected' &&
+                        key !== 'proposedTime' && key !== 'requiredApprovals' &&
+                        key !== 'approvedBy' && proposal[key] !== null &&
+                        proposal[key] !== undefined && proposal[key] !== '') {
+                        relevantData[key] = proposal[key];
+                    }
+                });
+
+                if (Object.keys(relevantData).length === 0) {
+                    return '<div class="no-parameters">📋 No additional parameters</div>';
+                }
+
+                return `
+                    <div class="parameters-container">
+                        ${Object.entries(relevantData).map(([key, value]) => `
+                            <div class="parameter-card">
+                                <div class="parameter-icon">📋</div>
+                                <div class="parameter-content">
+                                    <div class="parameter-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                                    <div class="parameter-value">${typeof value === 'string' && value.startsWith('0x') ? this.formatAddress(value) : value}</div>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
-                `).join('');
+                `;
         }
     }
 
@@ -3523,12 +4357,24 @@ class AdminPage {
         }
     }
 
-    // Convert BigInt to number safely
+    // Convert BigInt to number safely without overflow
     convertBigIntToNumber(value) {
         if (typeof value === 'bigint') {
-            return Number(value);
+            const numValue = Number(value);
+            return numValue > Number.MAX_SAFE_INTEGER ? value.toString() : numValue;
         } else if (value && typeof value.toNumber === 'function') {
-            return value.toNumber();
+            try {
+                // Check if the value is too large before calling toNumber()
+                const strValue = value.toString();
+                const bigIntValue = BigInt(strValue);
+                if (bigIntValue > BigInt(Number.MAX_SAFE_INTEGER)) {
+                    return strValue;
+                }
+                return value.toNumber();
+            } catch (error) {
+                console.warn('BigNumber conversion failed, using string representation:', error);
+                return value.toString();
+            }
         } else if (value && typeof value.toString === 'function') {
             const strValue = value.toString();
             const numValue = parseInt(strValue);
@@ -3569,55 +4415,50 @@ class AdminPage {
 
     // Create demo proposals when RPC is down (like React version fallback)
     createDemoProposals() {
-        console.log('🎭 Creating demo proposals for contract call issues');
+        console.log('🎭 Creating enhanced demo proposals for contract call issues');
         return [
             {
-                id: 3,
-                actionType: 'SET_HOURLY_REWARD_RATE',
-                approvals: 1,
-                requiredApprovals: 3,
-                executed: false,
-                rejected: false,
-                expired: false,
-                proposedTime: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
-                approvedBy: ['0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F'],
-                details: {
-                    newHourlyRewardRate: '0.5',
-                    description: 'Set hourly reward rate to 0.5 tokens per hour (Demo Mode - Contract Call Issues)'
-                }
-            },
-            {
-                id: 2,
-                actionType: 'SET_HOURLY_REWARD_RATE',
-                approvals: 1,
-                requiredApprovals: 3,
-                executed: false,
-                rejected: false,
-                expired: false,
-                proposedTime: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
-                approvedBy: ['0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F'],
-                details: {
-                    newHourlyRewardRate: '0.1',
-                    description: 'Previous hourly rate proposal (Demo Mode - Contract Call Issues)'
-                }
-            },
-            {
-                id: 1,
+                id: 13,
                 actionType: 'ADD_PAIR',
                 approvals: 1,
                 requiredApprovals: 3,
                 executed: false,
                 rejected: false,
                 expired: false,
+                proposedTime: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
+                approvedBy: ['0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61'],
+                // Enhanced data for detailed display
+                pairToAdd: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
+                pairNameToAdd: 'WETH/USDC',
+                platformToAdd: 'Uniswap V3',
+                weightToAdd: BigInt('100')
+            },
+            {
+                id: 12,
+                actionType: 'WITHDRAW_REWARDS',
+                approvals: 1,
+                requiredApprovals: 3,
+                executed: false,
+                rejected: true,
+                expired: false,
+                proposedTime: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
+                approvedBy: ['0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC'],
+                // Enhanced data for detailed display
+                recipient: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+                withdrawAmount: BigInt('500000000000000000000') // 500 tokens
+            },
+            {
+                id: 11,
+                actionType: 'SET_HOURLY_REWARD_RATE',
+                approvals: 1,
+                requiredApprovals: 3,
+                executed: false,
+                rejected: true,
+                expired: false,
                 proposedTime: Math.floor(Date.now() / 1000) - 7200, // 2 hours ago
-                approvedBy: ['0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F'],
-                details: {
-                    pairAddress: '0x1234567890123456789012345678901234567890',
-                    pairName: 'TEST/USDC',
-                    platform: 'Uniswap V3',
-                    weight: 100,
-                    description: 'Add TEST/USDC liquidity pair (Demo Mode - Contract Call Issues)'
-                }
+                approvedBy: ['0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC'],
+                // Enhanced data for detailed display
+                newHourlyRewardRate: BigInt('500000000000000000') // 0.5 tokens per hour
             }
         ];
     }
@@ -3710,9 +4551,12 @@ class AdminPage {
             // Get reward balance
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
-                    const balance = await contractManager.rewardTokenContract.balanceOf(
-                        await contractManager.stakingContract.getAddress()
-                    );
+                    // Fix: Use .address property instead of .getAddress() method
+                    const stakingAddress = contractManager.stakingContract.address;
+                    if (!stakingAddress) {
+                        throw new Error('Staking contract address not available');
+                    }
+                    const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
                     const balanceNum = Number(balance) / 1e18;
                     return balanceNum > 0 ? balanceNum.toFixed(2) : '1,234.56'; // Demo value if zero
                 },
@@ -3729,12 +4573,23 @@ class AdminPage {
                 '0.1000'
             );
 
-            // Get total weight
+            // Get total weight with safe BigNumber handling
             contractInfo.totalWeight = await this.safeContractCall(
                 async () => {
-                    const weight = await contractManager.stakingContract.getTotalWeight();
-                    const weightNum = Number(weight);
-                    return weightNum > 0 ? weightNum.toLocaleString() : '1,000'; // Demo value if zero
+                    // Use the wrapper method that handles the correct contract method name
+                    const weight = await contractManager.getTotalWeight();
+                    // Use safe conversion that handles large numbers
+                    if (weight && weight.toString) {
+                        const weightStr = weight.toString();
+                        const weightBigInt = BigInt(weightStr);
+                        if (weightBigInt > 0n) {
+                            // Convert to number safely or keep as string if too large
+                            const weightNum = Number(weightBigInt);
+                            return weightNum > Number.MAX_SAFE_INTEGER ?
+                                weightBigInt.toString() : weightNum.toLocaleString();
+                        }
+                    }
+                    return '1,000'; // Demo value if zero or invalid
                 },
                 '1,000'
             );
@@ -3918,14 +4773,14 @@ class AdminPage {
                                 <small>${pair.address}</small>
                             </div>
                             <div class="weight-input-group">
-                                <label>Current: ${pair.weight}</label>
+                                <label>Current: ${this.formatWeight(pair.weight)}</label>
                                 <input type="number"
                                        class="form-input weight-input"
                                        id="weight-${index}"
                                        placeholder="New weight"
                                        min="1" max="10000"
                                        data-pair="${pair.address}"
-                                       data-current="${pair.weight}">
+                                       data-current="${this.formatWeight(pair.weight)}">
                             </div>
                         </div>
                     `;
@@ -4111,129 +4966,270 @@ class AdminPage {
     async submitAddPairProposal(event = null) {
         if (event) event.preventDefault();
 
+        console.log('[ADD PAIR UI] 🚀 Starting Add Pair Proposal submission');
+
         const pairAddress = document.getElementById('pair-address').value;
         const weight = document.getElementById('pair-weight').value;
         const pairName = document.getElementById('pair-name').value;
         const platform = document.getElementById('pair-platform').value;
         const description = document.getElementById('pair-description').value;
 
-        // Validate required fields
+        console.log('[ADD PAIR UI] 📋 Form data collected:', {
+            pairAddress, weight, pairName, platform, description
+        });
+
+        // Enhanced validation with detailed feedback
         if (!pairAddress || !weight || !pairName || !platform) {
-            this.showError('Please fill in all required fields');
+            this.showError('Please fill in all required fields: LP Address, Weight, Pair Name, and Platform');
             return;
         }
 
         if (!this.isValidAddress(pairAddress)) {
-            this.showError('Invalid LP token address format');
+            this.showError('Invalid LP token address format. Please enter a valid Ethereum address starting with 0x');
             return;
         }
 
         const weightNum = parseInt(weight);
         if (isNaN(weightNum) || weightNum < 1 || weightNum > 10000) {
-            this.showError('Weight must be between 1-10,000');
+            this.showError('Weight must be a number between 1 and 10,000');
+            return;
+        }
+
+        if (pairName.length < 2 || pairName.length > 50) {
+            this.showError('Pair name must be between 2 and 50 characters');
+            return;
+        }
+
+        if (platform.length < 2 || platform.length > 30) {
+            this.showError('Platform name must be between 2 and 30 characters');
             return;
         }
 
         try {
-            console.log('🔧 Calling contract manager proposeAddPair...');
+            console.log('[ADD PAIR UI] 🔧 Getting contract manager...');
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum, description);
 
-            console.log('🔧 Contract manager response:', result);
+            // STEP 1: Run diagnostic test first (optional but helpful for debugging)
+            console.log('[ADD PAIR UI] 🔍 Running diagnostic test...');
+            try {
+                const diagnostic = await contractManager.diagnosticTestAddPair(pairAddress, pairName, platform, weightNum);
+                console.log('[ADD PAIR UI] 📊 Diagnostic results:', diagnostic);
 
+                // Check for critical issues
+                if (diagnostic.recommendations && diagnostic.recommendations.length > 0) {
+                    console.warn('[ADD PAIR UI] ⚠️ Diagnostic recommendations:', diagnostic.recommendations);
+
+                    // Show warnings for non-critical issues
+                    const criticalIssues = diagnostic.recommendations.filter(rec =>
+                        rec.includes('not have admin') ||
+                        rec.includes('Switch to Polygon') ||
+                        rec.includes('not deployed')
+                    );
+
+                    if (criticalIssues.length > 0) {
+                        this.showError(`Pre-flight check failed: ${criticalIssues[0]}`);
+                        return;
+                    }
+                }
+            } catch (diagnosticError) {
+                console.warn('[ADD PAIR UI] ⚠️ Diagnostic test failed, proceeding anyway:', diagnosticError.message);
+            }
+
+            // STEP 2: Execute the actual transaction
+            console.log('[ADD PAIR UI] 🚀 Executing proposeAddPair transaction...');
+            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum);
+
+            console.log('[ADD PAIR UI] 📊 Transaction result:', result);
+
+            // STEP 3: Handle the result
             if (!result.success) {
-                this.showError(result.error || 'Failed to create proposal');
+                // Enhanced error handling based on error type
+                let errorMessage = result.error || 'Failed to create proposal';
+
+                if (result.accessDenied) {
+                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals. Please contact an administrator.';
+                } else if (result.insufficientFunds) {
+                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees. Please add funds to your wallet.';
+                } else if (result.userRejected) {
+                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
+                } else if (result.networkError) {
+                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
+                } else if (result.gasError) {
+                    errorMessage = '⛽ Gas Error: Network congestion detected. Please try again with higher gas fees.';
+                } else if (result.nonceError) {
+                    errorMessage = '🔢 Transaction Error: You may have pending transactions. Please wait or reset your MetaMask account.';
+                } else if (result.validationError) {
+                    errorMessage = `📋 Validation Error: ${result.error}`;
+                }
+
+                this.showError(errorMessage);
                 return;
             }
+
+            // STEP 4: Success handling
+            console.log('[ADD PAIR UI] ✅ Transaction successful!');
+
+            // Show success message with transaction details
+            let successMessage = '✅ Add Pair proposal created successfully!';
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+            if (result.isDemo) {
+                successMessage += ' (Demo Mode)';
+            }
+
+            this.showSuccess(successMessage);
 
             // Add to mock proposal system for realistic demo
             const newProposal = this.createMockProposal({
                 type: 'ADD_PAIR',
                 title: `Add ${pairName} Pair`,
-                description: `Add ${pairName} liquidity pair from ${platform} with weight ${weightNum}. ${description}`,
+                description: `Add ${pairName} liquidity pair from ${platform} with weight ${weightNum}. ${description || 'No additional description provided.'}`,
                 proposer: this.userAddress || '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
                 status: 'PENDING',
                 requiredApprovals: 3,
                 currentApprovals: 0,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber,
                 data: {
                     pairAddress: pairAddress,
                     pairName: pairName,
                     platform: platform,
                     weight: weightNum
                 },
-                transactionHash: result.transactionHash
+                transactionHash: result.transactionHash,
+                isDemo: result.isDemo || false
             });
 
-            // Show success message
-            console.log('✅ Add pair proposal created successfully!');
-            console.log('📋 Transaction details:', {
+            console.log('[ADD PAIR UI] 📋 Transaction details:', {
                 hash: result.transactionHash,
                 message: result.message,
                 proposalId: newProposal.id,
                 isDemo: result.isDemo
             });
 
-            // Close modal and show success notification
+            // Close modal
             this.closeModal();
 
-            // Determine success message based on result type
-            let successMessage = '✅ Add Pair Proposal Created Successfully!';
-            let alertMessage = successMessage;
-
-            if (result.isDemo) {
-                successMessage += ' (Demo Mode)';
-                alertMessage += '\n\n⚠️ Demo Mode: ' + (result.message || 'Network issues prevented real transaction');
-                alertMessage += '\nTransaction: ' + result.transactionHash;
-            } else {
-                alertMessage += '\nTransaction: ' + result.transactionHash;
-            }
-
-            // Show success notification
-            this.showSuccess(successMessage);
-
-            // Refresh admin data once without causing loops
+            // Refresh admin data
             this.refreshAdminDataOnce();
 
             return result;
 
         } catch (error) {
-            console.error('❌ Failed to create add pair proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            console.error('[ADD PAIR UI] ❌ Failed to create add pair proposal:', error);
+
+            // Enhanced error handling for unexpected errors
+            let errorMessage = 'Failed to create proposal';
+            if (error.message) {
+                if (error.message.includes('user rejected')) {
+                    errorMessage = '👤 Transaction was cancelled by user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = '💰 Insufficient funds for gas fees';
+                } else if (error.message.includes('network')) {
+                    errorMessage = '🌐 Network connection error';
+                } else {
+                    errorMessage = `Failed to create proposal: ${error.message}`;
+                }
+            }
+
+            this.showError(errorMessage);
+            throw error; // Re-throw for higher-level error handling
         }
     }
 
     async submitRemovePairProposal(event = null) {
         if (event) event.preventDefault();
 
-        const pairAddress = document.getElementById('remove-pair-select').value;
-        const description = document.getElementById('remove-description').value;
-        const confirmRemoval = document.getElementById('confirm-removal').checked;
-
-        // Validate required fields
-        if (!pairAddress) {
-            throw new Error('Please select a pair to remove');
-        }
-
-        if (!description || description.trim().length < 10) {
-            throw new Error('Please provide a detailed reason for removal (minimum 10 characters)');
-        }
-
-        if (!confirmRemoval) {
-            throw new Error('Please confirm that you understand the consequences of removing this pair');
-        }
-
         try {
-            const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeRemovePair(pairAddress, description);
+            const pairAddress = document.getElementById('remove-pair-select')?.value;
+            const description = document.getElementById('remove-description')?.value;
+            const confirmRemoval = document.getElementById('confirm-removal')?.checked;
 
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to create removal proposal');
+            console.log('🔍 Remove pair form data:', {
+                pairAddress,
+                description: description?.substring(0, 50) + '...',
+                descriptionLength: description?.length,
+                confirmRemoval
+            });
+
+            // Validate required fields
+            if (!pairAddress) {
+                this.showError('Please select a pair to remove');
+                return;
             }
 
+            if (!description || description.trim().length < 10) {
+                this.showError('Please provide a detailed reason for removal (minimum 10 characters)');
+                return;
+            }
+
+            if (!confirmRemoval) {
+                this.showError('Please confirm that you understand the consequences of removing this pair');
+                return;
+            }
+
+            console.log('✅ Validation passed, creating removal proposal...');
+
+            const contractManager = await this.ensureContractReady();
+            const result = await contractManager.proposeRemovePair(pairAddress);
+
+            console.log('[REMOVE PAIR UI] 📊 Transaction result:', result);
+
+            // Handle the result based on new response format
+            if (!result.success) {
+                // Enhanced error handling based on error type
+                let errorMessage = result.error || 'Failed to create removal proposal';
+
+                if (result.accessDenied) {
+                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
+                } else if (result.insufficientFunds) {
+                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
+                } else if (result.userRejected) {
+                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
+                } else if (result.networkError) {
+                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
+                }
+
+                this.showError(errorMessage);
+                return;
+            }
+
+            // Success handling
+            console.log('[REMOVE PAIR UI] ✅ Transaction successful!');
+
+            // Show success message with transaction details
+            let successMessage = '✅ Remove Pair proposal created successfully!';
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+            if (result.isDemo) {
+                successMessage += ' (Demo Mode)';
+            }
+
+            this.showSuccess(successMessage);
+            this.closeModal();
+            this.refreshAdminDataOnce();
             return result;
 
         } catch (error) {
-            console.error('Failed to create remove pair proposal:', error);
+            console.error('[REMOVE PAIR UI] ❌ Failed to create removal proposal:', error);
+
+            // Enhanced error handling for unexpected errors
+            let errorMessage = 'Failed to create removal proposal';
+            if (error.message) {
+                if (error.message.includes('user rejected')) {
+                    errorMessage = '👤 Transaction was cancelled by user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = '💰 Insufficient funds for gas fees';
+                } else if (error.message.includes('network')) {
+                    errorMessage = '🌐 Network connection error';
+                } else {
+                    errorMessage = `Failed to create removal proposal: ${error.message}`;
+                }
+            }
+
+            this.showError(errorMessage);
             throw error;
         }
     }
@@ -4301,31 +5297,135 @@ class AdminPage {
     async submitChangeSignerProposal(event) {
         event.preventDefault();
 
+        console.log('[CHANGE SIGNER UI] 🚀 Starting Change Signer Proposal submission');
+
+        // DUPLICATE PREVENTION FIX: Check if already submitting
+        if (this.isSubmittingChangeSigner) {
+            console.log('[CHANGE SIGNER UI] ⚠️ Already submitting change signer proposal, ignoring duplicate request');
+            return;
+        }
+
         const oldSigner = document.getElementById('old-signer').value;
         const newSigner = document.getElementById('new-signer').value;
         const description = document.getElementById('signer-description').value;
 
+        console.log('[CHANGE SIGNER UI] 📋 Form data collected:', {
+            oldSigner, newSigner, description
+        });
+
+        // DUPLICATE PREVENTION FIX: Set submission flag and disable submit button
+        this.isSubmittingChangeSigner = true;
+        const submitBtn = document.querySelector('#change-signer-form button[type="submit"], button[form="change-signer-form"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Proposal...';
+        }
+
         try {
+            // Enhanced validation
+            if (!oldSigner || !newSigner) {
+                this.showError('Please fill in both old and new signer addresses');
+                return;
+            }
+
+            if (!ethers.utils.isAddress(oldSigner)) {
+                this.showError('Invalid old signer address format');
+                return;
+            }
+
+            if (!ethers.utils.isAddress(newSigner)) {
+                this.showError('Invalid new signer address format');
+                return;
+            }
+
+            if (oldSigner.toLowerCase() === newSigner.toLowerCase()) {
+                this.showError('Old and new signer addresses cannot be the same');
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.info('Creating proposal...', 'Submitting signer change proposal');
             }
 
-            const result = await window.contractManager.proposeChangeSigner(oldSigner, newSigner, description);
+            const contractManager = await this.ensureContractReady();
+            const result = await contractManager.proposeChangeSigner(oldSigner, newSigner);
 
-            if (result.success) {
-                this.closeModal();
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', 'Signer change proposal submitted successfully');
+            console.log('[CHANGE SIGNER UI] 📊 Transaction result:', result);
+
+            // Handle the result based on new response format
+            if (!result.success) {
+                // Enhanced error handling based on error type
+                let errorMessage = result.error || 'Failed to create change signer proposal';
+
+                if (result.accessDenied) {
+                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
+                } else if (result.insufficientFunds) {
+                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
+                } else if (result.userRejected) {
+                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
+                } else if (result.networkError) {
+                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
+                } else if (result.invalidOldSigner) {
+                    errorMessage = '❌ Invalid Old Signer: The old signer address is not currently an admin.';
+                } else if (result.signerAlreadyExists) {
+                    errorMessage = '❌ Signer Already Exists: The new signer address is already an admin.';
                 }
-                await this.refreshData();
-            } else {
-                throw new Error(result.error);
+
+                this.showError(errorMessage);
+                return;
             }
 
-        } catch (error) {
-            console.error('Failed to create signer change proposal:', error);
+            // Success handling
+            console.log('[CHANGE SIGNER UI] ✅ Transaction successful!');
+
+            this.closeModal();
+
+            // Show success message with transaction details
+            let successMessage = '✅ Change signer proposal created successfully!';
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+            if (result.isDemo) {
+                successMessage += ' (Demo Mode)';
+            }
+
             if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', error.message);
+                window.notificationManager.success('Proposal Created', successMessage);
+            } else {
+                this.showSuccess(successMessage);
+            }
+
+            await this.refreshData();
+
+        } catch (error) {
+            console.error('[CHANGE SIGNER UI] ❌ Failed to create signer change proposal:', error);
+
+            // Enhanced error handling for unexpected errors
+            let errorMessage = 'Failed to create signer change proposal';
+            if (error.message) {
+                if (error.message.includes('user rejected')) {
+                    errorMessage = '👤 Transaction was cancelled by user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = '💰 Insufficient funds for gas fees';
+                } else if (error.message.includes('network')) {
+                    errorMessage = '🌐 Network connection error';
+                } else {
+                    errorMessage = `Failed to create signer change proposal: ${error.message}`;
+                }
+            }
+
+            if (window.notificationManager) {
+                window.notificationManager.error('Proposal Failed', errorMessage);
+            } else {
+                this.showError(errorMessage);
+            }
+        } finally {
+            // DUPLICATE PREVENTION FIX: Always reset submission state and button
+            this.isSubmittingChangeSigner = false;
+            const submitBtn = document.querySelector('#change-signer-form button[type="submit"], button[form="change-signer-form"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Signer Change Proposal';
             }
         }
     }
@@ -4333,31 +5433,147 @@ class AdminPage {
     async submitWithdrawalProposal(event) {
         event.preventDefault();
 
+        console.log('[WITHDRAWAL UI] 🚀 Starting Withdrawal Proposal submission');
+
+        // DUPLICATE PREVENTION FIX: Check if already submitting
+        if (this.isSubmittingWithdrawal) {
+            console.log('[WITHDRAWAL UI] ⚠️ Already submitting withdrawal proposal, ignoring duplicate request');
+            return;
+        }
+
         const amount = document.getElementById('withdrawal-amount').value;
         const toAddress = document.getElementById('withdrawal-address').value;
         const description = document.getElementById('withdrawal-description').value;
 
+        console.log('[WITHDRAWAL UI] 📋 Form data collected:', {
+            amount, toAddress, description
+        });
+
+        // DUPLICATE PREVENTION FIX: Set submission flag and disable submit button
+        this.isSubmittingWithdrawal = true;
+        const submitBtn = document.querySelector('#withdrawal-form button[type="submit"], button[form="withdrawal-form"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Proposal...';
+        }
+
         try {
+            // Enhanced validation
+            if (!amount || !toAddress) {
+                this.showError('Please fill in both amount and recipient address');
+                return;
+            }
+
+            if (!ethers.utils.isAddress(toAddress)) {
+                this.showError('Invalid recipient address format');
+                return;
+            }
+
+            const amountNum = parseFloat(amount);
+            if (isNaN(amountNum) || amountNum <= 0) {
+                this.showError('Amount must be a positive number');
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.info('Creating proposal...', 'Submitting withdrawal proposal');
             }
 
-            const result = await window.contractManager.proposeWithdrawal(amount, toAddress, description);
+            const contractManager = await this.ensureContractReady();
+            const result = await contractManager.proposeWithdrawal(amount, toAddress, description);
 
-            if (result.success) {
-                this.closeModal();
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', 'Withdrawal proposal submitted successfully');
+            console.log('[WITHDRAWAL UI] 📊 Transaction result:', result);
+
+            // Handle the result based on new response format
+            if (!result.success) {
+                // Enhanced error handling based on error type
+                let errorMessage = result.error || 'Failed to create withdrawal proposal';
+
+                if (result.accessDenied) {
+                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
+                } else if (result.insufficientFunds) {
+                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
+                } else if (result.userRejected) {
+                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
+                } else if (result.networkError) {
+                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
+                } else if (result.insufficientContractBalance) {
+                    errorMessage = '💸 Insufficient Contract Balance: The withdrawal amount exceeds available funds.';
+                } else if (result.invalidRecipient) {
+                    errorMessage = '❌ Invalid Recipient: Please verify the recipient address format.';
                 }
-                await this.refreshData();
-            } else {
-                throw new Error(result.error);
+
+                this.showError(errorMessage);
+                return;
             }
 
-        } catch (error) {
-            console.error('Failed to create withdrawal proposal:', error);
+            // Success handling
+            console.log('[WITHDRAWAL UI] ✅ Transaction successful!');
+
+            this.closeModal();
+
+            // SUCCESS FEEDBACK FIX: Enhanced success message with special case handling
+            let successMessage = '✅ Withdrawal proposal created successfully!';
+            let notificationTitle = 'Proposal Created';
+
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+
+            if (result.isDemo) {
+                successMessage += ' (Demo Mode)';
+            }
+
+            // Handle special success cases
+            if (result.actionRejectedButSucceeded) {
+                successMessage += ' (Confirmed despite initial rejection)';
+                notificationTitle = 'Proposal Created Successfully';
+                console.log('[WITHDRAWAL UI] 🎯 ACTION_REJECTED override - transaction actually succeeded');
+            }
+
+            if (result.waitError) {
+                successMessage += ' (Confirmation pending)';
+                notificationTitle = 'Proposal Submitted';
+                console.log('[WITHDRAWAL UI] 🎯 tx.wait error override - transaction submitted successfully');
+            }
+
             if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', error.message);
+                window.notificationManager.success(notificationTitle, successMessage);
+            } else {
+                this.showSuccess(successMessage);
+            }
+
+            await this.refreshData();
+
+        } catch (error) {
+            console.error('[WITHDRAWAL UI] ❌ Failed to create withdrawal proposal:', error);
+
+            // Enhanced error handling for unexpected errors
+            let errorMessage = 'Failed to create withdrawal proposal';
+            if (error.message) {
+                if (error.message.includes('user rejected')) {
+                    errorMessage = '👤 Transaction was cancelled by user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = '💰 Insufficient funds for gas fees';
+                } else if (error.message.includes('network')) {
+                    errorMessage = '🌐 Network connection error';
+                } else {
+                    errorMessage = `Failed to create withdrawal proposal: ${error.message}`;
+                }
+            }
+
+            if (window.notificationManager) {
+                window.notificationManager.error('Proposal Failed', errorMessage);
+            } else {
+                this.showError(errorMessage);
+            }
+        } finally {
+            // DUPLICATE PREVENTION FIX: Always reset submission state and button
+            this.isSubmittingWithdrawal = false;
+            const submitBtn = document.querySelector('#withdrawal-form button[type="submit"], button[form="withdrawal-form"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Withdrawal Proposal';
             }
         }
     }
@@ -4513,20 +5729,6 @@ class AdminPage {
         }
     }
 
-    toggleProposal(proposalId) {
-        const detailsRow = document.getElementById(`details-${proposalId}`);
-        const toggleBtn = document.querySelector(`[onclick="adminPage.toggleProposal('${proposalId}')"] .toggle-icon, [onclick="adminPage.toggleProposal(${proposalId})"]`);
-
-        if (detailsRow) {
-            const isVisible = detailsRow.style.display !== 'none';
-            detailsRow.style.display = isVisible ? 'none' : 'table-row';
-
-            if (toggleBtn) {
-                toggleBtn.textContent = isVisible ? '▶' : '▼';
-            }
-        }
-    }
-
     // Cleanup
     destroy() {
         // Clear intervals
@@ -4596,6 +5798,82 @@ class AdminPage {
             return (num / 1000).toFixed(2) + 'K';
         }
         return num.toFixed(2);
+    }
+
+    /**
+     * Format weight values (BigNumber to decimal) - ENHANCED VERSION
+     */
+    formatWeight(weight, label = "weight") {
+        console.log(`[FORMAT DEBUG] Formatting ${label}:`, {
+            value: weight,
+            type: typeof weight,
+            isBigNumber: weight && weight._isBigNumber,
+            toString: weight ? weight.toString() : 'null',
+            length: typeof weight === 'string' ? weight.length : 'N/A'
+        });
+
+        if (!weight) return '0.000';
+
+        try {
+            // Handle BigNumber values (like 10000000000000000000)
+            if (typeof weight === 'object' && weight._isBigNumber) {
+                const formatted = ethers.utils.formatUnits(weight, 18);
+                const result = parseFloat(formatted).toFixed(3);
+                console.log(`[FORMAT DEBUG] BigNumber ${label} formatted:`, result);
+                return result;
+            }
+
+            // ENHANCED: Handle string values that look like wei (more aggressive detection)
+            if (typeof weight === 'string') {
+                // Check if it's a large number string (wei format)
+                const weightStr = weight.trim();
+
+                // If it's a very large number (> 1000000000000000000), treat as wei
+                if (/^\d+$/.test(weightStr) && weightStr.length >= 18) {
+                    const formatted = ethers.utils.formatUnits(weightStr, 18);
+                    const result = parseFloat(formatted).toFixed(3);
+                    console.log(`[FORMAT DEBUG] Large wei string ${label} formatted: ${weightStr} -> ${result}`, 'success');
+                    return result;
+                }
+
+                // If it's exactly "10000000000000000000" (10 ether in wei), format it
+                if (weightStr === '10000000000000000000') {
+                    const result = '10.000';
+                    console.log(`[FORMAT DEBUG] Standard wei ${label} formatted: ${weightStr} -> ${result}`, 'success');
+                    return result;
+                }
+
+                // Handle other large wei values
+                if (weightStr.length > 15 && /^\d+$/.test(weightStr)) {
+                    const formatted = ethers.utils.formatUnits(weightStr, 18);
+                    const result = parseFloat(formatted).toFixed(3);
+                    console.log(`[FORMAT DEBUG] Wei string ${label} formatted: ${weightStr} -> ${result}`, 'success');
+                    return result;
+                }
+
+                // Handle regular string numbers (small values)
+                const num = parseFloat(weightStr);
+                if (!isNaN(num)) {
+                    const result = num.toFixed(3);
+                    console.log(`[FORMAT DEBUG] String number ${label} formatted:`, result);
+                    return result;
+                }
+            }
+
+            // Handle regular numbers
+            if (typeof weight === 'number') {
+                const result = weight.toFixed(3);
+                console.log(`[FORMAT DEBUG] Number ${label} formatted:`, result);
+                return result;
+            }
+
+            console.warn(`[FORMAT DEBUG] Unhandled ${label} type, returning as string:`, weight);
+            return weight.toString();
+        } catch (error) {
+            console.error(`[FORMAT ERROR] BigNumber formatting failed for ${label}:`, error);
+            console.error(`[FORMAT ERROR] Input was:`, weight);
+            return "0.000";
+        }
     }
 }
 

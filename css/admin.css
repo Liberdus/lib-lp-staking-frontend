@@ -3,6 +3,219 @@
  * Phase 3, Day 8 - Admin Panel Foundation & Access Control
  */
 
+/* Performance Optimization Animations */
+.optimistic-update {
+    background: rgba(52, 152, 219, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.number-changing {
+    transform: scale(1.1);
+    color: #3498db;
+    transition: all 0.15s ease;
+}
+
+.number-changed {
+    background: rgba(46, 204, 113, 0.2);
+    border-radius: 4px;
+    animation: highlightFade 1s ease-out;
+}
+
+.progress-increased {
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+    animation: progressGlow 0.5s ease-out;
+}
+
+.status-changing {
+    opacity: 0.5;
+    transform: scale(0.95);
+    transition: all 0.15s ease;
+}
+
+.status-changed {
+    animation: statusPulse 1s ease-out;
+}
+
+.button-appearing {
+    opacity: 0;
+    transform: scale(0.8);
+    animation: buttonAppear 0.3s ease-out forwards;
+}
+
+.button-disappearing {
+    opacity: 1;
+    transform: scale(1);
+    animation: buttonDisappear 0.3s ease-out forwards;
+}
+
+.newly-available {
+    animation: newlyAvailable 2s ease-out;
+}
+
+.row-appearing {
+    opacity: 0;
+    transform: translateY(-20px);
+    animation: rowAppear 0.5s ease-out forwards;
+}
+
+.row-disappearing {
+    opacity: 1;
+    transform: translateY(0);
+    animation: rowDisappear 0.3s ease-out forwards;
+}
+
+.action-loading {
+    position: relative;
+    opacity: 0.8;
+}
+
+.action-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: loadingShimmer 1.5s infinite;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+.updated-highlight {
+    background: rgba(241, 196, 15, 0.3);
+    animation: highlightFade 2s ease-out;
+}
+
+/* Keyframe Animations */
+@keyframes highlightFade {
+    0% { background: rgba(46, 204, 113, 0.4); }
+    100% { background: transparent; }
+}
+
+@keyframes progressGlow {
+    0% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
+    100% { box-shadow: none; }
+}
+
+@keyframes statusPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes buttonAppear {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes buttonDisappear {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.8); }
+}
+
+@keyframes newlyAvailable {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(46, 204, 113, 0.2); }
+}
+
+@keyframes rowAppear {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rowDisappear {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+@keyframes loadingShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Demo Data Indicator */
+.demo-data-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: linear-gradient(90deg, #ff6b35, #f7931e);
+    color: white;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.demo-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.demo-icon {
+    font-size: 1.2rem;
+}
+
+.demo-text {
+    flex: 1;
+    text-align: center;
+}
+
+.demo-retry-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.demo-retry-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Adjust admin panel top margin when demo indicator is present */
+.admin-panel:has(.demo-data-indicator) {
+    margin-top: 60px;
+}
+
+/* Data source indicator in panel stats */
+.data-source-indicator {
+    font-weight: 600 !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.data-source-indicator:contains('🔗 Live Data') {
+    background: linear-gradient(90deg, #00d4ff, #0099cc) !important;
+    color: white !important;
+}
+
+.data-source-indicator:contains('🎭 Demo Data') {
+    background: linear-gradient(90deg, #ff6b35, #f7931e) !important;
+    color: white !important;
+}
+
 /* Admin Panel Layout */
 .admin-panel {
     min-height: 100vh;
@@ -532,6 +745,38 @@
     margin-bottom: 1.5rem;
     flex-wrap: wrap;
     gap: 1rem;
+}
+
+/* CHANGE SIGNER BUTTON VISIBILITY FIX */
+.proposal-btn[data-modal="change-signer"] {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: var(--warning-color, #f39c12) !important;
+    color: white !important;
+    border: 1px solid var(--warning-color, #f39c12) !important;
+}
+
+.proposal-btn[data-modal="change-signer"]:hover {
+    background: var(--warning-color-dark, #e67e22) !important;
+    border-color: var(--warning-color-dark, #e67e22) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+}
+
+/* Ensure change signer button is never marked as in-development */
+.proposal-btn[data-modal="change-signer"].in-development {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    background: var(--warning-color, #f39c12) !important;
+    color: white !important;
+}
+
+.proposal-btn[data-modal="change-signer"].in-development::before,
+.proposal-btn[data-modal="change-signer"].in-development::after {
+    display: none !important;
 }
 
 .panel-header h2 {
