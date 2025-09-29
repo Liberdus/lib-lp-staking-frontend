@@ -1319,20 +1319,7 @@ class HomePage extends BaseComponent {
         }
     }
 
-    /**
-     * Start auto-refresh timer
-     */
-    startAutoRefresh() {
-        // Clear existing timer
-        this.stopAutoRefresh();
 
-        // Set up 30-second auto-refresh
-        this.autoRefreshInterval = setInterval(() => {
-            this.refreshData(false);
-        }, 30000); // 30 seconds
-
-        this.log('Auto-refresh started (30 seconds interval)');
-    }
 
     /**
      * Stop auto-refresh timer
@@ -1374,18 +1361,7 @@ class HomePage extends BaseComponent {
         console.log('🏠 Event listeners attached successfully');
     }
 
-    /**
-     * Override update method to ensure event listeners are reattached
-     */
-    async update() {
-        await super.update();
-        
-        // Reattach event listeners after DOM update
-        setTimeout(() => {
-            this.attachEventListeners();
-            this.ensureButtonsWork(); // Also ensure direct button handlers
-        }, 50);
-    }
+
 
     /**
      * Component lifecycle - after mount
@@ -1396,8 +1372,7 @@ class HomePage extends BaseComponent {
         // Load initial data
         await this.refreshData(false);
 
-        // Start auto-refresh
-        this.startAutoRefresh();
+        // Auto-refresh removed - handled by main HomePage component
         
         // Ensure buttons work - add direct event listeners
         this.ensureButtonsWork();

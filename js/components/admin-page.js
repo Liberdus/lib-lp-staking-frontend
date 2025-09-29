@@ -11,6 +11,7 @@ class AdminPage {
         this.adminRole = null;
         this.contractStats = {};
         this.refreshInterval = null;
+        this.isRefreshing = false; // Prevent overlapping refreshes
 
         // Admin role constant (should match contract)
         this.ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'; // DEFAULT_ADMIN_ROLE
@@ -1651,9 +1652,15 @@ class AdminPage {
     }
 
     /**
-     * Refresh admin panel data (optimized version)
+     * Refresh admin panel data (optimized version with coordination)
      */
     async refreshData() {
+        if (this.isRefreshing) {
+            console.log('🔄 Refresh already in progress, skipping...');
+            return;
+        }
+
+        this.isRefreshing = true;
         console.log('🔄 Refreshing admin panel data...');
         try {
             await this.loadMultiSignPanel();
@@ -1661,6 +1668,8 @@ class AdminPage {
             console.log('✅ Admin panel data refreshed');
         } catch (error) {
             console.error('❌ Failed to refresh data:', error);
+        } finally {
+            this.isRefreshing = false;
         }
     }
 
@@ -2719,21 +2728,7 @@ class AdminPage {
         console.log('🔄 Auto-refresh started (30s interval)');
     }
 
-    async refreshData() {
-        console.log('🔄 Refreshing admin data...');
-        try {
-            await this.loadContractStats();
-            this.updateDashboardDisplay();
-            
-            // Update last refresh time
-            const refreshElement = document.getElementById('last-refresh');
-            if (refreshElement) {
-                refreshElement.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-            }
-        } catch (error) {
-            console.error('❌ Failed to refresh data:', error);
-        }
-    }
+
 
     // Placeholder methods for other sections (to be implemented)
     async showPairsManagement() {

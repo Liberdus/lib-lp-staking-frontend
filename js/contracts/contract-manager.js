@@ -31,9 +31,9 @@ class ContractManager {
         this.currentRpcIndex = 0;
         this.rpcUrls = window.CONFIG?.RPC?.POLYGON_AMOY || [
             'https://rpc-amoy.polygon.technology',
-            'https://polygon-amoy.gateway.tenderly.co',
             'https://polygon-amoy-bor-rpc.publicnode.com',
-            'https://rpc.ankr.com/polygon_amoy'
+            'https://rpc.ankr.com/polygon_amoy',
+            'https://polygon-amoy.drpc.org'
         ];
         this.rpcHealthStatus = new Map(); // Track RPC health
         this.lastRpcSwitch = 0; // Prevent rapid switching
@@ -64,16 +64,16 @@ class ContractManager {
         // Configuration with enhanced provider fallback
         this.config = {
             maxRetries: 3,
-            retryDelay: 1000,
+            retryDelay: 800, // Reduced from 1000ms for faster recovery
             gasLimitMultiplier: 1.2,
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
-            providerTimeout: 8000, // 8 seconds - reduced for faster failover
+            providerTimeout: 5000, // Reduced from 8000ms for faster failover
             fallbackRPCs: [
-                // Browser-compatible RPCs only (no CORS issues)
+                // Optimized order: fastest and most reliable first
                 'https://rpc-amoy.polygon.technology',                    // ✅ Official & Fastest
-                'https://polygon-amoy.gateway.tenderly.co',               // ✅ Tenderly Gateway
-                'https://rpc.ankr.com/polygon_amoy',                      // ✅ Ankr
-                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ PublicNode
+                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ PublicNode - Very reliable
+                'https://rpc.ankr.com/polygon_amoy',                      // ✅ Ankr - Good performance
+                'https://polygon-amoy.drpc.org',                          // ✅ DRPC - Additional fallback
                 // Note: Removed rate-limited demo endpoints that cause CORS errors
             ],
             networkConfig: {
@@ -1639,7 +1639,7 @@ class ContractManager {
      * Internal method to get all actions
      */
     async _getAllActionsInternal(contract, blockTag = null) {
-        console.log('[ACTIONS] 🔍 Loading all actions using React pattern...');
+        console.log('[ACTIONS] 🔍 Loading all actions using parallel batch processing...');
 
         // Get action counter with block tag if provided
         const counter = blockTag
@@ -1648,36 +1648,54 @@ class ContractManager {
         const actionCount = counter.toNumber();
         console.log(`[ACTIONS] 📊 Total actions: ${actionCount}`);
 
-        const actions = [];
+        if (actionCount === 0) {
+            console.log('[ACTIONS] 📭 No actions found');
+            return [];
+        }
 
         // Use React pattern: Load from most recent backwards, limit to 100
         const startIndex = actionCount;
         const endIndex = Math.max(actionCount - 100, 1);
-
+        const actionIds = [];
         for (let i = startIndex; i >= endIndex; i--) {
-            try {
-                console.log(`[ACTIONS] 🔄 Loading action ${i}...`);
+            actionIds.push(i);
+        }
 
-                // Use React pattern: separate calls for action, pairs, and weights with block tag
-                const action = blockTag
-                    ? await contract.actions(BigInt(i), { blockTag })
-                    : await contract.actions(BigInt(i));
-                const pairs = blockTag
-                    ? await contract.getActionPairs(i, { blockTag })
-                    : await contract.getActionPairs(i);
-                const weights = blockTag
-                    ? await contract.getActionWeights(i, { blockTag })
-                    : await contract.getActionWeights(i);
+        console.log(`[ACTIONS] 🚀 Loading ${actionIds.length} actions in parallel batches...`);
 
-                    console.log(`[ACTIONS] ✅ Action ${i} loaded:`, {
-                        actionType: action.actionType,
-                        executed: action.executed,
-                        pairs: pairs.length,
-                        weights: weights.length
-                    });
+        // Cache for loaded actions to avoid duplicates
+        const actionCache = new Map();
+        const actions = [];
 
-                    actions.push({
-                        id: i,
+        // Process in batches of 15 for optimal performance
+        const batchSize = 15;
+        for (let batchStart = 0; batchStart < actionIds.length; batchStart += batchSize) {
+            const batchIds = actionIds.slice(batchStart, batchStart + batchSize);
+            console.log(`[ACTIONS] 🔄 Processing batch ${Math.floor(batchStart/batchSize) + 1}/${Math.ceil(actionIds.length/batchSize)} (${batchIds.length} actions)...`);
+
+            // Create parallel promises for this batch
+            const batchPromises = batchIds.map(async (actionId) => {
+                // Check cache first
+                if (actionCache.has(actionId)) {
+                    return actionCache.get(actionId);
+                }
+
+                try {
+                    // Load action, pairs, and weights in parallel
+                    const [action, pairs, weights] = await Promise.all([
+                        blockTag
+                            ? contract.actions(BigInt(actionId), { blockTag })
+                            : contract.actions(BigInt(actionId)),
+                        blockTag
+                            ? contract.getActionPairs(actionId, { blockTag })
+                            : contract.getActionPairs(actionId),
+                        blockTag
+                            ? contract.getActionWeights(actionId, { blockTag })
+                            : contract.getActionWeights(actionId)
+                    ]);
+
+                    const formattedAction = {
+                        id: actionId,
                         actionType: action.actionType,
                         newHourlyRewardRate: action.newHourlyRewardRate.toString(),
                         pairs: pairs.map(p => p.toString()),
@@ -1695,15 +1713,35 @@ class ContractManager {
                         approvedBy: action.approvedBy,
                         proposedTime: action.proposedTime.toNumber(),
                         rejected: action.rejected
-                    });
-                } catch (error) {
-                    console.warn(`[ACTIONS] ⚠️ Failed to get action ${i}:`, error.message);
-                    // Continue with other actions
-                }
-            }
+                    };
 
-            console.log(`[ACTIONS] ✅ Loaded ${actions.length} actions successfully`);
-            return actions;
+                    // Cache the result
+                    actionCache.set(actionId, formattedAction);
+                    return formattedAction;
+
+                } catch (error) {
+                    console.warn(`[ACTIONS] ⚠️ Failed to get action ${actionId}:`, error.message);
+                    return null; // Return null for failed actions
+                }
+            });
+
+            // Wait for batch to complete
+            const batchResults = await Promise.allSettled(batchPromises);
+
+            // Process results
+            batchResults.forEach((result, index) => {
+                if (result.status === 'fulfilled' && result.value !== null) {
+                    actions.push(result.value);
+                } else if (result.status === 'rejected') {
+                    console.warn(`[ACTIONS] ⚠️ Batch promise rejected for action ${batchIds[index]}:`, result.reason);
+                }
+            });
+
+            console.log(`[ACTIONS] ✅ Batch ${Math.floor(batchStart/batchSize) + 1} completed: ${batchResults.filter(r => r.status === 'fulfilled' && r.value !== null).length}/${batchIds.length} successful`);
+        }
+
+        console.log(`[ACTIONS] 🎉 Parallel loading complete: ${actions.length} actions loaded successfully`);
+        return actions;
     }
 
     /**
@@ -4702,7 +4740,7 @@ class ContractManager {
             // Test the fallback provider first with shorter timeout
             await Promise.race([
                 fallbackProvider.getNetwork(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Provider test timeout')), 5000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Provider test timeout')), 3000))
             ]);
 
             // Update provider and signer
@@ -5139,7 +5177,7 @@ class ContractManager {
                     // Test the new provider with timeout
                     const testPromise = this.provider.getBlockNumber();
                     const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Provider test timeout')), 3000)
+                        setTimeout(() => reject(new Error('Provider test timeout')), 2000)
                     );
 
                     await Promise.race([testPromise, timeoutPromise]);

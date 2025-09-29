@@ -11,6 +11,7 @@ class HomePage {
         this.error = null;
         this.refreshInterval = null;
         this.isInitialized = false;
+        this.isRefreshing = false; // Prevent overlapping refreshes
         this.hourlyRewardRate = '0.00';
         this.totalWeight = '0';
         this.lastWalletAddress = null;
@@ -888,12 +889,20 @@ class HomePage {
      * Public method to refresh data (called by staking modal after transactions)
      */
     async refreshData() {
+        if (this.isRefreshing) {
+            console.log('🔄 Refresh already in progress, skipping...');
+            return;
+        }
+
+        this.isRefreshing = true;
         console.log('🔄 Refreshing homepage data...');
         try {
             await this.loadData();
             console.log('✅ Homepage data refreshed successfully');
         } catch (error) {
             console.error('❌ Failed to refresh homepage data:', error);
+        } finally {
+            this.isRefreshing = false;
         }
     }
 
@@ -932,19 +941,7 @@ class HomePage {
         return num.toFixed(2);
     }
 
-    startAutoRefresh() {
-        // Stop any existing refresh first
-        this.stopAutoRefresh();
 
-        // Refresh data every 30 seconds
-        this.refreshInterval = setInterval(() => {
-            if (!this.loading) {
-                this.loadData();
-            }
-        }, 30000);
-
-        console.log('🔄 HomePage: Auto-refresh started');
-    }
 
     stopAutoRefresh() {
         if (this.refreshInterval) {
