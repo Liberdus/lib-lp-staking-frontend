@@ -12,6 +12,7 @@ class AdminPage {
         this.contractStats = {};
         this.refreshInterval = null;
         this.isRefreshing = false; // Prevent overlapping refreshes
+        this.autoRefreshActive = false; // Prevent multiple auto-refresh timers
 
         // Admin role constant (should match contract)
         this.ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'; // DEFAULT_ADMIN_ROLE
@@ -1156,6 +1157,7 @@ class AdminPage {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
+            this.autoRefreshActive = false; // Reset auto-refresh flag
             console.log('⏹️ Auto-refresh stopped');
         }
     }
@@ -2707,12 +2709,19 @@ class AdminPage {
     }
 
     startAutoRefresh() {
+        // Prevent multiple auto-refresh timers
+        if (this.autoRefreshActive) {
+            console.log('🔄 Auto-refresh already active, skipping...');
+            return;
+        }
+
         // Clear existing interval if any
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }
 
-        // Initialize pause state
+        // Mark auto-refresh as active
+        this.autoRefreshActive = true;
         this.autoRefreshPaused = false;
 
         // Refresh data every 30 seconds

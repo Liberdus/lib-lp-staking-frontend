@@ -4242,16 +4242,16 @@ class ContractManager {
     }
 
     /**
-     * Execute operation with provider fallback and block number strategies
+     * Execute operation with provider fallback and block number strategies - PERFORMANCE OPTIMIZED
      */
     async executeWithProviderFallback(operation, operationName, retries = 3) {
-        this.log(`🔄 Executing ${operationName} with provider and block fallback...`);
+        this.log(`⚡ Executing ${operationName} with optimized provider fallback...`);
 
         // Get working RPC providers in order of preference
         const workingProviders = await this.getWorkingProvidersForHistoricalState();
 
-        // Block number strategies to try
-        const blockStrategies = ['latest', 'pending', null]; // null = no block tag
+        // OPTIMIZATION: Reduced block strategies to only most reliable ones
+        const blockStrategies = ['latest', null]; // Removed 'pending' to reduce attempts
 
         for (let i = 0; i < workingProviders.length; i++) {
             const provider = workingProviders[i];
@@ -4288,30 +4288,29 @@ class ContractManager {
     }
 
     /**
-     * Get working providers optimized for historical state queries
+     * Get working providers optimized for historical state queries - PERFORMANCE OPTIMIZED
      */
     async getWorkingProvidersForHistoricalState() {
         const providers = [];
 
-        // Priority order for historical state access (working providers only)
+        // OPTIMIZATION: Only use fastest, most reliable providers to reduce fallback time
         const rpcUrls = [
             'https://rpc-amoy.polygon.technology',           // Polygon official (most reliable)
-            'https://polygon-amoy-bor-rpc.publicnode.com',   // PublicNode (good archive support)
-            'https://polygon-amoy.drpc.org',                 // DRPC (backup)
-            'https://rpc.ankr.com/polygon_amoy'              // Ankr (backup)
+            'https://polygon-amoy-bor-rpc.publicnode.com',   // PublicNode (good performance)
+            // Removed slower providers to reduce total fallback time
         ];
 
         for (const rpcUrl of rpcUrls) {
             try {
                 const provider = new ethers.providers.JsonRpcProvider({
                     url: rpcUrl,
-                    timeout: 8000
+                    timeout: 4000  // OPTIMIZATION: Reduced timeout from 8000ms to 4000ms for faster failover
                 });
 
-                // Quick connectivity test
+                // Quick connectivity test with shorter timeout
                 await provider.getBlockNumber();
                 providers.push(provider);
-                this.log(`✅ Provider ready for historical queries: ${rpcUrl}`);
+                this.log(`⚡ Fast provider ready: ${rpcUrl}`);
 
             } catch (error) {
                 this.log(`⚠️ Provider not available: ${rpcUrl} - ${error.message}`);
