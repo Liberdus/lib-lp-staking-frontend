@@ -11,6 +11,10 @@ class HomePage {
         this.error = null;
         this.refreshInterval = null;
         this.isInitialized = false;
+        this.hourlyRewardRate = '0.00';
+        this.totalWeight = '0';
+        this.lastWalletAddress = null;
+        this.lastNetworkId = null;
         this.init();
     }
 
@@ -21,6 +25,7 @@ class HomePage {
         this.render();
         this.attachEventListeners();
         this.setupContractManagerListeners();
+        this.setupWalletChangeDetection();
         this.loadDataWhenReady();
         this.isInitialized = true;
 
@@ -55,6 +60,52 @@ class HomePage {
             this.error = null;
             this.render();
         });
+    }
+
+    /**
+     * Set up wallet and network change detection
+     */
+    setupWalletChangeDetection() {
+        // Listen for wallet connection changes
+        document.addEventListener('walletConnected', (event) => {
+            console.log('🏠 HomePage: Wallet connected, refreshing data...');
+            this.refreshDataAfterWalletChange();
+        });
+
+        document.addEventListener('walletDisconnected', () => {
+            console.log('🏠 HomePage: Wallet disconnected, refreshing data...');
+            this.refreshDataAfterWalletChange();
+        });
+
+        // Listen for account changes (MetaMask)
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                console.log('🏠 HomePage: Accounts changed:', accounts);
+                this.refreshDataAfterWalletChange();
+            });
+
+            window.ethereum.on('chainChanged', (chainId) => {
+                console.log('🏠 HomePage: Chain changed:', chainId);
+                this.refreshDataAfterWalletChange();
+            });
+        }
+    }
+
+    /**
+     * Refresh data after wallet or network changes
+     */
+    async refreshDataAfterWalletChange() {
+        try {
+            // Small delay to allow wallet state to settle
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Reload data
+            await this.loadData();
+
+            console.log('✅ Data refreshed after wallet change');
+        } catch (error) {
+            console.error('❌ Failed to refresh data after wallet change:', error);
+        }
     }
 
     /**
@@ -94,7 +145,26 @@ class HomePage {
         } else if (this.error) {
             container.innerHTML = this.renderError();
         } else {
-            container.innerHTML = this.renderTable();
+            container.innerHTML = this.renderHomepage();
+        }
+
+        // Update the hourly rate in the existing HTML header
+        this.updateHourlyRateDisplay();
+    }
+
+    renderHomepage() {
+        return this.renderTable();
+    }
+
+    /**
+     * Update the hourly rate display in the existing HTML header
+     */
+    updateHourlyRateDisplay() {
+        const hourlyRateElement = document.getElementById('hourly-rate');
+        if (hourlyRateElement) {
+            const formattedRate = parseFloat(this.hourlyRewardRate || '0').toFixed(2);
+            hourlyRateElement.textContent = formattedRate;
+            console.log(`📊 Updated hourly rate display: ${formattedRate} LIB`);
         }
     }
 
@@ -185,6 +255,10 @@ class HomePage {
                                 APR
                             </th>
                             <th>
+                                <span class="material-icons">fitness_center</span>
+                                Weight
+                            </th>
+                            <th>
                                 <span class="material-icons">account_balance</span>
                                 TVL
                             </th>
@@ -241,7 +315,12 @@ class HomePage {
                     <span class="chip chip-primary">${pair.platform || 'Uniswap V2'}</span>
                 </td>
                 <td>
-                    <span class="success-text">${pair.apr || '0.00'}%</span>
+                    <span style="color: var(--success-main); font-weight: bold;">${pair.apr || '0.00'}%</span>
+                </td>
+                <td>
+                    <span class="chip chip-secondary">
+                        ${parseFloat(pair.weight || '0').toFixed(1)} (${pair.weightPercentage || '0.00'}%)
+                    </span>
                 </td>
                 <td>
                     <span style="font-weight: 600;">$${this.formatNumber(pair.tvl || 0)}</span>
@@ -256,15 +335,15 @@ class HomePage {
                 </td>
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary btn-stake" data-pair-id="${pair.id}" ${!isConnected ? 'disabled' : ''}>
+                        <button class="btn btn-primary btn-stake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || !pair.stakingEnabled ? 'disabled' : ''}>
                             <span class="material-icons">add</span>
                             Stake
                         </button>
-                        <button class="btn btn-secondary btn-unstake" data-pair-id="${pair.id}" ${!isConnected || parseFloat(userShares) === 0 ? 'disabled' : ''}>
+                        <button class="btn btn-secondary btn-unstake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || parseFloat(userShares) === 0 ? 'disabled' : ''}>
                             <span class="material-icons">remove</span>
                             Unstake
                         </button>
-                        <button class="btn btn-text btn-claim" data-pair-id="${pair.id}" ${!isConnected || parseFloat(userEarnings) === 0 ? 'disabled' : ''}>
+                        <button class="btn btn-text btn-claim" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || parseFloat(userEarnings) === 0 ? 'disabled' : ''}>
                             <span class="material-icons">redeem</span>
                             Claim
                         </button>
@@ -275,10 +354,38 @@ class HomePage {
     }
 
     attachEventListeners() {
-        // Refresh button
+        // Refresh button with enhanced functionality
         const refreshBtn = document.getElementById('refresh-button');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.loadData());
+            refreshBtn.addEventListener('click', () => this.handleRefreshClick());
+        }
+    }
+
+    /**
+     * Handle refresh button click with loading state
+     */
+    async handleRefreshClick() {
+        console.log('🔄 Manual refresh requested');
+        const refreshButton = document.getElementById('refresh-button');
+
+        // Add loading state
+        if (refreshButton) {
+            refreshButton.disabled = true;
+            refreshButton.innerHTML = '<span class="material-icons">hourglass_empty</span>';
+        }
+
+        try {
+            await this.refreshData();
+            this.showNotification('success', 'Data refreshed successfully!');
+        } catch (error) {
+            console.error('❌ Manual refresh failed:', error);
+            this.showNotification('error', 'Failed to refresh data');
+        } finally {
+            // Reset button state
+            if (refreshButton) {
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = '<span class="material-icons">refresh</span>';
+            }
         }
 
         // Delegate event listeners for dynamic content
@@ -365,69 +472,96 @@ class HomePage {
             throw new Error('Contract manager not ready');
         }
 
-        // Get all pairs info from the staking contract
-        const allPairsInfo = await window.contractManager.getAllPairsInfo();
-        console.log('📋 Retrieved pairs from contract:', allPairsInfo);
+        try {
+            // Get hourly reward rate
+            console.log('💰 Loading hourly reward rate...');
+            const hourlyRateWei = await window.contractManager.getHourlyRewardRate();
+            this.hourlyRewardRate = ethers.utils.formatEther(hourlyRateWei);
+            console.log(`✅ Hourly reward rate: ${this.hourlyRewardRate} LIB/hour`);
 
-        this.pairs = [];
+            // Get total weight for percentage calculations
+            console.log('⚖️ Loading total weight...');
+            const totalWeightWei = await window.contractManager.getTotalWeight();
+            this.totalWeight = ethers.utils.formatEther(totalWeightWei);
+            console.log(`✅ Total weight: ${this.totalWeight}`);
 
-        if (allPairsInfo.length === 0) {
-            console.log('⚠️ No pairs configured in the staking contract yet');
-            // Create a placeholder pair to show the UI structure
-            this.pairs = [{
-                id: '1',
-                address: '0x0000000000000000000000000000000000000000',
-                token0Symbol: 'LIB',
-                token1Symbol: 'USDC',
-                name: 'No Pairs Configured',
-                platform: 'Waiting for Setup',
-                apr: '0.00',
-                tvl: 0,
-                userShares: '0.00',
-                userEarnings: '0.00',
-                totalStaked: '0',
-                rewardRate: '0',
-                stakingEnabled: false
-            }];
-        } else {
-            for (let i = 0; i < allPairsInfo.length; i++) {
-                const pairInfo = allPairsInfo[i];
+            // Get all pairs info from the staking contract
+            console.log('📋 Loading pairs info...');
+            const allPairsInfo = await window.contractManager.getAllPairsInfo();
+            console.log('📋 Retrieved pairs from contract:', allPairsInfo);
 
-                try {
-                    // Get user stake info if wallet is connected
-                    let userStake = { amount: '0', rewards: '0' };
-                    if (this.isWalletConnected() && pairInfo.address !== '0x0000000000000000000000000000000000000000') {
-                        userStake = await window.contractManager.getUserStake(
-                            window.walletManager.address,
-                            pairInfo.address
-                        );
+            this.pairs = [];
+
+            if (allPairsInfo.length === 0) {
+                console.log('⚠️ No pairs configured in the staking contract yet');
+                // Create a placeholder pair to show the UI structure
+                this.pairs = [{
+                    id: '1',
+                    address: '0x0000000000000000000000000000000000000000',
+                    token0Symbol: 'LIB',
+                    token1Symbol: 'USDC',
+                    name: 'No Pairs Configured',
+                    platform: 'Waiting for Setup',
+                    apr: '0.00',
+                    tvl: 0,
+                    userShares: '0.00',
+                    userEarnings: '0.00',
+                    totalStaked: '0',
+                    rewardRate: '0',
+                    stakingEnabled: false,
+                    weight: '0',
+                    weightPercentage: '0.00'
+                }];
+            } else {
+                for (let i = 0; i < allPairsInfo.length; i++) {
+                    const pairInfo = allPairsInfo[i];
+
+                    try {
+                        // Get user stake info if wallet is connected
+                        let userStake = { amount: '0', rewards: '0' };
+                        if (this.isWalletConnected() && pairInfo.address !== '0x0000000000000000000000000000000000000000') {
+                            userStake = await window.contractManager.getUserStake(
+                                window.walletManager.address,
+                                pairInfo.address
+                            );
+                        }
+
+                        // Calculate weight percentage
+                        const weightPercentage = this.totalWeight > 0 ?
+                            ((parseFloat(pairInfo.weight || '0') * 100) / parseFloat(this.totalWeight)).toFixed(2) :
+                            '0.00';
+
+                        // Create pair data from contract info
+                        const pairData = {
+                            id: pairInfo.id || (i + 1).toString(),
+                            address: pairInfo.address,
+                            token0Symbol: 'LIB',
+                            token1Symbol: this.extractTokenSymbol(pairInfo.name) || 'TOKEN',
+                            name: pairInfo.name || `LP Token ${i + 1}`,
+                            platform: pairInfo.platform || 'Unknown',
+                            apr: pairInfo.apr || '0.00',
+                            tvl: pairInfo.tvl || 0,
+                            userShares: userStake.amount || '0.00',
+                            userEarnings: userStake.rewards || '0.00',
+                            totalStaked: pairInfo.totalStaked || '0',
+                            rewardRate: pairInfo.rewardRate || '0',
+                            stakingEnabled: pairInfo.isActive !== false,
+                            weight: pairInfo.weight || '0',
+                            weightPercentage: weightPercentage
+                        };
+
+                        this.pairs.push(pairData);
+                    } catch (error) {
+                        console.warn(`⚠️ Failed to load data for pair ${pairInfo.address}:`, error.message);
                     }
-
-                    // Create pair data from contract info
-                    const pairData = {
-                        id: pairInfo.id || (i + 1).toString(),
-                        address: pairInfo.address,
-                        token0Symbol: 'LIB',
-                        token1Symbol: this.extractTokenSymbol(pairInfo.name) || 'TOKEN',
-                        name: pairInfo.name || `LP Token ${i + 1}`,
-                        platform: pairInfo.platform || 'Unknown',
-                        apr: pairInfo.apr || '0.00',
-                        tvl: pairInfo.tvl || 0,
-                        userShares: userStake.amount || '0.00',
-                        userEarnings: userStake.rewards || '0.00',
-                        totalStaked: pairInfo.totalStaked || '0',
-                        rewardRate: pairInfo.rewardRate || '0',
-                        stakingEnabled: pairInfo.isActive !== false
-                    };
-
-                    this.pairs.push(pairData);
-                } catch (error) {
-                    console.warn(`⚠️ Failed to load data for pair ${pairInfo.address}:`, error.message);
                 }
             }
-        }
 
-        console.log('✅ Blockchain data loaded:', this.pairs.length, 'pairs');
+            console.log('✅ Blockchain data loaded:', this.pairs.length, 'pairs');
+        } catch (error) {
+            console.error('❌ Failed to load blockchain data:', error);
+            throw error;
+        }
     }
 
     /**
@@ -681,30 +815,112 @@ class HomePage {
     }
 
     async claimRewards(pairId) {
+        console.log(`🎁 Claiming rewards for pair ${pairId}`);
+
         const pair = this.pairs.find(p => p.id === pairId);
-        if (!pair) return;
+        if (!pair) {
+            console.error('Pair not found:', pairId);
+            return;
+        }
+
+        if (!this.isWalletConnected()) {
+            this.showNotification('error', 'Please connect your wallet first');
+            return;
+        }
 
         try {
-            if (window.notificationManager) {
-                window.notificationManager.show('Claiming rewards...', 'info');
+            // Show loading state
+            const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="material-icons">hourglass_empty</span> Claiming...';
             }
 
-            // Simulate claim transaction
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            this.showNotification('info', 'Claiming rewards...');
 
-            if (window.notificationManager) {
-                window.notificationManager.show('Rewards claimed successfully!', 'success');
+            // Call contract manager to claim rewards
+            if (window.contractManager && window.contractManager.claimRewards) {
+                console.log(`🎁 Claiming rewards for LP token: ${pair.address}`);
+                const result = await window.contractManager.claimRewards(pair.address);
+
+                if (result && result.success) {
+                    console.log('✅ Rewards claimed successfully');
+                    this.showNotification('success', `Successfully claimed ${pair.userEarnings} LIB rewards!`);
+
+                    // Refresh data after successful transaction
+                    setTimeout(() => this.refreshData(), 2000);
+                } else {
+                    throw new Error(result?.error || 'Transaction failed');
+                }
+            } else {
+                throw new Error('Contract manager not available');
             }
-
-            // Refresh data
-            this.loadData();
 
         } catch (error) {
-            console.error('Failed to claim rewards:', error);
-            if (window.notificationManager) {
-                window.notificationManager.show('Failed to claim rewards', 'error');
+            console.error('❌ Failed to claim rewards:', error);
+            this.showNotification('error', `Failed to claim rewards: ${error.message}`);
+        } finally {
+            // Reset button state
+            const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<span class="material-icons">redeem</span> Claim';
             }
         }
+    }
+
+    showNotification(type, message) {
+        // Use existing notification system if available
+        if (window.notificationManager) {
+            window.notificationManager.show(message, type);
+        } else if (window.notification) {
+            window.notification.show(type, message);
+        } else {
+            // Fallback to console and alert
+            console.log(`${type.toUpperCase()}: ${message}`);
+            if (type === 'error') {
+                alert(`Error: ${message}`);
+            }
+        }
+    }
+
+    /**
+     * Public method to refresh data (called by staking modal after transactions)
+     */
+    async refreshData() {
+        console.log('🔄 Refreshing homepage data...');
+        try {
+            await this.loadData();
+            console.log('✅ Homepage data refreshed successfully');
+        } catch (error) {
+            console.error('❌ Failed to refresh homepage data:', error);
+        }
+    }
+
+    /**
+     * Enhanced auto-refresh with intelligent timing
+     */
+    startAutoRefresh() {
+        // Clear any existing interval
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+
+        // Auto-refresh every 30 seconds when wallet is connected, 60 seconds when not
+        const refreshRate = this.isWalletConnected() ? 30000 : 60000;
+
+        this.refreshInterval = setInterval(async () => {
+            if (!this.loading && this.isInitialized) {
+                console.log('🔄 Auto-refreshing homepage data...');
+                try {
+                    await this.loadData();
+                } catch (error) {
+                    console.error('❌ Auto-refresh failed:', error);
+                }
+            }
+        }, refreshRate);
+
+        console.log(`✅ Auto-refresh started (${refreshRate/1000}s interval)`);
     }
 
     formatNumber(num) {

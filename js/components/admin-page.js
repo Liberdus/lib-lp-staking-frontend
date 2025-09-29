@@ -24,6 +24,12 @@ class AdminPage {
         this.mockVotes = new Map();
         this.mockApprovals = new Map();
 
+        // PERFORMANCE OPTIMIZATION: Proposal state management
+        this.proposalsCache = new Map(); // Cache proposals by ID for O(1) access
+        this.lastProposalId = 0; // Track highest proposal ID for incremental loading
+        this.pendingOptimisticUpdates = new Map(); // Track optimistic updates
+        this.isUsingRealData = false; // Track data source
+
         // Initialize mock system immediately
         this.initializeMockSystem();
 
@@ -1512,7 +1518,140 @@ class AdminPage {
     }
 
     /**
-     * Refresh admin panel data
+     * PERFORMANCE OPTIMIZATION: Add new proposal optimistically
+     */
+    addProposalOptimistically(proposalData, transactionHash) {
+        console.log('🚀 [OPTIMISTIC] Adding proposal optimistically:', proposalData);
+
+        const optimisticProposal = {
+            id: proposalData.id || `temp-${Date.now()}`,
+            actionType: proposalData.actionType,
+            status: 'PENDING',
+            proposer: this.userAddress,
+            createdAt: Date.now(),
+            transactionHash: transactionHash,
+            isOptimistic: true,
+            ...proposalData
+        };
+
+        // Add to cache
+        this.proposalsCache.set(optimisticProposal.id, optimisticProposal);
+        this.pendingOptimisticUpdates.set(optimisticProposal.id, {
+            proposal: optimisticProposal,
+            transactionHash: transactionHash,
+            timestamp: Date.now()
+        });
+
+        // Update UI immediately
+        this.renderSingleProposal(optimisticProposal, true);
+
+        console.log('✅ [OPTIMISTIC] Proposal added to UI instantly');
+        return optimisticProposal;
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Update single proposal without full refresh
+     */
+    async updateSingleProposal(proposalId, forceRefresh = false) {
+        console.log(`🎯 [SINGLE UPDATE] Updating proposal ${proposalId}`);
+
+        try {
+            const contractManager = await this.ensureContractReady();
+            const proposalData = await contractManager.getAction(proposalId);
+
+            if (proposalData) {
+                const formattedProposal = this.formatRealProposals([proposalData])[0];
+
+                // Update cache
+                this.proposalsCache.set(proposalId, formattedProposal);
+
+                // Remove from optimistic updates if it exists
+                this.pendingOptimisticUpdates.delete(proposalId);
+
+                // Update UI for this specific proposal
+                this.renderSingleProposal(formattedProposal, false);
+
+                console.log(`✅ [SINGLE UPDATE] Proposal ${proposalId} updated successfully`);
+                return formattedProposal;
+            }
+        } catch (error) {
+            console.error(`❌ [SINGLE UPDATE] Failed to update proposal ${proposalId}:`, error);
+        }
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Render single proposal in UI
+     */
+    renderSingleProposal(proposal, isNew = false) {
+        const proposalsTable = document.querySelector('#proposals-table tbody');
+        if (!proposalsTable) return;
+
+        const existingRow = document.querySelector(`[data-proposal-id="${proposal.id}"]`);
+
+        if (existingRow && !isNew) {
+            // Update existing row
+            existingRow.outerHTML = this.generateProposalRowHTML(proposal);
+        } else if (isNew) {
+            // Add new row at the top
+            const newRowHTML = this.generateProposalRowHTML(proposal);
+            proposalsTable.insertAdjacentHTML('afterbegin', newRowHTML);
+
+            // Highlight new proposal
+            const newRow = proposalsTable.querySelector(`[data-proposal-id="${proposal.id}"]`);
+            if (newRow) {
+                newRow.classList.add('new-proposal-highlight');
+                setTimeout(() => {
+                    newRow.classList.remove('new-proposal-highlight');
+                }, 3000);
+            }
+        }
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Generate HTML for single proposal row
+     */
+    generateProposalRowHTML(proposal) {
+        const statusClass = proposal.status?.toLowerCase() || 'pending';
+        const isOptimistic = proposal.isOptimistic ? 'optimistic-proposal' : '';
+
+        return `
+            <tr class="proposal-row ${statusClass} ${isOptimistic}" data-proposal-id="${proposal.id}">
+                <td class="proposal-id">#${proposal.id}</td>
+                <td class="proposal-type">${this.getProposalTypeDisplay(proposal.actionType)}</td>
+                <td class="proposal-summary">${this.getProposalSummary(proposal)}</td>
+                <td class="proposal-status">
+                    <span class="status-badge status-${statusClass}">
+                        ${proposal.isOptimistic ? '⏳ ' : ''}${proposal.status || 'PENDING'}
+                    </span>
+                </td>
+                <td class="proposal-approvals">${proposal.currentApprovals || 0}/${proposal.requiredApprovals || 3}</td>
+                <td class="proposal-actions">
+                    ${this.generateProposalActionButtons(proposal)}
+                </td>
+            </tr>
+        `;
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Generate action buttons for proposal
+     */
+    generateProposalActionButtons(proposal) {
+        if (proposal.isOptimistic) {
+            return '<span class="text-muted">Processing...</span>';
+        }
+
+        return `
+            <button class="btn btn-sm btn-success" onclick="adminPage.approveProposal('${proposal.id}')">
+                Approve
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="adminPage.rejectProposal('${proposal.id}')">
+                Reject
+            </button>
+        `;
+    }
+
+    /**
+     * Refresh admin panel data (optimized version)
      */
     async refreshData() {
         console.log('🔄 Refreshing admin panel data...');
@@ -4831,9 +4970,13 @@ class AdminPage {
             this.showSuccess('Proposal created successfully!');
             this.closeModal();
 
-            // Refresh data
-            if (this.loadProposals) {
-                this.loadProposals();
+            // PERFORMANCE OPTIMIZATION: Avoid full refresh for optimized proposal types
+            const optimizedTypes = ['change-signer-form', 'withdrawal-form'];
+            if (!optimizedTypes.includes(formId)) {
+                // Only refresh for non-optimized proposal types
+                if (this.loadProposals) {
+                    this.loadProposals();
+                }
             }
 
         } catch (error) {
@@ -5380,6 +5523,14 @@ class AdminPage {
 
             this.closeModal();
 
+            // PERFORMANCE OPTIMIZATION: Add proposal optimistically instead of full refresh
+            const optimisticProposal = this.addProposalOptimistically({
+                actionType: 'CHANGE_SIGNER',
+                oldSigner: oldSigner,
+                newSigner: newSigner,
+                description: document.getElementById('signer-description')?.value || 'Change signer proposal'
+            }, result.transactionHash);
+
             // Show success message with transaction details
             let successMessage = '✅ Change signer proposal created successfully!';
             if (result.transactionHash) {
@@ -5395,7 +5546,18 @@ class AdminPage {
                 this.showSuccess(successMessage);
             }
 
-            await this.refreshData();
+            // PERFORMANCE OPTIMIZATION: Update single proposal after confirmation instead of full refresh
+            if (result.transactionHash && !result.isDemo) {
+                setTimeout(async () => {
+                    try {
+                        await this.updateSingleProposal(optimisticProposal.id);
+                        console.log('🎯 [CHANGE SIGNER] Single proposal updated after confirmation');
+                    } catch (error) {
+                        console.warn('⚠️ [CHANGE SIGNER] Failed to update single proposal, falling back to full refresh');
+                        await this.refreshData();
+                    }
+                }, 2000); // Wait 2 seconds for blockchain confirmation
+            }
 
         } catch (error) {
             console.error('[CHANGE SIGNER UI] ❌ Failed to create signer change proposal:', error);
@@ -5512,6 +5674,14 @@ class AdminPage {
 
             this.closeModal();
 
+            // PERFORMANCE OPTIMIZATION: Add proposal optimistically instead of full refresh
+            const optimisticProposal = this.addProposalOptimistically({
+                actionType: 'WITHDRAW_REWARDS',
+                recipient: recipient,
+                amount: amount,
+                description: `Withdraw ${amount} USDC to ${recipient.substring(0, 10)}...`
+            }, result.transactionHash);
+
             // SUCCESS FEEDBACK FIX: Enhanced success message with special case handling
             let successMessage = '✅ Withdrawal proposal created successfully!';
             let notificationTitle = 'Proposal Created';
@@ -5543,7 +5713,18 @@ class AdminPage {
                 this.showSuccess(successMessage);
             }
 
-            await this.refreshData();
+            // PERFORMANCE OPTIMIZATION: Update single proposal after confirmation instead of full refresh
+            if (result.transactionHash && !result.isDemo) {
+                setTimeout(async () => {
+                    try {
+                        await this.updateSingleProposal(optimisticProposal.id);
+                        console.log('🎯 [WITHDRAWAL] Single proposal updated after confirmation');
+                    } catch (error) {
+                        console.warn('⚠️ [WITHDRAWAL] Failed to update single proposal, falling back to full refresh');
+                        await this.refreshData();
+                    }
+                }, 2000); // Wait 2 seconds for blockchain confirmation
+            }
 
         } catch (error) {
             console.error('[WITHDRAWAL UI] ❌ Failed to create withdrawal proposal:', error);
@@ -5691,7 +5872,9 @@ class AdminPage {
                 if (window.notificationManager) {
                     window.notificationManager.success('Proposal Executed', `Successfully executed proposal #${proposalId}`);
                 }
-                await this.refreshData();
+
+                // PERFORMANCE OPTIMIZATION: Update single proposal instead of full refresh
+                await this.updateSingleProposal(proposalId);
             } else {
                 throw new Error(result.error);
             }
@@ -5716,7 +5899,9 @@ class AdminPage {
                 if (window.notificationManager) {
                     window.notificationManager.success('Proposal Cancelled', `Successfully cancelled proposal #${proposalId}`);
                 }
-                await this.refreshData();
+
+                // PERFORMANCE OPTIMIZATION: Update single proposal instead of full refresh
+                await this.updateSingleProposal(proposalId);
             } else {
                 throw new Error(result.error);
             }

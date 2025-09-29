@@ -751,22 +751,27 @@ class StakingModalNew {
             }
 
             // Execute real staking transaction
-            const amount = window.ethers.parseEther(this.stakeAmount);
-            const txHash = await window.contractManager.stakeLPTokens(
+            const result = await window.contractManager.stake(
                 this.currentPair.address,
-                amount
+                this.stakeAmount
             );
+
+            if (!result.success) {
+                throw new Error(result.error || 'Staking transaction failed');
+            }
 
             if (window.notificationManager) {
                 window.notificationManager.show('LP tokens staked successfully!', 'success');
             }
 
-            console.log('✅ Staking transaction successful:', txHash);
+            console.log('✅ Staking transaction successful:', result.hash);
             this.close();
 
-            // Refresh home page data
-            if (window.homePage) {
-                window.homePage.loadData();
+            // Refresh home page data with enhanced method
+            if (window.homePage && window.homePage.refreshData) {
+                await window.homePage.refreshData();
+            } else if (window.homePage && window.homePage.loadData) {
+                await window.homePage.loadData();
             }
 
         } catch (error) {
@@ -794,22 +799,27 @@ class StakingModalNew {
             }
 
             // Execute real unstaking transaction
-            const amount = window.ethers.parseEther(this.unstakeAmount);
-            const txHash = await window.contractManager.unstakeLPTokens(
+            const result = await window.contractManager.unstake(
                 this.currentPair.address,
-                amount
+                this.unstakeAmount
             );
+
+            if (!result.success) {
+                throw new Error(result.error || 'Unstaking transaction failed');
+            }
 
             if (window.notificationManager) {
                 window.notificationManager.show('LP tokens unstaked successfully!', 'success');
             }
 
-            console.log('✅ Unstaking transaction successful:', txHash);
+            console.log('✅ Unstaking transaction successful:', result.hash);
             this.close();
 
-            // Refresh home page data
-            if (window.homePage) {
-                window.homePage.loadData();
+            // Refresh home page data with enhanced method
+            if (window.homePage && window.homePage.refreshData) {
+                await window.homePage.refreshData();
+            } else if (window.homePage && window.homePage.loadData) {
+                await window.homePage.loadData();
             }
 
         } catch (error) {
@@ -837,20 +847,26 @@ class StakingModalNew {
             }
 
             // Execute real claim transaction
-            const txHash = await window.contractManager.claimRewards(
+            const result = await window.contractManager.claimRewards(
                 this.currentPair.address
             );
+
+            if (!result.success) {
+                throw new Error(result.error || 'Claim transaction failed');
+            }
 
             if (window.notificationManager) {
                 window.notificationManager.show('Rewards claimed successfully!', 'success');
             }
 
-            console.log('✅ Claim transaction successful:', txHash);
+            console.log('✅ Claim transaction successful:', result.hash);
             this.close();
 
-            // Refresh home page data
-            if (window.homePage) {
-                window.homePage.loadData();
+            // Refresh home page data with enhanced method
+            if (window.homePage && window.homePage.refreshData) {
+                await window.homePage.refreshData();
+            } else if (window.homePage && window.homePage.loadData) {
+                await window.homePage.loadData();
             }
 
         } catch (error) {

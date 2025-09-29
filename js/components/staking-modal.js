@@ -626,38 +626,78 @@ class StakingModal extends BaseComponent {
     }
 
     /**
-     * Perform stake transaction (mock implementation)
+     * Perform stake transaction (real blockchain implementation)
      */
     async performStakeTransaction(amount) {
-        this.log(`Performing stake transaction for ${amount} tokens`);
-        
-        // Mock transaction - in real implementation, this would call contract
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
-        return mockTxHash;
+        this.log(`📈 Performing stake transaction for ${amount} tokens`);
+
+        if (!window.contractManager) {
+            throw new Error('Contract manager not available');
+        }
+
+        if (!this.currentPair || !this.currentPair.address) {
+            throw new Error('No pair selected for staking');
+        }
+
+        // Call contract manager to stake tokens
+        const result = await window.contractManager.stake(this.currentPair.address, amount);
+
+        if (!result.success) {
+            throw new Error(result.error || 'Stake transaction failed');
+        }
+
+        this.log(`✅ Stake transaction successful: ${result.hash}`);
+        return result.hash;
     }
 
     /**
-     * Perform unstake transaction (mock implementation)
+     * Perform unstake transaction (real blockchain implementation)
      */
     async performUnstakeTransaction(amount) {
-        this.log(`Performing unstake transaction for ${amount} tokens`);
-        
-        // Mock transaction - in real implementation, this would call contract
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
-        return mockTxHash;
+        this.log(`📉 Performing unstake transaction for ${amount} tokens`);
+
+        if (!window.contractManager) {
+            throw new Error('Contract manager not available');
+        }
+
+        if (!this.currentPair || !this.currentPair.address) {
+            throw new Error('No pair selected for unstaking');
+        }
+
+        // Call contract manager to unstake tokens
+        const result = await window.contractManager.unstake(this.currentPair.address, amount);
+
+        if (!result.success) {
+            throw new Error(result.error || 'Unstake transaction failed');
+        }
+
+        this.log(`✅ Unstake transaction successful: ${result.hash}`);
+        return result.hash;
     }
 
     /**
-     * Perform claim transaction (mock implementation)
+     * Perform claim transaction (real blockchain implementation)
      */
     async performClaimTransaction() {
-        this.log(`Performing claim transaction`);
-        
-        // Mock transaction - in real implementation, this would call contract
+        this.log(`🎁 Performing claim transaction`);
+
+        if (!window.contractManager) {
+            throw new Error('Contract manager not available');
+        }
+
+        if (!this.currentPair || !this.currentPair.address) {
+            throw new Error('No pair selected for claiming');
+        }
+
+        // Call contract manager to claim rewards
+        const result = await window.contractManager.claimRewards(this.currentPair.address);
+
+        if (!result.success) {
+            throw new Error(result.error || 'Claim transaction failed');
+        }
+
+        this.log(`✅ Claim transaction successful: ${result.hash}`);
+        return result.hash;
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;

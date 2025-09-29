@@ -148,7 +148,8 @@
             });
 
             if (typeof window.ethers !== 'undefined' &&
-                typeof window.CONFIG !== 'undefined') {
+                typeof window.CONFIG !== 'undefined' &&
+                typeof window.ContractManager !== 'undefined') {
 
                 // Try to initialize ContractManager if it doesn't exist
                 if (typeof window.contractManager === 'undefined') {
@@ -158,6 +159,8 @@
                         console.log('✅ ADMIN DEBUG: ContractManager created');
                     } catch (error) {
                         console.error('❌ ADMIN DEBUG: Failed to create ContractManager:', error);
+                        console.error('❌ ADMIN DEBUG: Error details:', error.message);
+                        console.error('❌ ADMIN DEBUG: Error stack:', error.stack);
                     }
                 }
 
@@ -165,6 +168,12 @@
                     console.log('✅ ADMIN DEBUG: All dependencies loaded!');
                     return true;
                 }
+            } else {
+                // Enhanced debugging for missing dependencies
+                console.log('🔍 ADMIN DEBUG: Dependency check status:');
+                console.log('  - ethers:', typeof window.ethers !== 'undefined' ? '✅' : '❌');
+                console.log('  - CONFIG:', typeof window.CONFIG !== 'undefined' ? '✅' : '❌');
+                console.log('  - ContractManager class:', typeof window.ContractManager !== 'undefined' ? '✅' : '❌');
             }
 
             if (checkCount < maxChecks) {
