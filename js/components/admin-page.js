@@ -37,6 +37,11 @@ class AdminPage {
         this.totalProposalCount = 0; // Track total available proposals
         this.isLoadingMore = false; // Prevent multiple simultaneous load more requests
 
+        // SELECTIVE UPDATE OPTIMIZATION: Track proposal states for smart updates
+        this.proposalStates = new Map(); // Cache proposal states for change detection
+        this.lastKnownProposalCount = 0; // Track last known total proposal count
+        this.isSelectiveUpdateEnabled = true; // Enable selective update system
+
         // Initialize mock system immediately
         this.initializeMockSystem();
 
@@ -879,12 +884,16 @@ class AdminPage {
             }
         });
 
-        // Page visibility change (pause refresh when tab not active)
+        // SELECTIVE UPDATE OPTIMIZATION: Disable automatic refresh on tab switching
+        // Page visibility change (pause refresh when tab not active) - NO AUTO REFRESH ON FOCUS
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 this.pauseAutoRefresh();
             } else {
-                this.resumeAutoRefresh();
+                // OPTIMIZATION: Resume auto-refresh but don't trigger immediate refresh
+                // This eliminates unnecessary full refreshes when switching tabs
+                this.autoRefreshPaused = false;
+                console.log('▶️ Auto-refresh resumed (tab active) - no immediate refresh');
             }
         });
     }
@@ -1154,8 +1163,9 @@ class AdminPage {
         this.autoRefreshPaused = false;
         console.log('▶️ Auto-refresh resumed (tab active)');
 
-        // Refresh data immediately when tab becomes active
-        this.refreshData();
+        // SELECTIVE UPDATE OPTIMIZATION: Don't refresh immediately on tab focus
+        // This eliminates unnecessary full refreshes when switching tabs
+        // Manual refresh button still works if user wants to refresh
     }
 
     stopAutoRefresh() {
@@ -1680,7 +1690,7 @@ class AdminPage {
     }
 
     /**
-     * Refresh admin panel data (optimized version with coordination)
+     * Refresh admin panel data (optimized version with selective updates)
      */
     async refreshData() {
         if (this.isRefreshing) {
@@ -1690,15 +1700,104 @@ class AdminPage {
 
         this.isRefreshing = true;
         console.log('🔄 Refreshing admin panel data...');
+
         try {
-            await this.loadMultiSignPanel();
+            // Always refresh contract stats (lightweight)
             await this.loadContractStats();
-            console.log('✅ Admin panel data refreshed');
+
+            // Try selective proposal updates first
+            if (this.isSelectiveUpdateEnabled && this.isUsingRealData) {
+                const selectiveUpdateSuccess = await this.trySelectiveProposalUpdate();
+
+                if (selectiveUpdateSuccess) {
+                    console.log('✅ Admin panel data refreshed using selective updates');
+                    return;
+                }
+            }
+
+            // Fall back to full refresh if selective updates failed or disabled
+            console.log('🔄 Using full refresh...');
+            await this.loadMultiSignPanel();
+            console.log('✅ Admin panel data refreshed using full refresh');
+
         } catch (error) {
             console.error('❌ Failed to refresh data:', error);
         } finally {
             this.isRefreshing = false;
         }
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Try to update proposals selectively
+     */
+    async trySelectiveProposalUpdate() {
+        try {
+            console.log('🎯 Attempting selective proposal update...');
+
+            // Get current proposals from contract
+            const contractManager = await this.ensureContractReady();
+            if (!contractManager || !contractManager.getAllActions) {
+                return false;
+            }
+
+            const currentProposals = await contractManager.getAllActions();
+            if (!currentProposals || !Array.isArray(currentProposals)) {
+                return false;
+            }
+
+            const formattedProposals = this.formatRealProposals(currentProposals);
+
+            // Check for new proposals first
+            const currentCount = formattedProposals.length;
+            if (currentCount > this.lastKnownProposalCount) {
+                console.log(`📋 Detected ${currentCount - this.lastKnownProposalCount} new proposals`);
+                // For now, fall back to full refresh for new proposals
+                // This ensures proper ordering and display
+                return false;
+            }
+
+            // Update only changed existing proposals
+            const updateSuccess = await this.updateChangedProposalsOnly(formattedProposals);
+
+            if (updateSuccess) {
+                // Update our tracking
+                this.lastKnownProposalCount = currentCount;
+                this.totalProposalCount = currentCount;
+                return true;
+            }
+
+            return false;
+
+        } catch (error) {
+            console.error('❌ Selective proposal update failed:', error);
+            return false;
+        }
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Enable/disable selective updates
+     */
+    enableSelectiveUpdates(enabled = true) {
+        this.isSelectiveUpdateEnabled = enabled;
+        console.log(`🎯 Selective updates ${enabled ? 'enabled' : 'disabled'}`);
+
+        if (!enabled) {
+            // Clear cached states when disabling
+            this.proposalStates.clear();
+            console.log('🧹 Cleared proposal state cache');
+        }
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Get selective update status
+     */
+    getSelectiveUpdateStatus() {
+        return {
+            enabled: this.isSelectiveUpdateEnabled,
+            cachedStates: this.proposalStates.size,
+            lastKnownCount: this.lastKnownProposalCount,
+            totalCount: this.totalProposalCount
+        };
     }
 
     /**
@@ -1814,6 +1913,13 @@ class AdminPage {
                             });
                         }
                     }
+
+                    // SELECTIVE UPDATE OPTIMIZATION: Initialize proposal state cache
+                    this.lastKnownProposalCount = this.totalProposalCount;
+                    formattedProposals.forEach(proposal => {
+                        this.cacheProposalState(proposal);
+                    });
+                    console.log(`🎯 Cached states for ${formattedProposals.length} proposals`);
 
                     // Show success notification
                     if (window.notificationManager) {
@@ -1950,6 +2056,218 @@ class AdminPage {
         const loadMoreContainer = document.querySelector('.load-more-container');
         if (loadMoreContainer) {
             loadMoreContainer.outerHTML = this.renderLoadMoreButton([]);
+        }
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Add single new proposal without full refresh
+     */
+    async addSingleNewProposal() {
+        if (!this.isSelectiveUpdateEnabled) {
+            console.log('🔄 Selective updates disabled, falling back to full refresh');
+            return await this.refreshData();
+        }
+
+        try {
+            console.log('🎯 Adding single new proposal without full refresh...');
+
+            // Get current proposal count
+            const contractManager = await this.ensureContractReady();
+            if (!contractManager || !contractManager.stakingContract) {
+                throw new Error('Contract manager not available');
+            }
+
+            const counter = await contractManager.stakingContract.actionCounter();
+            const currentCount = counter.toNumber();
+
+            // Check if there's actually a new proposal
+            if (currentCount <= this.lastKnownProposalCount) {
+                console.log('ℹ️ No new proposals detected');
+                return;
+            }
+
+            // Get the newest proposal (highest ID)
+            const newProposalId = currentCount;
+            console.log(`📋 Fetching new proposal ID: ${newProposalId}`);
+
+            // Load only the new proposal data
+            const [action, pairs, weights] = await Promise.all([
+                contractManager.stakingContract.actions(BigInt(newProposalId)),
+                contractManager.stakingContract.getActionPairs(newProposalId),
+                contractManager.stakingContract.getActionWeights(newProposalId)
+            ]);
+
+            // Format the new proposal
+            const newProposal = {
+                id: newProposalId,
+                actionType: action.actionType,
+                newHourlyRewardRate: action.newHourlyRewardRate.toString(),
+                pairs: pairs.map(p => p.toString()),
+                weights: weights.map(w => w.toString()),
+                pairToAdd: action.pairToAdd,
+                pairNameToAdd: action.pairNameToAdd,
+                platformToAdd: action.platformToAdd,
+                weightToAdd: action.weightToAdd.toString(),
+                pairToRemove: action.pairToRemove,
+                recipient: action.recipient,
+                withdrawAmount: action.withdrawAmount.toString(),
+                executed: action.executed,
+                expired: action.expired,
+                approvals: action.approvals,
+                approvedBy: action.approvedBy,
+                proposedTime: action.proposedTime.toNumber(),
+                rejected: action.rejected
+            };
+
+            const formattedProposal = this.formatRealProposals([newProposal])[0];
+
+            // Add to proposals table at the top
+            const proposalsTbody = document.getElementById('proposals-tbody');
+            if (proposalsTbody) {
+                const newRowHTML = this.generateProposalRowHTML(formattedProposal);
+                proposalsTbody.insertAdjacentHTML('afterbegin', newRowHTML);
+
+                // Highlight the new proposal briefly
+                const newRow = proposalsTbody.querySelector(`[data-proposal-id="${newProposalId}"]`);
+                if (newRow) {
+                    newRow.style.backgroundColor = '#e8f5e8';
+                    setTimeout(() => {
+                        newRow.style.backgroundColor = '';
+                    }, 3000);
+                }
+            }
+
+            // Update counters
+            this.lastKnownProposalCount = currentCount;
+            this.loadedProposalCount++;
+            this.totalProposalCount = currentCount;
+
+            // Update proposal count display
+            const statChip = document.querySelector('.stat-chip');
+            if (statChip && statChip.textContent.includes('Total Proposals:')) {
+                statChip.textContent = `Total Proposals: ${currentCount}`;
+            }
+
+            // Cache the new proposal state
+            this.cacheProposalState(formattedProposal);
+
+            console.log(`✅ Successfully added new proposal ${newProposalId} without full refresh`);
+
+            // Show success notification
+            if (window.notificationManager) {
+                window.notificationManager.success(
+                    'New Proposal Added',
+                    `Proposal #${newProposalId} added successfully`
+                );
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to add single proposal:', error);
+            console.log('🔄 Falling back to full refresh...');
+            await this.refreshData();
+        }
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Cache proposal state for change detection
+     */
+    cacheProposalState(proposal) {
+        const stateKey = `${proposal.id}`;
+        const state = {
+            approvals: proposal.approvals,
+            executed: proposal.executed,
+            rejected: proposal.rejected,
+            expired: proposal.expired,
+            status: proposal.status
+        };
+        this.proposalStates.set(stateKey, state);
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Check if proposal state has changed
+     */
+    hasProposalStateChanged(proposal) {
+        const stateKey = `${proposal.id}`;
+        const cachedState = this.proposalStates.get(stateKey);
+
+        if (!cachedState) {
+            return true; // New proposal, consider it changed
+        }
+
+        const currentState = {
+            approvals: proposal.approvals,
+            executed: proposal.executed,
+            rejected: proposal.rejected,
+            expired: proposal.expired,
+            status: proposal.status
+        };
+
+        // Compare states
+        return (
+            cachedState.approvals !== currentState.approvals ||
+            cachedState.executed !== currentState.executed ||
+            cachedState.rejected !== currentState.rejected ||
+            cachedState.expired !== currentState.expired ||
+            cachedState.status !== currentState.status
+        );
+    }
+
+    /**
+     * SELECTIVE UPDATE OPTIMIZATION: Update only changed proposals
+     */
+    async updateChangedProposalsOnly(newProposals) {
+        if (!this.isSelectiveUpdateEnabled || !newProposals || newProposals.length === 0) {
+            return false; // Fall back to full refresh
+        }
+
+        try {
+            console.log('🎯 Checking for proposal changes...');
+            let changedCount = 0;
+
+            for (const proposal of newProposals) {
+                if (this.hasProposalStateChanged(proposal)) {
+                    console.log(`📝 Proposal ${proposal.id} has changed, updating...`);
+
+                    // Update the specific proposal row
+                    const existingRow = document.querySelector(`[data-proposal-id="${proposal.id}"]`);
+                    if (existingRow) {
+                        const newRowHTML = this.generateProposalRowHTML(proposal);
+                        existingRow.outerHTML = newRowHTML;
+
+                        // Brief highlight to show the change
+                        const updatedRow = document.querySelector(`[data-proposal-id="${proposal.id}"]`);
+                        if (updatedRow) {
+                            updatedRow.style.backgroundColor = '#fff3cd';
+                            setTimeout(() => {
+                                updatedRow.style.backgroundColor = '';
+                            }, 2000);
+                        }
+                    }
+
+                    // Update cached state
+                    this.cacheProposalState(proposal);
+                    changedCount++;
+                }
+            }
+
+            if (changedCount > 0) {
+                console.log(`✅ Updated ${changedCount} changed proposals without full refresh`);
+
+                if (window.notificationManager) {
+                    window.notificationManager.info(
+                        'Proposals Updated',
+                        `${changedCount} proposal${changedCount > 1 ? 's' : ''} updated`
+                    );
+                }
+            } else {
+                console.log('ℹ️ No proposal changes detected, skipping update');
+            }
+
+            return true; // Successfully handled with selective updates
+
+        } catch (error) {
+            console.error('❌ Failed to update changed proposals:', error);
+            return false; // Fall back to full refresh
         }
     }
 
@@ -5126,13 +5444,21 @@ class AdminPage {
             this.showSuccess('Proposal created successfully!');
             this.closeModal();
 
-            // PERFORMANCE OPTIMIZATION: Avoid full refresh for optimized proposal types
+            // SELECTIVE UPDATE OPTIMIZATION: Use smart proposal addition instead of full refresh
             const optimizedTypes = ['change-signer-form', 'withdrawal-form'];
             if (!optimizedTypes.includes(formId)) {
-                // Only refresh for non-optimized proposal types
-                if (this.loadProposals) {
-                    this.loadProposals();
-                }
+                // Use selective update system for better performance
+                setTimeout(async () => {
+                    try {
+                        await this.addSingleNewProposal();
+                        console.log('🎯 [FORM SUBMISSION] Single proposal added after creation');
+                    } catch (error) {
+                        console.warn('⚠️ [FORM SUBMISSION] Failed to add single proposal, falling back to full refresh');
+                        if (this.loadProposals) {
+                            this.loadProposals();
+                        }
+                    }
+                }, 2000); // Wait 2 seconds for blockchain confirmation
             }
 
         } catch (error) {
