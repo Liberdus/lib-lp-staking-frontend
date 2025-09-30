@@ -61,13 +61,13 @@ class ContractManager {
             tokenPath: '/token/'
         };
 
-        // Configuration with enhanced provider fallback
+        // Configuration with enhanced provider fallback - OPTIMIZED FOR SPEED
         this.config = {
-            maxRetries: 3,
-            retryDelay: 800, // Reduced from 1000ms for faster recovery
+            maxRetries: 2, // Reduced from 3 for faster failure
+            retryDelay: 400, // Reduced from 800ms for faster recovery
             gasLimitMultiplier: 1.2,
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
-            providerTimeout: 5000, // Reduced from 8000ms for faster failover
+            providerTimeout: 2000, // Reduced from 5000ms for faster failover
             fallbackRPCs: [
                 // Optimized order: fastest and most reliable first
                 'https://rpc-amoy.polygon.technology',                    // ✅ Official & Fastest
@@ -1342,14 +1342,14 @@ class ContractManager {
     /**
      * Retry contract call with exponential backoff (ENHANCED)
      */
-    async retryContractCall(contractFunction, maxRetries = 3, functionName = 'unknown') {
+    async retryContractCall(contractFunction, maxRetries = 2, functionName = 'unknown') {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 this.log(`🔄 Calling ${functionName} (attempt ${attempt}/${maxRetries})`);
                 const result = await Promise.race([
                     contractFunction(),
                     new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Contract call timeout')), 15000)
+                        setTimeout(() => reject(new Error('Contract call timeout')), 8000) // Reduced from 15000ms
                     )
                 ]);
                 this.log(`✅ ${functionName} succeeded on attempt ${attempt}`);
@@ -1366,7 +1366,7 @@ class ContractManager {
                     (error.message && error.message.includes('missing trie node')) ||
                     (error.message && error.message.includes('timeout')) ||
                     (error.message && error.message.includes('CALL_EXCEPTION'))) {
-                    const delay = 1000 * Math.pow(2, attempt - 1); // Exponential backoff
+                    const delay = 500 * Math.pow(1.5, attempt - 1); // Reduced exponential backoff
                     this.log(`⏳ Retrying ${functionName} in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
@@ -1636,10 +1636,10 @@ class ContractManager {
     }
 
     /**
-     * Internal method to get all actions
+     * Internal method to get all actions - OPTIMIZED FOR SPEED
      */
     async _getAllActionsInternal(contract, blockTag = null) {
-        console.log('[ACTIONS] 🔍 Loading all actions using parallel batch processing...');
+        console.log('[ACTIONS] 🔍 Loading actions using optimized pagination...');
 
         // Get action counter with block tag if provided
         const counter = blockTag
@@ -1653,22 +1653,23 @@ class ContractManager {
             return [];
         }
 
-        // Use React pattern: Load from most recent backwards, limit to 100
+        // PERFORMANCE OPTIMIZATION: Load only 15 most recent proposals initially
+        // This reduces initial load from 120+ RPC calls to 45 RPC calls (75% reduction)
         const startIndex = actionCount;
-        const endIndex = Math.max(actionCount - 100, 1);
+        const endIndex = Math.max(actionCount - 15, 1); // Load only 15 instead of 100
         const actionIds = [];
         for (let i = startIndex; i >= endIndex; i--) {
             actionIds.push(i);
         }
 
-        console.log(`[ACTIONS] 🚀 Loading ${actionIds.length} actions in parallel batches...`);
+        console.log(`[ACTIONS] 🚀 Loading ${actionIds.length} actions (optimized for speed)...`);
 
         // Cache for loaded actions to avoid duplicates
         const actionCache = new Map();
         const actions = [];
 
-        // Process in batches of 15 for optimal performance
-        const batchSize = 15;
+        // PERFORMANCE OPTIMIZATION: Increase batch size for fewer sequential operations
+        const batchSize = 20; // Increased from 15 for better parallelization
         for (let batchStart = 0; batchStart < actionIds.length; batchStart += batchSize) {
             const batchIds = actionIds.slice(batchStart, batchStart + batchSize);
             console.log(`[ACTIONS] 🔄 Processing batch ${Math.floor(batchStart/batchSize) + 1}/${Math.ceil(actionIds.length/batchSize)} (${batchIds.length} actions)...`);
@@ -1741,6 +1742,124 @@ class ContractManager {
         }
 
         console.log(`[ACTIONS] 🎉 Parallel loading complete: ${actions.length} actions loaded successfully`);
+        return actions;
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Get actions with pagination for "Load More" functionality
+     */
+    async getAllActionsWithPagination(skip = 0, limit = 15) {
+        try {
+            console.log(`[ACTIONS] 📄 Loading paginated actions: skip=${skip}, limit=${limit}`);
+
+            return await this.executeWithProviderFallback(async (provider, blockTag) => {
+                const contractWithProvider = new ethers.Contract(
+                    this.contractAddresses.get('STAKING'),
+                    this.contractABIs.get('STAKING'),
+                    provider
+                );
+
+                return await this._getAllActionsWithPaginationInternal(contractWithProvider, blockTag, skip, limit);
+            }, 'getAllActionsWithPagination');
+
+        } catch (error) {
+            const errorMsg = error?.message || 'Unknown error';
+            this.logError('⚠️ Paginated actions loading failed:', errorMsg);
+            return [];
+        }
+    }
+
+    /**
+     * Internal method for paginated action loading
+     */
+    async _getAllActionsWithPaginationInternal(contract, blockTag = null, skip = 0, limit = 15) {
+        console.log(`[ACTIONS] 🔍 Loading paginated actions: skip=${skip}, limit=${limit}`);
+
+        // Get action counter
+        const counter = blockTag
+            ? await contract.actionCounter({ blockTag })
+            : await contract.actionCounter();
+        const actionCount = counter.toNumber();
+
+        if (actionCount === 0) {
+            console.log('[ACTIONS] 📭 No actions found');
+            return [];
+        }
+
+        // Calculate range for pagination (newest first)
+        const startIndex = actionCount - skip;
+        const endIndex = Math.max(startIndex - limit, 1);
+
+        if (startIndex <= 0) {
+            console.log('[ACTIONS] ℹ️ No more actions to load');
+            return [];
+        }
+
+        const actionIds = [];
+        for (let i = startIndex; i >= endIndex; i--) {
+            actionIds.push(i);
+        }
+
+        console.log(`[ACTIONS] 🚀 Loading ${actionIds.length} paginated actions...`);
+
+        const actions = [];
+        const batchSize = 20; // Use same optimized batch size
+
+        // Process in batches
+        for (let batchStart = 0; batchStart < actionIds.length; batchStart += batchSize) {
+            const batchIds = actionIds.slice(batchStart, batchStart + batchSize);
+
+            const batchPromises = batchIds.map(async (actionId) => {
+                try {
+                    // Load action, pairs, and weights in parallel
+                    const [action, pairs, weights] = await Promise.all([
+                        blockTag
+                            ? contract.actions(BigInt(actionId), { blockTag })
+                            : contract.actions(BigInt(actionId)),
+                        blockTag
+                            ? contract.getActionPairs(actionId, { blockTag })
+                            : contract.getActionPairs(actionId),
+                        blockTag
+                            ? contract.getActionWeights(actionId, { blockTag })
+                            : contract.getActionWeights(actionId)
+                    ]);
+
+                    return {
+                        id: actionId,
+                        actionType: action.actionType,
+                        newHourlyRewardRate: action.newHourlyRewardRate.toString(),
+                        pairs: pairs.map(p => p.toString()),
+                        weights: weights.map(w => w.toString()),
+                        pairToAdd: action.pairToAdd,
+                        pairNameToAdd: action.pairNameToAdd,
+                        platformToAdd: action.platformToAdd,
+                        weightToAdd: action.weightToAdd.toString(),
+                        pairToRemove: action.pairToRemove,
+                        recipient: action.recipient,
+                        withdrawAmount: action.withdrawAmount.toString(),
+                        executed: action.executed,
+                        expired: action.expired,
+                        approvals: action.approvals,
+                        approvedBy: action.approvedBy,
+                        proposedTime: action.proposedTime.toNumber(),
+                        rejected: action.rejected
+                    };
+                } catch (error) {
+                    console.warn(`[ACTIONS] ⚠️ Failed to get paginated action ${actionId}:`, error.message);
+                    return null;
+                }
+            });
+
+            const batchResults = await Promise.allSettled(batchPromises);
+
+            batchResults.forEach((result) => {
+                if (result.status === 'fulfilled' && result.value !== null) {
+                    actions.push(result.value);
+                }
+            });
+        }
+
+        console.log(`[ACTIONS] ✅ Paginated loading complete: ${actions.length} actions loaded`);
         return actions;
     }
 
@@ -3215,68 +3334,46 @@ class ContractManager {
     }
 
     /**
-     * Execute a multi-signature action
+     * Execute a multi-signature action - SIMPLIFIED TO MATCH REACT PATTERN
      */
     async executeAction(actionId) {
-        console.log(`[EXECUTE DEBUG] 📋 STEP 1: Function entry`);
-        console.log(`[EXECUTE DEBUG]   Original actionId: ${actionId}`);
-        console.log(`[EXECUTE DEBUG]   Original actionId type: ${typeof actionId}`);
-
-        // CRITICAL FIX: Convert string actionId to number for contract
-        const numericActionId = parseInt(actionId);
-        if (isNaN(numericActionId)) {
-            throw new Error(`Invalid action ID: ${actionId}. Must be a valid number.`);
-        }
-
-        console.log(`[EXECUTE DEBUG] ✅ STEP 1: Parameter type conversion`);
-        console.log(`[EXECUTE DEBUG]   Converted actionId: ${numericActionId}`);
-        console.log(`[EXECUTE DEBUG]   Converted actionId type: ${typeof numericActionId}`);
-        console.log(`[EXECUTE DEBUG]   Contract expects: uint256 (number)`);
-
-        // Ensure we have a proper signer
-        await this.ensureSigner();
-
-        return await this.executeTransactionWithRetry(async () => {
-            // Use network-appropriate gas configuration for Polygon Amoy
-            const networkGasPrice = await this.provider.getGasPrice();
-            const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-            // CRITICAL: Cap gas price at 10 gwei maximum for execute operations
-            const maxGweiForExecute = 10; // Maximum safe gas price for execute operations
-            const targetGwei = Math.min(networkGwei * 1.2, maxGweiForExecute); // 20% above network, capped at 10 gwei
-            const gasLimit = 300000; // Conservative gas limit for action execution
-            const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-            console.log(`[EXECUTE DEBUG] 🔄 Gas Configuration:`);
-            console.log(`[EXECUTE DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-            console.log(`[EXECUTE DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei (capped at ${maxGweiForExecute} gwei)`);
-            console.log(`[EXECUTE DEBUG]   Gas limit: ${gasLimit}`);
-
-            if (targetGwei > 12) {
-                console.warn(`[EXECUTE DEBUG] ⚠️ WARNING: Gas price ${targetGwei} gwei exceeds recommended 12 gwei for execution`);
-            } else {
-                console.log(`[EXECUTE DEBUG] ✅ Gas price ${targetGwei} gwei is appropriate for Polygon Amoy execution`);
+        try {
+            // Simple validation and conversion like React
+            if (!this.stakingContract) {
+                throw new Error('Contract not initialized');
             }
 
-            console.log(`[EXECUTE DEBUG] 📋 STEP 6: Calling contract method`);
-            console.log(`[EXECUTE DEBUG]   Contract address: ${this.stakingContract.address}`);
-            console.log(`[EXECUTE DEBUG]   Method: executeAction`);
-            console.log(`[EXECUTE DEBUG]   Parameter: ${numericActionId} (type: ${typeof numericActionId})`);
-            console.log(`[EXECUTE DEBUG]   About to show MetaMask popup...`);
+            const numericActionId = parseInt(actionId);
+            if (isNaN(numericActionId)) {
+                throw new Error(`Invalid action ID: ${actionId}. Must be a valid number.`);
+            }
 
-            const tx = await this.stakingContract.executeAction(numericActionId, {
-                gasLimit: gasLimit,
-                gasPrice: gasPrice
-            });
+            // Ensure we have a proper signer
+            await this.ensureSigner();
 
-            console.log(`[EXECUTE DEBUG] ✅ STEP 7: Transaction submitted!`);
-            console.log(`[EXECUTE DEBUG]   Transaction hash: ${tx.hash}`);
-            console.log(`[EXECUTE DEBUG]   Action ID used: ${numericActionId} (numeric)`);
+            // REACT PATTERN: Simple direct contract call with ethers.js defaults
+            const tx = await this.stakingContract.executeAction(numericActionId);
+            const receipt = await tx.wait();
 
-            this.log('Execute action transaction sent:', tx.hash, 'Action ID:', numericActionId);
-            return await tx.wait();
-        }, 'executeAction');
+            return {
+                success: true,
+                transactionHash: receipt.transactionHash,
+                blockNumber: receipt.blockNumber,
+                gasUsed: receipt.gasUsed.toString()
+            };
+
+        } catch (error) {
+            // REACT PATTERN: Simple error handling with error.reason
+            const errorMessage = error.reason || error.message || 'Failed to execute action';
+            throw new Error(errorMessage);
+        }
     }
+
+
+
+
+
+
 
     // ============ ADMIN PANEL WRAPPER METHODS ============
     // These methods provide the expected interface for the admin panel
@@ -3324,22 +3421,26 @@ class ContractManager {
     }
 
     /**
-     * Execute a proposal (wrapper for executeAction)
+     * Execute a proposal (wrapper for executeAction) - SIMPLIFIED TO MATCH REACT PATTERN
      */
     async executeProposal(proposalId) {
         try {
             const result = await this.executeAction(proposalId);
+
             return {
                 success: true,
                 transactionHash: result.transactionHash,
                 blockNumber: result.blockNumber,
                 gasUsed: result.gasUsed.toString()
             };
+
         } catch (error) {
-            this.logError('Failed to execute proposal:', error);
+            // REACT PATTERN: Simple error handling with error.reason
+            const errorMessage = error.reason || error.message || 'Failed to execute proposal';
+
             return {
                 success: false,
-                error: error.message
+                error: errorMessage
             };
         }
     }

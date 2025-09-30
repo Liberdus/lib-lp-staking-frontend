@@ -32,6 +32,11 @@ class AdminPage {
         this.pendingOptimisticUpdates = new Map(); // Track optimistic updates
         this.isUsingRealData = false; // Track data source
 
+        // PAGINATION OPTIMIZATION: Track loaded proposals for "Load More" functionality
+        this.loadedProposalCount = 0; // Track how many proposals are currently loaded
+        this.totalProposalCount = 0; // Track total available proposals
+        this.isLoadingMore = false; // Prevent multiple simultaneous load more requests
+
         // Initialize mock system immediately
         this.initializeMockSystem();
 
@@ -1241,6 +1246,26 @@ class AdminPage {
         const panelDiv = document.getElementById('multisign-panel');
 
         try {
+            // Show loading indicator
+            panelDiv.innerHTML = `
+                <div class="multisign-panel">
+                    <div class="panel-header">
+                        <h2>Multi-Signature Proposals</h2>
+                    </div>
+                    <div class="loading-container" style="text-align: center; padding: 40px;">
+                        <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <div style="margin-top: 15px; color: #666;">Loading proposals...</div>
+                        <div style="margin-top: 5px; font-size: 0.9em; color: #999;">This may take a few seconds</div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+
             // Load proposals data
             const proposals = await this.loadProposals();
 
@@ -1279,6 +1304,7 @@ class AdminPage {
                                 ${this.renderProposalsRows(proposals)}
                             </tbody>
                         </table>
+                        ${this.renderLoadMoreButton(proposals)}
                     </div>
                 </div>
             `;
@@ -1764,6 +1790,18 @@ class AdminPage {
                     // PERFORMANCE OPTIMIZATION: Initialize optimized state with proposals
                     const formattedProposals = this.formatRealProposals(realProposals);
 
+                    // Update total count for pagination
+                    if (window.contractManager && window.contractManager.stakingContract) {
+                        try {
+                            const counter = await window.contractManager.stakingContract.actionCounter();
+                            this.totalProposalCount = counter.toNumber();
+                            console.log(`📊 Total proposals available: ${this.totalProposalCount}`);
+                        } catch (error) {
+                            console.warn('⚠️ Could not get total proposal count:', error.message);
+                            this.totalProposalCount = formattedProposals.length;
+                        }
+                    }
+
                     if (this.optimizedAdminState) {
                         this.optimizedAdminState.initializeProposals(formattedProposals);
                         console.log('🎯 Proposals initialized in optimized state management');
@@ -1825,6 +1863,94 @@ class AdminPage {
         console.log('🎭 Using mock proposals as fallback');
         this.isUsingRealData = false;
         return await this.loadMockProposals();
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Load more proposals for pagination
+     */
+    async loadMoreProposals() {
+        if (this.isLoadingMore || !this.isUsingRealData) {
+            console.log('⚠️ Load more already in progress or not using real data');
+            return;
+        }
+
+        this.isLoadingMore = true;
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '⏳ Loading...';
+        }
+
+        try {
+            console.log('📋 Loading more proposals...');
+
+            // Get contract manager
+            const contractManager = await this.ensureContractReady();
+            if (!contractManager || !contractManager.getAllActionsWithPagination) {
+                throw new Error('Contract manager not available for pagination');
+            }
+
+            // Load next batch (15 more proposals)
+            const nextBatch = await contractManager.getAllActionsWithPagination(this.loadedProposalCount, 15);
+
+            if (nextBatch && nextBatch.length > 0) {
+                console.log(`✅ Loaded ${nextBatch.length} additional proposals`);
+
+                // Format and append to existing proposals
+                const formattedBatch = this.formatRealProposals(nextBatch);
+
+                // Append to proposals table
+                const proposalsTbody = document.getElementById('proposals-tbody');
+                if (proposalsTbody) {
+                    const newRowsHTML = formattedBatch.map(proposal =>
+                        this.generateProposalRowHTML(proposal)
+                    ).join('');
+                    proposalsTbody.insertAdjacentHTML('beforeend', newRowsHTML);
+                }
+
+                // Update loaded count
+                this.loadedProposalCount += formattedBatch.length;
+
+                // Update Load More button
+                this.updateLoadMoreButton();
+
+                // Show success notification
+                if (window.notificationManager) {
+                    window.notificationManager.success(
+                        'More Proposals Loaded',
+                        `Loaded ${formattedBatch.length} additional proposals`
+                    );
+                }
+            } else {
+                console.log('ℹ️ No more proposals to load');
+                this.updateLoadMoreButton();
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to load more proposals:', error);
+
+            if (window.notificationManager) {
+                window.notificationManager.error(
+                    'Load More Failed',
+                    `Could not load additional proposals: ${error.message}`
+                );
+            }
+        } finally {
+            this.isLoadingMore = false;
+            if (loadMoreBtn) {
+                loadMoreBtn.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Update Load More button state
+     */
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.querySelector('.load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.outerHTML = this.renderLoadMoreButton([]);
+        }
     }
 
     /**
@@ -2117,6 +2243,32 @@ class AdminPage {
             console.error('❌ Failed to load contract info:', error);
             throw error;
         }
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Render Load More button for pagination
+     */
+    renderLoadMoreButton(proposals) {
+        // Update loaded count
+        this.loadedProposalCount = proposals ? proposals.length : 0;
+
+        // Only show Load More if we have loaded exactly 15 proposals (initial batch)
+        // and we're using real data (mock data doesn't support pagination)
+        if (this.isUsingRealData && this.loadedProposalCount >= 15 && this.totalProposalCount > this.loadedProposalCount) {
+            const remainingCount = this.totalProposalCount - this.loadedProposalCount;
+            return `
+                <div class="load-more-container" style="text-align: center; padding: 20px;">
+                    <button class="btn btn-outline" id="load-more-btn" onclick="adminPage.loadMoreProposals()" ${this.isLoadingMore ? 'disabled' : ''}>
+                        ${this.isLoadingMore ? '⏳ Loading...' : `📋 Load More Proposals (${remainingCount} remaining)`}
+                    </button>
+                    <div class="load-more-info" style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                        Showing ${this.loadedProposalCount} of ${this.totalProposalCount} proposals
+                    </div>
+                </div>
+            `;
+        }
+
+        return ''; // No Load More button needed
     }
 
     renderProposalsRows(proposals) {
