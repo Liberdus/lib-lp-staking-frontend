@@ -1950,14 +1950,12 @@ class ContractManager {
 
                 this.log('Propose hourly rate transaction sent:', tx.hash);
 
-                console.log(`[PROPOSAL DEBUG] 📋 STEP 8: Waiting for confirmation...`);
-                const receipt = await tx.wait();
-                console.log(`[PROPOSAL DEBUG] ✅ STEP 8: Transaction confirmed!`);
-                console.log(`[PROPOSAL DEBUG]   Block number: ${receipt.blockNumber}`);
-                console.log(`[PROPOSAL DEBUG]   Gas used: ${receipt.gasUsed.toString()}`);
-                console.log(`[PROPOSAL DEBUG]   Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+                console.log(`[PROPOSAL DEBUG] 📋 STEP 8: Returning transaction object for monitoring...`);
+                console.log(`[PROPOSAL DEBUG]   Transaction will be monitored by executeTransactionWithRetry`);
 
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'proposeSetHourlyRewardRate');
 
             console.log(`[PROPOSAL DEBUG] 📋 STEP 9: Processing result`);
@@ -2097,10 +2095,9 @@ class ContractManager {
                 console.log(`[UPDATE WEIGHTS] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose update weights transaction sent:', tx.hash);
 
-                const receipt = await tx.wait();
-                console.log(`[UPDATE WEIGHTS] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
-
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'proposeUpdatePairWeights');
 
             console.log(`[UPDATE WEIGHTS] ✅ Weight update proposal completed successfully`);
@@ -2129,7 +2126,8 @@ class ContractManager {
                     gasPrice: gasPrice
                 });
                 this.log('Propose update weights transaction sent:', tx.hash);
-                return await tx.wait();
+                // CRITICAL FIX: Return tx object, not receipt
+                return tx;
             }, 'proposeUpdatePairWeights');
         }
     }
@@ -2145,10 +2143,9 @@ class ContractManager {
             console.log(`[ADD PAIR FIX]   platform: ${platform}`);
             console.log(`[ADD PAIR FIX]   weight: ${weight} (type: ${typeof weight})`);
 
-            // STEP 1: Validate inputs
-            if (!lpToken || !ethers.utils.isAddress(lpToken)) {
-                throw new Error(`Invalid LP token address: ${lpToken}`);
-            }
+            // STEP 1: Validate inputs with proper address checksumming
+            lpToken = this.validateAndChecksumAddress(lpToken, 'LP Token Address');
+
             if (!pairName || pairName.trim().length === 0) {
                 throw new Error('Pair name cannot be empty');
             }
@@ -2244,15 +2241,12 @@ class ContractManager {
 
                 this.log('Propose add pair transaction sent:', tx.hash);
 
-                // STEP 8: Wait for confirmation
-                console.log(`[ADD PAIR FIX] 📋 Waiting for transaction confirmation...`);
-                const receipt = await tx.wait();
-                console.log(`[ADD PAIR FIX] ✅ Transaction confirmed!`);
-                console.log(`[ADD PAIR FIX]   Block number: ${receipt.blockNumber}`);
-                console.log(`[ADD PAIR FIX]   Gas used: ${receipt.gasUsed.toString()}`);
-                console.log(`[ADD PAIR FIX]   Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+                // STEP 8: Return transaction object for monitoring
+                console.log(`[ADD PAIR FIX] 📋 Returning transaction object for monitoring...`);
+                console.log(`[ADD PAIR FIX]   Transaction will be monitored by executeTransactionWithRetry`);
 
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                return tx;
             }, 'proposeAddPair');
 
             return {
@@ -2394,7 +2388,8 @@ class ContractManager {
                         );
 
                         console.log(`[ADD PAIR FIX] ✅ Retry transaction submitted: ${tx.hash}`);
-                        return await tx.wait();
+                        // CRITICAL FIX: Return tx object, not receipt
+                        return tx;
                     }, 'proposeAddPair');
 
                     return {
@@ -2675,10 +2670,8 @@ class ContractManager {
         try {
             console.log(`[REMOVE PAIR FIX] 🚀 Starting proposeRemovePair with lpToken: ${lpToken}`);
 
-            // STEP 1: Validate input
-            if (!lpToken || !ethers.utils.isAddress(lpToken)) {
-                throw new Error(`Invalid LP token address: ${lpToken}`);
-            }
+            // STEP 1: Validate input with proper address checksumming
+            lpToken = this.validateAndChecksumAddress(lpToken, 'LP Token Address');
 
             // STEP 2: Ensure we have a proper signer
             await this.ensureSigner();
@@ -2727,11 +2720,9 @@ class ContractManager {
                 console.log(`[REMOVE PAIR FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose remove pair transaction sent:', tx.hash);
 
-                // Wait for confirmation
-                const receipt = await tx.wait();
-                console.log(`[REMOVE PAIR FIX] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
-
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'proposeRemovePair');
 
             return {
@@ -2806,13 +2797,10 @@ class ContractManager {
             console.log(`[CHANGE SIGNER FIX]   Old Signer: ${oldSigner}`);
             console.log(`[CHANGE SIGNER FIX]   New Signer: ${newSigner}`);
 
-            // STEP 1: Validate input parameters
-            if (!oldSigner || !ethers.utils.isAddress(oldSigner)) {
-                throw new Error(`Invalid old signer address: ${oldSigner}`);
-            }
-            if (!newSigner || !ethers.utils.isAddress(newSigner)) {
-                throw new Error(`Invalid new signer address: ${newSigner}`);
-            }
+            // STEP 1: Validate input parameters with proper address checksumming
+            oldSigner = this.validateAndChecksumAddress(oldSigner, 'Old Signer Address');
+            newSigner = this.validateAndChecksumAddress(newSigner, 'New Signer Address');
+
             if (oldSigner.toLowerCase() === newSigner.toLowerCase()) {
                 throw new Error('Old and new signer addresses cannot be the same');
             }
@@ -2872,11 +2860,9 @@ class ContractManager {
                 console.log(`[CHANGE SIGNER FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose change signer transaction sent:', tx.hash);
 
-                // Wait for confirmation
-                const receipt = await tx.wait();
-                console.log(`[CHANGE SIGNER FIX] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
-
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'proposeChangeSigner');
 
             return {
@@ -2994,6 +2980,10 @@ class ContractManager {
      */
     async proposeWithdrawRewards(recipient, amount) {
         try {
+            // Validate recipient address with proper checksumming
+            recipient = this.validateAndChecksumAddress(recipient, 'Recipient Address');
+            console.log(`[WITHDRAW DEBUG] ✅ Recipient address validated: ${recipient}`);
+
             // Ensure we have a proper signer
             await this.ensureSigner();
 
@@ -3033,9 +3023,9 @@ class ContractManager {
                 console.log(`[WITHDRAW REWARDS FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose withdraw rewards transaction sent:', tx.hash);
 
-                const receipt = await tx.wait();
-                console.log(`[WITHDRAW REWARDS FIX] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
-                return receipt;
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'proposeWithdrawRewards');
 
             return {
@@ -3275,7 +3265,8 @@ class ContractManager {
                 console.log(`[APPROVE DEBUG]   Action ID used: ${numericActionId} (numeric)`);
 
                 this.log('Approve action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
-                return await tx.wait();
+                // CRITICAL FIX: Return tx object, not receipt
+                return tx;
             }, 'approveAction');
 
             return {
@@ -3334,10 +3325,12 @@ class ContractManager {
     }
 
     /**
-     * Execute a multi-signature action - SIMPLIFIED TO MATCH REACT PATTERN
+     * Execute a multi-signature action - FIXED TO MATCH OTHER METHODS
      */
     async executeAction(actionId) {
         try {
+            console.log(`[EXECUTE DEBUG] 🚀 Starting executeAction for action ID: ${actionId}`);
+
             // Simple validation and conversion like React
             if (!this.stakingContract) {
                 throw new Error('Contract not initialized');
@@ -3348,23 +3341,187 @@ class ContractManager {
                 throw new Error(`Invalid action ID: ${actionId}. Must be a valid number.`);
             }
 
+            console.log(`[EXECUTE DEBUG]   Converted actionId: ${numericActionId}`);
+            console.log(`[EXECUTE DEBUG]   Contract address: ${this.stakingContract.address}`);
+
             // Ensure we have a proper signer
             await this.ensureSigner();
+            const signerAddress = await this.signer.getAddress();
+            console.log(`[EXECUTE DEBUG] ✅ Signer confirmed: ${signerAddress}`);
 
-            // REACT PATTERN: Simple direct contract call with ethers.js defaults
-            const tx = await this.stakingContract.executeAction(numericActionId);
-            const receipt = await tx.wait();
+            // CRITICAL: Check if action can be executed before attempting
+            console.log(`[EXECUTE DEBUG] 🔍 Pre-execution checks for action ${numericActionId}...`);
+
+            // Debug: Log available contract functions
+            console.log(`[EXECUTE DEBUG] 📋 Available contract functions:`, Object.keys(this.stakingContract.functions || {}).slice(0, 20));
+
+            try {
+                // Get action details
+                const action = await this.stakingContract.actions(numericActionId);
+                console.log(`[EXECUTE DEBUG] 📋 Action Details:`);
+                console.log(`[EXECUTE DEBUG]   Action Type: ${action.actionType?.toString() || 'N/A'}`);
+                console.log(`[EXECUTE DEBUG]   Approvals: ${action.approvals?.toString() || 'N/A'}`);
+                console.log(`[EXECUTE DEBUG]   Executed: ${action.executed}`);
+                console.log(`[EXECUTE DEBUG]   Rejected: ${action.rejected}`);
+                console.log(`[EXECUTE DEBUG]   Expired (flag): ${action.expired}`);
+                console.log(`[EXECUTE DEBUG]   Proposed Time: ${action.proposedTime?.toString() || 'N/A'}`);
+
+                // Check if already executed
+                if (action.executed) {
+                    throw new Error(`Action ${numericActionId} has already been executed`);
+                }
+
+                // Check if rejected
+                if (action.rejected) {
+                    throw new Error(`Action ${numericActionId} has been rejected and cannot be executed`);
+                }
+
+                // Check expired flag
+                if (action.expired) {
+                    throw new Error(`Action ${numericActionId} has expired`);
+                }
+
+                // Check time-based expiry (7 days = 604800 seconds)
+                if (action.proposedTime) {
+                    const currentBlock = await this.provider.getBlock('latest');
+                    const currentTime = currentBlock.timestamp;
+                    const proposedTime = parseInt(action.proposedTime.toString());
+                    const expiryTime = proposedTime + 604800; // 7 days
+
+                    console.log(`[EXECUTE DEBUG]   Current Time: ${currentTime}`);
+                    console.log(`[EXECUTE DEBUG]   Expiry Time: ${expiryTime}`);
+                    console.log(`[EXECUTE DEBUG]   Time Remaining: ${expiryTime - currentTime} seconds`);
+
+                    if (currentTime > expiryTime) {
+                        throw new Error(`Action ${numericActionId} has expired (time-based check)`);
+                    }
+                }
+
+                // Try to get required approvals (if function exists)
+                try {
+                    let requiredApprovals;
+
+                    // Try different possible function names
+                    if (typeof this.stakingContract.requiredApprovals === 'function') {
+                        requiredApprovals = await this.stakingContract.requiredApprovals();
+                    } else if (typeof this.stakingContract.REQUIRED_APPROVALS === 'function') {
+                        requiredApprovals = await this.stakingContract.REQUIRED_APPROVALS();
+                    } else if (typeof this.stakingContract.getRequiredApprovals === 'function') {
+                        requiredApprovals = await this.stakingContract.getRequiredApprovals();
+                    } else {
+                        console.log(`[EXECUTE DEBUG] ⚠️ Cannot find requiredApprovals function, skipping approval count check`);
+                        requiredApprovals = null;
+                    }
+
+                    if (requiredApprovals) {
+                        console.log(`[EXECUTE DEBUG]   Required Approvals: ${requiredApprovals.toString()}`);
+
+                        // Check if has enough approvals
+                        if (action.approvals && action.approvals.lt(requiredApprovals)) {
+                            throw new Error(`Action ${numericActionId} does not have enough approvals. Has ${action.approvals.toString()}, needs ${requiredApprovals.toString()}`);
+                        }
+                    }
+                } catch (approvalError) {
+                    console.log(`[EXECUTE DEBUG] ⚠️ Could not check approval count:`, approvalError.message);
+                    console.log(`[EXECUTE DEBUG] ⚠️ Proceeding with execution attempt...`);
+                }
+
+                console.log(`[EXECUTE DEBUG] ✅ Pre-execution checks passed!`);
+
+            } catch (checkError) {
+                console.error(`[EXECUTE DEBUG] ❌ Pre-execution check failed:`, checkError.message);
+
+                // Only throw if it's a critical error (not approval count check)
+                if (checkError.message.includes('does not exist') ||
+                    checkError.message.includes('already been executed') ||
+                    checkError.message.includes('been rejected') ||
+                    checkError.message.includes('does not have enough approvals')) {
+                    throw checkError;
+                }
+
+                // For other errors, log and continue
+                console.log(`[EXECUTE DEBUG] ⚠️ Non-critical check error, proceeding with execution attempt...`);
+            }
+
+            // Execute with retry logic and proper gas configuration
+            const result = await this.executeTransactionWithRetry(async () => {
+                // Use network-appropriate gas configuration for Polygon Amoy
+                const networkGasPrice = await this.provider.getGasPrice();
+                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
+
+                // Use appropriate gas price for current network conditions
+                const maxGweiForExecute = 50; // Reasonable max for execute operations
+                const targetGwei = Math.min(networkGwei * 1.2, maxGweiForExecute);
+                const gasLimit = 300000; // Conservative gas limit for execute operations
+
+                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
+
+                console.log(`[EXECUTE DEBUG] 📋 Gas Configuration:`);
+                console.log(`[EXECUTE DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
+                console.log(`[EXECUTE DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
+                console.log(`[EXECUTE DEBUG]   Gas limit: ${gasLimit}`);
+
+                // CRITICAL FIX: Ensure contract is connected with signer (like all other methods)
+                const contractWithSigner = this.stakingContract.connect(this.signer);
+                console.log(`[EXECUTE DEBUG] 🔧 Contract connected with signer`);
+                console.log(`[EXECUTE DEBUG]   About to show MetaMask popup...`);
+
+                // Execute the transaction with proper gas settings
+                const tx = await contractWithSigner.executeAction(numericActionId, {
+                    gasLimit,
+                    gasPrice
+                });
+
+                console.log(`[EXECUTE DEBUG] ✅ Transaction submitted!`);
+                console.log(`[EXECUTE DEBUG]   Transaction hash: ${tx.hash}`);
+                console.log(`[EXECUTE DEBUG]   Nonce: ${tx.nonce}`);
+
+                console.log(`[EXECUTE DEBUG] 📋 Returning transaction object for monitoring...`);
+                console.log(`[EXECUTE DEBUG]   Transaction will be monitored by executeTransactionWithRetry`);
+
+                // CRITICAL FIX: Return tx object, not receipt
+                return tx;
+            }, 'executeAction');
 
             return {
                 success: true,
-                transactionHash: receipt.transactionHash,
-                blockNumber: receipt.blockNumber,
-                gasUsed: receipt.gasUsed.toString()
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed.toString()
             };
 
         } catch (error) {
-            // REACT PATTERN: Simple error handling with error.reason
-            const errorMessage = error.reason || error.message || 'Failed to execute action';
+            console.error(`[EXECUTE DEBUG] ❌ Failed to execute action:`, error);
+
+            // Enhanced error handling with specific messages
+            let errorMessage = 'Failed to execute action';
+
+            if (error.message) {
+                // Check for specific error conditions
+                if (error.message.includes('already been executed')) {
+                    errorMessage = 'This proposal has already been executed';
+                } else if (error.message.includes('been rejected')) {
+                    errorMessage = 'This proposal has been rejected and cannot be executed';
+                } else if (error.message.includes('does not have enough approvals')) {
+                    errorMessage = error.message; // Use the detailed message
+                } else if (error.message.includes('does not exist')) {
+                    errorMessage = 'This proposal does not exist';
+                } else if (error.message.includes('user rejected') || error.code === 4001) {
+                    errorMessage = 'Transaction was cancelled by user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Insufficient funds for gas';
+                } else if (error.message.includes('nonce')) {
+                    errorMessage = 'Transaction nonce error. Please try again';
+                } else if (error.message.includes('transaction failed') || error.code === 'CALL_EXCEPTION') {
+                    // Transaction was mined but reverted
+                    errorMessage = 'Transaction failed on blockchain. The proposal may not meet execution requirements (check approvals, expiry, or if already executed)';
+                } else if (error.reason) {
+                    errorMessage = error.reason;
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+
             throw new Error(errorMessage);
         }
     }
@@ -3527,7 +3684,8 @@ class ContractManager {
                 console.log(`[REJECT DEBUG]   Action ID used: ${numericActionId} (numeric)`);
 
                 this.log('Reject action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
-                return await tx.wait();
+                // CRITICAL FIX: Return tx object, not receipt
+                return tx;
             }, 'rejectAction');
 
             return {
@@ -3606,7 +3764,8 @@ class ContractManager {
         return await this.executeTransactionWithRetry(async () => {
             const tx = await this.stakingContract.cleanupExpiredActions();
             this.log('Cleanup expired actions transaction sent:', tx.hash);
-            return await tx.wait();
+            // CRITICAL FIX: Return tx object, not receipt
+            return tx;
         }, 'cleanupExpiredActions');
     }
 
@@ -4038,7 +4197,8 @@ class ContractManager {
 
             this.log('Approve transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
-            return await tx.wait();
+            // CRITICAL FIX: Return tx object, not receipt
+            return tx;
         }, 'approveLPToken');
     }
 
@@ -4079,7 +4239,8 @@ class ContractManager {
 
             this.log('Stake transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
-            return await tx.wait();
+            // CRITICAL FIX: Return tx object, not receipt
+            return tx;
         }, 'stakeLPTokens');
     }
 
@@ -4120,7 +4281,8 @@ class ContractManager {
 
             this.log('Unstake transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
-            return await tx.wait();
+            // CRITICAL FIX: Return tx object, not receipt
+            return tx;
         }, 'unstakeLPTokens');
     }
 
@@ -4162,15 +4324,9 @@ class ContractManager {
                 this.log(`✅ Claim rewards transaction sent: ${tx.hash}`);
                 this.log(`   Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
-                // Wait for transaction confirmation
-                const receipt = await tx.wait();
-
-                return {
-                    success: true,
-                    hash: tx.hash,
-                    receipt: receipt,
-                    message: 'Rewards claimed successfully!'
-                };
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'claimRewards');
         } catch (error) {
             this.logError('❌ Failed to claim rewards:', error);
@@ -4221,15 +4377,9 @@ class ContractManager {
                 this.log(`✅ Stake transaction sent: ${tx.hash}`);
                 this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
 
-                // Wait for transaction confirmation
-                const receipt = await tx.wait();
-
-                return {
-                    success: true,
-                    hash: tx.hash,
-                    receipt: receipt,
-                    message: `Successfully staked ${amount} LP tokens!`
-                };
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'stake');
         } catch (error) {
             this.logError('❌ Failed to stake:', error);
@@ -4280,15 +4430,9 @@ class ContractManager {
                 this.log(`✅ Unstake transaction sent: ${tx.hash}`);
                 this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
 
-                // Wait for transaction confirmation
-                const receipt = await tx.wait();
-
-                return {
-                    success: true,
-                    hash: tx.hash,
-                    receipt: receipt,
-                    message: `Successfully unstaked ${amount} LP tokens!`
-                };
+                // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                return tx;
             }, 'unstake');
         } catch (error) {
             this.logError('❌ Failed to unstake:', error);
@@ -4530,20 +4674,41 @@ class ContractManager {
 
                 const receipt = await tx.wait();
 
-                console.log(`[TX MONITOR] ✅ TRANSACTION CONFIRMED!`);
-                console.log(`[TX MONITOR]   Receipt received:`, receipt);
-
                 // Clear monitoring
                 clearTimeout(timeoutId);
                 clearInterval(checkInterval);
 
                 const totalTime = Math.round((Date.now() - startTime) / 1000);
+
+                // Check if transaction succeeded or failed
+                if (receipt.status === 0) {
+                    console.log(`[TX MONITOR] ❌ TRANSACTION FAILED ON BLOCKCHAIN!`);
+                    console.log(`[TX MONITOR]   Receipt received but status is 0 (failed)`);
+                    console.log(`[TX MONITOR] 📊 Transaction Statistics:`);
+                    console.log(`[TX MONITOR]   Total time: ${totalTime}s`);
+                    console.log(`[TX MONITOR]   Block number: ${receipt.blockNumber}`);
+                    console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()} (low gas = early revert)`);
+                    console.log(`[TX MONITOR]   Status: FAILED (0)`);
+                    console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
+                    console.log(`[TX MONITOR]   PolygonScan: https://amoy.polygonscan.com/tx/${tx.hash}`);
+
+                    this.log(`❌ Transaction reverted on blockchain - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
+
+                    // Throw error with helpful message
+                    const error = new Error(`Transaction failed on blockchain. The smart contract rejected the transaction. Check PolygonScan for details: https://amoy.polygonscan.com/tx/${tx.hash}`);
+                    error.code = 'TRANSACTION_REVERTED';
+                    error.receipt = receipt;
+                    throw error;
+                }
+
+                console.log(`[TX MONITOR] ✅ TRANSACTION CONFIRMED!`);
+                console.log(`[TX MONITOR]   Receipt received:`, receipt);
                 console.log(`[TX MONITOR] 📊 Transaction Statistics:`);
                 console.log(`[TX MONITOR]   Total time: ${totalTime}s`);
                 console.log(`[TX MONITOR]   Block number: ${receipt.blockNumber}`);
                 console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()}`);
-                console.log(`[TX MONITOR]   Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
-                console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice))} MATIC`);
+                console.log(`[TX MONITOR]   Status: SUCCESS (1)`);
+                console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
 
                 this.log(`✅ Transaction confirmed in ${totalTime}s - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
 
@@ -5310,6 +5475,56 @@ class ContractManager {
         }
 
         throw new Error('No working RPC providers available');
+    }
+
+    /**
+     * Validate and checksum an Ethereum address
+     * Prevents "bad address checksum" errors
+     * @param {string} address - The address to validate
+     * @param {string} fieldName - Name of the field for error messages
+     * @returns {string} - Checksummed address
+     * @throws {Error} - If address is invalid
+     */
+    validateAndChecksumAddress(address, fieldName = 'Address') {
+        try {
+            // Check if address exists
+            if (!address) {
+                throw new Error(`${fieldName} is required`);
+            }
+
+            // Check if it's a valid address format
+            if (!ethers.utils.isAddress(address)) {
+                throw new Error(`${fieldName} is not a valid Ethereum address: ${address}`);
+            }
+
+            // Return checksummed address to prevent checksum errors
+            const checksummedAddress = ethers.utils.getAddress(address);
+
+            console.log(`[ADDRESS VALIDATION] ✅ ${fieldName} validated and checksummed:`);
+            console.log(`[ADDRESS VALIDATION]   Input: ${address}`);
+            console.log(`[ADDRESS VALIDATION]   Output: ${checksummedAddress}`);
+
+            return checksummedAddress;
+
+        } catch (error) {
+            console.error(`[ADDRESS VALIDATION] ❌ Failed to validate ${fieldName}:`, error.message);
+            throw new Error(`Invalid ${fieldName}: ${error.message}`);
+        }
+    }
+
+    /**
+     * Validate multiple addresses at once
+     * @param {Object} addresses - Object with fieldName: address pairs
+     * @returns {Object} - Object with fieldName: checksummedAddress pairs
+     */
+    validateAddresses(addresses) {
+        const validated = {};
+
+        for (const [fieldName, address] of Object.entries(addresses)) {
+            validated[fieldName] = this.validateAndChecksumAddress(address, fieldName);
+        }
+
+        return validated;
     }
 
     /**

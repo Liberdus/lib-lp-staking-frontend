@@ -28,7 +28,7 @@ window.CONFIG = {
     // Contract Addresses (Polygon Amoy Testnet Deployment)
     CONTRACTS: {
         STAKING_CONTRACT: '0x1cAcD190b8a9223f24F6aBFb7Ba6D598B3E513f0',
-        REWARD_TOKEN: '0x054AcfAF5a8f939d61E4Ec6D6287c9a065d6574c', // Mock LibToken
+        REWARD_TOKEN: '0x054AcfaF5a8f939d61E4Ec6D6287c9a065d6574c', // Mock LibToken - FIXED CHECKSUM (lowercase 'a' in 'Acfaf')
         LP_TOKENS: {
             LPLIBETH: '0x34370487063aE6e02400Db1336f1724f28EF4cDC',
             LPLIBUSDC: '0x020393f1E32DFeeE19D3889aa55205E6e4733623',
