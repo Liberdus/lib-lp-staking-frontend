@@ -4689,7 +4689,8 @@ class AdminPage {
                     if (key === 'id' || key === 'actionType' || key === 'executed' ||
                         key === 'expired' || key === 'approvals' || key === 'rejected' ||
                         key === 'proposedTime' || key === 'requiredApprovals' ||
-                        key === 'approvedBy' || key === 'currentApprovals' || key === 'status') {
+                        key === 'approvedBy' || key === 'currentApprovals' || key === 'status' ||
+                        key === 'description') {
                         return;
                     }
 
@@ -4724,23 +4725,64 @@ class AdminPage {
                     relevantData[key] = value;
                 });
 
-                if (Object.keys(relevantData).length === 0) {
+                if (Object.keys(relevantData).length === 0 && !proposal.description) {
                     return '<div class="no-parameters">📋 No additional parameters</div>';
                 }
 
-                return `
-                    <div class="parameters-container">
-                        ${Object.entries(relevantData).map(([key, value]) => `
-                            <div class="parameter-card">
-                                <div class="parameter-icon">📋</div>
-                                <div class="parameter-content">
-                                    <div class="parameter-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
-                                    <div class="parameter-value">${typeof value === 'string' && value.startsWith('0x') ? this.formatAddress(value) : value}</div>
-                                </div>
+                let defaultHTML = '<div class="parameters-container">';
+
+                // Display relevant data with smart formatting
+                Object.entries(relevantData).forEach(([key, value]) => {
+                    let displayValue = value;
+
+                    // Format weights if key contains "weight"
+                    if (key.toLowerCase().includes('weight') && !Array.isArray(value)) {
+                        displayValue = this.formatWeight(value, key);
+                    }
+                    // Format arrays (like pairs or weights arrays)
+                    else if (Array.isArray(value)) {
+                        if (key.toLowerCase() === 'weights') {
+                            // Format weight arrays
+                            displayValue = value.map(w => this.formatWeight(w, 'weight')).join(', ');
+                        } else if (key.toLowerCase() === 'pairs') {
+                            // Format pair addresses
+                            displayValue = value.map(addr => {
+                                const pairName = this.getPairNameByAddress(addr);
+                                return pairName || this.formatAddress(addr);
+                            }).join(', ');
+                        } else {
+                            displayValue = value.join(', ');
+                        }
+                    }
+                    // Format addresses
+                    else if (typeof value === 'string' && value.startsWith('0x') && value.length > 20) {
+                        displayValue = `<span style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${value}</span>`;
+                    }
+
+                    defaultHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📋</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                                <div class="parameter-value">${displayValue}</div>
                             </div>
-                        `).join('')}
-                    </div>
-                `;
+                        </div>`;
+                });
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    defaultHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                defaultHTML += '</div>';
+                return defaultHTML;
         }
     }
 
@@ -4816,13 +4858,38 @@ class AdminPage {
                         btn.style.background = '#6c757d';
                         btn.style.color = 'white';
                         btn.style.border = '1px solid #6c757d';
-                    } 
+                    }
+
+                    // Add explicit click handler for cancel buttons
+                    if (btn.classList.contains('modal-cancel') ||
+                        btn.classList.contains('btn-secondary') ||
+                        btn.textContent.trim() === 'Cancel') {
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🔘 Cancel button clicked via explicit handler');
+                            this.closeModal();
+                        };
+                        console.log(`🔧 DEBUG: Added click handler to cancel button ${index + 1}`);
+                    }
 
                     console.log(`🔧 DEBUG: Button ${index + 1} forced visible:`, btn.textContent.trim());
                 });
 
                 console.log('🔧 DEBUG: Modal footer visibility forced with', buttons.length, 'buttons');
             }
+        }
+
+        // Also add click handler to modal close button (X)
+        const closeButton = modalContent?.querySelector('.modal-close');
+        if (closeButton) {
+            closeButton.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔘 Close button (X) clicked via explicit handler');
+                this.closeModal();
+            };
+            console.log('🔧 DEBUG: Added click handler to close button (X)');
         }
 
         if (modalOverlay) {
@@ -4832,6 +4899,15 @@ class AdminPage {
             modalOverlay.style.display = 'flex';
             modalOverlay.style.pointerEvents = 'auto';
             modalOverlay.style.background = 'rgba(0, 0, 0, 0.8)';
+
+            // Add click handler to overlay (close on click outside)
+            modalOverlay.onclick = (e) => {
+                if (e.target === modalOverlay) {
+                    console.log('🔘 Modal overlay clicked - closing modal');
+                    this.closeModal();
+                }
+            };
+            console.log('🔧 DEBUG: Added click handler to modal overlay');
         }
 
         console.log('✅ Universal modal visibility fixes applied');
