@@ -10,11 +10,14 @@ window.CONFIG = {
     NETWORK: {
         CHAIN_ID: 80002, // Polygon Amoy Testnet
         NAME: 'Polygon Amoy Testnet',
-        RPC_URL: 'https://rpc-amoy.polygon.technology',
+        // ✅ USING ALCHEMY - Best reliability and performance!
+        // Using existing Alchemy API key for Polygon Amoy testnet
+        RPC_URL: 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
         FALLBACK_RPCS: [
-            'https://rpc-amoy.polygon.technology',
-            'https://polygon-amoy-bor-rpc.publicnode.com',
+            'https://polygon-amoy.g.alchemy.com/v2/0abef17687cb430ca83c21ccc5bcbdd2',
             'https://polygon-amoy.drpc.org',
+            'https://polygon-amoy-bor-rpc.publicnode.com',
+            'https://rpc-amoy.polygon.technology',
             'https://rpc.ankr.com/polygon_amoy'
         ],
         BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
@@ -77,12 +80,12 @@ window.CONFIG = {
 
     // API Configuration
     API: {
-        TIMEOUT: 10000, // 10 seconds
+        TIMEOUT: 15000, // 15 seconds (increased for slow RPC nodes)
         RETRY_ATTEMPTS: 3,
         RETRY_DELAY: 1000, // 1 second
         RPC_RETRY_LOGIC: true,
         FALLBACK_ON_ERROR: true,
-        RPC_TIMEOUT: 8000, // 8 seconds for RPC calls
+        RPC_TIMEOUT: 12000, // 12 seconds for RPC calls (increased)
         MAX_CONCURRENT_REQUESTS: 5
     },
 
