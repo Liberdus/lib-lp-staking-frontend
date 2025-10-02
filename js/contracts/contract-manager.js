@@ -1653,10 +1653,10 @@ class ContractManager {
             return [];
         }
 
-        // PERFORMANCE OPTIMIZATION: Load only 15 most recent proposals initially
-        // This reduces initial load from 120+ RPC calls to 45 RPC calls (75% reduction)
+        // PERFORMANCE OPTIMIZATION: Load 25 most recent proposals initially for better UX
+        // This ensures Load More button appears and users see more proposals
         const startIndex = actionCount;
-        const endIndex = Math.max(actionCount - 15, 1); // Load only 15 instead of 100
+        const endIndex = Math.max(actionCount - 25, 1); // Load 25 instead of 15 for better pagination
         const actionIds = [];
         for (let i = startIndex; i >= endIndex; i--) {
             actionIds.push(i);
@@ -1669,7 +1669,7 @@ class ContractManager {
         const actions = [];
 
         // PERFORMANCE OPTIMIZATION: Increase batch size for fewer sequential operations
-        const batchSize = 20; // Increased from 15 for better parallelization
+        const batchSize = 30; // Increased for better parallelization and faster loading
         for (let batchStart = 0; batchStart < actionIds.length; batchStart += batchSize) {
             const batchIds = actionIds.slice(batchStart, batchStart + batchSize);
             console.log(`[ACTIONS] 🔄 Processing batch ${Math.floor(batchStart/batchSize) + 1}/${Math.ceil(actionIds.length/batchSize)} (${batchIds.length} actions)...`);
@@ -1803,7 +1803,7 @@ class ContractManager {
         console.log(`[ACTIONS] 🚀 Loading ${actionIds.length} paginated actions...`);
 
         const actions = [];
-        const batchSize = 20; // Use same optimized batch size
+        const batchSize = 30; // Use same optimized batch size for consistency
 
         // Process in batches
         for (let batchStart = 0; batchStart < actionIds.length; batchStart += batchSize) {

@@ -61,55 +61,89 @@ class AdminPage {
 
         // Initialize with some realistic existing proposals for demo
         this.createMockProposal({
-            id: 'PROP-001',
-            type: 'ADD_PAIR',
-            title: 'Add WETH/USDC Pair',
-            description: 'Add Wrapped Ethereum / USD Coin liquidity pair from Uniswap V3',
+            id: 48,
+            actionType: 'SET_HOURLY_REWARD_RATE',
+            title: 'Set Reward Rate',
+            description: 'Update hourly reward rate to boost staking incentives',
             proposer: '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
             status: 'PENDING',
             requiredApprovals: 3,
             currentApprovals: 1,
-            data: {
-                pairAddress: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
-                pairName: 'WETH/USDC',
-                platform: 'Uniswap V3',
-                weight: 500
+            details: {
+                newHourlyRewardRate: '100'
             },
             createdAt: Date.now() - 86400000, // 1 day ago
             expiresAt: Date.now() + 518400000 // 6 days from now
         });
 
         this.createMockProposal({
-            id: 'PROP-002',
-            type: 'WITHDRAW_REWARDS',
-            title: 'Withdraw Rewards',
-            description: 'Withdraw accumulated rewards to treasury wallet',
+            id: 47,
+            actionType: 'SET_HOURLY_REWARD_RATE',
+            title: 'Set Reward Rate',
+            description: 'Update hourly reward rate for better rewards distribution',
             proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'REJECTED',
+            status: 'PENDING',
             requiredApprovals: 3,
             currentApprovals: 1,
-            data: {
-                recipient: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-                amount: '500000000000000000000' // 500 tokens
+            details: {
+                newHourlyRewardRate: '150'
             },
             createdAt: Date.now() - 172800000, // 2 days ago
             expiresAt: Date.now() + 432000000 // 5 days from now
         });
 
         this.createMockProposal({
-            id: 'PROP-003',
-            type: 'SET_HOURLY_REWARD_RATE',
-            title: 'Set Hourly Reward Rate',
-            description: 'Update hourly reward rate to boost staking incentives',
+            id: 46,
+            actionType: 'ADD_PAIR',
+            title: 'Add Pair',
+            description: 'Add LIB/ETH LP pair from Uniswap V3 (weight: 20)',
             proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'REJECTED',
+            status: 'PENDING',
             requiredApprovals: 3,
-            currentApprovals: 1,
-            data: {
-                newRate: '0.5'
+            currentApprovals: 0,
+            details: {
+                pairToAdd: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
+                pairNameToAdd: 'LIB/ETH',
+                platformToAdd: 'Uniswap V3',
+                weightToAdd: 20
             },
             createdAt: Date.now() - 259200000, // 3 days ago
             expiresAt: Date.now() + 345600000 // 4 days from now
+        });
+
+        this.createMockProposal({
+            id: 45,
+            actionType: 'ADD_PAIR',
+            title: 'Add Pair',
+            description: 'Add LIB/ETH LP pair from Uniswap V3 (weight: 20)',
+            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+            status: 'PENDING',
+            requiredApprovals: 3,
+            currentApprovals: 0,
+            details: {
+                pairToAdd: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
+                pairNameToAdd: 'LIB/ETH',
+                platformToAdd: 'Uniswap V3',
+                weightToAdd: 20
+            },
+            createdAt: Date.now() - 345600000, // 4 days ago
+            expiresAt: Date.now() + 259200000 // 3 days from now
+        });
+
+        this.createMockProposal({
+            id: 44,
+            actionType: 'SET_HOURLY_REWARD_RATE',
+            title: 'Set Reward Rate',
+            description: 'Governance proposal to update reward rate',
+            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
+            status: 'PENDING',
+            requiredApprovals: 3,
+            currentApprovals: 0,
+            details: {
+                newHourlyRewardRate: '200'
+            },
+            createdAt: Date.now() - 432000000, // 5 days ago
+            expiresAt: Date.now() + 172800000 // 2 days from now
         });
 
         console.log('✅ Professional mock system initialized with realistic proposals');
@@ -122,15 +156,15 @@ class AdminPage {
      */
     createMockProposal(proposalData) {
         const proposal = {
-            id: proposalData.id || `PROP-${String(this.mockProposalCounter++).padStart(3, '0')}`,
-            type: proposalData.type,
+            id: proposalData.id || this.mockProposalCounter++,
+            actionType: proposalData.actionType,
             title: proposalData.title,
             description: proposalData.description,
             proposer: proposalData.proposer,
             status: proposalData.status || 'PENDING',
             requiredApprovals: proposalData.requiredApprovals || 3,
             currentApprovals: proposalData.currentApprovals || 0,
-            data: proposalData.data,
+            details: proposalData.details,
             createdAt: proposalData.createdAt || Date.now(),
             expiresAt: proposalData.expiresAt || (Date.now() + 604800000), // 7 days
             votes: [],
@@ -1279,6 +1313,15 @@ class AdminPage {
             // Load proposals data
             const proposals = await this.loadProposals();
 
+            // Set loaded proposal count for pagination
+            this.loadedProposalCount = proposals.length;
+            console.log(`📊 Set loadedProposalCount to ${this.loadedProposalCount}`);
+
+            // Filter proposals based on hide-executed checkbox (default: hide executed)
+            const filteredProposals = proposals.filter(proposal => !proposal.executed);
+            console.log(`📊 Filtered proposals: ${filteredProposals.length} (hidden ${proposals.length - filteredProposals.length} executed)`);
+            console.log(`📊 First 5 filtered proposals:`, filteredProposals.slice(0, 5).map(p => ({ id: p.id, executed: p.executed, actionType: p.actionType })));
+
             panelDiv.innerHTML = `
                 <div class="multisign-panel">
                     <div class="panel-header">
@@ -1290,6 +1333,7 @@ class AdminPage {
                             </label>
                             <div class="panel-stats">
                                 <span class="stat-chip">Total Proposals: ${proposals.length}</span>
+                                <span class="stat-chip">Showing: ${filteredProposals.length}</span>
                                 <span class="stat-chip">Required Approvals: ${this.contractStats.requiredApprovals || 2}</span>
                                 <span class="stat-chip data-source-indicator" id="data-source-indicator">
                                     ${this.isUsingRealData ? '🔗 Live Data' : '🎭 Demo Data'}
@@ -1311,13 +1355,21 @@ class AdminPage {
                                 </tr>
                             </thead>
                             <tbody id="proposals-tbody">
-                                ${this.renderProposalsRows(proposals)}
+                                ${this.renderProposalsRows(filteredProposals)}
                             </tbody>
                         </table>
                         ${this.renderLoadMoreButton(proposals)}
                     </div>
                 </div>
             `;
+
+            // Add event listener for hide-executed checkbox
+            const hideExecutedCheckbox = document.getElementById('hide-executed');
+            if (hideExecutedCheckbox) {
+                hideExecutedCheckbox.addEventListener('change', () => {
+                    this.toggleExecutedProposals();
+                });
+            }
 
         } catch (error) {
             console.error('❌ Failed to load MultiSign Panel:', error);
@@ -1458,7 +1510,7 @@ class AdminPage {
         // Convert to the format expected by the UI with enhanced data
         const formattedProposals = mockProposals.map(proposal => {
             // Ensure actionType is always defined and valid
-            let actionType = proposal.actionType || proposal.type || 'UNKNOWN';
+            let actionType = proposal.actionType || 'UNKNOWN';
             if (typeof actionType !== 'string') {
                 console.warn('⚠️ Invalid actionType for proposal:', proposal);
                 actionType = 'UNKNOWN';
@@ -1468,7 +1520,7 @@ class AdminPage {
                 id: proposal.id || Math.floor(Math.random() * 1000),
                 actionType: actionType, // Ensure this is always a string
                 approvals: proposal.approvals || proposal.currentApprovals || 1,
-                requiredApprovals: proposal.requiredApprovals || 2,
+                requiredApprovals: proposal.requiredApprovals || 3,
                 executed: proposal.executed || proposal.status === 'EXECUTED',
                 rejected: proposal.rejected || proposal.status === 'REJECTED',
                 expired: proposal.expired || (proposal.expiresAt && proposal.expiresAt < Date.now()),
@@ -1482,7 +1534,7 @@ class AdminPage {
             };
 
             // Add enhanced data based on proposal type for detailed display
-            switch (proposal.actionType) { // Fixed: was proposal.type
+            switch (proposal.actionType) {
                 case 'ADD_PAIR':
                     return {
                         ...baseProposal,
@@ -1648,24 +1700,89 @@ class AdminPage {
 
     /**
      * PERFORMANCE OPTIMIZATION: Generate HTML for single proposal row
+     * This should match the format from renderProposalsRows for consistency
+     * INCLUDES BOTH MAIN ROW AND DETAILS ROW
      */
     generateProposalRowHTML(proposal) {
-        const statusClass = proposal.status?.toLowerCase() || 'pending';
-        const isOptimistic = proposal.isOptimistic ? 'optimistic-proposal' : '';
+        // Ensure required fields have defaults
+        proposal.approvals = proposal.approvals || proposal.currentApprovals || 0;
+        proposal.requiredApprovals = proposal.requiredApprovals || 2;
+        proposal.executed = proposal.executed || false;
+        proposal.rejected = proposal.rejected || false;
+        proposal.id = proposal.id || 'unknown';
+
+        const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
+        const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
+        const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
+
+        // Enhanced action type display with icons
+        const actionTypeDisplay = this.getActionTypeDisplay(proposal.actionType);
+
+        // Enhanced proposal summary
+        const proposalSummary = this.getProposalSummary(proposal);
 
         return `
-            <tr class="proposal-row ${statusClass} ${isOptimistic}" data-proposal-id="${proposal.id}">
-                <td class="proposal-id">#${proposal.id}</td>
-                <td class="proposal-type">${this.getProposalTypeDisplay(proposal.actionType)}</td>
-                <td class="proposal-summary">${this.getProposalSummary(proposal)}</td>
-                <td class="proposal-status">
-                    <span class="status-badge status-${statusClass}">
-                        ${proposal.isOptimistic ? '⏳ ' : ''}${proposal.status || 'PENDING'}
-                    </span>
+            <tr class="proposal-row ${statusClass}">
+                <td>
+                    <button class="expand-btn" onclick="adminPage.toggleProposal('${proposal.id}')" title="View Details">
+                        <span class="expand-icon">▶</span>
+                    </button>
                 </td>
-                <td class="proposal-approvals">${proposal.currentApprovals || 0}/${proposal.requiredApprovals || 3}</td>
-                <td class="proposal-actions">
-                    ${this.generateProposalActionButtons(proposal)}
+                <td>
+                    <div class="proposal-id-container">
+                        <span class="proposal-id">#${proposal.id}</span>
+                        <div class="proposal-summary">${proposalSummary}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="action-type-container">
+                        <span class="action-type ${proposal.actionType.toLowerCase()}">${actionTypeDisplay}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="approvals-container">
+                        <div class="approval-progress">
+                            <div class="approval-bar">
+                                <div class="approval-fill" style="width: ${(proposal.approvals / proposal.requiredApprovals) * 100}%"></div>
+                            </div>
+                            <span class="approval-text">${proposal.approvals} / ${proposal.requiredApprovals}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        ${!proposal.executed && !proposal.rejected ? `
+                            <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
+                                <span class="btn-icon">✓</span>
+                                <span class="btn-text">Approve</span>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
+                                <span class="btn-icon">✗</span>
+                                <span class="btn-text">Reject</span>
+                            </button>
+                            ${canExecute ? `
+                                <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
+                                    <span class="btn-icon">🚀</span>
+                                    <span class="btn-text">Execute</span>
+                                </button>
+                            ` : ''}
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+            <tr id="details-${proposal.id}" class="proposal-details-row" style="display: none;">
+                <td colspan="6">
+                    <div class="proposal-details">
+                        <div class="details-header">
+                            <h4>📋 Proposal Details</h4>
+                        </div>
+                        <div class="details-content">
+                            ${this.renderProposalParameters(proposal.actionType, proposal)}
+                        </div>
+                    </div>
                 </td>
             </tr>
         `;
@@ -1888,16 +2005,54 @@ class AdminPage {
 
                     // PERFORMANCE OPTIMIZATION: Initialize optimized state with proposals
                     const formattedProposals = this.formatRealProposals(realProposals);
+                    console.log(`🔄 Formatted ${formattedProposals.length} proposals for display`);
 
-                    // Update total count for pagination
+                    // Update total count for pagination with multiple fallback strategies
                     if (window.contractManager && window.contractManager.stakingContract) {
                         try {
-                            const counter = await window.contractManager.stakingContract.actionCounter();
-                            this.totalProposalCount = counter.toNumber();
-                            console.log(`📊 Total proposals available: ${this.totalProposalCount}`);
+                            // Try multiple methods to get the total count
+                            let totalCount = 0;
+
+                            // Method 1: Direct actionCounter call
+                            try {
+                                const counter = await window.contractManager.stakingContract.actionCounter();
+                                totalCount = counter.toNumber();
+                                console.log(`📊 Got total count via actionCounter: ${totalCount}`);
+                            } catch (counterError) {
+                                console.warn('⚠️ actionCounter failed:', counterError.message);
+
+                                // Method 2: Try with different provider
+                                try {
+                                    const result = await window.contractManager.executeWithProviderFallback(async (provider) => {
+                                        const contractWithProvider = new ethers.Contract(
+                                            window.contractManager.contractAddresses.get('STAKING'),
+                                            window.contractManager.contractABIs.get('STAKING'),
+                                            provider
+                                        );
+                                        const counter = await contractWithProvider.actionCounter();
+                                        return counter.toNumber();
+                                    }, 'getActionCounter');
+
+                                    totalCount = result;
+                                    console.log(`📊 Got total count via fallback provider: ${totalCount}`);
+                                } catch (fallbackError) {
+                                    console.warn('⚠️ Fallback actionCounter also failed:', fallbackError.message);
+
+                                    // Method 3: Estimate based on loaded proposals
+                                    const maxLoadedId = Math.max(...formattedProposals.map(p => p.id));
+                                    totalCount = maxLoadedId; // Estimate
+                                    console.log(`📊 Estimated total count from max ID: ${totalCount}`);
+                                }
+                            }
+
+                            this.totalProposalCount = totalCount;
+                            console.log(`📊 Final total proposals available: ${this.totalProposalCount}`);
+                            console.log(`📊 Currently loaded: ${formattedProposals.length}`);
+                            console.log(`📊 Remaining: ${this.totalProposalCount - formattedProposals.length}`);
                         } catch (error) {
-                            console.warn('⚠️ Could not get total proposal count:', error.message);
-                            this.totalProposalCount = formattedProposals.length;
+                            console.warn('⚠️ All methods to get total proposal count failed:', error.message);
+                            // Set to 0 to indicate unknown, but still show Load More button
+                            this.totalProposalCount = 0;
                         }
                     }
 
@@ -1918,6 +2073,8 @@ class AdminPage {
                     this.lastKnownProposalCount = this.totalProposalCount;
                     formattedProposals.forEach(proposal => {
                         this.cacheProposalState(proposal);
+                        // Also cache the full proposal for filtering
+                        this.proposalsCache.set(proposal.id, proposal);
                     });
                     console.log(`🎯 Cached states for ${formattedProposals.length} proposals`);
 
@@ -1996,8 +2153,18 @@ class AdminPage {
                 throw new Error('Contract manager not available for pagination');
             }
 
-            // Load next batch (15 more proposals)
-            const nextBatch = await contractManager.getAllActionsWithPagination(this.loadedProposalCount, 15);
+            // Load next batch (20 more proposals for better UX)
+            console.log(`📋 Loading next batch: skip=${this.loadedProposalCount}, limit=20`);
+            let nextBatch;
+
+            try {
+                nextBatch = await contractManager.getAllActionsWithPagination(this.loadedProposalCount, 20);
+            } catch (paginationError) {
+                console.warn('⚠️ Pagination failed, trying alternative method:', paginationError.message);
+
+                // Fallback: Load older proposals by ID
+                nextBatch = await this.loadOlderProposalsByID(contractManager, 20);
+            }
 
             if (nextBatch && nextBatch.length > 0) {
                 console.log(`✅ Loaded ${nextBatch.length} additional proposals`);
@@ -2005,10 +2172,24 @@ class AdminPage {
                 // Format and append to existing proposals
                 const formattedBatch = this.formatRealProposals(nextBatch);
 
+                // Cache the new proposals
+                formattedBatch.forEach(proposal => {
+                    this.proposalsCache.set(proposal.id, proposal);
+                    this.cacheProposalState(proposal);
+                });
+
+                // Check if we should show these proposals based on filter
+                const hideExecutedCheckbox = document.getElementById('hide-executed');
+                const hideExecuted = hideExecutedCheckbox ? hideExecutedCheckbox.checked : true;
+
+                const visibleBatch = hideExecuted
+                    ? formattedBatch.filter(proposal => !proposal.executed)
+                    : formattedBatch;
+
                 // Append to proposals table
                 const proposalsTbody = document.getElementById('proposals-tbody');
-                if (proposalsTbody) {
-                    const newRowsHTML = formattedBatch.map(proposal =>
+                if (proposalsTbody && visibleBatch.length > 0) {
+                    const newRowsHTML = visibleBatch.map(proposal =>
                         this.generateProposalRowHTML(proposal)
                     ).join('');
                     proposalsTbody.insertAdjacentHTML('beforeend', newRowsHTML);
@@ -2016,6 +2197,8 @@ class AdminPage {
 
                 // Update loaded count
                 this.loadedProposalCount += formattedBatch.length;
+
+                console.log(`📊 Added ${formattedBatch.length} proposals to cache, ${visibleBatch.length} visible`);
 
                 // Update Load More button
                 this.updateLoadMoreButton();
@@ -2028,8 +2211,26 @@ class AdminPage {
                     );
                 }
             } else {
-                console.log('ℹ️ No more proposals to load');
-                this.updateLoadMoreButton();
+                console.log('ℹ️ No more proposals to load - hiding Load More button');
+
+                // Hide the Load More button by removing it
+                const loadMoreContainer = document.querySelector('.load-more-container');
+                if (loadMoreContainer) {
+                    loadMoreContainer.style.display = 'none';
+                }
+
+                // Show a message that all proposals are loaded
+                const proposalsTable = document.querySelector('.proposals-table');
+                if (proposalsTable) {
+                    const existingMessage = proposalsTable.querySelector('.all-loaded-message');
+                    if (!existingMessage) {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'all-loaded-message';
+                        messageDiv.style.cssText = 'text-align: center; padding: 20px; color: #666; font-style: italic;';
+                        messageDiv.innerHTML = '✅ All proposals loaded';
+                        proposalsTable.appendChild(messageDiv);
+                    }
+                }
             }
 
         } catch (error) {
@@ -2043,8 +2244,17 @@ class AdminPage {
             }
         } finally {
             this.isLoadingMore = false;
+
+            // Reset button state
             if (loadMoreBtn) {
                 loadMoreBtn.disabled = false;
+
+                // Recalculate remaining proposals
+                const remainingText = this.totalProposalCount > 0 && this.totalProposalCount > this.loadedProposalCount
+                    ? `(${this.totalProposalCount - this.loadedProposalCount} remaining)`
+                    : '(more may be available)';
+
+                loadMoreBtn.innerHTML = `📋 Load More Proposals ${remainingText}`;
             }
         }
     }
@@ -2055,6 +2265,8 @@ class AdminPage {
     updateLoadMoreButton() {
         const loadMoreContainer = document.querySelector('.load-more-container');
         if (loadMoreContainer) {
+            // Reset isLoadingMore flag before rendering
+            this.isLoadingMore = false;
             loadMoreContainer.outerHTML = this.renderLoadMoreButton([]);
         }
     }
@@ -2436,14 +2648,34 @@ class AdminPage {
                 return value;
             };
 
+            const approvals = formatBigNumber(proposal.approvals) || 0;
+            const requiredApprovals = this.contractStats?.requiredApprovals || 3;
+            const executed = proposal.executed || false;
+            const rejected = proposal.rejected || false;
+            const expired = proposal.expired || false;
+
+            // Determine status based on proposal state
+            let status = 'PENDING';
+            if (executed) {
+                status = 'EXECUTED';
+            } else if (rejected) {
+                status = 'REJECTED';
+            } else if (expired) {
+                status = 'EXPIRED';
+            } else if (approvals >= requiredApprovals) {
+                status = 'APPROVED';
+            }
+
             const formattedProposal = {
                 id: proposal.id || formatBigNumber(proposal.actionId),
                 actionType: actionType,
-                approvals: formatBigNumber(proposal.approvals) || 0,
-                requiredApprovals: this.contractStats?.requiredApprovals || 3,
-                executed: proposal.executed || false,
-                rejected: proposal.rejected || false,
-                expired: proposal.expired || false,
+                approvals: approvals,
+                currentApprovals: approvals, // Add currentApprovals for consistency
+                requiredApprovals: requiredApprovals,
+                executed: executed,
+                rejected: rejected,
+                expired: expired,
+                status: status, // Add status field for consistency
                 proposedTime: formatBigNumber(proposal.proposedTime) || Math.floor(Date.now() / 1000),
                 approvedBy: proposal.approvedBy || [],
 
@@ -2567,32 +2799,321 @@ class AdminPage {
      * PERFORMANCE OPTIMIZATION: Render Load More button for pagination
      */
     renderLoadMoreButton(proposals) {
-        // Update loaded count
-        this.loadedProposalCount = proposals ? proposals.length : 0;
+        // Don't update loaded count here - it should be managed by loadProposals and loadMoreProposals
+        // this.loadedProposalCount is already set correctly
 
-        // Only show Load More if we have loaded exactly 15 proposals (initial batch)
-        // and we're using real data (mock data doesn't support pagination)
-        if (this.isUsingRealData && this.loadedProposalCount >= 15 && this.totalProposalCount > this.loadedProposalCount) {
-            const remainingCount = this.totalProposalCount - this.loadedProposalCount;
+        console.log(`🔍 Load More Button Logic:`, {
+            isUsingRealData: this.isUsingRealData,
+            totalProposalCount: this.totalProposalCount,
+            loadedProposalCount: this.loadedProposalCount,
+            proposalsLength: proposals ? proposals.length : 0,
+            proposalsCacheSize: this.proposalsCache.size
+        });
+
+        // Show Load More button if:
+        // 1. We're using real data (not mock data)
+        // 2. Either we know there are more proposals OR we can't determine total count (show optimistically)
+        const hasMoreProposals = this.totalProposalCount > this.loadedProposalCount;
+        const unknownTotal = this.totalProposalCount === 0 || this.totalProposalCount === undefined;
+
+        const shouldShowLoadMore = this.isUsingRealData &&
+                                  this.loadedProposalCount > 0 &&
+                                  (hasMoreProposals || unknownTotal);
+
+        console.log(`🔍 Load More Decision:`, {
+            shouldShowLoadMore,
+            hasMoreProposals,
+            unknownTotal,
+            calculation: `${this.totalProposalCount} > ${this.loadedProposalCount} = ${hasMoreProposals}`
+        });
+
+        if (shouldShowLoadMore) {
+            const remainingText = this.totalProposalCount > 0 && hasMoreProposals
+                ? `(${this.totalProposalCount - this.loadedProposalCount} remaining)`
+                : '(more may be available)';
+
             return `
                 <div class="load-more-container" style="text-align: center; padding: 20px;">
                     <button class="btn btn-outline" id="load-more-btn" onclick="adminPage.loadMoreProposals()" ${this.isLoadingMore ? 'disabled' : ''}>
-                        ${this.isLoadingMore ? '⏳ Loading...' : `📋 Load More Proposals (${remainingCount} remaining)`}
+                        ${this.isLoadingMore ? '⏳ Loading...' : `📋 Load More Proposals ${remainingText}`}
                     </button>
                     <div class="load-more-info" style="margin-top: 10px; color: #666; font-size: 0.9em;">
-                        Showing ${this.loadedProposalCount} of ${this.totalProposalCount} proposals
+                        ${this.totalProposalCount > 0
+                            ? `Showing ${this.loadedProposalCount} of ${this.totalProposalCount} proposals`
+                            : `Showing ${this.loadedProposalCount} proposals`
+                        }
                     </div>
                 </div>
             `;
         }
 
+        console.log('🚫 Load More button not shown - conditions not met');
         return ''; // No Load More button needed
     }
 
+    /**
+     * Debug method to check proposal loading status
+     */
+    debugProposalLoading() {
+        console.log('🔍 PROPOSAL LOADING DEBUG:');
+        console.log(`📊 Total proposals available: ${this.totalProposalCount}`);
+        console.log(`📊 Currently loaded: ${this.loadedProposalCount}`);
+        console.log(`📊 Cached proposals: ${this.proposalsCache.size}`);
+        console.log(`📊 Using real data: ${this.isUsingRealData}`);
+        console.log(`📊 Is loading more: ${this.isLoadingMore}`);
+
+        const hideExecutedCheckbox = document.getElementById('hide-executed');
+        const hideExecuted = hideExecutedCheckbox ? hideExecutedCheckbox.checked : 'unknown';
+        console.log(`📊 Hide executed: ${hideExecuted}`);
+
+        const proposalsTbody = document.getElementById('proposals-tbody');
+        const visibleRows = proposalsTbody ? proposalsTbody.querySelectorAll('tr').length : 0;
+        console.log(`📊 Visible rows in table: ${visibleRows}`);
+
+        if (this.proposalsCache.size > 0) {
+            const cachedProposals = Array.from(this.proposalsCache.values());
+            const executedCount = cachedProposals.filter(p => p.executed).length;
+            const pendingCount = cachedProposals.filter(p => !p.executed && !p.rejected).length;
+            const rejectedCount = cachedProposals.filter(p => p.rejected).length;
+
+            console.log(`📊 Cached proposal breakdown:`);
+            console.log(`   - Executed: ${executedCount}`);
+            console.log(`   - Pending: ${pendingCount}`);
+            console.log(`   - Rejected: ${rejectedCount}`);
+        }
+    }
+
+    /**
+     * Force load all proposals (for debugging/testing)
+     */
+    async forceLoadAllProposals() {
+        console.log('🚀 Force loading ALL proposals...');
+
+        try {
+            const contractManager = await this.ensureContractReady();
+            if (!contractManager || !contractManager.stakingContract) {
+                throw new Error('Contract manager not available');
+            }
+
+            // Get total count
+            const counter = await contractManager.stakingContract.actionCounter();
+            const totalCount = counter.toNumber();
+            console.log(`📊 Total proposals in contract: ${totalCount}`);
+
+            if (totalCount === 0) {
+                console.log('📭 No proposals found in contract');
+                return;
+            }
+
+            // Load ALL proposals (not just recent ones)
+            console.log('🔄 Loading ALL proposals from contract...');
+            const allProposals = await this.loadAllProposalsFromContract(contractManager, totalCount);
+
+            if (allProposals && allProposals.length > 0) {
+                console.log(`✅ Loaded ${allProposals.length} proposals total`);
+
+                // Update cache and counts
+                this.totalProposalCount = totalCount;
+                this.loadedProposalCount = allProposals.length;
+
+                // Cache all proposals
+                allProposals.forEach(proposal => {
+                    this.proposalsCache.set(proposal.id, proposal);
+                    this.cacheProposalState(proposal);
+                });
+
+                // Refresh the display
+                await this.loadMultiSignPanel();
+
+                if (window.notificationManager) {
+                    window.notificationManager.success(
+                        'All Proposals Loaded',
+                        `Successfully loaded all ${allProposals.length} proposals from blockchain`
+                    );
+                }
+            }
+
+        } catch (error) {
+            console.error('❌ Failed to force load all proposals:', error);
+            if (window.notificationManager) {
+                window.notificationManager.error(
+                    'Load All Failed',
+                    `Could not load all proposals: ${error.message}`
+                );
+            }
+        }
+    }
+
+    /**
+     * Load all proposals from contract (helper method)
+     */
+    async loadAllProposalsFromContract(contractManager, totalCount) {
+        const allActions = [];
+        const batchSize = 50; // Larger batch for bulk loading
+
+        // Load all proposals in batches
+        for (let i = 1; i <= totalCount; i += batchSize) {
+            const endIndex = Math.min(i + batchSize - 1, totalCount);
+            console.log(`🔄 Loading proposals ${i} to ${endIndex}...`);
+
+            const batchPromises = [];
+            for (let actionId = i; actionId <= endIndex; actionId++) {
+                batchPromises.push(this.loadSingleProposal(contractManager, actionId));
+            }
+
+            const batchResults = await Promise.allSettled(batchPromises);
+            batchResults.forEach(result => {
+                if (result.status === 'fulfilled' && result.value) {
+                    allActions.push(result.value);
+                }
+            });
+        }
+
+        // Sort by ID descending (newest first)
+        allActions.sort((a, b) => b.id - a.id);
+
+        return this.formatRealProposals(allActions);
+    }
+
+    /**
+     * Load older proposals by ID (fallback method for pagination)
+     */
+    async loadOlderProposalsByID(contractManager, limit = 20) {
+        console.log(`📋 Loading older proposals by ID (fallback method)...`);
+
+        try {
+            // Find the lowest ID we currently have
+            const cachedProposals = Array.from(this.proposalsCache.values());
+            const minLoadedId = cachedProposals.length > 0
+                ? Math.min(...cachedProposals.map(p => p.id))
+                : 999999; // Start high if no cache
+
+            console.log(`📊 Lowest loaded ID: ${minLoadedId}, loading ${limit} older proposals`);
+
+            const olderProposals = [];
+            const batchPromises = [];
+
+            // Load proposals with IDs lower than our minimum
+            for (let id = minLoadedId - 1; id >= Math.max(1, minLoadedId - limit); id--) {
+                // Skip if we already have this proposal
+                if (this.proposalsCache.has(id)) {
+                    continue;
+                }
+
+                batchPromises.push(this.loadSingleProposal(contractManager, id));
+            }
+
+            if (batchPromises.length === 0) {
+                console.log('📭 No older proposals to load');
+                return [];
+            }
+
+            const results = await Promise.allSettled(batchPromises);
+            results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value) {
+                    olderProposals.push(result.value);
+                }
+            });
+
+            // Sort by ID descending (newest first)
+            olderProposals.sort((a, b) => b.id - a.id);
+
+            console.log(`✅ Loaded ${olderProposals.length} older proposals via ID method`);
+            return olderProposals;
+
+        } catch (error) {
+            console.error('❌ Failed to load older proposals by ID:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Load a single proposal (helper method)
+     */
+    async loadSingleProposal(contractManager, actionId) {
+        try {
+            const [action, pairs, weights] = await Promise.all([
+                contractManager.stakingContract.actions(BigInt(actionId)),
+                contractManager.stakingContract.getActionPairs(actionId),
+                contractManager.stakingContract.getActionWeights(actionId)
+            ]);
+
+            return {
+                id: actionId,
+                actionType: action.actionType,
+                newHourlyRewardRate: action.newHourlyRewardRate.toString(),
+                pairs: pairs.map(p => p.toString()),
+                weights: weights.map(w => w.toString()),
+                pairToAdd: action.pairToAdd,
+                pairNameToAdd: action.pairNameToAdd,
+                platformToAdd: action.platformToAdd,
+                weightToAdd: action.weightToAdd.toString(),
+                pairToRemove: action.pairToRemove,
+                recipient: action.recipient,
+                withdrawAmount: action.withdrawAmount.toString(),
+                executed: action.executed,
+                expired: action.expired,
+                approvals: action.approvals,
+                approvedBy: action.approvedBy,
+                proposedTime: action.proposedTime.toNumber(),
+                rejected: action.rejected
+            };
+        } catch (error) {
+            console.warn(`⚠️ Failed to load proposal ${actionId}:`, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Toggle visibility of executed proposals
+     */
+    async toggleExecutedProposals() {
+        const hideExecutedCheckbox = document.getElementById('hide-executed');
+        const proposalsTbody = document.getElementById('proposals-tbody');
+
+        if (!hideExecutedCheckbox || !proposalsTbody) {
+            console.warn('⚠️ Could not find hide-executed checkbox or proposals table');
+            return;
+        }
+
+        const hideExecuted = hideExecutedCheckbox.checked;
+        console.log(`🔄 Toggling executed proposals visibility: ${hideExecuted ? 'hide' : 'show'}`);
+
+        // Get all current proposals from cache or reload
+        let allProposals = [];
+        if (this.proposalsCache && this.proposalsCache.size > 0) {
+            allProposals = Array.from(this.proposalsCache.values());
+        } else {
+            // Reload proposals if cache is empty
+            allProposals = await this.loadProposals();
+        }
+
+        // Filter based on checkbox state
+        const filteredProposals = hideExecuted
+            ? allProposals.filter(proposal => !proposal.executed)
+            : allProposals;
+
+        console.log(`📊 Showing ${filteredProposals.length} of ${allProposals.length} proposals`);
+
+        // Update the table
+        proposalsTbody.innerHTML = this.renderProposalsRows(filteredProposals);
+
+        // Update stats
+        const showingChip = document.querySelector('.stat-chip:nth-child(2)');
+        if (showingChip) {
+            showingChip.textContent = `Showing: ${filteredProposals.length}`;
+        }
+    }
+
     renderProposalsRows(proposals) {
+        console.log(`🎨 Rendering ${proposals ? proposals.length : 0} proposal rows`);
+
         if (!proposals || proposals.length === 0) {
+            console.log('📭 No proposals to render');
             return '<tr><td colspan="6" class="no-data">No proposals found</td></tr>';
         }
+
+        console.log(`🎨 Rendering proposals:`, proposals.map(p => ({ id: p.id, actionType: p.actionType, executed: p.executed })));
 
         return proposals.map(proposal => {
             // Ensure actionType is defined with fallback - more robust checking
@@ -2775,6 +3296,7 @@ class AdminPage {
                     }
                     return 'Change authorized signer';
 
+                case 'SET_HOURLY_REWARD_RATE':
                 case 'UPDATE_HOURLY_RATE':
                 case 'HOURLY_RATE':
                 case 'HOURLY-RATE':
@@ -2784,7 +3306,7 @@ class AdminPage {
                             : proposal.newHourlyRewardRate;
                         return `Set reward rate to ${rate} tokens/hour`;
                     }
-                    return 'Update hourly reward rate';
+                    return 'Governance proposal';
 
                 case 'WITHDRAW_REWARDS':
                     let withdrawSummary = 'Withdraw rewards';
@@ -3908,12 +4430,15 @@ class AdminPage {
             case 'hourly-rate':
             case 'update-hourly-rate':
             case 'hourly_rate':
+            case 'set_hourly_reward_rate':
+            case 'set-hourly-reward-rate':
                 const rate = proposal.newHourlyRewardRate
                     ? (typeof proposal.newHourlyRewardRate === 'bigint'
                         ? ethers.utils.formatEther(proposal.newHourlyRewardRate)
                         : proposal.newHourlyRewardRate)
                     : 'Not specified';
-                return `
+
+                let hourlyRateHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">💰</div>
@@ -3921,18 +4446,34 @@ class AdminPage {
                                 <div class="parameter-label">New Hourly Rate</div>
                                 <div class="parameter-value highlight">${rate} tokens/hour</div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    hourlyRateHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                hourlyRateHTML += `</div>`;
+                return hourlyRateHTML;
 
             case 'add-pair':
             case 'add_pair':
+                // Format weight properly using formatWeight helper
                 const weight = proposal.weightToAdd
-                    ? (typeof proposal.weightToAdd === 'bigint'
-                        ? proposal.weightToAdd.toString()
-                        : proposal.weightToAdd)
+                    ? this.formatWeight(proposal.weightToAdd, 'allocation weight')
                     : 'Not specified';
-                return `
+
+                // Show full address for LP token
+                const lpTokenAddress = proposal.pairToAdd || 'Not specified';
+
+                let addPairHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">🏷️</div>
@@ -3945,7 +4486,7 @@ class AdminPage {
                             <div class="parameter-icon">📍</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">LP Token Address</div>
-                                <div class="parameter-value address-display">${proposal.pairToAdd ? this.formatAddress(proposal.pairToAdd) : 'Not specified'}</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${lpTokenAddress}</div>
                             </div>
                         </div>
                         <div class="parameter-card">
@@ -3961,31 +4502,59 @@ class AdminPage {
                                 <div class="parameter-label">Platform</div>
                                 <div class="parameter-value">${proposal.platformToAdd || 'Not specified'}</div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    addPairHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                addPairHTML += `</div>`;
+                return addPairHTML;
 
             case 'remove-pair':
             case 'remove_pair':
                 const pairName = proposal.pairToRemove ? this.getPairNameByAddress(proposal.pairToRemove) : null;
-                return `
+                const removePairAddress = proposal.pairToRemove || 'Not specified';
+
+                let removePairHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">🏷️</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">Pair to Remove</div>
-                                <div class="parameter-value">${pairName || 'Unknown Pair'}</div>
+                                <div class="parameter-value">${pairName || (proposal.pairToRemove ? this.formatAddress(proposal.pairToRemove) : 'Not specified')}</div>
                             </div>
                         </div>
                         <div class="parameter-card">
                             <div class="parameter-icon">📍</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">LP Token Address</div>
-                                <div class="parameter-value address-display">${proposal.pairToRemove ? this.formatAddress(proposal.pairToRemove) : 'Not specified'}</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${removePairAddress}</div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    removePairHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                removePairHTML += `</div>`;
+                return removePairHTML;
 
             case 'update-weights':
             case 'update-pair-weight':
@@ -3994,7 +4563,8 @@ class AdminPage {
                     const pairCards = proposal.pairs.map((pairAddress, index) => {
                         const pairName = this.getPairNameByAddress(pairAddress);
                         const rawWeight = proposal.weights[index];
-                        const weight = rawWeight ? this.formatWeight(rawWeight) : 'Not specified';
+                        // Format weight properly using formatWeight helper
+                        const weight = rawWeight ? this.formatWeight(rawWeight, 'weight') : 'Not specified';
                         return `
                             <div class="parameter-card">
                                 <div class="parameter-icon">⚖️</div>
@@ -4006,7 +4576,22 @@ class AdminPage {
                         `;
                     }).join('');
 
-                    return `<div class="parameters-container">${pairCards}</div>`;
+                    let updateWeightsHTML = `<div class="parameters-container">${pairCards}`;
+
+                    // Add description/reason if available
+                    if (proposal.description) {
+                        updateWeightsHTML += `
+                            <div class="parameter-card">
+                                <div class="parameter-icon">📝</div>
+                                <div class="parameter-content">
+                                    <div class="parameter-label">Description / Reason</div>
+                                    <div class="parameter-value">${proposal.description}</div>
+                                </div>
+                            </div>`;
+                    }
+
+                    updateWeightsHTML += `</div>`;
+                    return updateWeightsHTML;
                 } else {
                     return `
                         <div class="parameters-container">
@@ -4023,26 +4608,45 @@ class AdminPage {
 
             case 'change-signer':
             case 'change_signer':
-                return `
+                const newSignerAddress = proposal.newSigner || 'Not specified';
+
+                let changeSignerHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">🔑</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">New Signer Address</div>
-                                <div class="parameter-value address-display">${proposal.newSigner ? this.formatAddress(proposal.newSigner) : 'Not specified'}</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${newSignerAddress}</div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    changeSignerHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                changeSignerHTML += `</div>`;
+                return changeSignerHTML;
 
             case 'withdraw-rewards':
             case 'withdrawal':
+            case 'withdraw_rewards':
                 const withdrawAmount = proposal.withdrawAmount
                     ? (typeof proposal.withdrawAmount === 'bigint'
                         ? ethers.utils.formatEther(proposal.withdrawAmount)
                         : proposal.withdrawAmount)
                     : 'Not specified';
-                return `
+
+                const recipientAddress = proposal.recipient || 'Not specified';
+
+                let withdrawHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">💰</div>
@@ -4055,23 +4659,69 @@ class AdminPage {
                             <div class="parameter-icon">📍</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">Recipient Address</div>
-                                <div class="parameter-value address-display">${proposal.recipient ? this.formatAddress(proposal.recipient) : 'Not specified'}</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${recipientAddress}</div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+
+                // Add description/reason if available
+                if (proposal.description) {
+                    withdrawHTML += `
+                        <div class="parameter-card">
+                            <div class="parameter-icon">📝</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Description / Reason</div>
+                                <div class="parameter-value">${proposal.description}</div>
+                            </div>
+                        </div>`;
+                }
+
+                withdrawHTML += `</div>`;
+                return withdrawHTML;
 
             default:
                 // For unknown types, show all available proposal data
+                // Filter out null, undefined, empty strings, zero addresses, and zero values
                 const relevantData = {};
                 Object.keys(proposal).forEach(key => {
-                    if (key !== 'id' && key !== 'actionType' && key !== 'executed' &&
-                        key !== 'expired' && key !== 'approvals' && key !== 'rejected' &&
-                        key !== 'proposedTime' && key !== 'requiredApprovals' &&
-                        key !== 'approvedBy' && proposal[key] !== null &&
-                        proposal[key] !== undefined && proposal[key] !== '') {
-                        relevantData[key] = proposal[key];
+                    const value = proposal[key];
+
+                    // Skip metadata fields
+                    if (key === 'id' || key === 'actionType' || key === 'executed' ||
+                        key === 'expired' || key === 'approvals' || key === 'rejected' ||
+                        key === 'proposedTime' || key === 'requiredApprovals' ||
+                        key === 'approvedBy' || key === 'currentApprovals' || key === 'status') {
+                        return;
                     }
+
+                    // Skip null, undefined, or empty values
+                    if (value === null || value === undefined || value === '') {
+                        return;
+                    }
+
+                    // Skip zero addresses (0x0000...0000)
+                    if (typeof value === 'string' && value.startsWith('0x')) {
+                        if (value === '0x0000000000000000000000000000000000000000' ||
+                            /^0x0+$/.test(value)) {
+                            return;
+                        }
+                    }
+
+                    // Skip zero numeric values
+                    if (typeof value === 'number' && value === 0) {
+                        return;
+                    }
+
+                    // Skip zero bigint values
+                    if (typeof value === 'bigint' && value === 0n) {
+                        return;
+                    }
+
+                    // Skip string "0" or "0.0"
+                    if (typeof value === 'string' && (value === '0' || value === '0.0')) {
+                        return;
+                    }
+
+                    relevantData[key] = value;
                 });
 
                 if (Object.keys(relevantData).length === 0) {

@@ -106,25 +106,38 @@ class NotificationManager {
                 right: 20px;
                 z-index: 10000;
                 pointer-events: none;
-                max-width: 400px;
+                max-width: 380px;
+                width: auto;
             }
 
             .notification {
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                margin-bottom: 10px;
-                padding: 16px 20px;
+                background: rgba(30, 41, 59, 0.95);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(71, 85, 105, 0.5);
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                margin-bottom: 12px;
+                padding: 14px 16px;
                 display: flex;
-                align-items: flex-start;
+                align-items: center;
                 gap: 12px;
                 pointer-events: auto;
-                transform: translateX(100%);
+                transform: translateX(120%);
                 opacity: 0;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                border-left: 4px solid #ddd;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 position: relative;
                 overflow: hidden;
+                min-width: 300px;
+            }
+
+            .notification::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: currentColor;
             }
 
             .notification.show {
@@ -133,7 +146,7 @@ class NotificationManager {
             }
 
             .notification.hide {
-                transform: translateX(100%);
+                transform: translateX(120%);
                 opacity: 0;
                 margin-bottom: 0;
                 padding-top: 0;
@@ -142,9 +155,10 @@ class NotificationManager {
             }
 
             .notification-icon {
-                font-size: 20px;
+                font-size: 18px;
                 flex-shrink: 0;
-                margin-top: 2px;
+                line-height: 1;
+                opacity: 0.9;
             }
 
             .notification-content {
@@ -154,17 +168,16 @@ class NotificationManager {
 
             .notification-title {
                 font-weight: 600;
-                font-size: 14px;
-                margin-bottom: 4px;
-                color: #333;
+                font-size: 13px;
+                margin-bottom: 2px;
+                color: #f1f5f9;
                 line-height: 1.4;
             }
 
             .notification-message {
-                font-size: 13px;
-                color: #666;
+                font-size: 12px;
+                color: #cbd5e1;
                 line-height: 1.4;
-                margin-bottom: 8px;
             }
 
             .notification-actions {
@@ -174,95 +187,94 @@ class NotificationManager {
             }
 
             .notification-action {
-                background: transparent;
-                border: 1px solid #ddd;
-                border-radius: 4px;
+                background: rgba(71, 85, 105, 0.4);
+                border: 1px solid rgba(100, 116, 139, 0.5);
+                border-radius: 6px;
                 padding: 4px 12px;
-                font-size: 12px;
+                font-size: 11px;
                 cursor: pointer;
                 transition: all 0.2s;
-                color: #666;
+                color: #e2e8f0;
             }
 
             .notification-action:hover {
-                background: #f5f5f5;
-                border-color: #bbb;
+                background: rgba(100, 116, 139, 0.6);
+                border-color: rgba(148, 163, 184, 0.7);
             }
 
             .notification-action.primary {
-                background: #1976d2;
-                border-color: #1976d2;
+                background: #3b82f6;
+                border-color: #3b82f6;
                 color: white;
             }
 
             .notification-action.primary:hover {
-                background: #1565c0;
-                border-color: #1565c0;
+                background: #2563eb;
+                border-color: #2563eb;
             }
 
             .notification-close {
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                background: none;
+                background: rgba(71, 85, 105, 0.4);
                 border: none;
                 font-size: 16px;
                 cursor: pointer;
-                color: #999;
+                color: #94a3b8;
                 padding: 4px;
                 line-height: 1;
-                border-radius: 4px;
+                border-radius: 6px;
                 transition: all 0.2s;
+                flex-shrink: 0;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .notification-close:hover {
-                background: #f5f5f5;
-                color: #666;
+                background: rgba(100, 116, 139, 0.6);
+                color: #e2e8f0;
+                transform: scale(1.05);
             }
 
             .notification-progress {
                 position: absolute;
                 bottom: 0;
                 left: 0;
-                height: 3px;
-                background: rgba(0,0,0,0.1);
+                height: 2px;
+                background: currentColor;
+                opacity: 0.5;
                 transition: width linear;
             }
 
             /* Type-specific styles */
             .notification-success {
-                border-left-color: #4caf50;
-            }
-            .notification-success .notification-progress {
-                background: #4caf50;
+                color: #10b981;
             }
 
             .notification-error {
-                border-left-color: #f44336;
-            }
-            .notification-error .notification-progress {
-                background: #f44336;
+                color: #ef4444;
             }
 
             .notification-warning {
-                border-left-color: #ff9800;
+                color: #f59e0b;
             }
             .notification-warning .notification-progress {
-                background: #ff9800;
+                background: currentColor;
             }
 
             .notification-info {
-                border-left-color: #2196f3;
+                color: #3b82f6;
             }
             .notification-info .notification-progress {
-                background: #2196f3;
+                background: currentColor;
             }
 
             .notification-loading {
-                border-left-color: #9c27b0;
+                color: #8b5cf6;
             }
             .notification-loading .notification-progress {
-                background: #9c27b0;
+                background: currentColor;
             }
 
             /* Loading animation */

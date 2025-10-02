@@ -28,10 +28,12 @@
         width: calc(100% - 20px);
     }
 
-    .notification-container {
-        top: 10px;
-        right: 10px;
-        left: 10px;
+    .notification-container,
+    #notification-container {
+        top: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+        bottom: auto !important;
         max-width: none;
     }
 }
