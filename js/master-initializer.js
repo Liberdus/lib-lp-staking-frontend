@@ -97,7 +97,9 @@ class MasterInitializer {
     async loadWalletSystems() {
         const walletScripts = [
             'js/wallet/wallet-manager.js',
-            'js/contracts/contract-manager.js'
+            'js/contracts/contract-manager.js',
+            'js/utils/price-feeds.js',
+            'js/utils/rewards-calculator.js'
         ];
 
         for (const script of walletScripts) {

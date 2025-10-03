@@ -186,44 +186,101 @@
         }
 
         /**
+         * Fetch token price by address from DexScreener (React implementation)
+         * This matches the React site's fetchTokenPrice() function exactly
+         * @param {string} address - Token contract address
+         * @returns {Promise<number>} - Token price in USD
+         */
+        async fetchTokenPrice(address) {
+            if (!address) {
+                console.warn('⚠️ No address provided to fetchTokenPrice');
+                return 0;
+            }
+
+            try {
+                const cacheKey = `address_price_${address.toLowerCase()}`;
+
+                // Check cache first
+                if (this.isCacheValid(cacheKey)) {
+                    const cached = this.priceCache.get(cacheKey);
+                    console.log(`💰 Using cached price for ${address}: $${cached.price}`);
+                    return cached.price;
+                }
+
+                console.log(`🔍 Fetching price from DexScreener for: ${address}`);
+
+                const response = await fetch(
+                    `https://api.dexscreener.com/latest/dex/tokens/${address}`,
+                    {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const price = parseFloat(data.pairs?.[0]?.priceUsd || 0);
+
+                if (price > 0) {
+                    console.log(`✅ Price fetched for ${address}: $${price}`);
+                    this.priceCache.set(cacheKey, {
+                        price,
+                        timestamp: Date.now(),
+                        source: 'dexscreener'
+                    });
+                } else {
+                    console.warn(`⚠️ No price data found for ${address}`);
+                }
+
+                return price;
+            } catch (error) {
+                console.error(`❌ Failed to fetch token price for ${address}:`, error);
+                return 0;
+            }
+        }
+
+        /**
          * Get token price from CoinGecko or fallback sources
          */
         async getTokenPrice(tokenSymbol, options = {}) {
             try {
                 const cacheKey = `price_${tokenSymbol.toLowerCase()}`;
-                
+
                 // Check cache first
                 if (this.isCacheValid(cacheKey) && !options.forceRefresh) {
                     return this.priceCache.get(cacheKey).price;
                 }
-                
+
                 console.log(`💰 Fetching price for ${tokenSymbol}...`);
-                
+
                 // Rate limiting
                 await this.enforceRateLimit();
-                
+
                 // Get CoinGecko ID for token
                 const coinGeckoId = this.tokenMappings[tokenSymbol.toUpperCase()];
                 if (!coinGeckoId) {
                     throw new Error(`No CoinGecko mapping found for ${tokenSymbol}`);
                 }
-                
+
                 // Fetch price from CoinGecko
                 const price = await this.fetchPriceFromCoinGecko(coinGeckoId);
-                
+
                 // Cache the result
                 this.priceCache.set(cacheKey, {
                     price: price,
                     timestamp: Date.now(),
                     source: 'coingecko'
                 });
-                
+
                 console.log(`✅ Price fetched for ${tokenSymbol}: $${price}`);
                 return price;
-                
+
             } catch (error) {
                 console.error(`❌ Failed to get price for ${tokenSymbol}:`, error);
-                
+
                 // Try fallback methods
                 return await this.getFallbackTokenPrice(tokenSymbol);
             }

@@ -322,9 +322,12 @@ class HomePage extends BaseComponent {
     }
 
     /**
-     * Render pairs table
+     * Render pairs table (React-style columns)
      */
     renderPairsTable(pairs) {
+        // Calculate total weight for percentage calculation
+        const totalWeight = pairs.reduce((sum, pair) => sum + (pair.weight || 0), 0);
+
         return `
             <div class="responsive-table">
                 <table class="pairs-table">
@@ -332,46 +335,124 @@ class HomePage extends BaseComponent {
                         <tr>
                             <th class="pair-col">
                                 <div class="th-content">
+                                    <span class="material-icons-outlined">swap_horiz</span>
                                     <span>Pair</span>
-                                    <span class="sort-indicator ${this.sortBy === 'name' ? 'active' : ''}">
-                                        ${this.sortBy === 'name' ? (this.sortOrder === 'desc' ? '↓' : '↑') : ''}
-                                    </span>
+                                </div>
+                            </th>
+                            <th class="platform-col">
+                                <div class="th-content">
+                                    <span class="material-icons-outlined">account_balance</span>
+                                    <span>Platform</span>
                                 </div>
                             </th>
                             <th class="apr-col">
                                 <div class="th-content">
-                                    <span>APR</span>
-                                    <span class="sort-indicator ${this.sortBy === 'apr' ? 'active' : ''}">
-                                        ${this.sortBy === 'apr' ? (this.sortOrder === 'desc' ? '↓' : '↑') : ''}
-                                    </span>
-                                </div>
-                            </th>
-                            <th class="tvl-col">
-                                <div class="th-content">
-                                    <span>TVL</span>
-                                    <span class="sort-indicator ${this.sortBy === 'tvl' ? 'active' : ''}">
-                                        ${this.sortBy === 'tvl' ? (this.sortOrder === 'desc' ? '↓' : '↑') : ''}
-                                    </span>
+                                    <span class="material-icons-outlined">percent</span>
+                                    <span>Est. APR</span>
                                 </div>
                             </th>
                             <th class="weight-col">
                                 <div class="th-content">
-                                    <span>Weight</span>
-                                    <span class="sort-indicator ${this.sortBy === 'weight' ? 'active' : ''}">
-                                        ${this.sortBy === 'weight' ? (this.sortOrder === 'desc' ? '↓' : '↑') : ''}
-                                    </span>
+                                    <span class="material-icons-outlined">monetization_on</span>
+                                    <span>Reward Weight</span>
                                 </div>
                             </th>
-                            <th class="stake-col">Your Stake</th>
-                            <th class="rewards-col">Pending Rewards</th>
-                            <th class="actions-col">Actions</th>
+                            <th class="tvl-col">
+                                <div class="th-content">
+                                    <span class="material-icons-outlined">account_balance_wallet</span>
+                                    <span>TVL</span>
+                                </div>
+                            </th>
+                            <th class="share-col">
+                                <div class="th-content">
+                                    <span class="material-icons-outlined">share</span>
+                                    <span>My Pool Share</span>
+                                </div>
+                            </th>
+                            <th class="earnings-col">
+                                <div class="th-content">
+                                    <span class="material-icons-outlined">redeem</span>
+                                    <span>My Earnings</span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${pairs.map(pair => this.renderEnhancedPairRow(pair)).join('')}
+                        ${pairs.map(pair => this.renderReactStylePairRow(pair, totalWeight)).join('')}
                     </tbody>
                 </table>
             </div>
+        `;
+    }
+
+    /**
+     * Render React-style pair row (matches React implementation exactly)
+     */
+    renderReactStylePairRow(pair, totalWeight) {
+        const isConnected = this.getState('wallet.isConnected');
+        const weightPercentage = totalWeight > 0 ? ((pair.weight / totalWeight) * 100).toFixed(2) : '0.00';
+
+        return `
+            <tr class="pair-row" data-pair-id="${pair.id}">
+                <!-- Pair Name (clickable to Uniswap) -->
+                <td class="pair-col">
+                    <button class="pair-link" onclick="window.open('https://app.uniswap.org/explore/pools/polygon/${pair.lpToken}', '_blank')"
+                            style="background: none; border: none; color: var(--primary-main); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                        ${pair.name}
+                        <span class="material-icons-outlined" style="font-size: 16px;">open_in_new</span>
+                    </button>
+                </td>
+
+                <!-- Platform -->
+                <td class="platform-col">
+                    <span class="platform-chip" style="display: inline-block; padding: 4px 12px; border-radius: 16px; border: 1px solid var(--primary-main); color: var(--primary-main); font-size: 13px;">
+                        ${pair.platform}
+                    </span>
+                </td>
+
+                <!-- APR -->
+                <td class="apr-col">
+                    <span style="color: var(--success-main); font-weight: bold; font-size: 16px;">
+                        ${pair.apr.toFixed(1)}%
+                    </span>
+                </td>
+
+                <!-- Reward Weight -->
+                <td class="weight-col">
+                    <span class="weight-chip" style="display: inline-block; padding: 4px 12px; border-radius: 16px; background: var(--secondary-main); color: white; font-size: 13px;">
+                        ${window.ethers.formatEther(pair.weight.toString())} (${weightPercentage}%)
+                    </span>
+                </td>
+
+                <!-- TVL -->
+                <td class="tvl-col">
+                    <span style="font-weight: 500;">
+                        ${pair.tvl.toFixed(2)}
+                    </span>
+                </td>
+
+                <!-- My Pool Share (button that opens stake modal) -->
+                <td class="share-col">
+                    <button class="btn btn-primary btn-small share-btn"
+                            onclick="handleOpenStakeModal('${pair.id}', 0)"
+                            ${!isConnected ? 'disabled' : ''}
+                            style="display: flex; align-items: center; gap: 6px; min-width: 100px;">
+                        <span class="material-icons-outlined" style="font-size: 16px;">share</span>
+                        ${pair.myShare.toFixed(2)}%
+                    </button>
+                </td>
+
+                <!-- My Earnings (button that opens claim modal) -->
+                <td class="earnings-col">
+                    <button class="btn btn-secondary btn-small earnings-btn"
+                            onclick="handleOpenStakeModal('${pair.id}', 2)"
+                            ${!isConnected ? 'disabled' : ''}
+                            style="display: flex; align-items: center; gap: 6px; min-width: 120px;">
+                        <span class="material-icons-outlined" style="font-size: 16px;">redeem</span>
+                        ${pair.myEarnings.toFixed(4)} LIB
+                    </button>
+                </td>
+            </tr>
         `;
     }
 
@@ -509,44 +590,25 @@ class HomePage extends BaseComponent {
 
     /**
      * Get sorted pairs based on current sort settings
+     * Matches React implementation: sort by weight > tvl > apr
      */
     getSortedPairs() {
         const pairs = [...this.stakingPairs];
 
+        // React-style multi-level sorting
         pairs.sort((a, b) => {
-            let aValue, bValue;
-
-            switch (this.sortBy) {
-                case 'apr':
-                    aValue = a.apr || 0;
-                    bValue = b.apr || 0;
-                    break;
-                case 'tvl':
-                    aValue = a.tvl || 0;
-                    bValue = b.tvl || 0;
-                    break;
-                case 'weight':
-                    aValue = a.weight || 0;
-                    bValue = b.weight || 0;
-                    break;
-                case 'name':
-                    aValue = a.name || '';
-                    bValue = b.name || '';
-                    break;
-                default:
-                    aValue = a.apr || 0;
-                    bValue = b.apr || 0;
+            // Primary sort: Weight (descending)
+            if (a.weight !== b.weight) {
+                return b.weight - a.weight;
             }
 
-            if (typeof aValue === 'string') {
-                return this.sortOrder === 'desc'
-                    ? bValue.localeCompare(aValue)
-                    : aValue.localeCompare(bValue);
-            } else {
-                return this.sortOrder === 'desc'
-                    ? bValue - aValue
-                    : aValue - bValue;
+            // Secondary sort: TVL (descending)
+            if (a.tvl !== b.tvl) {
+                return b.tvl - a.tvl;
             }
+
+            // Tertiary sort: APR (descending)
+            return b.apr - a.apr;
         });
 
         return pairs;
@@ -1132,6 +1194,7 @@ class HomePage extends BaseComponent {
 
     /**
      * Build pair data from contract information
+     * Enhanced with React-style price fetching and APR calculation
      */
     async buildPairData(pairInfo) {
         try {
@@ -1140,20 +1203,68 @@ class HomePage extends BaseComponent {
 
             // Get additional data if available
             let tvl = 0;
+            let tvlInTokens = 0;
             let totalStaked = 0;
             let apr = 0;
+            let myShare = 0;
+            let myEarnings = 0;
+            let lpTokenPrice = 0;
+            let rewardTokenPrice = 0;
 
             try {
-                // Try to get pool info if available
-                const poolInfo = await window.contractManager.getPoolInfo(pairInfo.address);
-                totalStaked = parseFloat(poolInfo.totalStaked || '0');
+                // Get hourly reward rate from contract
+                const hourlyRewardRate = await window.contractManager.getHourlyRewardRate();
+                const hourlyRate = parseFloat(window.ethers.formatEther(hourlyRewardRate || '0'));
 
-                // Calculate TVL and APR if rewards calculator is available
-                if (window.rewardsCalculator) {
-                    const aprData = await window.rewardsCalculator.calculateAPR(pairName);
-                    apr = aprData.apr || 0;
-                    tvl = aprData.tvl || totalStaked;
+                // Get TVL from contract
+                const tvlWei = await window.contractManager.getTVL(pairInfo.address);
+                tvlInTokens = parseFloat(window.ethers.formatEther(tvlWei || '0'));
+
+                // Fetch token prices using DexScreener (React implementation)
+                if (window.priceFeeds && window.priceFeeds.fetchTokenPrice) {
+                    lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pairInfo.address);
+
+                    // Get reward token address from config
+                    const rewardTokenAddress = window.CONFIG?.CONTRACTS?.REWARD_TOKEN;
+                    if (rewardTokenAddress) {
+                        rewardTokenPrice = await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                    }
                 }
+
+                // Calculate APR using React formula
+                if (window.rewardsCalculator && window.rewardsCalculator.calcAPR) {
+                    apr = window.rewardsCalculator.calcAPR(
+                        hourlyRate,
+                        tvlInTokens,
+                        lpTokenPrice,
+                        rewardTokenPrice
+                    );
+                }
+
+                // Calculate TVL in USD
+                tvl = tvlInTokens * lpTokenPrice;
+
+                // Get user-specific data if wallet is connected
+                const walletAddress = this.getState('wallet.address');
+                if (walletAddress && window.contractManager) {
+                    try {
+                        // Get user stake info
+                        const userStake = await window.contractManager.getUserStake(walletAddress, pairInfo.address);
+                        const userStakeAmount = parseFloat(window.ethers.formatEther(userStake.amount || '0'));
+
+                        // Calculate my share percentage
+                        if (tvlInTokens > 0) {
+                            myShare = (userStakeAmount / tvlInTokens) * 100;
+                        }
+
+                        // Get pending rewards
+                        const pendingRewards = await window.contractManager.getPendingRewards(walletAddress, pairInfo.address);
+                        myEarnings = parseFloat(window.ethers.formatEther(pendingRewards || '0'));
+                    } catch (userError) {
+                        this.log(`Could not get user data for ${pairName}:`, userError.message);
+                    }
+                }
+
             } catch (dataError) {
                 this.log(`Could not get additional data for ${pairName}:`, dataError.message);
             }
@@ -1166,16 +1277,21 @@ class HomePage extends BaseComponent {
                 weight: parseInt(pairInfo.weight) || 0,
                 isActive: pairInfo.isActive,
                 apr: apr,
-                aprFormatted: `${apr.toFixed(2)}%`,
+                aprFormatted: `${apr.toFixed(1)}%`,
                 tvl: tvl,
-                totalStaked: totalStaked,
+                tvlInTokens: tvlInTokens,
+                totalStaked: tvlInTokens,
+                lpTokenPrice: lpTokenPrice,
+                rewardTokenPrice: rewardTokenPrice,
+                myShare: myShare,
+                myEarnings: myEarnings,
                 isNew: false,
                 isHot: apr > 100,
                 stakersCount: 0, // Would need additional contract call
                 aprChange: null,
                 tvlChange: null,
-                userShares: '0.00',
-                userEarnings: '0.00'
+                userShares: myShare.toFixed(2),
+                userEarnings: myEarnings.toFixed(4)
             };
         } catch (error) {
             this.logError('Failed to build pair data:', error);
@@ -1456,3 +1572,32 @@ class HomePage extends BaseComponent {
 
 // Make available globally
 window.HomePage = HomePage;
+
+/**
+ * Global handler for opening stake modal with specific tab
+ * Matches React implementation: handleShareClick(pair, tab)
+ */
+window.handleOpenStakeModal = function(pairId, initialTab = 0) {
+    console.log(`🎯 Opening stake modal for pair ${pairId}, tab ${initialTab}`);
+
+    // Find the pair data
+    const homePage = window.app?.currentPage;
+    if (!homePage || !homePage.stakingPairs) {
+        console.error('HomePage not available');
+        return;
+    }
+
+    const pair = homePage.stakingPairs.find(p => p.id === pairId);
+    if (!pair) {
+        console.error(`Pair ${pairId} not found`);
+        return;
+    }
+
+    // Open modal with specific tab
+    if (window.stakingModal) {
+        window.stakingModal.show(pair, initialTab);
+    } else {
+        console.error('Staking modal not available');
+        window.notificationManager?.error('Error', 'Staking modal not available');
+    }
+};

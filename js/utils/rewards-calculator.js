@@ -117,41 +117,62 @@
         }
 
         /**
+         * Calculate APR using React implementation formula
+         * Matches: (hourlyRate * rewardTokenPrice * 365) / (tvl * lpTokenPrice)
+         * @param {number} hourlyRate - Hourly reward rate in tokens
+         * @param {number} tvl - Total Value Locked in LP tokens
+         * @param {number} lpTokenPrice - LP token price in USD
+         * @param {number} rewardTokenPrice - Reward token price in USD
+         * @returns {number} - APR as percentage (e.g., 45.5 for 45.5%)
+         */
+        calcAPR(hourlyRate, tvl, lpTokenPrice, rewardTokenPrice) {
+            if (tvl === 0) return 0;
+
+            // If prices not available, use simple calculation
+            if (!lpTokenPrice || !rewardTokenPrice) {
+                return ((hourlyRate * 24 * 365) / tvl) * 100 || 0;
+            }
+
+            // Full calculation with prices (React formula)
+            return ((hourlyRate * rewardTokenPrice * 365 * 24) / (tvl * lpTokenPrice)) * 100 || 0;
+        }
+
+        /**
          * Calculate APR for a specific LP token pool
          */
         async calculateAPR(pairName, options = {}) {
             try {
                 const cacheKey = `apr_${pairName}_${JSON.stringify(options)}`;
-                
+
                 // Check cache first
                 if (this.isCacheValid(cacheKey)) {
                     return this.cache.get(cacheKey).data;
                 }
-                
+
                 console.log(`🧮 Calculating APR for ${pairName}...`);
-                
+
                 // Get pool information
                 const poolInfo = await this.getPoolInfo(pairName);
                 if (!poolInfo) {
                     throw new Error(`Pool information not available for ${pairName}`);
                 }
-                
+
                 // Get price data
                 const lpTokenPrice = await this.getLPTokenPrice(pairName);
                 const rewardTokenPrice = await this.getRewardTokenPrice();
-                
+
                 // Calculate TVL (Total Value Locked)
                 const tvlUSD = this.calculateTVL(poolInfo.totalStaked, lpTokenPrice);
-                
+
                 // Calculate annual reward value
                 const annualRewardValue = this.calculateAnnualRewardValue(
-                    poolInfo.rewardRate, 
+                    poolInfo.rewardRate,
                     rewardTokenPrice
                 );
-                
+
                 // Calculate APR
                 const apr = this.computeAPR(annualRewardValue, tvlUSD);
-                
+
                 // Prepare result
                 const result = {
                     apr: apr,
@@ -166,19 +187,19 @@
                     lastUpdated: Date.now(),
                     isValid: tvlUSD >= this.config.MIN_TVL
                 };
-                
+
                 // Cache the result
                 this.cache.set(cacheKey, {
                     data: result,
                     timestamp: Date.now()
                 });
-                
+
                 console.log(`✅ APR calculated for ${pairName}: ${result.aprFormatted}`);
                 return result;
-                
+
             } catch (error) {
                 console.error(`❌ APR calculation failed for ${pairName}:`, error);
-                
+
                 // Return fallback data
                 return {
                     apr: 0,

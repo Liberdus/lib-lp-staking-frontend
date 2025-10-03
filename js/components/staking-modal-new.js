@@ -14,6 +14,17 @@ class StakingModalNew {
         this.userStaked = '0.00';
         this.pendingRewards = '0.00';
 
+        // Approval state
+        this.needsApproval = false;
+        this.isApproving = false;
+        this.isApproved = false;
+        this.currentAllowance = '0';
+
+        // Execution guards
+        this.isExecutingStake = false;
+        this.isExecutingUnstake = false;
+        this.isExecutingClaim = false;
+
         // Set global reference immediately
         window.stakingModal = this;
         window.stakingModalNew = this;
@@ -393,6 +404,10 @@ class StakingModalNew {
             if (e.target.id === 'stake-amount-input') {
                 this.stakeAmount = e.target.value;
                 this.updateSlider('stake');
+
+                // Reset approval state when amount changes
+                this.isApproved = false;
+                this.needsApproval = false;
             }
 
             if (e.target.id === 'unstake-amount-input') {
@@ -418,6 +433,17 @@ class StakingModalNew {
         this.currentTab = tab;
         this.isOpen = true;
 
+        // Reset approval state
+        this.isApproved = false;
+        this.needsApproval = false;
+        this.isApproving = false;
+        this.currentAllowance = '0';
+
+        // Reset execution guards
+        this.isExecutingStake = false;
+        this.isExecutingUnstake = false;
+        this.isExecutingClaim = false;
+
         // Update pair info
         this.updatePairInfo();
 
@@ -439,7 +465,250 @@ class StakingModalNew {
     }
 
     /**
+     * Show modal with numeric tab index (React-style)
+     * Matches React: show(pair, initialTab)
+     * @param {Object} pair - Pair data
+     * @param {number} initialTab - Tab index (0=stake, 1=unstake, 2=claim)
+     */
+    async show(pair, initialTab = 0) {
+        // Convert numeric tab index to string tab name
+        const tabNames = ['stake', 'unstake', 'claim'];
+        const tabName = tabNames[initialTab] || 'stake';
+
+        console.log(`🎯 Opening modal for ${pair.name}, tab: ${tabName} (index: ${initialTab})`);
+
+        // Call the existing open method
+        await this.open(pair, tabName);
+    }
+
+    /**
+     * Format token amount with ethers v5/v6 compatibility
+     * @param {string|BigNumber} amount - Token amount in wei
+     * @param {number} decimals - Token decimals
+     * @returns {string} Formatted amount
+     */
+    formatTokenAmount(amount, decimals) {
+        try {
+            // Handle null, undefined, or empty values
+            if (!amount || amount === '0' || amount === 0) {
+                return '0.00';
+            }
+
+            const ethers = window.ethers;
+
+            // If amount is already a formatted string (like "0.0"), return it
+            if (typeof amount === 'string' && amount.includes('.')) {
+                const parsed = parseFloat(amount);
+                return parsed.toFixed(6);
+            }
+
+            // Try ethers v6 API first (formatUnits is directly on ethers)
+            if (ethers.formatUnits) {
+                return ethers.formatUnits(amount, decimals);
+            }
+
+            // Try ethers v5 API (formatUnits is on ethers.utils)
+            if (ethers.utils && ethers.utils.formatUnits) {
+                return ethers.utils.formatUnits(amount, decimals);
+            }
+
+            // Manual formatting fallback
+            const amountStr = amount.toString();
+            const divisor = Math.pow(10, Number(decimals));
+            const result = (Number(amountStr) / divisor).toFixed(6);
+            return result;
+        } catch (error) {
+            console.error('❌ Error formatting token amount:', error);
+            return '0.00';
+        }
+    }
+
+    /**
+     * Check if LP token approval is needed for staking
+     * @returns {Promise<boolean>} True if approval is needed
+     */
+    async checkApprovalNeeded() {
+        try {
+            if (!window.contractManager || !window.walletManager || !this.currentPair) {
+                console.log('⚠️ Missing dependencies for approval check');
+                return true; // Assume approval needed
+            }
+
+            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+            const userAddress = window.walletManager.address;
+
+            // Get staking contract address (try multiple config paths)
+            const stakingAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT ||
+                                   window.CONFIG?.CONTRACTS?.STAKING ||
+                                   '0xDB7100D6f037fc36A51c38E76c910626A2d755f4'; // Fallback
+
+            console.log(`🔍 Checking approval for:`, {
+                lpToken: lpTokenAddress,
+                stakingContract: stakingAddress,
+                userAddress: userAddress,
+                amount: this.stakeAmount
+            });
+
+            // Create LP token contract instance
+            const lpTokenABI = [
+                'function allowance(address owner, address spender) view returns (uint256)',
+                'function approve(address spender, uint256 amount) returns (bool)',
+                'function balanceOf(address owner) view returns (uint256)'
+            ];
+
+            const provider = window.contractManager.provider || window.walletManager.provider;
+            const lpTokenContract = new window.ethers.Contract(lpTokenAddress, lpTokenABI, provider);
+
+            // Get current allowance
+            console.log('📞 Calling allowance()...');
+            const allowance = await lpTokenContract.allowance(userAddress, stakingAddress);
+            console.log(`✅ Allowance retrieved: ${allowance.toString()}`);
+
+            this.currentAllowance = this.formatTokenAmount(allowance, 18);
+
+            // Check if we need approval
+            const amountWei = window.ethers.utils.parseEther(this.stakeAmount.toString());
+            const needsApproval = allowance.lt(amountWei);
+
+            console.log(`🔍 Approval check result:`, {
+                allowanceRaw: allowance.toString(),
+                allowanceFormatted: this.currentAllowance,
+                requiredAmountWei: amountWei.toString(),
+                requiredAmountFormatted: this.stakeAmount,
+                needsApproval: needsApproval,
+                comparison: `${allowance.toString()} < ${amountWei.toString()} = ${needsApproval}`
+            });
+
+            return needsApproval;
+
+        } catch (error) {
+            console.error('❌ Failed to check approval:', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                code: error.code,
+                stack: error.stack
+            });
+            return true; // Assume approval needed on error
+        }
+    }
+
+    /**
+     * Approve LP tokens for staking
+     * @returns {Promise<boolean>} True if approval succeeded
+     */
+    async approveTokens() {
+        try {
+            if (!window.contractManager || !window.walletManager || !this.currentPair) {
+                throw new Error('Contract manager or wallet not ready');
+            }
+
+            this.isApproving = true;
+            this.updateStakeButton();
+
+            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+
+            // Get staking contract address (try multiple config paths)
+            const stakingAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT ||
+                                   window.CONFIG?.CONTRACTS?.STAKING ||
+                                   '0xDB7100D6f037fc36A51c38E76c910626A2d755f4'; // Fallback
+
+            const amountWei = window.ethers.utils.parseEther(this.stakeAmount.toString());
+
+            console.log(`🔐 Approving LP tokens:`, {
+                lpToken: lpTokenAddress,
+                spender: stakingAddress,
+                amount: this.stakeAmount
+            });
+
+            // Create LP token contract instance with signer
+            const lpTokenABI = [
+                'function allowance(address owner, address spender) view returns (uint256)',
+                'function approve(address spender, uint256 amount) returns (bool)'
+            ];
+
+            const signer = window.contractManager.signer || window.walletManager.signer;
+            if (!signer) {
+                throw new Error('No signer available. Please connect your wallet.');
+            }
+
+            const lpTokenContract = new window.ethers.Contract(lpTokenAddress, lpTokenABI, signer);
+
+            // Show notification
+            if (window.notificationManager) {
+                window.notificationManager.show('Approving LP tokens...', 'info');
+            }
+
+            // Execute approval transaction
+            const approveTx = await lpTokenContract.approve(stakingAddress, amountWei);
+
+            console.log(`✅ Approval transaction sent: ${approveTx.hash}`);
+            console.log(`🔗 PolygonScan: https://amoy.polygonscan.com/tx/${approveTx.hash}`);
+
+            // Wait for confirmation
+            const receipt = await approveTx.wait();
+
+            console.log(`✅ Approval confirmed in block ${receipt.blockNumber}`);
+
+            // Update state
+            this.isApproved = true;
+            this.needsApproval = false;
+            this.isApproving = false;
+
+            // Show success notification
+            if (window.notificationManager) {
+                window.notificationManager.show('LP tokens approved! You can now stake.', 'success');
+            }
+
+            // Update button
+            this.updateStakeButton();
+
+            return true;
+
+        } catch (error) {
+            console.error('❌ Approval failed:', error);
+
+            this.isApproving = false;
+            this.isApproved = false;
+            this.updateStakeButton();
+
+            // Show error notification
+            if (window.notificationManager) {
+                const errorMsg = error.message || 'Failed to approve tokens';
+                window.notificationManager.show(`Approval failed: ${errorMsg}`, 'error');
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Update stake button text and state based on approval status
+     */
+    updateStakeButton() {
+        const stakeButton = document.querySelector('.modal-body button.btn-primary');
+        if (!stakeButton) return;
+
+        const buttonIcon = stakeButton.querySelector('.material-icons');
+        const buttonText = stakeButton.childNodes[stakeButton.childNodes.length - 1];
+
+        if (this.isApproving) {
+            stakeButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) buttonText.textContent = ' Approving...';
+        } else if (this.isApproved) {
+            stakeButton.disabled = false;
+            if (buttonIcon) buttonIcon.textContent = 'add';
+            if (buttonText) buttonText.textContent = ' Stake LP Tokens';
+        } else {
+            stakeButton.disabled = !this.stakeAmount || parseFloat(this.stakeAmount) === 0;
+            if (buttonIcon) buttonIcon.textContent = 'add';
+            if (buttonText) buttonText.textContent = ' Stake LP Tokens';
+        }
+    }
+
+    /**
      * Load user balances from contract manager
+     * Enhanced to use correct lpToken address from pair object
      */
     async loadUserBalances() {
         try {
@@ -460,20 +729,51 @@ class StakingModalNew {
             }
 
             const userAddress = window.walletManager.address;
-            const tokenAddress = this.currentPair.address;
+            // Use lpToken address from pair object (matches React implementation)
+            const tokenAddress = this.currentPair.lpToken || this.currentPair.address;
 
-            // Get LP token balance
-            const lpTokenContract = await window.contractManager.getLPTokenContract(tokenAddress);
-            if (lpTokenContract) {
+            console.log(`🔍 Loading balances for token: ${tokenAddress}`);
+
+            // Get LP token balance using token address directly
+            try {
+                // Create LP token contract instance
+                const lpTokenABI = [
+                    'function balanceOf(address owner) view returns (uint256)',
+                    'function decimals() view returns (uint8)',
+                    'function symbol() view returns (string)',
+                    'function name() view returns (string)'
+                ];
+
+                const provider = window.contractManager.provider || window.walletManager.provider;
+                const lpTokenContract = new window.ethers.Contract(tokenAddress, lpTokenABI, provider);
+
+                // Get balance
                 const balance = await lpTokenContract.balanceOf(userAddress);
-                this.userBalance = window.ethers.formatEther(balance);
+                const decimals = await lpTokenContract.decimals();
+
+                // Format balance with ethers v5/v6 compatibility
+                this.userBalance = this.formatTokenAmount(balance, decimals);
+
+                console.log(`✅ LP Token balance: ${this.userBalance}`);
+            } catch (balanceError) {
+                console.error('❌ Failed to get LP token balance:', balanceError);
+                this.userBalance = '0.00';
             }
 
             // Get user stake info
-            const stakeInfo = await window.contractManager.getUserStake(userAddress, tokenAddress);
-            if (stakeInfo) {
-                this.userStaked = window.ethers.formatEther(stakeInfo.amount || '0');
-                this.pendingRewards = window.ethers.formatEther(stakeInfo.rewards || '0');
+            try {
+                const stakeInfo = await window.contractManager.getUserStake(userAddress, tokenAddress);
+                if (stakeInfo) {
+                    // Format with ethers v5/v6 compatibility
+                    this.userStaked = this.formatTokenAmount(stakeInfo.amount || '0', 18);
+                    this.pendingRewards = this.formatTokenAmount(stakeInfo.rewards || '0', 18);
+                }
+
+                console.log(`✅ Staked: ${this.userStaked}, Rewards: ${this.pendingRewards}`);
+            } catch (stakeError) {
+                console.error('❌ Failed to get stake info:', stakeError);
+                this.userStaked = '0.00';
+                this.pendingRewards = '0.00';
             }
 
             console.log('✅ User balances loaded:', {
@@ -690,6 +990,10 @@ class StakingModalNew {
             const input = document.getElementById('stake-amount-input');
             if (input) input.value = amount;
             this.updateSlider('stake');
+
+            // Reset approval state when amount changes
+            this.isApproved = false;
+            this.needsApproval = false;
         } else if (this.currentTab === 'unstake') {
             this.unstakeAmount = amount;
             const input = document.getElementById('unstake-amount-input');
@@ -735,9 +1039,19 @@ class StakingModalNew {
     }
 
     async executeStake() {
+        // Guard against multiple simultaneous executions
+        if (this.isExecutingStake) {
+            console.log('⚠️ Stake already in progress, ignoring duplicate call');
+            return;
+        }
+
         if (!this.stakeAmount || parseFloat(this.stakeAmount) === 0) return;
 
         try {
+            // Set execution guard
+            this.isExecutingStake = true;
+            console.log('🔒 Stake execution started, guard enabled');
+
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
@@ -746,13 +1060,39 @@ class StakingModalNew {
                 return;
             }
 
+            // STEP 1: Check if approval is needed
+            if (!this.isApproved) {
+                console.log('🔍 Checking if approval is needed...');
+                const needsApproval = await this.checkApprovalNeeded();
+
+                if (needsApproval) {
+                    console.log('🔐 Approval needed, executing approval...');
+                    const approved = await this.approveTokens();
+
+                    if (!approved) {
+                        console.log('❌ Approval failed or cancelled');
+                        return;
+                    }
+
+                    console.log('✅ Approval successful, proceeding to stake...');
+                } else {
+                    console.log('✅ Sufficient allowance, no approval needed');
+                }
+            }
+
+            // STEP 2: Execute staking transaction
             if (window.notificationManager) {
                 window.notificationManager.show('Staking LP tokens...', 'info');
             }
 
+            // Use lpToken address from pair object
+            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+
+            console.log('📤 Sending stake transaction...');
+
             // Execute real staking transaction
             const result = await window.contractManager.stake(
-                this.currentPair.address,
+                lpTokenAddress,
                 this.stakeAmount
             );
 
@@ -765,6 +1105,11 @@ class StakingModalNew {
             }
 
             console.log('✅ Staking transaction successful:', result.hash);
+
+            // Reset approval state
+            this.isApproved = false;
+            this.needsApproval = false;
+
             this.close();
 
             // Refresh home page data with enhanced method
@@ -779,13 +1124,27 @@ class StakingModalNew {
             if (window.notificationManager) {
                 window.notificationManager.show(`Staking failed: ${error.message}`, 'error');
             }
+        } finally {
+            // Always release the guard
+            this.isExecutingStake = false;
+            console.log('🔓 Stake execution finished, guard released');
         }
     }
 
     async executeUnstake() {
+        // Guard against multiple simultaneous executions
+        if (this.isExecutingUnstake) {
+            console.log('⚠️ Unstake already in progress, ignoring duplicate call');
+            return;
+        }
+
         if (!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0) return;
 
         try {
+            // Set execution guard
+            this.isExecutingUnstake = true;
+            console.log('🔒 Unstake execution started, guard enabled');
+
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
@@ -827,13 +1186,27 @@ class StakingModalNew {
             if (window.notificationManager) {
                 window.notificationManager.show(`Unstaking failed: ${error.message}`, 'error');
             }
+        } finally {
+            // Always release the guard
+            this.isExecutingUnstake = false;
+            console.log('🔓 Unstake execution finished, guard released');
         }
     }
 
     async executeClaim() {
+        // Guard against multiple simultaneous executions
+        if (this.isExecutingClaim) {
+            console.log('⚠️ Claim already in progress, ignoring duplicate call');
+            return;
+        }
+
         if (parseFloat(this.pendingRewards) === 0) return;
 
         try {
+            // Set execution guard
+            this.isExecutingClaim = true;
+            console.log('🔒 Claim execution started, guard enabled');
+
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
@@ -874,6 +1247,10 @@ class StakingModalNew {
             if (window.notificationManager) {
                 window.notificationManager.show(`Claim failed: ${error.message}`, 'error');
             }
+        } finally {
+            // Always release the guard
+            this.isExecutingClaim = false;
+            console.log('🔓 Claim execution finished, guard released');
         }
     }
 }
