@@ -873,3 +873,74 @@
         align-items: center;
     }
 }
+
+/* ==================== ACTIONS COLUMN STYLES ==================== */
+
+.actions-col {
+    min-width: 280px;
+    text-align: center;
+}
+
+.pair-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.pair-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.pair-actions .btn .material-icons-outlined {
+    font-size: 14px;
+}
+
+.pair-actions .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Share and Earnings columns */
+.share-col,
+.earnings-col {
+    text-align: center;
+    min-width: 100px;
+}
+
+@media (max-width: 1200px) {
+    .actions-col {
+        min-width: 240px;
+    }
+
+    .pair-actions {
+        gap: 6px;
+    }
+
+    .pair-actions .btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .actions-col {
+        min-width: 200px;
+    }
+
+    .pair-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .pair-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

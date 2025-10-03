@@ -422,9 +422,23 @@ class WalletManager {
     }
 
     /**
+     * Check if wallet is connected (alias for compatibility)
+     */
+    isWalletConnected() {
+        return this.isConnected();
+    }
+
+    /**
      * Get current wallet address
      */
     getAddress() {
+        return this.address;
+    }
+
+    /**
+     * Get current account (alias for address for compatibility)
+     */
+    get currentAccount() {
         return this.address;
     }
 

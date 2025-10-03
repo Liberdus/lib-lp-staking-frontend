@@ -843,6 +843,55 @@ class StakingModalNew {
                 tabContent.innerHTML = this.renderClaimTab();
                 break;
         }
+
+        // Attach input event listeners to update button states dynamically
+        this.attachTabEventListeners();
+    }
+
+    attachTabEventListeners() {
+        // Update button states when input changes
+        const stakeInput = document.getElementById('stake-amount-input');
+        const unstakeInput = document.getElementById('unstake-amount-input');
+
+        if (stakeInput) {
+            stakeInput.addEventListener('input', () => {
+                this.stakeAmount = stakeInput.value;
+                this.updateButtonStates();
+            });
+        }
+
+        if (unstakeInput) {
+            unstakeInput.addEventListener('input', () => {
+                this.unstakeAmount = unstakeInput.value;
+                this.updateButtonStates();
+            });
+        }
+
+        // Initial button state update
+        this.updateButtonStates();
+    }
+
+    updateButtonStates() {
+        // Update stake button
+        const stakeBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Stake"]');
+        if (stakeBtn && this.currentTab === 'stake') {
+            const amount = parseFloat(this.stakeAmount);
+            stakeBtn.disabled = !amount || amount === 0;
+        }
+
+        // Update unstake button
+        const unstakeBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Unstake"]');
+        if (unstakeBtn && this.currentTab === 'unstake') {
+            const amount = parseFloat(this.unstakeAmount);
+            unstakeBtn.disabled = !amount || amount === 0;
+        }
+
+        // Update claim button
+        const claimBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Claim"]');
+        if (claimBtn && this.currentTab === 'claim') {
+            const rewards = parseFloat(this.pendingRewards);
+            claimBtn.disabled = !rewards || rewards === 0;
+        }
     }
 
     renderStakeTab() {
@@ -994,20 +1043,23 @@ class StakingModalNew {
             // Reset approval state when amount changes
             this.isApproved = false;
             this.needsApproval = false;
+
+            // Update button states
+            this.updateButtonStates();
         } else if (this.currentTab === 'unstake') {
             this.unstakeAmount = amount;
             const input = document.getElementById('unstake-amount-input');
             if (input) input.value = amount;
             this.updateSlider('unstake');
+
+            // Update button states
+            this.updateButtonStates();
         }
 
         // Update percentage button states
         document.querySelectorAll('.percentage-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.percentage) === percentage);
         });
-
-        // Re-render to update button states
-        this.renderTabContent();
     }
 
     updateSlider(type) {

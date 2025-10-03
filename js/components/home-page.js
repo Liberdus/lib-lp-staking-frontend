@@ -102,14 +102,16 @@ class HomePage {
     }
 
     /**
-     * Wallet change refresh disabled to prevent automatic updates
-     * Users can manually refresh if needed
+     * Refresh data after wallet connection/disconnection
      */
     async refreshDataAfterWalletChange() {
-        console.log('🚫 Automatic refresh on wallet change disabled - use manual refresh button');
-        // Automatic refresh on wallet changes has been disabled to prevent flickering
-        // Users can manually refresh data using the refresh button if needed
-        return;
+        console.log('🔄 Wallet changed, refreshing data...');
+
+        // Small delay to ensure wallet manager is updated
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Reload data to show user-specific information
+        await this.loadData();
     }
 
     /**
@@ -330,12 +332,26 @@ class HomePage {
                     <span style="font-weight: 600;">$${this.formatNumber(pair.tvl || 0)}</span>
                 </td>
                 <td>
-                    <span style="font-weight: 600;">${userShares} LP</span>
+                    <button class="btn btn-primary btn-small btn-share"
+                            data-pair-id="${pair.id}"
+                            data-pair-address="${pair.address}"
+                            data-tab="0"
+                            ${!isConnected ? 'disabled' : ''}
+                            style="min-width: 100px;">
+                        <span class="material-icons" style="font-size: 16px;">share</span>
+                        ${userShares}%
+                    </button>
                 </td>
                 <td>
-                    <span style="font-weight: 600; color: var(--success-main);">
+                    <button class="btn btn-secondary btn-small btn-earnings"
+                            data-pair-id="${pair.id}"
+                            data-pair-address="${pair.address}"
+                            data-tab="2"
+                            ${!isConnected ? 'disabled' : ''}
+                            style="min-width: 120px;">
+                        <span class="material-icons" style="font-size: 16px;">redeem</span>
                         ${userEarnings} LIB
-                    </span>
+                    </button>
                 </td>
                 <td>
                     <div style="display: flex; gap: 8px;">
@@ -363,6 +379,55 @@ class HomePage {
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.handleRefreshClick());
         }
+
+        // Delegate event listeners for dynamic content (buttons in table rows)
+        document.addEventListener('click', (e) => {
+            // Handle row click (open modal on default tab)
+            if (e.target.closest('.pair-row')) {
+                const pairId = e.target.closest('.pair-row').dataset.pairId;
+                if (!e.target.closest('button')) {
+                    this.openStakingModal(pairId);
+                }
+            }
+
+            // Handle Share button click (open modal on Stake tab)
+            if (e.target.closest('.btn-share')) {
+                e.stopPropagation();
+                const button = e.target.closest('.btn-share');
+                const pairId = button.dataset.pairId;
+                const tab = parseInt(button.dataset.tab) || 0;
+                this.openStakingModal(pairId, tab === 0 ? 'stake' : 'unstake');
+            }
+
+            // Handle Earnings button click (open modal on Claim tab)
+            if (e.target.closest('.btn-earnings')) {
+                e.stopPropagation();
+                const button = e.target.closest('.btn-earnings');
+                const pairId = button.dataset.pairId;
+                this.openStakingModal(pairId, 'claim');
+            }
+
+            // Handle Stake button click
+            if (e.target.closest('.btn-stake')) {
+                e.stopPropagation();
+                const pairId = e.target.closest('.btn-stake').dataset.pairId;
+                this.openStakingModal(pairId, 'stake');
+            }
+
+            // Handle Unstake button click
+            if (e.target.closest('.btn-unstake')) {
+                e.stopPropagation();
+                const pairId = e.target.closest('.btn-unstake').dataset.pairId;
+                this.openStakingModal(pairId, 'unstake');
+            }
+
+            // Handle Claim button click
+            if (e.target.closest('.btn-claim')) {
+                e.stopPropagation();
+                const pairId = e.target.closest('.btn-claim').dataset.pairId;
+                this.claimRewards(pairId);
+            }
+        });
     }
 
     /**
@@ -391,34 +456,6 @@ class HomePage {
                 refreshButton.innerHTML = '<span class="material-icons">refresh</span>';
             }
         }
-
-        // Delegate event listeners for dynamic content
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.pair-row')) {
-                const pairId = e.target.closest('.pair-row').dataset.pairId;
-                if (!e.target.closest('button')) {
-                    this.openStakingModal(pairId);
-                }
-            }
-
-            if (e.target.closest('.btn-stake')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-stake').dataset.pairId;
-                this.openStakingModal(pairId, 'stake');
-            }
-
-            if (e.target.closest('.btn-unstake')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-unstake').dataset.pairId;
-                this.openStakingModal(pairId, 'unstake');
-            }
-
-            if (e.target.closest('.btn-claim')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-claim').dataset.pairId;
-                this.claimRewards(pairId);
-            }
-        });
     }
 
     async loadData() {
@@ -584,8 +621,10 @@ class HomePage {
                 this.render(); // Show basic data immediately
 
                 // OPTIMIZATION 3: Load user data in parallel if wallet connected
-                if (this.isWalletConnected()) {
+                if (this.isWalletConnected() && window.walletManager?.currentAccount) {
                     console.log('⚡ Loading user stake data in parallel...');
+                    console.log('👛 Using wallet address:', window.walletManager.currentAccount);
+
                     const userDataPromises = allPairsInfo.map(async (pairInfo, i) => {
                         if (pairInfo.address === '0x0000000000000000000000000000000000000000') {
                             return { index: i, userStake: { amount: '0', rewards: '0' } };
@@ -593,9 +632,10 @@ class HomePage {
 
                         try {
                             const userStake = await window.contractManager.getUserStake(
-                                window.walletManager.address,
+                                window.walletManager.currentAccount,
                                 pairInfo.address
                             );
+                            console.log(`✅ User stake for pair ${i}:`, userStake);
                             return { index: i, userStake };
                         } catch (error) {
                             console.warn(`⚠️ Failed to load user data for pair ${pairInfo.address}:`, error.message);
@@ -609,12 +649,30 @@ class HomePage {
                     // Update pairs with user data
                     userDataResults.forEach(({ index, userStake }) => {
                         if (this.pairs[index]) {
-                            this.pairs[index].userShares = userStake.amount || '0.00';
-                            this.pairs[index].userEarnings = userStake.rewards || '0.00';
+                            // Calculate pool share percentage: (userStake * 100) / TVL
+                            const userStakeAmount = parseFloat(userStake.amount || '0');
+                            const tvl = this.pairs[index].tvl || 0;
+
+                            if (userStakeAmount > 0 && tvl > 0) {
+                                const sharePercentage = (userStakeAmount * 100) / tvl;
+                                this.pairs[index].userShares = sharePercentage.toFixed(2);
+                            } else {
+                                this.pairs[index].userShares = '0.00';
+                            }
+
+                            // Format user earnings
+                            const earnings = parseFloat(userStake.rewards || '0');
+                            this.pairs[index].userEarnings = earnings.toFixed(6);
+
+                            console.log(`📊 Pair ${index}: SharePercentage=${this.pairs[index].userShares}%, Earnings=${this.pairs[index].userEarnings} LIB`);
                         }
                     });
 
                     console.log('⚡ User data loaded and updated');
+
+                    // Re-render to show updated user data
+                    this.render();
+                    console.log('🎨 UI re-rendered with user data');
                 }
             }
 
@@ -784,7 +842,7 @@ class HomePage {
             }
 
             // Get user-specific data if wallet is connected
-            let userShares = '0.00';
+            let userSharesPercentage = '0.00';
             let userEarnings = '0.00';
 
             if (this.isWalletConnected() && window.walletManager?.currentAccount) {
@@ -798,8 +856,38 @@ class HomePage {
                         pairInfo.address
                     );
 
-                    userShares = parseFloat(userStake || '0').toFixed(2);
-                    userEarnings = parseFloat(pendingRewards || '0').toFixed(2);
+                    // Calculate pool share percentage: (userStake * 100) / TVL
+                    // userStake is in ether format, tvl is also in ether format
+                    const userStakeAmount = parseFloat(userStake || '0');
+                    if (userStakeAmount > 0 && tvl > 0) {
+                        const sharePercentage = (userStakeAmount * 100) / tvl;
+                        userSharesPercentage = sharePercentage.toFixed(2);
+                        console.log(`📊 Pool share calculation: ${userStakeAmount} LP / ${tvl} TVL * 100 = ${sharePercentage}%`);
+                    } else {
+                        userSharesPercentage = '0.00';
+                    }
+
+                    // Format pendingRewards - convert from wei to ether if needed
+                    if (pendingRewards && pendingRewards !== '0') {
+                        try {
+                            // Check if it's a BigNumber or large number (in wei)
+                            const rewardsStr = pendingRewards.toString();
+                            if (rewardsStr.length > 10) {
+                                // Likely in wei, convert to ether
+                                userEarnings = parseFloat(window.ethers.formatEther(pendingRewards)).toFixed(6);
+                            } else {
+                                // Already in ether format
+                                userEarnings = parseFloat(pendingRewards).toFixed(6);
+                            }
+                        } catch (formatError) {
+                            console.log(`Error formatting rewards for ${pairName}:`, formatError.message);
+                            userEarnings = parseFloat(pendingRewards || '0').toFixed(6);
+                        }
+                    } else {
+                        userEarnings = '0.000000';
+                    }
+
+                    console.log(`📊 User data for ${pairName}: SharePercentage=${userSharesPercentage}%, Earnings=${userEarnings} LIB`);
                 } catch (userError) {
                     console.log(`Could not get user data for ${pairName}:`, userError.message);
                 }
@@ -813,7 +901,7 @@ class HomePage {
                 platform: pairInfo.platform || 'Unknown',
                 apr: apr.toFixed(2),
                 tvl: tvl,
-                userShares: userShares,
+                userShares: userSharesPercentage,
                 userEarnings: userEarnings,
                 totalStaked: totalStaked.toString(),
                 rewardRate: rewardRate.toFixed(3),

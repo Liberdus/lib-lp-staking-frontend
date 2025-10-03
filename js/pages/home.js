@@ -375,6 +375,12 @@ class HomePage extends BaseComponent {
                                     <span>My Earnings</span>
                                 </div>
                             </th>
+                            <th class="actions-col">
+                                <div class="th-content">
+                                    <span class="material-icons-outlined">settings</span>
+                                    <span>Actions</span>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -391,6 +397,8 @@ class HomePage extends BaseComponent {
     renderReactStylePairRow(pair, totalWeight) {
         const isConnected = this.getState('wallet.isConnected');
         const weightPercentage = totalWeight > 0 ? ((pair.weight / totalWeight) * 100).toFixed(2) : '0.00';
+        const hasStake = pair.myShare > 0;
+        const hasRewards = pair.myEarnings > 0;
 
         return `
             <tr class="pair-row" data-pair-id="${pair.id}">
@@ -427,30 +435,52 @@ class HomePage extends BaseComponent {
                 <!-- TVL -->
                 <td class="tvl-col">
                     <span style="font-weight: 500;">
-                        ${pair.tvl.toFixed(2)}
+                        $${pair.tvl.toFixed(2)}
                     </span>
                 </td>
 
-                <!-- My Pool Share (button that opens stake modal) -->
+                <!-- My Pool Share -->
                 <td class="share-col">
-                    <button class="btn btn-primary btn-small share-btn"
-                            onclick="handleOpenStakeModal('${pair.id}', 0)"
-                            ${!isConnected ? 'disabled' : ''}
-                            style="display: flex; align-items: center; gap: 6px; min-width: 100px;">
-                        <span class="material-icons-outlined" style="font-size: 16px;">share</span>
-                        ${pair.myShare.toFixed(2)}%
-                    </button>
+                    <span style="font-weight: 500; color: ${hasStake ? 'var(--primary-main)' : 'var(--text-secondary)'};">
+                        ${pair.myShare.toFixed(2)} LP
+                    </span>
                 </td>
 
-                <!-- My Earnings (button that opens claim modal) -->
+                <!-- My Earnings -->
                 <td class="earnings-col">
-                    <button class="btn btn-secondary btn-small earnings-btn"
-                            onclick="handleOpenStakeModal('${pair.id}', 2)"
-                            ${!isConnected ? 'disabled' : ''}
-                            style="display: flex; align-items: center; gap: 6px; min-width: 120px;">
-                        <span class="material-icons-outlined" style="font-size: 16px;">redeem</span>
+                    <span style="font-weight: 500; color: ${hasRewards ? 'var(--success-main)' : 'var(--text-secondary)'};">
                         ${pair.myEarnings.toFixed(4)} LIB
-                    </button>
+                    </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="actions-col">
+                    <div class="pair-actions" style="display: flex; gap: 8px; justify-content: center;">
+                        <button class="btn btn-primary btn-small"
+                                onclick="handleOpenStakeModal('${pair.id}', 0)"
+                                ${!isConnected ? 'disabled' : ''}
+                                title="Stake LP tokens"
+                                style="min-width: 70px;">
+                            <span class="material-icons-outlined" style="font-size: 14px;">add</span>
+                            Stake
+                        </button>
+                        <button class="btn btn-secondary btn-small"
+                                onclick="handleOpenStakeModal('${pair.id}', 1)"
+                                ${!isConnected || !hasStake ? 'disabled' : ''}
+                                title="Unstake LP tokens"
+                                style="min-width: 80px;">
+                            <span class="material-icons-outlined" style="font-size: 14px;">remove</span>
+                            Unstake
+                        </button>
+                        <button class="btn btn-success btn-small"
+                                onclick="handleOpenStakeModal('${pair.id}', 2)"
+                                ${!isConnected || !hasRewards ? 'disabled' : ''}
+                                title="Claim rewards"
+                                style="min-width: 70px;">
+                            <span class="material-icons-outlined" style="font-size: 14px;">redeem</span>
+                            Claim
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
