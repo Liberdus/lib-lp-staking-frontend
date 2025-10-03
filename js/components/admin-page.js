@@ -1756,17 +1756,14 @@ class AdminPage {
                     <div class="action-buttons">
                         ${!proposal.executed && !proposal.rejected ? `
                             <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
-                                <span class="btn-icon">✓</span>
-                                <span class="btn-text">Approve</span>
+                                Approve
                             </button>
                             <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
-                                <span class="btn-icon">✗</span>
-                                <span class="btn-text">Reject</span>
+                                Reject
                             </button>
                             ${canExecute ? `
                                 <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
-                                    <span class="btn-icon">🚀</span>
-                                    <span class="btn-text">Execute</span>
+                                    Execute
                                 </button>
                             ` : ''}
                         ` : ''}
@@ -3185,17 +3182,14 @@ class AdminPage {
                         <div class="action-buttons">
                             ${!proposal.executed && !proposal.rejected ? `
                                 <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
-                                    <span class="btn-icon">✓</span>
-                                    <span class="btn-text">Approve</span>
+                                    Approve
                                 </button>
                                 <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
-                                    <span class="btn-icon">✗</span>
-                                    <span class="btn-text">Reject</span>
+                                    Reject
                                 </button>
                                 ${canExecute ? `
                                     <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
-                                        <span class="btn-icon">🚀</span>
-                                        <span class="btn-text">Execute</span>
+                                        Execute
                                     </button>
                                 ` : ''}
                             ` : ''}
