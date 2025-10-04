@@ -1,7 +1,4 @@
-/**
- * Admin Panel Styles
- * Phase 3, Day 8 - Admin Panel Foundation & Access Control
- */
+
 
 /* Notification Styles for Admin Panel - Top Right Position */
 .notification-container,
@@ -49,7 +46,7 @@
     border-radius: 14px 0 0 14px;
 }
 
-/* Ensure no pseudo-elements interfere */
+
 .notification::after {
     display: none !important;
     content: none !important;
@@ -89,14 +86,14 @@
     border: none !important;
 }
 
-/* Hide any pseudo-elements that might show background text */
+
 .notification-icon::before,
 .notification-icon::after {
     display: none !important;
     content: none !important;
 }
 
-/* Hide any text nodes that aren't emojis */
+
 .notification-icon * {
     display: none !important;
 }
