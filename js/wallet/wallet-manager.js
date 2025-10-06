@@ -216,7 +216,8 @@ class WalletManager {
             // Show success notification if NotificationManager is available
             if (window.notificationManager && typeof window.notificationManager.success === 'function') {
                 window.notificationManager.success(
-                    `Wallet connected successfully! Address: ${this.address.slice(0, 6)}...${this.address.slice(-4)}`,
+                    'Wallet Connected Successfully!',
+                    `Address: ${this.address.slice(0, 6)}...${this.address.slice(-4)}`,
                     { duration: 3000 }
                 );
             }
@@ -239,11 +240,11 @@ class WalletManager {
             // Show user-friendly error message
             if (window.notificationManager) {
                 if (error.code === 4001) {
-                    window.notificationManager.warning('Connection cancelled by user');
+                    window.notificationManager.warning('Connection Cancelled', 'You cancelled the connection request');
                 } else if (error.code === -32002) {
-                    window.notificationManager.warning('MetaMask is already processing a request. Please wait.');
+                    window.notificationManager.warning('Request Pending', 'MetaMask is already processing a request. Please wait.');
                 } else {
-                    window.notificationManager.error(`Connection failed: ${error.message}`);
+                    window.notificationManager.error('Connection Failed', error.message || 'An error occurred while connecting');
                 }
             }
 

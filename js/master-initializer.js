@@ -292,7 +292,7 @@ class MasterInitializer {
                 window.ethereum.on('chainChanged', (chainId) => {
                     console.log('Chain changed:', chainId);
                     if (window.notificationManager) {
-                        window.notificationManager.info('Network changed. Please refresh if needed.');
+                        window.notificationManager.info('Network Changed', 'Please refresh the page if needed');
                     }
                 });
             }
@@ -499,7 +499,7 @@ class MasterInitializer {
 
             // Generic error notification
             if (window.notificationManager) {
-                window.notificationManager.error('An unexpected error occurred');
+                window.notificationManager.error('Unexpected Error', 'An unexpected error occurred. Please try again.');
             }
         });
 
@@ -537,7 +537,7 @@ class MasterInitializer {
 
             // Generic error notification
             if (window.notificationManager) {
-                window.notificationManager.error('An unexpected error occurred');
+                window.notificationManager.error('Unexpected Error', 'An unexpected error occurred. Please try again.');
             }
         });
 
@@ -557,7 +557,7 @@ class MasterInitializer {
             window.ethereum.on('chainChanged', (chainId) => {
                 console.log('Chain changed:', chainId);
                 if (window.notificationManager) {
-                    window.notificationManager.info('Network changed. Please refresh if needed.');
+                    window.notificationManager.info('Network Changed', 'Please refresh the page if needed');
                 }
             });
         }
@@ -695,42 +695,20 @@ class MasterInitializer {
     }
 
     handleInitializationError(error) {
-        const errorContainer = document.getElementById('alert-container');
-        if (errorContainer) {
-            errorContainer.innerHTML = `
-                <div style="
-                    background: #f8d7da;
-                    color: #721c24;
-                    padding: 16px;
-                    border-radius: 8px;
-                    margin-bottom: 16px;
-                    border: 1px solid #f5c6cb;
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                ">
-                    <span class="material-icons">error</span>
-                    <div style="flex: 1;">
-                        <strong>System Initialization Failed</strong><br>
-                        ${error.message || 'An unknown error occurred'}
-                    </div>
-                    <button onclick="window.masterInitializer.retryInitialization()" style="
-                        background: #721c24;
-                        color: white;
-                        border: none;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        gap: 4px;
-                    ">
-                        <span class="material-icons" style="font-size: 16px;">refresh</span>
-                        Retry
-                    </button>
-                </div>
-            `;
+        // Use homepage notification manager if available (overlay toast)
+        if (window.homepageNotificationManager) {
+            window.homepageNotificationManager.error(
+                'System Initialization Failed',
+                `${error.message || 'An unknown error occurred'}. Please refresh the page.`,
+                0 // Persistent error notification
+            );
+        } else {
+            // Fallback to console and alert
+            console.error('❌ System initialization failed:', error);
+            alert(`Initialization Error: ${error.message}\n\nPlease refresh the page.`);
         }
+
+        console.error('❌ System initialization failed:', error);
     }
 
     // Public API
@@ -750,10 +728,9 @@ class MasterInitializer {
     async retryInitialization() {
         console.log('🔄 Retrying system initialization...');
 
-        // Clear error state
-        const errorContainer = document.getElementById('alert-container');
-        if (errorContainer) {
-            errorContainer.innerHTML = '';
+        // Clear any existing notifications
+        if (window.homepageNotificationManager) {
+            window.homepageNotificationManager.dismissAll();
         }
 
         // Reset initialization state

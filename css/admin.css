@@ -2399,6 +2399,57 @@ button[form="change-signer-form"] {
     color: #666;
 }
 
+/* Modal Loading Animation - Modern Circular Spinner */
+.modal-loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    min-height: 120px;
+}
+
+.modal-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(99, 102, 241, 0.1);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: modal-spin 0.8s linear infinite;
+    position: relative;
+}
+
+.modal-loading-spinner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    margin: -16px 0 0 -16px;
+    border: 3px solid rgba(139, 92, 246, 0.1);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: modal-spin 1.2s linear infinite reverse;
+}
+
+@keyframes modal-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* No Data Message */
+.no-data {
+    text-align: center;
+    padding: 20px;
+    color: #94a3b8;
+    font-size: 14px;
+    font-style: italic;
+}
+
 /* Enhanced Warning Box */
 .warning-box {
     background-color: #fff3cd;

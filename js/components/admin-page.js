@@ -5111,8 +5111,8 @@ class AdminPage {
                             <div class="form-group">
                                 <label>Pair Weight Updates</label>
                                 <div id="weights-list">
-                                    <div class="loading-spinner">
-                                        <span class="spinner"></span> Loading current pairs...
+                                    <div class="modal-loading-container">
+                                        <div class="modal-loading-spinner"></div>
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-outline btn-sm" id="add-weight-pair" style="margin-top: 10px;">
@@ -5404,10 +5404,10 @@ class AdminPage {
     }
 
     // Missing function that's called from HTML
-    refreshContractInfo() {
+    async refreshContractInfo() {
         console.log('🔄 Refreshing contract info...');
         try {
-            this.loadContractStats();
+            await this.loadContractInformation();
             console.log('✅ Contract info refreshed');
         } catch (error) {
             console.error('❌ Failed to refresh contract info:', error);
@@ -5850,115 +5850,70 @@ class AdminPage {
 
     // Load contract information like React InfoCard component
     async loadContractInformation() {
-        console.log('📊 Loading contract information like React version...');
+        console.log('📊 Loading contract information from smart contract...');
 
         try {
             const contractManager = await this.ensureContractReady();
 
-            // Check RPC health first
-            const isRpcDown = await this.checkRpcHealth(contractManager);
-
-            if (isRpcDown) {
-                console.log('⚠️ RPC issues detected, using demo contract info');
-                this.displayContractInfo({
-                    rewardBalance: '1,234.56',
-                    hourlyRate: '0.1000',
-                    totalWeight: '1,000',
-                    pairs: [
-                        { lpToken: '0x1234567890123456789012345678901234567890', pairName: 'USDC/ETH', platform: 'Uniswap V3', weight: 500 },
-                        { lpToken: '0x8765432109876543210987654321098765432109', pairName: 'USDC/MATIC', platform: 'QuickSwap', weight: 500 }
-                    ],
-                    signers: [
-                        '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-                        '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-                        '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F',
-                        '0xd3ac493dc0dA16077CC589A838ac473bC010324F'
-                    ]
-                });
-                return;
-            }
-
-            // Load real contract data like React version
+            // Load real contract data
             const contractInfo = {};
 
-            // Get reward balance
+            // Get reward balance - real data only
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
-                    // Fix: Use .address property instead of .getAddress() method
                     const stakingAddress = contractManager.stakingContract.address;
                     if (!stakingAddress) {
                         throw new Error('Staking contract address not available');
                     }
                     const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
                     const balanceNum = Number(balance) / 1e18;
-                    return balanceNum > 0 ? balanceNum.toFixed(2) : '1,234.56'; // Demo value if zero
+                    return balanceNum.toFixed(2);
                 },
-                '1,234.56'
+                '0.00'
             );
 
-            // Get hourly rate
+            // Get hourly rate - real data only
             contractInfo.hourlyRate = await this.safeContractCall(
                 async () => {
                     const rate = await contractManager.stakingContract.hourlyRewardRate();
                     const rateNum = Number(rate) / 1e18;
-                    return rateNum > 0 ? rateNum.toFixed(4) : '0.1000'; // Demo value if zero
+                    return rateNum.toFixed(4);
                 },
-                '0.1000'
+                '0.0000'
             );
 
-            // Get total weight with safe BigNumber handling
+            // Get total weight - real data only
             contractInfo.totalWeight = await this.safeContractCall(
                 async () => {
-                    // Use the wrapper method that handles the correct contract method name
                     const weight = await contractManager.getTotalWeight();
-                    // Use safe conversion that handles large numbers
                     if (weight && weight.toString) {
                         const weightStr = weight.toString();
                         const weightBigInt = BigInt(weightStr);
-                        if (weightBigInt > 0n) {
-                            // Convert to number safely or keep as string if too large
-                            const weightNum = Number(weightBigInt);
-                            return weightNum > Number.MAX_SAFE_INTEGER ?
-                                weightBigInt.toString() : weightNum.toLocaleString();
-                        }
+                        const weightNum = Number(weightBigInt);
+                        return weightNum > Number.MAX_SAFE_INTEGER ?
+                            weightBigInt.toString() : weightNum.toLocaleString();
                     }
-                    return '1,000'; // Demo value if zero or invalid
+                    return '0';
                 },
-                '1,000'
+                '0'
             );
 
-            // Get pairs
+            // Get pairs with full information - real data only
             contractInfo.pairs = await this.safeContractCall(
                 async () => {
-                    const pairs = await contractManager.getPairs();
-                    return pairs.length > 0 ? pairs : [
-                        { lpToken: '0x1234567890123456789012345678901234567890', pairName: 'USDC/ETH', platform: 'Uniswap V3', weight: 500 },
-                        { lpToken: '0x8765432109876543210987654321098765432109', pairName: 'USDC/MATIC', platform: 'QuickSwap', weight: 500 }
-                    ];
+                    const pairsInfo = await contractManager.getAllPairsInfo();
+                    return pairsInfo || [];
                 },
-                [
-                    { lpToken: '0x1234567890123456789012345678901234567890', pairName: 'USDC/ETH', platform: 'Uniswap V3', weight: 500 },
-                    { lpToken: '0x8765432109876543210987654321098765432109', pairName: 'USDC/MATIC', platform: 'QuickSwap', weight: 500 }
-                ]
+                []
             );
 
-            // Get signers
+            // Get signers - real data only
             contractInfo.signers = await this.safeContractCall(
                 async () => {
                     const signers = await contractManager.getSigners();
-                    return signers.length > 0 ? signers : [
-                        '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-                        '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-                        '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F',
-                        '0xd3ac493dc0dA16077CC589A838ac473bC010324F'
-                    ];
+                    return signers || [];
                 },
-                [
-                    '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-                    '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-                    '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F',
-                    '0xd3ac493dc0dA16077CC589A838ac473bC010324F'
-                ]
+                []
             );
 
             console.log('✅ Contract information loaded:', contractInfo);
@@ -5966,7 +5921,7 @@ class AdminPage {
 
         } catch (error) {
             console.error('❌ Failed to load contract information:', error);
-            // Show fallback data
+            // Show error state
             this.displayContractInfo({
                 rewardBalance: 'Error',
                 hourlyRate: 'Error',
@@ -5999,26 +5954,34 @@ class AdminPage {
             totalWeightEl.textContent = info.totalWeight;
         }
 
-        // Update LP pairs
+        // Update LP pairs with real contract data
         const pairsContainer = document.querySelector('[data-info="lp-pairs"]');
-        if (pairsContainer && info.pairs) {
-            pairsContainer.innerHTML = info.pairs.map(pair => `
-                <div class="pair-item">
-                    <div class="pair-name">${pair.pairName}</div>
-                    <div class="pair-address">${pair.lpToken.substring(0, 6)}...${pair.lpToken.substring(38)}</div>
-                    <div class="pair-weight">Weight: ${pair.weight}</div>
-                </div>
-            `).join('');
+        if (pairsContainer) {
+            if (info.pairs && info.pairs.length > 0) {
+                pairsContainer.innerHTML = info.pairs.map(pair => `
+                    <div class="pair-item">
+                        <div class="pair-name">${pair.name || 'Unknown Pair'}</div>
+                        <div class="pair-address">${pair.address ? pair.address.substring(0, 6) + '...' + pair.address.substring(38) : 'N/A'}</div>
+                        <div class="pair-weight">Weight: ${pair.weight || '0'}</div>
+                    </div>
+                `).join('');
+            } else {
+                pairsContainer.innerHTML = '<div class="no-data">No LP pairs configured</div>';
+            }
         }
 
-        // Update signers
+        // Update signers with real contract data
         const signersContainer = document.querySelector('[data-info="signers"]');
-        if (signersContainer && info.signers) {
-            signersContainer.innerHTML = info.signers.map(signer => `
-                <div class="signer-item">
-                    ${signer.substring(0, 6)}...${signer.substring(38)}
-                </div>
-            `).join('');
+        if (signersContainer) {
+            if (info.signers && info.signers.length > 0) {
+                signersContainer.innerHTML = info.signers.map(signer => `
+                    <div class="signer-item">
+                        ${signer.substring(0, 6)}...${signer.substring(38)}
+                    </div>
+                `).join('');
+            } else {
+                signersContainer.innerHTML = '<div class="no-data">No signers configured</div>';
+            }
         }
 
         console.log('✅ Contract information displayed in UI');
@@ -6090,7 +6053,7 @@ class AdminPage {
         if (!container) return;
 
         try {
-            container.innerHTML = '<div class="loading-spinner"><span class="spinner"></span> Loading current pairs...</div>';
+            container.innerHTML = '<div class="modal-loading-container"><div class="modal-loading-spinner"></div></div>';
 
             // Get pairs from contract
             const contractManager = await this.ensureContractReady();
