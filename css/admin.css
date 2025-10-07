@@ -414,12 +414,12 @@
     color: white !important;
 }
 
-/* Admin Panel Layout */
+/* Admin Panel Layout - MATCHING HOMEPAGE */
 .admin-panel {
     min-height: 100vh;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    color: #ffffff;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--background-default);
+    color: var(--text-primary);
+    font-family: var(--font-family);
     padding: 0;
     margin: 0;
 }
@@ -439,17 +439,19 @@
 }
 
 .admin-grid-main {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--background-paper);
     border-radius: 12px;
-    padding: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--spacing-3);
+    box-shadow: var(--shadow-4);
+    border: none;
 }
 
 .admin-grid-sidebar {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--background-paper);
     border-radius: 12px;
-    padding: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--spacing-3);
+    box-shadow: var(--shadow-4);
+    border: none;
 }
 
 .admin-grid-sidebar h3 {

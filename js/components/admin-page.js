@@ -550,12 +550,14 @@ class AdminPage {
         // Load contract statistics
         await this.loadContractStats();
 
-        // Load contract information (like React InfoCard)
-        await this.loadContractInformation();
-
         // Load main components
         await this.loadMultiSignPanel();
+
+        // Load info card (creates HTML structure with mock data first)
         await this.loadInfoCard();
+
+        // Then load real contract information (updates the HTML with real data)
+        await this.loadContractInformation();
 
         // Setup event listeners
         this.setupEventListeners();
@@ -617,6 +619,9 @@ class AdminPage {
         console.log('🎧 Setting up admin panel event listeners...');
 
         try {
+            // Theme toggle event listener
+            this.setupThemeToggle();
+
             // Navigation event listeners
             this.setupNavigationListeners();
 
@@ -636,6 +641,106 @@ class AdminPage {
 
         } catch (error) {
             console.error('❌ Failed to setup event listeners:', error);
+        }
+    }
+
+    /**
+     * Setup theme toggle button with enhanced admin panel support
+     */
+    setupThemeToggle() {
+        if (window.unifiedThemeManager) {
+            window.unifiedThemeManager.setupToggleButton('theme-toggle');
+
+            // Force apply theme to all admin elements immediately
+            this.applyThemeToAllElements();
+
+            // Listen for theme changes and reapply
+            document.addEventListener('themeChanged', () => {
+                console.log('🎨 Theme changed, reapplying to admin panel...');
+                this.applyThemeToAllElements();
+            });
+
+            console.log('✅ Theme toggle button setup complete with admin panel support');
+        } else {
+            console.warn('⚠️ UnifiedThemeManager not available');
+        }
+    }
+
+    /**
+     * Apply theme to all admin panel elements
+     */
+    applyThemeToAllElements() {
+        const theme = document.documentElement.getAttribute('data-theme') || 'light';
+        console.log(`🎨 Applying theme to all admin elements: ${theme}`);
+
+        // Apply to body
+        document.body.setAttribute('data-theme', theme);
+
+        // Apply to admin panel
+        const adminPanel = document.querySelector('.admin-panel');
+        if (adminPanel) {
+            adminPanel.setAttribute('data-theme', theme);
+        }
+
+        // Apply to all modals
+        document.querySelectorAll('.modal-content, .modal-overlay').forEach(el => {
+            el.setAttribute('data-theme', theme);
+        });
+
+        // Apply to all cards
+        document.querySelectorAll('.info-card, .admin-grid-main, .admin-grid-sidebar').forEach(el => {
+            el.setAttribute('data-theme', theme);
+        });
+
+        // Apply to all notifications
+        document.querySelectorAll('.notification').forEach(el => {
+            el.setAttribute('data-theme', theme);
+        });
+
+        // Force CSS variable update
+        this.updateCSSVariables(theme);
+    }
+
+    /**
+     * Show loading state for contract data
+     */
+    showLoadingState() {
+        const contractInfoSections = document.querySelectorAll('.info-card, .admin-grid-main, .admin-grid-sidebar');
+        contractInfoSections.forEach(section => {
+            section.classList.add('contract-info-loading');
+        });
+    }
+
+    /**
+     * Hide loading state for contract data
+     */
+    hideLoadingState() {
+        const contractInfoSections = document.querySelectorAll('.info-card, .admin-grid-main, .admin-grid-sidebar');
+        contractInfoSections.forEach(section => {
+            section.classList.remove('contract-info-loading');
+        });
+    }
+
+    /**
+     * Update CSS variables for theme
+     */
+    updateCSSVariables(theme) {
+        const root = document.documentElement;
+
+        if (theme === 'dark') {
+            root.style.setProperty('--background-default', '#121212');
+            root.style.setProperty('--background-paper', '#1e1e1e');
+            root.style.setProperty('--text-primary', '#ffffff');
+            root.style.setProperty('--text-secondary', 'rgba(255, 255, 255, 0.7)');
+            root.style.setProperty('--divider', 'rgba(255, 255, 255, 0.12)');
+            root.style.setProperty('--surface-hover', 'rgba(255, 255, 255, 0.08)');
+        } else {
+            root.style.setProperty('--background-default', '#ffffff');
+            root.style.setProperty('--background-paper', '#ffffff');
+            root.style.setProperty('--text-primary', 'rgba(0, 0, 0, 0.87)');
+            root.style.setProperty('--text-secondary', 'rgba(0, 0, 0, 0.6)');
+            root.style.setProperty('--divider', 'rgba(0, 0, 0, 0.12)');
+            root.style.setProperty('--surface-hover', 'rgba(0, 0, 0, 0.04)');
         }
     }
 
@@ -1221,10 +1326,20 @@ class AdminPage {
             <div class="admin-panel">
                 ${devModeIndicator}
 
+                <!-- Admin Header with Theme Toggle -->
+                <header class="admin-header">
+                    <div class="admin-header-content">
+                        <h1 class="admin-title">Admin Panel</h1>
+                        <nav class="admin-nav">
+                            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                                <span class="material-icons-outlined">light_mode</span>
+                            </button>
+                        </nav>
+                    </div>
+                </header>
+
                 <!-- Container maxWidth="lg" with py: 4 (matching React) -->
                 <div class="admin-container">
-                    <!-- Typography variant="h3" align="center" gutterBottom sx={{ my: 4 }} -->
-                    <h1 class="admin-title">Admin Panel</h1>
 
                     <!-- Grid container spacing={3} -->
                     <div class="admin-grid">
@@ -1812,19 +1927,25 @@ class AdminPage {
             return;
         }
 
+        // Show loading state
+        this.showLoadingState();
+
         this.isRefreshing = true;
         console.log('🔄 Refreshing admin panel data...');
 
         try {
-            // Always refresh contract stats (lightweight)
-            await this.loadContractStats();
+            // Always refresh contract stats AND contract information (lightweight)
+            await Promise.all([
+                this.loadContractStats(),
+                this.loadContractInformation()
+            ]);
 
             // Try selective proposal updates first
             if (this.isSelectiveUpdateEnabled && this.isUsingRealData) {
                 const selectiveUpdateSuccess = await this.trySelectiveProposalUpdate();
 
                 if (selectiveUpdateSuccess) {
-                    console.log('✅ Admin panel data refreshed using selective updates');
+                    console.log('✅ Admin panel data refreshed using selective updates (with contract info)');
                     return;
                 }
             }
@@ -1832,12 +1953,23 @@ class AdminPage {
             // Fall back to full refresh if selective updates failed or disabled
             console.log('🔄 Using full refresh...');
             await this.loadMultiSignPanel();
-            console.log('✅ Admin panel data refreshed using full refresh');
+            console.log('✅ Admin panel data refreshed using full refresh (with contract info)');
 
         } catch (error) {
             console.error('❌ Failed to refresh data:', error);
+
+            // Show error notification
+            if (window.notificationManager) {
+                window.notificationManager.error(
+                    'Refresh Failed',
+                    'Could not load contract data. Please check your connection.'
+                );
+            }
         } finally {
             this.isRefreshing = false;
+
+            // Hide loading state
+            this.hideLoadingState();
         }
     }
 
@@ -5174,7 +5306,7 @@ class AdminPage {
             <div class="modal-overlay" onclick="adminPage.closeModal()">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
-                        <h3>Remove Pair</h3>
+                        <h3>✨ Remove LP Pair</h3>
                         <button class="modal-close" onclick="adminPage.closeModal()">×</button>
                     </div>
 
@@ -5182,11 +5314,19 @@ class AdminPage {
                         <div id="validation-messages" class="validation-messages"></div>
                         <form id="remove-pair-form" class="admin-form">
                             <div class="form-group">
-                                <label for="remove-pair-select">Select Pair to Remove *</label>
-                                <select id="remove-pair-select" class="form-input" required>
+                                <label for="remove-pair-select">
+                                    <span style="display: flex; align-items: center; gap: 8px;">
+                                        🔗 Select Pair to Remove *
+                                        <span id="pair-loading-indicator" style="display: none; font-size: 12px; color: var(--text-secondary);">
+                                            <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span>
+                                            Loading...
+                                        </span>
+                                    </span>
+                                </label>
+                                <select id="remove-pair-select" class="form-input modern-dropdown" required>
                                     <option value="">Loading pairs...</option>
                                 </select>
-                                <small class="form-help">Choose the LP pair to remove from staking</small>
+                                <small class="form-help">Choose the LP pair to remove from staking rewards</small>
                                 <div class="field-error" id="remove-pair-select-error"></div>
                             </div>
 
@@ -5232,7 +5372,9 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="remove-pair-form" class="btn btn-danger" id="remove-pair-btn">
+                        <button type="submit" form="remove-pair-form" class="btn btn-danger" id="remove-pair-btn"
+                                data-tooltip="Please select a pair to remove">
+                            <span class="btn-icon">🗑️</span>
                             <span class="btn-text">Create Removal Proposal</span>
                             <span class="btn-loading" style="display: none;">
                                 <span class="spinner"></span> Creating...
@@ -5245,11 +5387,57 @@ class AdminPage {
 
         // Apply universal modal visibility fixes
         this.applyModalVisibilityFixes(modalContainer);
+
+        // Apply current theme to modal
+        const theme = document.documentElement.getAttribute('data-theme') || 'light';
+        const modal = modalContainer.querySelector('.modal-content');
+        if (modal) {
+            modal.setAttribute('data-theme', theme);
+        }
+
         console.log('✅ Remove pair modal opened');
 
         // Initialize form validation and load pairs
         this.initializeFormValidation('remove-pair-form');
         this.loadPairsForRemoval();
+
+        // Setup button state management
+        this.setupRemovePairButtonState();
+    }
+
+    /**
+     * Setup Remove Pair button state management
+     */
+    setupRemovePairButtonState() {
+        const select = document.getElementById('remove-pair-select');
+        const button = document.getElementById('remove-pair-btn');
+        const checkbox = document.getElementById('confirm-removal');
+
+        if (!select || !button) return;
+
+        const updateButtonState = () => {
+            const hasSelection = select.value && select.value !== '';
+            const isConfirmed = checkbox ? checkbox.checked : true;
+            const isEnabled = hasSelection && isConfirmed;
+
+            button.disabled = !isEnabled;
+
+            if (!hasSelection) {
+                button.setAttribute('data-tooltip', 'Please select a pair to remove');
+            } else if (!isConfirmed) {
+                button.setAttribute('data-tooltip', 'Please confirm you understand the consequences');
+            } else {
+                button.removeAttribute('data-tooltip');
+            }
+        };
+
+        select.addEventListener('change', updateButtonState);
+        if (checkbox) {
+            checkbox.addEventListener('change', updateButtonState);
+        }
+
+        // Initial state
+        updateButtonState();
     }
 
     showChangeSignerModal() {
@@ -6021,14 +6209,33 @@ class AdminPage {
     // Dynamic data loading methods
     async loadPairsForRemoval() {
         const select = document.getElementById('remove-pair-select');
+        const loadingIndicator = document.getElementById('pair-loading-indicator');
+
         if (!select) return;
 
         try {
+            // Show loading indicator
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'inline-flex';
+            }
+
+            // Disable select while loading
+            select.disabled = true;
+            select.innerHTML = '<option value="">Loading pairs...</option>';
             select.innerHTML = '<option value="">Loading pairs...</option>';
 
-            // Get pairs from contract
+            // Get pairs from contract with timeout
             const contractManager = await this.ensureContractReady();
-            const pairs = await contractManager.getAllPairsInfo();
+
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Loading timeout')), 10000)
+            );
+
+            const pairs = await Promise.race([
+                contractManager.getAllPairsInfo(),
+                timeoutPromise
+            ]);
 
             select.innerHTML = '<option value="">Select a pair to remove...</option>';
 
@@ -6036,15 +6243,38 @@ class AdminPage {
                 pairs.forEach(pair => {
                     const option = document.createElement('option');
                     option.value = pair.address;
-                    option.textContent = `${pair.name} (${pair.address.substring(0, 8)}...)`;
+                    // Enhanced display with emoji and better formatting
+                    option.textContent = `🔗 ${pair.name} (${pair.address.substring(0, 6)}...${pair.address.substring(38)})`;
+                    option.setAttribute('data-pair-name', pair.name);
+                    option.setAttribute('data-pair-address', pair.address);
                     select.appendChild(option);
                 });
+                console.log(`✅ Loaded ${pairs.length} pairs for removal`);
             } else {
                 select.innerHTML = '<option value="">No pairs available</option>';
+                console.warn('⚠️ No pairs available for removal');
             }
+
+            // Enable select
+            select.disabled = false;
+
         } catch (error) {
-            console.error('Failed to load pairs:', error);
-            select.innerHTML = '<option value="">Failed to load pairs</option>';
+            console.error('❌ Failed to load pairs:', error);
+            select.innerHTML = '<option value="">⚠️ Failed to load pairs - Please refresh</option>';
+            select.disabled = false;
+
+            // Show error notification
+            if (window.notificationManager) {
+                window.notificationManager.error(
+                    'Loading Failed',
+                    'Could not load LP pairs. Please refresh and try again.'
+                );
+            }
+        } finally {
+            // Hide loading indicator
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
         }
     }
 

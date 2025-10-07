@@ -10,11 +10,16 @@
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
     <!-- Styles -->
+    <link rel="stylesheet" href="css/variables.css?v=2.0">
+    <link rel="stylesheet" href="css/admin-theme.css?v=2.0">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/admin.css?v=5.2">
+    <link rel="stylesheet" href="css/admin.css?v=5.4">
+    <!-- Homepage Theme Override - Must be last -->
+    <link rel="stylesheet" href="css/admin-homepage-theme.css?v=1.0">
     
     <!-- Meta Tags -->
     <meta name="description" content="LP Staking Admin Panel - Manage liquidity provider staking contracts">
@@ -96,6 +101,9 @@
             }, 1000);
         });
     </script>
+
+    <!-- Theme System (load early to prevent flash) -->
+    <script src="js/core/unified-theme-manager.js"></script>
 
     <!-- Core System -->
     <script src="js/debug-logger.js"></script>
