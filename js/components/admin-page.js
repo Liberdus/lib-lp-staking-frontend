@@ -311,6 +311,18 @@ class AdminPage {
             }
             console.log('✅ Wallet is connected');
 
+            // CRITICAL: Check network BEFORE authorization
+            console.log('🌐 Checking network...');
+            const chainId = window.walletManager.getChainId();
+            console.log('🌐 Current chain ID:', chainId);
+
+            if (chainId && chainId !== 80002) {
+                console.log('❌ Wrong network detected:', chainId);
+                this.showWrongNetworkError(chainId);
+                return; // Stop initialization
+            }
+            console.log('✅ Correct network (Polygon Amoy)');
+
             // Verify admin access
             console.log('🔍 Verifying admin access...');
             await this.verifyAdminAccess();
@@ -514,6 +526,40 @@ class AdminPage {
                     <button class="btn btn-primary" onclick="connectWallet()">
                         Connect Wallet
                     </button>
+                </div>
+            </div>
+        `;
+    }
+
+    showWrongNetworkError(currentChainId) {
+        const container = document.getElementById('admin-content') || document.body;
+        const networkName = this.getNetworkName(currentChainId);
+
+        container.innerHTML = `
+            <div class="admin-connect-prompt">
+                <div class="connect-card network-error-card">
+                    <div class="error-icon">🔴</div>
+                    <h2>Wrong Network</h2>
+                    <p class="error-message">You are connected to <strong>${networkName}</strong></p>
+                    <p class="error-detail">Chain ID: ${currentChainId}</p>
+                    <div class="network-requirement">
+                        <p>This admin panel requires:</p>
+                        <div class="required-network">
+                            <span class="network-badge">Polygon Amoy Testnet</span>
+                            <span class="chain-id-badge">Chain ID: 80002</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="adminPage.switchToAmoy()">
+                            🔄 Switch to Polygon Amoy
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location.href='index.html'">
+                            ← Back to Home
+                        </button>
+                    </div>
+                    <div class="help-text">
+                        <p><small>💡 Tip: Make sure MetaMask has permission to access this site</small></p>
+                    </div>
                 </div>
             </div>
         `;
@@ -1316,6 +1362,107 @@ class AdminPage {
         }
     }
 
+    /**
+     * Create network indicator component
+     */
+    createNetworkIndicator() {
+        const chainId = window.walletManager?.getChainId();
+        const isCorrectNetwork = chainId === 80002;
+        const networkName = this.getNetworkName(chainId);
+
+        return `
+            <div class="network-indicator ${isCorrectNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
+                <span class="network-icon">${isCorrectNetwork ? '🟢' : '🔴'}</span>
+                <div class="network-info">
+                    <span class="network-name">${networkName}</span>
+                    <span class="network-id">Chain ID: ${chainId || 'Not Connected'}</span>
+                </div>
+                ${!isCorrectNetwork && chainId ? `
+                    <button class="btn btn-sm btn-warning" onclick="adminPage.switchToAmoy()" title="Switch to Polygon Amoy">
+                        Switch Network
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Get network name from chain ID
+     */
+    getNetworkName(chainId) {
+        const networks = {
+            1: 'Ethereum Mainnet',
+            5: 'Goerli Testnet',
+            137: 'Polygon Mainnet',
+            80001: 'Mumbai Testnet',
+            80002: 'Polygon Amoy',
+            11155111: 'Sepolia Testnet'
+        };
+
+        if (!chainId) return 'Not Connected';
+        return networks[chainId] || `Unknown Network`;
+    }
+
+    /**
+     * Switch to Polygon Amoy network
+     */
+    async switchToAmoy() {
+        try {
+            console.log('🔄 Switching to Polygon Amoy...');
+
+            if (!window.ethereum) {
+                throw new Error('MetaMask not found');
+            }
+
+            // Request network switch
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x13882' }], // 80002 in hex
+            });
+
+            console.log('✅ Switched to Polygon Amoy');
+
+            // Reload admin page after switch
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+
+        } catch (error) {
+            console.error('❌ Failed to switch network:', error);
+
+            // If network doesn't exist, try to add it
+            if (error.code === 4902) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x13882',
+                            chainName: 'Polygon Amoy Testnet',
+                            nativeCurrency: {
+                                name: 'MATIC',
+                                symbol: 'MATIC',
+                                decimals: 18
+                            },
+                            rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                            blockExplorerUrls: ['https://amoy.polygonscan.com']
+                        }]
+                    });
+
+                    console.log('✅ Added and switched to Polygon Amoy');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+
+                } catch (addError) {
+                    console.error('❌ Failed to add network:', addError);
+                    alert('Please manually add Polygon Amoy network in MetaMask');
+                }
+            } else {
+                alert('Failed to switch network. Please switch manually in MetaMask.');
+            }
+        }
+    }
+
     createAdminLayout() {
         const container = document.getElementById('admin-content') || document.body;
         const devModeIndicator = this.DEVELOPMENT_MODE
@@ -1326,15 +1473,23 @@ class AdminPage {
             <div class="admin-panel">
                 ${devModeIndicator}
 
-                <!-- Admin Header with Theme Toggle -->
+                <!-- Admin Header with Theme Toggle and Network Indicator -->
                 <header class="admin-header">
                     <div class="admin-header-content">
-                        <h1 class="admin-title">Admin Panel</h1>
-                        <nav class="admin-nav">
-                            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-                                <span class="material-icons-outlined">light_mode</span>
+                        <div class="admin-header-left">
+                            <button class="btn btn-secondary back-btn" onclick="window.location.href='index.html'" title="Back to Staking Page">
+                                ← Back to Staking
                             </button>
-                        </nav>
+                            <h1 class="admin-title">Admin Panel</h1>
+                        </div>
+                        <div class="admin-header-right">
+                            ${this.createNetworkIndicator()}
+                            <nav class="admin-nav">
+                                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                                    <span class="material-icons-outlined">light_mode</span>
+                                </button>
+                            </nav>
+                        </div>
                     </div>
                 </header>
 
@@ -1869,19 +2024,7 @@ class AdminPage {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        ${!proposal.executed && !proposal.rejected ? `
-                            <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
-                                Approve
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
-                                Reject
-                            </button>
-                            ${canExecute ? `
-                                <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
-                                    Execute
-                                </button>
-                            ` : ''}
-                        ` : ''}
+                        ${!proposal.executed && !proposal.rejected ? this.renderProposalActionButtons(proposal, canExecute) : ''}
                     </div>
                 </td>
             </tr>
@@ -1901,21 +2044,65 @@ class AdminPage {
     }
 
     /**
-     * PERFORMANCE OPTIMIZATION: Generate action buttons for proposal
+     * Render action buttons for proposal with own-proposal check
      */
-    generateProposalActionButtons(proposal) {
+    renderProposalActionButtons(proposal, canExecute = false) {
         if (proposal.isOptimistic) {
             return '<span class="text-muted">Processing...</span>';
         }
 
+        // Check if current user is the proposal creator
+        const userAddress = this.userAddress?.toLowerCase();
+        const proposerAddress = proposal.proposer?.toLowerCase();
+        const isOwnProposal = userAddress && proposerAddress && userAddress === proposerAddress;
+
+        // Disable buttons if user is the proposer
+        const approveDisabled = isOwnProposal;
+        const rejectDisabled = isOwnProposal;
+        const disabledClass = isOwnProposal ? 'disabled' : '';
+        const disabledAttr = isOwnProposal ? 'disabled' : '';
+        const ownProposalTitle = isOwnProposal ? 'Cannot vote on your own proposal' : '';
+
         return `
-            <button class="btn btn-sm btn-success" onclick="adminPage.approveProposal('${proposal.id}')">
+            <button
+                class="btn btn-sm btn-success ${disabledClass}"
+                onclick="adminPage.approveAction('${proposal.id}')"
+                title="${isOwnProposal ? ownProposalTitle : 'Approve Proposal'}"
+                ${disabledAttr}
+            >
                 Approve
             </button>
-            <button class="btn btn-sm btn-danger" onclick="adminPage.rejectProposal('${proposal.id}')">
+            <button
+                class="btn btn-sm btn-danger ${disabledClass}"
+                onclick="adminPage.rejectAction('${proposal.id}')"
+                title="${isOwnProposal ? ownProposalTitle : 'Reject Proposal'}"
+                ${disabledAttr}
+            >
                 Reject
             </button>
+            ${canExecute ? `
+                <button
+                    class="btn btn-sm btn-primary"
+                    onclick="adminPage.executeAction('${proposal.id}')"
+                    title="Execute Proposal"
+                >
+                    Execute
+                </button>
+            ` : ''}
+            ${isOwnProposal ? `
+                <div class="own-proposal-notice">
+                    <small>ℹ️ Your proposal</small>
+                </div>
+            ` : ''}
         `;
+    }
+
+    /**
+     * PERFORMANCE OPTIMIZATION: Generate action buttons for proposal (legacy)
+     */
+    generateProposalActionButtons(proposal) {
+        // Redirect to new function
+        return this.renderProposalActionButtons(proposal, false);
     }
 
     /**
@@ -1970,6 +2157,27 @@ class AdminPage {
 
             // Hide loading state
             this.hideLoadingState();
+        }
+    }
+
+    /**
+     * Refresh UI after transaction completion
+     * This ensures all data is up-to-date after approve/reject/execute actions
+     */
+    async refreshAfterTransaction() {
+        console.log('🔄 Refreshing UI after transaction...');
+
+        try {
+            // Refresh all data in parallel for speed
+            await Promise.all([
+                this.loadContractStats(),
+                this.loadContractInformation(),
+                this.loadMultiSignPanel()
+            ]);
+
+            console.log('✅ UI refreshed after transaction');
+        } catch (error) {
+            console.error('❌ Failed to refresh UI after transaction:', error);
         }
     }
 
@@ -4152,16 +4360,16 @@ class AdminPage {
                         console.log('🎯 Single proposal updated after approve action (OPTIMIZED)');
                     } catch (error) {
                         console.warn('⚠️ Single update failed, falling back to full refresh:', error);
-                        await this.loadMultiSignPanel();
+                        await this.refreshAfterTransaction();
 
                         if (this.performanceMonitor) {
                             this.performanceMonitor.trackNetworkCall('full-refresh', { reason: 'single-update-fallback' });
                         }
                     }
                 } else {
-                    // Fallback to original behavior
-                    await this.loadMultiSignPanel();
-                    console.log('🔄 Proposals refreshed after approve action (LEGACY)');
+                    // Fallback to original behavior - use comprehensive refresh
+                    await this.refreshAfterTransaction();
+                    console.log('🔄 All data refreshed after approve action (LEGACY)');
                 }
             }, 3000);
 
@@ -4210,16 +4418,16 @@ class AdminPage {
                         console.log('🎯 Single proposal updated after reject action (OPTIMIZED)');
                     } catch (error) {
                         console.warn('⚠️ Single update failed, falling back to full refresh:', error);
-                        await this.loadMultiSignPanel();
+                        await this.refreshAfterTransaction();
 
                         if (this.performanceMonitor) {
                             this.performanceMonitor.trackNetworkCall('full-refresh', { reason: 'single-update-fallback' });
                         }
                     }
                 } else {
-                    // Fallback to original behavior
-                    await this.loadMultiSignPanel();
-                    console.log('🔄 Proposals refreshed after reject action (LEGACY)');
+                    // Fallback to original behavior - use comprehensive refresh
+                    await this.refreshAfterTransaction();
+                    console.log('🔄 All data refreshed after reject action (LEGACY)');
                 }
             }, 3000);
 

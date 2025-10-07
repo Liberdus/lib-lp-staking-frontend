@@ -1199,6 +1199,230 @@ button.btn span,
 }
 
 /* ========================================
+   NETWORK INDICATOR
+   ======================================== */
+.network-indicator {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--divider) !important;
+    background: var(--background-paper) !important;
+    margin-right: 16px !important;
+}
+
+.network-indicator .network-icon {
+    font-size: 16px !important;
+}
+
+.network-indicator .network-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+.network-indicator .network-name {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+}
+
+.network-indicator .network-id {
+    font-size: 11px !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Correct network styling */
+.network-indicator.network-correct {
+    border-color: rgba(76, 175, 80, 0.3) !important;
+    background: rgba(76, 175, 80, 0.05) !important;
+}
+
+.network-indicator.network-correct .network-name {
+    color: #4caf50 !important;
+}
+
+/* Wrong network styling */
+.network-indicator.network-wrong {
+    border-color: rgba(244, 67, 54, 0.3) !important;
+    background: rgba(244, 67, 54, 0.05) !important;
+}
+
+.network-indicator.network-wrong .network-name {
+    color: #f44336 !important;
+}
+
+/* Admin header layout adjustments */
+.admin-header-content {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+.admin-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+.admin-header-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.back-btn {
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+}
+
+/* ========================================
+   NETWORK ERROR CARD
+   ======================================== */
+.network-error-card {
+    max-width: 500px !important;
+    text-align: center !important;
+}
+
+.network-error-card .error-icon {
+    font-size: 64px !important;
+    margin-bottom: 16px !important;
+}
+
+.network-error-card h2 {
+    color: var(--error-main) !important;
+    margin-bottom: 16px !important;
+}
+
+.network-error-card .error-message {
+    font-size: 16px !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 8px !important;
+}
+
+.network-error-card .error-detail {
+    font-size: 14px !important;
+    color: var(--text-secondary) !important;
+    margin-bottom: 24px !important;
+}
+
+.network-error-card .network-requirement {
+    background: var(--background-default) !important;
+    border: 1px solid var(--divider) !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    margin: 24px 0 !important;
+}
+
+.network-error-card .required-network {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+}
+
+.network-error-card .network-badge {
+    display: inline-block !important;
+    padding: 8px 16px !important;
+    background: rgba(76, 175, 80, 0.1) !important;
+    color: #4caf50 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+
+.network-error-card .chain-id-badge {
+    display: inline-block !important;
+    padding: 6px 12px !important;
+    background: var(--background-paper) !important;
+    color: var(--text-secondary) !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+    font-family: monospace !important;
+}
+
+.network-error-card .action-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin-top: 24px !important;
+}
+
+.network-error-card .help-text {
+    margin-top: 24px !important;
+    padding-top: 16px !important;
+    border-top: 1px solid var(--divider) !important;
+}
+
+.network-error-card .help-text p {
+    color: var(--text-secondary) !important;
+    margin: 0 !important;
+}
+
+/* ========================================
+   OWN PROPOSAL STYLING
+   ======================================== */
+.action-buttons .btn.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.own-proposal-notice {
+    margin-top: 8px !important;
+    padding: 4px 8px !important;
+    background: rgba(255, 152, 0, 0.1) !important;
+    border: 1px solid rgba(255, 152, 0, 0.3) !important;
+    border-radius: 4px !important;
+    display: inline-block !important;
+}
+
+.own-proposal-notice small {
+    color: #ff9800 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+}
+
+/* ========================================
+   TOAST/NOTIFICATION POSITIONING FIX
+   ======================================== */
+/* Ensure toasts are ALWAYS above modals and never blurred */
+.notification-container,
+#notification-container {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 1000000 !important; /* Way above everything */
+    pointer-events: none !important;
+    max-width: 420px !important;
+}
+
+.notification {
+    pointer-events: auto !important;
+    backdrop-filter: none !important; /* Remove blur effect */
+    -webkit-backdrop-filter: none !important;
+    filter: none !important; /* Ensure no filters applied */
+}
+
+/* Ensure modal backdrop doesn't affect toasts */
+.modal-overlay,
+.modal-backdrop {
+    z-index: 999999 !important; /* Below toasts */
+}
+
+#modal-container {
+    z-index: 999999 !important; /* Below toasts */
+}
+
+.modal-content {
+    z-index: 999999 !important; /* Below toasts */
+}
+
+/* ========================================
    THEME TRANSITION SMOOTHNESS
    ======================================== */
 * {
