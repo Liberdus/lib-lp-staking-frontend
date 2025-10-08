@@ -1723,11 +1723,11 @@ class AdminPage {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">💰 Reward Balance</div>
-                                <div class="info-value" data-info="reward-balance">${contractInfo.rewardBalance} USDC</div>
+                                <div class="info-value" data-info="reward-balance">${contractInfo.rewardBalance}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">⏰ Hourly Rate</div>
-                                <div class="info-value" data-info="hourly-rate">${contractInfo.hourlyRate} USDC/hour</div>
+                                <div class="info-value" data-info="hourly-rate">${contractInfo.hourlyRate}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">⚖️ Total Weight</div>
@@ -3665,6 +3665,55 @@ class AdminPage {
     }
 
     /**
+     * Format pair name for better display
+     * Converts "LPLIBETH" to "LIB/ETH LP"
+     * Converts "LPLIBUSDC" to "LIB/USDC LP"
+     */
+    formatPairName(pairName) {
+        if (!pairName) return pairName;
+
+        // If already formatted (contains /), return as is
+        if (pairName.includes('/')) {
+            return pairName;
+        }
+
+        // Handle LP prefix format: "LPLIBETH" -> "LIB/ETH LP"
+        if (pairName.startsWith('LP') && pairName.length > 4) {
+            const tokens = pairName.substring(2); // Remove "LP"
+
+            // Try to split into two tokens
+            // Common patterns: LIBETH, LIBUSDC, LIBUSDT, ETHUSDC, etc.
+            const commonTokens = ['USDC', 'USDT', 'DAI', 'WETH', 'ETH', 'WBTC', 'BTC', 'LIB', 'MATIC'];
+
+            for (const token of commonTokens) {
+                if (tokens.endsWith(token)) {
+                    const token1 = tokens.substring(0, tokens.length - token.length);
+                    const token2 = token;
+                    if (token1.length > 0) {
+                        return `${token1}/${token2} LP`;
+                    }
+                }
+                if (tokens.startsWith(token)) {
+                    const token1 = token;
+                    const token2 = tokens.substring(token.length);
+                    if (token2.length > 0) {
+                        return `${token1}/${token2} LP`;
+                    }
+                }
+            }
+
+            // Fallback: split in half
+            const mid = Math.floor(tokens.length / 2);
+            const token1 = tokens.substring(0, mid);
+            const token2 = tokens.substring(mid);
+            return `${token1}/${token2} LP`;
+        }
+
+        // Return original if no pattern matched
+        return pairName;
+    }
+
+    /**
      * Get pair name by address from existing pairs or contract data
      */
     getPairNameByAddress(address) {
@@ -3675,7 +3724,7 @@ class AdminPage {
                     p.address && p.address.toLowerCase() === address.toLowerCase()
                 );
                 if (pair && pair.name) {
-                    return pair.name;
+                    return this.formatPairName(pair.name);
                 }
             }
 
@@ -3684,7 +3733,7 @@ class AdminPage {
                 if (proposal.data && proposal.data.pairAddress &&
                     proposal.data.pairAddress.toLowerCase() === address.toLowerCase() &&
                     proposal.data.pairName) {
-                    return proposal.data.pairName;
+                    return this.formatPairName(proposal.data.pairName);
                 }
             }
 
@@ -3702,7 +3751,7 @@ class AdminPage {
 
         return pairs.map(pair => `
             <div class="pair-item">
-                <div class="pair-name">${pair.name}</div>
+                <div class="pair-name">${this.formatPairName(pair.name)}</div>
                 <div class="pair-address">${this.formatAddress(pair.address)}</div>
                 <div class="pair-weight">Weight: ${this.formatWeight(pair.weight)}</div>
             </div>
@@ -4191,12 +4240,13 @@ class AdminPage {
     }
 
     createHourlyRateModal() {
+        const tokenSymbol = this.rewardTokenSymbol || 'USDC';
         return `
             <form onsubmit="adminPage.submitHourlyRate(event)">
                 <div class="form-group">
-                    <label for="hourly-rate-input">New Hourly Rate (USDC)</label>
+                    <label for="hourly-rate-input">New Hourly Rate (${tokenSymbol})</label>
                     <input type="number" id="hourly-rate-input" step="0.01" min="0" required>
-                    <small>Current rate: ${this.contractStats.hourlyRate || 'Loading...'} USDC/hour</small>
+                    <small>Current rate: ${this.contractStats.hourlyRate || 'Loading...'}</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="adminPage.closeModal()">Cancel</button>
@@ -4279,12 +4329,13 @@ class AdminPage {
     }
 
     createWithdrawRewardsModal() {
+        const tokenSymbol = this.rewardTokenSymbol || 'USDC';
         return `
             <form onsubmit="adminPage.submitWithdrawRewards(event)">
                 <div class="form-group">
-                    <label for="withdraw-amount-input">Amount to Withdraw (USDC)</label>
+                    <label for="withdraw-amount-input">Amount to Withdraw (${tokenSymbol})</label>
                     <input type="number" id="withdraw-amount-input" step="0.01" min="0" required>
-                    <small>Available balance: ${this.contractStats.rewardBalance || 'Loading...'} USDC</small>
+                    <small>Available balance: ${this.contractStats.rewardBalance || 'Loading...'}</small>
                 </div>
                 <div class="form-group">
                     <label for="withdraw-to-input">Withdraw to Address</label>
@@ -5269,10 +5320,10 @@ class AdminPage {
                     <div class="modal-body">
                         <form id="hourly-rate-form" class="admin-form">
                             <div class="form-group">
-                                <label for="new-rate">New Hourly Rate (USDC)</label>
+                                <label for="new-rate">New Hourly Rate (${this.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
-                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRate || 'Loading...'} USDC/hour</small>
+                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRate || 'Loading...'}</small>
                             </div>
 
                             <div class="form-group">
@@ -5546,21 +5597,21 @@ class AdminPage {
                                 <div class="field-error" id="remove-description-error"></div>
                             </div>
 
-                            <div class="form-group">
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="confirm-removal" required>
-                                    <span class="checkmark"></span>
-                                    I understand that removing this pair will stop all reward distributions
-                                </label>
-                                <div class="field-error" id="confirm-removal-error"></div>
-                            </div>
-
                             <div class="warning-box">
                                 <div class="warning-icon">⚠️</div>
                                 <div class="warning-text">
                                     <strong>Warning:</strong> Removing a pair will stop all reward distributions for that pair.
                                     Existing stakers will need to unstake before removal can be completed.
                                 </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="confirm-removal" required>
+                                    <span class="checkmark"></span>
+                                    I understand the consequences of removing this pair
+                                </label>
+                                <div class="field-error" id="confirm-removal-error"></div>
                             </div>
 
                             <div class="proposal-info">
@@ -5735,10 +5786,10 @@ class AdminPage {
                     <div class="modal-body">
                         <form id="withdrawal-form" onsubmit="adminPage.submitWithdrawalProposal(event)">
                             <div class="form-group">
-                                <label for="withdrawal-amount">Amount (USDC)</label>
+                                <label for="withdrawal-amount">Amount (${this.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="withdrawal-amount" step="0.01" min="0" required
                                        placeholder="Enter amount to withdraw">
-                                <small class="form-help">Available balance: ${this.contractStats?.rewardBalance || 'Loading...'} USDC</small>
+                                <small class="form-help">Available balance: ${this.contractStats?.rewardBalance || 'Loading...'}</small>
                             </div>
 
                             <div class="form-group">
@@ -6254,6 +6305,17 @@ class AdminPage {
             // Load real contract data
             const contractInfo = {};
 
+            // Get reward token symbol dynamically and store it
+            this.rewardTokenSymbol = await this.safeContractCall(
+                async () => {
+                    const symbol = await contractManager.rewardTokenContract.symbol();
+                    return symbol;
+                },
+                'USDC' // fallback
+            );
+            console.log('💰 Reward token symbol:', this.rewardTokenSymbol);
+            const rewardTokenSymbol = this.rewardTokenSymbol;
+
             // Get reward balance - real data only
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
@@ -6263,9 +6325,9 @@ class AdminPage {
                     }
                     const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
                     const balanceNum = Number(balance) / 1e18;
-                    return balanceNum.toFixed(2);
+                    return `${balanceNum.toFixed(2)} ${rewardTokenSymbol}`;
                 },
-                '0.00'
+                `0.00 ${rewardTokenSymbol}`
             );
 
             // Get hourly rate - real data only
@@ -6273,9 +6335,9 @@ class AdminPage {
                 async () => {
                     const rate = await contractManager.stakingContract.hourlyRewardRate();
                     const rateNum = Number(rate) / 1e18;
-                    return rateNum.toFixed(4);
+                    return `${rateNum.toFixed(4)} ${rewardTokenSymbol}/hour`;
                 },
-                '0.0000'
+                `0.0000 ${rewardTokenSymbol}/hour`
             );
 
             // Get total weight - real data only
@@ -6332,16 +6394,16 @@ class AdminPage {
     displayContractInfo(info) {
         console.log('🎭 Displaying contract information in UI...');
 
-        // Update reward balance
+        // Update reward balance (already includes token symbol)
         const rewardBalanceEl = document.querySelector('[data-info="reward-balance"]');
         if (rewardBalanceEl) {
-            rewardBalanceEl.textContent = `${info.rewardBalance} USDC`;
+            rewardBalanceEl.textContent = info.rewardBalance;
         }
 
-        // Update hourly rate
+        // Update hourly rate (already includes token symbol)
         const hourlyRateEl = document.querySelector('[data-info="hourly-rate"]');
         if (hourlyRateEl) {
-            hourlyRateEl.textContent = `${info.hourlyRate} USDC/hour`;
+            hourlyRateEl.textContent = info.hourlyRate;
         }
 
         // Update total weight

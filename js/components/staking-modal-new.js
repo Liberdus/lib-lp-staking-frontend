@@ -1164,12 +1164,18 @@ class StakingModalNew {
 
             this.close();
 
+            // Wait for blockchain state to update before refreshing
+            console.log('⏳ Waiting for blockchain state to update...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+
             // Refresh home page data with enhanced method
+            console.log('🔄 Refreshing home page data after stake...');
             if (window.homePage && window.homePage.refreshData) {
                 await window.homePage.refreshData();
             } else if (window.homePage && window.homePage.loadData) {
                 await window.homePage.loadData();
             }
+            console.log('✅ Home page data refreshed after stake');
 
         } catch (error) {
             console.error('❌ Staking failed:', error);
@@ -1226,12 +1232,18 @@ class StakingModalNew {
             console.log('✅ Unstaking transaction successful:', result.hash);
             this.close();
 
+            // Wait for blockchain state to update before refreshing
+            console.log('⏳ Waiting for blockchain state to update...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+
             // Refresh home page data with enhanced method
+            console.log('🔄 Refreshing home page data after unstake...');
             if (window.homePage && window.homePage.refreshData) {
                 await window.homePage.refreshData();
             } else if (window.homePage && window.homePage.loadData) {
                 await window.homePage.loadData();
             }
+            console.log('✅ Home page data refreshed after unstake');
 
         } catch (error) {
             console.error('❌ Unstaking failed:', error);
@@ -1287,12 +1299,18 @@ class StakingModalNew {
             console.log('✅ Claim transaction successful:', result.hash);
             this.close();
 
+            // Wait for blockchain state to update before refreshing
+            console.log('⏳ Waiting for blockchain state to update...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+
             // Refresh home page data with enhanced method
+            console.log('🔄 Refreshing home page data after claim...');
             if (window.homePage && window.homePage.refreshData) {
                 await window.homePage.refreshData();
             } else if (window.homePage && window.homePage.loadData) {
                 await window.homePage.loadData();
             }
+            console.log('✅ Home page data refreshed after claim');
 
         } catch (error) {
             console.error('❌ Claim failed:', error);

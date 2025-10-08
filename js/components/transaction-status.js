@@ -190,28 +190,33 @@
                 }
 
                 .transaction-status.pending {
-                    background: #fff3cd;
-                    color: #856404;
+                    background: rgba(255, 152, 0, 0.1);
+                    color: var(--warning-main, #ff9800);
+                    border: 1px solid var(--warning-main, #ff9800);
                 }
 
                 .transaction-status.confirming {
-                    background: #cce5ff;
-                    color: #0066cc;
+                    background: rgba(33, 150, 243, 0.1);
+                    color: var(--info-main, #2196f3);
+                    border: 1px solid var(--info-main, #2196f3);
                 }
 
                 .transaction-status.confirmed {
-                    background: #d4edda;
-                    color: #155724;
+                    background: rgba(76, 175, 80, 0.1);
+                    color: var(--success-main, #4caf50);
+                    border: 1px solid var(--success-main, #4caf50);
                 }
 
                 .transaction-status.failed {
-                    background: #f8d7da;
-                    color: #721c24;
+                    background: rgba(244, 67, 54, 0.1);
+                    color: var(--error-main, #f44336);
+                    border: 1px solid var(--error-main, #f44336);
                 }
 
                 .transaction-status.cancelled {
-                    background: #e2e3e5;
-                    color: #383d41;
+                    background: rgba(158, 158, 158, 0.1);
+                    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                    border: 1px solid var(--divider, rgba(255, 255, 255, 0.12));
                 }
 
                 .transaction-details {

@@ -386,6 +386,16 @@ class HomePage {
             if (e.target.closest('.pair-row')) {
                 const pairId = e.target.closest('.pair-row').dataset.pairId;
                 if (!e.target.closest('button')) {
+                    // Check if wallet is connected before opening modal
+                    if (!this.isWalletConnected()) {
+                        if (window.notificationManager) {
+                            window.notificationManager.warning(
+                                'Wallet Not Connected',
+                                'Please connect your wallet to stake tokens'
+                            );
+                        }
+                        return; // Don't open modal
+                    }
                     this.openStakingModal(pairId);
                 }
             }

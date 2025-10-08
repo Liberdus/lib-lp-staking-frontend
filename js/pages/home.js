@@ -400,13 +400,18 @@ class HomePage extends BaseComponent {
         const hasStake = pair.myShare > 0;
         const hasRewards = pair.myEarnings > 0;
 
+        // Add visual indication when not connected
+        const rowClass = isConnected ? 'pair-row' : 'pair-row pair-row-disabled';
+        const rowStyle = isConnected ? '' : 'style="cursor: not-allowed; opacity: 0.7;"';
+        const rowTitle = isConnected ? '' : 'title="Connect wallet to stake"';
+
         return `
-            <tr class="pair-row" data-pair-id="${pair.id}">
+            <tr class="${rowClass}" data-pair-id="${pair.id}" ${rowStyle} ${rowTitle}>
                 <!-- Pair Name (clickable to Uniswap) -->
                 <td class="pair-col">
                     <button class="pair-link" onclick="window.open('https://app.uniswap.org/explore/pools/polygon/${pair.lpToken}', '_blank')"
                             style="background: none; border: none; color: var(--primary-main); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                        ${pair.name}
+                        ${this.formatPairName(pair.name)}
                         <span class="material-icons-outlined" style="font-size: 16px;">open_in_new</span>
                     </button>
                 </td>
@@ -505,7 +510,7 @@ class HomePage extends BaseComponent {
                     <div class="pair-info">
                         <div class="pair-header">
                             <div class="pair-name-container">
-                                <span class="pair-name">${pair.name}</span>
+                                <span class="pair-name">${this.formatPairName(pair.name)}</span>
                                 <div class="pair-badges">
                                     ${pair.isNew ? '<span class="badge new">NEW</span>' : ''}
                                     ${pair.isHot ? '<span class="badge hot">🔥 HOT</span>' : ''}
@@ -1327,6 +1332,52 @@ class HomePage extends BaseComponent {
             this.logError('Failed to build pair data:', error);
             return null;
         }
+    }
+
+    /**
+     * Format pair name for display (e.g., "LPLIBETH" -> "LIB/ETH LP")
+     */
+    formatPairName(pairName) {
+        if (!pairName) return pairName;
+
+        // If already formatted (contains /), return as is
+        if (pairName.includes('/')) {
+            return pairName;
+        }
+
+        // Handle LP prefix format: "LPLIBETH" -> "LIB/ETH LP"
+        if (pairName.startsWith('LP') && pairName.length > 4) {
+            const tokens = pairName.substring(2); // Remove "LP"
+
+            // Try to split into two tokens
+            const commonTokens = ['USDC', 'USDT', 'DAI', 'WETH', 'ETH', 'WBTC', 'BTC', 'LIB', 'MATIC'];
+
+            for (const token of commonTokens) {
+                if (tokens.endsWith(token)) {
+                    const token1 = tokens.substring(0, tokens.length - token.length);
+                    const token2 = token;
+                    if (token1.length > 0) {
+                        return `${token1}/${token2} LP`;
+                    }
+                }
+                if (tokens.startsWith(token)) {
+                    const token1 = token;
+                    const token2 = tokens.substring(token.length);
+                    if (token2.length > 0) {
+                        return `${token1}/${token2} LP`;
+                    }
+                }
+            }
+
+            // Fallback: split in half
+            const mid = Math.floor(tokens.length / 2);
+            const token1 = tokens.substring(0, mid);
+            const token2 = tokens.substring(mid);
+            return `${token1}/${token2} LP`;
+        }
+
+        // Return original if no pattern matched
+        return pairName;
     }
 
     /**
