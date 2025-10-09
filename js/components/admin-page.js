@@ -2044,47 +2044,52 @@ class AdminPage {
     }
 
     /**
-     * Render action buttons for proposal with own-proposal check
+     * Render action buttons for proposal with already-voted check
+     * Matches React implementation: Disables voting for users who have already approved
      */
     renderProposalActionButtons(proposal, canExecute = false) {
         if (proposal.isOptimistic) {
             return '<span class="text-muted">Processing...</span>';
         }
 
-        // Check if current user is the proposal creator
+        // Check if current user has already approved this proposal
         const userAddress = this.userAddress?.toLowerCase();
-        const proposerAddress = proposal.proposer?.toLowerCase();
-        const isOwnProposal = userAddress && proposerAddress && userAddress === proposerAddress;
+        const approvedBy = (proposal.approvedBy || []).map(addr => addr.toLowerCase());
+        const hasAlreadyApproved = userAddress && approvedBy.includes(userAddress);
+
+        // The first approver is the proposer (auto-approved when created)
+        const proposerAddress = approvedBy.length > 0 ? approvedBy[0] : null;
+        const isProposer = userAddress && proposerAddress && userAddress === proposerAddress;
 
         // Debug logging
-        console.log(`🔍 Proposal #${proposal.id} ownership check:`, {
+        console.log(`🔍 Proposal #${proposal.id} voting check:`, {
             userAddress,
             proposerAddress,
-            isOwnProposal,
+            isProposer,
+            hasAlreadyApproved,
+            approvedBy,
             proposalId: proposal.id
         });
 
-        // Disable buttons if user is the proposer
-        const approveDisabled = isOwnProposal;
-        const rejectDisabled = isOwnProposal;
-        const disabledClass = isOwnProposal ? 'disabled' : '';
-        const disabledAttr = isOwnProposal ? 'disabled' : '';
-        const ownProposalTitle = isOwnProposal ? 'Cannot vote on your own proposal' : '';
+        // Disable approve button if user has already approved
+        const approveDisabled = hasAlreadyApproved;
+        const approveDisabledClass = hasAlreadyApproved ? 'disabled' : '';
+        const approveDisabledAttr = hasAlreadyApproved ? 'disabled' : '';
+        const approveTitle = hasAlreadyApproved ? 'You have already approved this proposal' : 'Approve Proposal';
 
         return `
             <button
-                class="btn btn-sm btn-success ${disabledClass}"
+                class="btn btn-sm btn-success ${approveDisabledClass}"
                 onclick="adminPage.approveAction('${proposal.id}')"
-                title="${isOwnProposal ? ownProposalTitle : 'Approve Proposal'}"
-                ${disabledAttr}
+                title="${approveTitle}"
+                ${approveDisabledAttr}
             >
                 Approve
             </button>
             <button
-                class="btn btn-sm btn-danger ${disabledClass}"
+                class="btn btn-sm btn-danger"
                 onclick="adminPage.rejectAction('${proposal.id}')"
-                title="${isOwnProposal ? ownProposalTitle : 'Reject Proposal'}"
-                ${disabledAttr}
+                title="Reject Proposal"
             >
                 Reject
             </button>
@@ -2097,9 +2102,9 @@ class AdminPage {
                     Execute
                 </button>
             ` : ''}
-            ${isOwnProposal ? `
+            ${hasAlreadyApproved ? `
                 <div class="own-proposal-notice">
-                    <small>ℹ️ Your proposal</small>
+                    <small>✅ You ${isProposer ? 'created and ' : ''}approved this</small>
                 </div>
             ` : ''}
         `;

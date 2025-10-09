@@ -80,6 +80,8 @@ class MasterInitializer {
 
     async loadCoreUtilities() {
         const coreScripts = [
+            'js/utils/unified-cache.js',        // Load cache system first
+            'js/utils/cache-integration.js',    // Then cache integration
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
             'js/core/loading-manager.js',
@@ -125,7 +127,18 @@ class MasterInitializer {
     async initializeComponents() {
         console.log('🔧 Initializing components...');
 
-        // Initialize error handler first (critical for other systems)
+        // Initialize unified cache system first (needed by other components)
+        if (window.unifiedCache) {
+            try {
+                window.unifiedCache.initialize();
+                this.components.set('unifiedCache', window.unifiedCache);
+                console.log('✅ Unified Cache initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize UnifiedCache:', error);
+            }
+        }
+
+        // Initialize error handler (critical for other systems)
         if (window.ErrorHandler && !window.errorHandler) {
             try {
                 window.errorHandler = new window.ErrorHandler();
@@ -225,6 +238,17 @@ class MasterInitializer {
                 console.log('🔄 Initializing ContractManager with read-only provider...');
                 await window.contractManager.initializeReadOnly();
                 console.log('✅ ContractManager initialized with read-only provider');
+
+                // Initialize cache integration with contract manager
+                if (window.cacheIntegration && window.unifiedCache) {
+                    try {
+                        window.cacheIntegration.initialize(window.unifiedCache, window.contractManager);
+                        this.components.set('cacheIntegration', window.cacheIntegration);
+                        console.log('✅ Cache Integration initialized with ContractManager');
+                    } catch (error) {
+                        console.error('❌ Failed to initialize CacheIntegration:', error);
+                    }
+                }
 
                 // Dispatch event for components waiting for contract manager
                 document.dispatchEvent(new CustomEvent('contractManagerReady', {
