@@ -2056,6 +2056,14 @@ class AdminPage {
         const proposerAddress = proposal.proposer?.toLowerCase();
         const isOwnProposal = userAddress && proposerAddress && userAddress === proposerAddress;
 
+        // Debug logging
+        console.log(`🔍 Proposal #${proposal.id} ownership check:`, {
+            userAddress,
+            proposerAddress,
+            isOwnProposal,
+            proposalId: proposal.id
+        });
+
         // Disable buttons if user is the proposer
         const approveDisabled = isOwnProposal;
         const rejectDisabled = isOwnProposal;
@@ -3015,6 +3023,7 @@ class AdminPage {
                 status: status, // Add status field for consistency
                 proposedTime: formatBigNumber(proposal.proposedTime) || Math.floor(Date.now() / 1000),
                 approvedBy: proposal.approvedBy || [],
+                proposer: proposal.proposer || null, // CRITICAL: Include proposer address for own-proposal check
 
                 // Action-specific details
                 newHourlyRewardRate: proposal.newHourlyRewardRate ?

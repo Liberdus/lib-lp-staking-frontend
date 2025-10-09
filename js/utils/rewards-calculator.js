@@ -117,24 +117,31 @@
         }
 
         /**
-         * Calculate APR using React implementation formula
-         * Matches: (hourlyRate * rewardTokenPrice * 365) / (tvl * lpTokenPrice)
+         * Calculate APR using EXACT React implementation formula
+         * React source: lib-lp-staking-frontend/src/utils/index.ts (Lines 5-9)
+         *
+         * IMPORTANT: This matches React EXACTLY - no multiplication by 100!
+         * React returns APR as a decimal (e.g., 226.5 for 226.5%), not 22650
+         *
          * @param {number} hourlyRate - Hourly reward rate in tokens
-         * @param {number} tvl - Total Value Locked in LP tokens
+         * @param {number} tvl - Total Value Locked in LP tokens (NOT USD)
          * @param {number} lpTokenPrice - LP token price in USD
          * @param {number} rewardTokenPrice - Reward token price in USD
-         * @returns {number} - APR as percentage (e.g., 45.5 for 45.5%)
+         * @returns {number} - APR as percentage (e.g., 226.5 for 226.5%)
          */
         calcAPR(hourlyRate, tvl, lpTokenPrice, rewardTokenPrice) {
+            // React Line 6: if (tvl === 0) return 0;
             if (tvl === 0) return 0;
 
-            // If prices not available, use simple calculation
+            // React Line 7: if (!lpTokenPrice || !rewardTokenPrice) return (hourlyRate * 24 * 365) / tvl || 0;
+            // NOTE: React does NOT multiply by 100 here!
             if (!lpTokenPrice || !rewardTokenPrice) {
-                return ((hourlyRate * 24 * 365) / tvl) * 100 || 0;
+                return (hourlyRate * 24 * 365) / tvl || 0;
             }
 
-            // Full calculation with prices (React formula)
-            return ((hourlyRate * rewardTokenPrice * 365 * 24) / (tvl * lpTokenPrice)) * 100 || 0;
+            // React Line 8: return (hourlyRate * rewardTokenPrice * 365) / (tvl * lpTokenPrice) || 0;
+            // NOTE: React does NOT multiply by 24 or 100 here!
+            return (hourlyRate * rewardTokenPrice * 365) / (tvl * lpTokenPrice) || 0;
         }
 
         /**

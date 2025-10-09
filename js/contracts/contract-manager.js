@@ -1259,6 +1259,39 @@ class ContractManager {
     }
 
     /**
+     * Get TVL (Total Value Locked) for a specific LP token
+     * Matches React implementation: lib-lp-staking-frontend/src/providers/ContractProvider.tsx (Lines 562-573)
+     *
+     * @param {string} lpTokenAddress - LP token contract address
+     * @returns {Promise<BigNumber>} - Total LP tokens staked (in wei)
+     */
+    async getTVL(lpTokenAddress) {
+        return await this.executeWithRetry(async () => {
+            if (!this.provider) {
+                throw new Error('Provider not initialized');
+            }
+
+            // Create LP token contract instance
+            const lpTokenContract = new ethers.Contract(
+                lpTokenAddress,
+                [
+                    "function balanceOf(address owner) external view returns (uint256)"
+                ],
+                this.provider
+            );
+
+            // Get balance of staking contract (total LP tokens staked)
+            const stakingContractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            if (!stakingContractAddress) {
+                throw new Error('Staking contract address not configured');
+            }
+
+            const balance = await lpTokenContract.balanceOf(stakingContractAddress);
+            return balance;
+        }, 'getTVL');
+    }
+
+    /**
      * Get all active LP token pairs
      */
     async getSupportedTokens() {

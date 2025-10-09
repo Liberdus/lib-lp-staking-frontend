@@ -29,24 +29,45 @@ class HomePage extends BaseComponent {
 
     /**
      * Initialize component dependencies
+     * Wait for price feeds and rewards calculator to be ready
      */
     async initializeDependencies() {
         try {
+            console.log('🔄 HomePage: Waiting for dependencies...');
+
+            // Wait for dependencies to be available (max 5 seconds)
+            const maxWaitTime = 5000;
+            const startTime = Date.now();
+
+            while (!window.priceFeeds || !window.rewardsCalculator || !window.contractManager) {
+                if (Date.now() - startTime > maxWaitTime) {
+                    console.warn('⚠️ Timeout waiting for dependencies');
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
             this.rewardsCalculator = window.rewardsCalculator;
             this.priceFeeds = window.priceFeeds;
             this.contractManager = window.contractManager;
 
+            console.log('✅ HomePage dependencies initialized:', {
+                rewardsCalculator: !!this.rewardsCalculator,
+                priceFeeds: !!this.priceFeeds,
+                contractManager: !!this.contractManager
+            });
+
             if (!this.rewardsCalculator) {
-                this.log('RewardsCalculator not available, using fallback');
+                console.warn('⚠️ RewardsCalculator not available, using fallback');
             }
             if (!this.priceFeeds) {
-                this.log('PriceFeeds not available, using fallback');
+                console.warn('⚠️ PriceFeeds not available, using fallback');
             }
             if (!this.contractManager) {
-                this.log('ContractManager not available, using fallback');
+                console.warn('⚠️ ContractManager not available, using fallback');
             }
         } catch (error) {
-            this.log('Error initializing dependencies:', error);
+            console.error('❌ Error initializing dependencies:', error);
         }
     }
 
@@ -433,21 +454,21 @@ class HomePage extends BaseComponent {
                 <!-- Reward Weight -->
                 <td class="weight-col">
                     <span class="weight-chip" style="display: inline-block; padding: 4px 12px; border-radius: 16px; background: var(--secondary-main); color: white; font-size: 13px;">
-                        ${window.ethers.formatEther(pair.weight.toString())} (${weightPercentage}%)
+                        ${pair.weight || 0} (${weightPercentage}%)
                     </span>
                 </td>
 
                 <!-- TVL -->
                 <td class="tvl-col">
                     <span style="font-weight: 500;">
-                        $${pair.tvl.toFixed(2)}
+                        ${window.Formatter?.formatUSD(pair.tvl) || '$0.00'}
                     </span>
                 </td>
 
                 <!-- My Pool Share -->
                 <td class="share-col">
                     <span style="font-weight: 500; color: ${hasStake ? 'var(--primary-main)' : 'var(--text-secondary)'};">
-                        ${pair.myShare.toFixed(2)} LP
+                        ${pair.myShare.toFixed(2)}%
                     </span>
                 </td>
 
@@ -1247,26 +1268,46 @@ class HomePage extends BaseComponent {
             let rewardTokenPrice = 0;
 
             try {
+                console.log(`🔍 Fetching data for pair: ${pairName}`);
+
                 // Get hourly reward rate from contract
                 const hourlyRewardRate = await window.contractManager.getHourlyRewardRate();
                 const hourlyRate = parseFloat(window.ethers.formatEther(hourlyRewardRate || '0'));
+                console.log(`  ⏰ Hourly rate: ${hourlyRate}`);
 
                 // Get TVL from contract
                 const tvlWei = await window.contractManager.getTVL(pairInfo.address);
                 tvlInTokens = parseFloat(window.ethers.formatEther(tvlWei || '0'));
+                console.log(`  📊 TVL in tokens: ${tvlInTokens}`);
 
                 // Fetch token prices using DexScreener (React implementation)
+                console.log(`  💰 Checking price feeds availability:`, {
+                    priceFeeds: !!window.priceFeeds,
+                    fetchTokenPrice: !!window.priceFeeds?.fetchTokenPrice
+                });
+
                 if (window.priceFeeds && window.priceFeeds.fetchTokenPrice) {
+                    console.log(`  🔍 Fetching LP token price for: ${pairInfo.address}`);
                     lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pairInfo.address);
+                    console.log(`  💵 LP token price: $${lpTokenPrice}`);
 
                     // Get reward token address from config
                     const rewardTokenAddress = window.CONFIG?.CONTRACTS?.REWARD_TOKEN;
                     if (rewardTokenAddress) {
+                        console.log(`  🔍 Fetching reward token price for: ${rewardTokenAddress}`);
                         rewardTokenPrice = await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                        console.log(`  💵 Reward token price: $${rewardTokenPrice}`);
                     }
+                } else {
+                    console.warn(`  ⚠️ Price feeds not available!`);
                 }
 
                 // Calculate APR using React formula
+                console.log(`  🧮 Checking rewards calculator:`, {
+                    rewardsCalculator: !!window.rewardsCalculator,
+                    calcAPR: !!window.rewardsCalculator?.calcAPR
+                });
+
                 if (window.rewardsCalculator && window.rewardsCalculator.calcAPR) {
                     apr = window.rewardsCalculator.calcAPR(
                         hourlyRate,
@@ -1274,10 +1315,14 @@ class HomePage extends BaseComponent {
                         lpTokenPrice,
                         rewardTokenPrice
                     );
+                    console.log(`  📈 Calculated APR: ${apr}%`);
+                } else {
+                    console.warn(`  ⚠️ Rewards calculator not available!`);
                 }
 
                 // Calculate TVL in USD
                 tvl = tvlInTokens * lpTokenPrice;
+                console.log(`  💰 TVL in USD: $${tvl}`);
 
                 // Get user-specific data if wallet is connected
                 const walletAddress = this.getState('wallet.address');
@@ -1301,10 +1346,11 @@ class HomePage extends BaseComponent {
                 }
 
             } catch (dataError) {
+                console.error(`Could not get additional data for ${pairName}:`, dataError);
                 this.log(`Could not get additional data for ${pairName}:`, dataError.message);
             }
 
-            return {
+            const pairData = {
                 id: pairInfo.address,
                 name: pairName,
                 lpToken: pairInfo.address,
@@ -1328,6 +1374,9 @@ class HomePage extends BaseComponent {
                 userShares: myShare.toFixed(2),
                 userEarnings: myEarnings.toFixed(4)
             };
+
+            console.log('Built pair data:', pairData);
+            return pairData;
         } catch (error) {
             this.logError('Failed to build pair data:', error);
             return null;

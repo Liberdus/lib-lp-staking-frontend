@@ -329,7 +329,7 @@ class HomePage {
                     </span>
                 </td>
                 <td>
-                    <span style="font-weight: 600;">$${this.formatNumber(pair.tvl || 0)}</span>
+                    <span style="font-weight: 600;">${this.formatNumber(pair.tvl || 0)}</span>
                 </td>
                 <td>
                     <button class="btn btn-primary btn-small btn-share"
@@ -630,6 +630,13 @@ class HomePage {
                 this.pairs = basicPairs;
                 this.render(); // Show basic data immediately
 
+                // OPTIMIZATION 2.5: Calculate TVL and APR in parallel for each pair
+                console.log('⚡ Calculating TVL and APR for all pairs...');
+                await this.calculateTVLAndAPR();
+                console.log('🎨 Re-rendering after TVL/APR calculation...');
+                console.log('📊 Pairs data after calculation:', this.pairs.map(p => ({ name: p.name, tvl: p.tvl, apr: p.apr })));
+                this.render(); // Re-render with TVL and APR data
+
                 // OPTIMIZATION 3: Load user data in parallel if wallet connected
                 if (this.isWalletConnected() && window.walletManager?.currentAccount) {
                     console.log('⚡ Loading user stake data in parallel...');
@@ -656,23 +663,27 @@ class HomePage {
                     // Wait for all user data to load in parallel
                     const userDataResults = await Promise.all(userDataPromises);
 
-                    // Update pairs with user data
+                    // Update pairs with user data - EXACT React implementation
+                    // React source: lib-lp-staking-frontend/src/pages/home.tsx (Lines 59-64)
                     userDataResults.forEach(({ index, userStake }) => {
                         if (this.pairs[index]) {
-                            // Calculate pool share percentage: (userStake * 100) / TVL
+                            // React Line 62: myShare = tvlWei > 0n ? Number((userStake.amount * 100n) / tvlWei) : 0;
+                            // Both userStake.amount and tvl are in ether format (already converted from wei)
                             const userStakeAmount = parseFloat(userStake.amount || '0');
-                            const tvl = this.pairs[index].tvl || 0;
+                            const tvl = this.pairs[index].tvl || 0;  // This is now LP token count
 
                             if (userStakeAmount > 0 && tvl > 0) {
+                                // Calculate share percentage: (userStake * 100) / TVL
                                 const sharePercentage = (userStakeAmount * 100) / tvl;
                                 this.pairs[index].userShares = sharePercentage.toFixed(2);
                             } else {
                                 this.pairs[index].userShares = '0.00';
                             }
 
+                            // React Line 63: myEarnings = Number(ethers.formatEther(await getPendingRewards(...)));
                             // Format user earnings
                             const earnings = parseFloat(userStake.rewards || '0');
-                            this.pairs[index].userEarnings = earnings.toFixed(6);
+                            this.pairs[index].userEarnings = earnings.toFixed(4);  // React uses .toFixed(4)
 
                             console.log(`📊 Pair ${index}: SharePercentage=${this.pairs[index].userShares}%, Earnings=${this.pairs[index].userEarnings} LIB`);
                         }
@@ -692,6 +703,84 @@ class HomePage {
         } catch (error) {
             console.error('❌ Failed to load blockchain data:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Calculate TVL and APR for all pairs - EXACT React implementation
+     * React source: lib-lp-staking-frontend/src/pages/home.tsx (Lines 46-78)
+     *
+     * Key differences from previous implementation:
+     * 1. TVL is stored as LP token count (NOT USD value) - React Line 57
+     * 2. APR uses React's exact formula (no × 100) - React Line 56
+     * 3. Display shows token count, matching React Line 199
+     */
+    async calculateTVLAndAPR() {
+        if (!window.priceFeeds || !window.rewardsCalculator) {
+            console.warn('⚠️ Price feeds or rewards calculator not available, skipping TVL/APR calculation');
+            return;
+        }
+
+        try {
+            console.log('⚡ Calculating TVL and APR for all pairs (React approach)...');
+
+            const calculations = this.pairs.map(async (pair, index) => {
+                try {
+                    console.log(`🔍 Calculating TVL/APR for ${pair.name}...`);
+
+                    // React Line 52-53: Fetch token prices
+                    const lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pair.address);
+                    const rewardTokenAddress = window.CONFIG?.CONTRACTS?.REWARD_TOKEN;
+                    const rewardTokenPrice = await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+
+                    console.log(`  💵 LP token price: $${lpTokenPrice}`);
+                    console.log(`  💵 Reward token price: $${rewardTokenPrice}`);
+
+                    // React Line 55: Get TVL from contract (in wei)
+                    const tvlWei = await window.contractManager.getTVL(pair.address);
+
+                    // React Line 56: Calculate APR using formatEther(tvlWei) as tvl parameter
+                    const hourlyRate = parseFloat(this.hourlyRewardRate || '0');
+                    const tvlInTokens = parseFloat(ethers.utils.formatEther(tvlWei || '0'));
+                    const apr = window.rewardsCalculator.calcAPR(
+                        hourlyRate,
+                        tvlInTokens,
+                        lpTokenPrice,
+                        rewardTokenPrice
+                    );
+
+                    // React Line 57: Store TVL as token count (NOT USD)
+                    // This is the key difference: React displays token count, not USD value
+                    const tvl = tvlInTokens;
+
+                    console.log(`  📊 TVL in tokens: ${tvlInTokens}`);
+                    console.log(`  📈 Calculated APR: ${apr.toFixed(1)}%`);
+
+                    // Update pair data to match React structure
+                    console.log(`🔧 Updating pair ${index} (${pair.name}):`);
+                    console.log(`  Before: tvl=${this.pairs[index].tvl}, apr=${this.pairs[index].apr}`);
+
+                    this.pairs[index].tvl = tvl;  // Token count, not USD
+                    this.pairs[index].apr = apr.toFixed(1);  // React uses .toFixed(1)
+                    this.pairs[index].totalStaked = tvlInTokens.toFixed(6);
+                    this.pairs[index].lpTokenPrice = lpTokenPrice;  // Store for reference
+                    this.pairs[index].rewardTokenPrice = rewardTokenPrice;  // Store for reference
+
+                    console.log(`  After: tvl=${this.pairs[index].tvl}, apr=${this.pairs[index].apr}`);
+                    console.log(`✅ ${pair.name}: TVL=${tvl.toFixed(2)} LP, APR=${apr.toFixed(1)}%`);
+
+                } catch (error) {
+                    console.error(`❌ Failed to calculate TVL/APR for ${pair.name}:`, error);
+                    // Keep default values (0)
+                }
+            });
+
+            // Wait for all calculations to complete
+            await Promise.all(calculations);
+            console.log('✅ TVL and APR calculation completed for all pairs');
+
+        } catch (error) {
+            console.error('❌ Failed to calculate TVL and APR:', error);
         }
     }
 

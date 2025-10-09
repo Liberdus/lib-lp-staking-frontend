@@ -235,6 +235,66 @@ class MasterInitializer {
             }
         }
 
+        // Initialize price feeds system
+        console.log('🔍 Checking PriceFeeds availability:', {
+            PriceFeedsClass: !!window.PriceFeeds,
+            priceFeedsInstance: !!window.priceFeeds
+        });
+
+        if (window.PriceFeeds && !window.priceFeeds) {
+            try {
+                console.log('🔄 Creating PriceFeeds instance...');
+                window.priceFeeds = new window.PriceFeeds();
+
+                console.log('🔄 Initializing PriceFeeds...');
+                const initResult = await window.priceFeeds.initialize();
+
+                this.components.set('priceFeeds', window.priceFeeds);
+                console.log('✅ Price Feeds initialized successfully:', {
+                    isInitialized: window.priceFeeds.isInitialized,
+                    initResult: initResult
+                });
+            } catch (error) {
+                console.error('❌ Failed to initialize PriceFeeds:', error);
+                console.error('   Error stack:', error.stack);
+            }
+        } else if (window.priceFeeds) {
+            console.log('ℹ️ PriceFeeds instance already exists');
+        } else {
+            console.error('❌ PriceFeeds class not found!');
+        }
+
+        // Initialize rewards calculator
+        console.log('🔍 Checking RewardsCalculator availability:', {
+            RewardsCalculatorClass: !!window.RewardsCalculator,
+            rewardsCalculatorInstance: !!window.rewardsCalculator,
+            contractManager: !!window.contractManager,
+            priceFeeds: !!window.priceFeeds
+        });
+
+        if (window.RewardsCalculator && !window.rewardsCalculator && window.contractManager && window.priceFeeds) {
+            try {
+                console.log('🔄 Creating RewardsCalculator instance...');
+                window.rewardsCalculator = new window.RewardsCalculator();
+
+                console.log('🔄 Initializing RewardsCalculator...');
+                const initResult = await window.rewardsCalculator.initialize(window.contractManager, window.priceFeeds);
+
+                this.components.set('rewardsCalculator', window.rewardsCalculator);
+                console.log('✅ Rewards Calculator initialized successfully:', {
+                    isInitialized: window.rewardsCalculator.isInitialized,
+                    initResult: initResult
+                });
+            } catch (error) {
+                console.error('❌ Failed to initialize RewardsCalculator:', error);
+                console.error('   Error stack:', error.stack);
+            }
+        } else if (window.rewardsCalculator) {
+            console.log('ℹ️ RewardsCalculator instance already exists');
+        } else {
+            console.error('❌ RewardsCalculator prerequisites not met!');
+        }
+
         // Initialize home page with contract manager awareness
         if (window.HomePage) {
             window.homePage = new window.HomePage();
