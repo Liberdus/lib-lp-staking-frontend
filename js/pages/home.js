@@ -653,18 +653,26 @@ class HomePage extends BaseComponent {
 
         // React-style multi-level sorting
         pairs.sort((a, b) => {
+            // Convert to numbers to ensure proper comparison
+            const weightA = parseFloat(a.weight) || 0;
+            const weightB = parseFloat(b.weight) || 0;
+            const tvlA = parseFloat(a.tvl) || 0;
+            const tvlB = parseFloat(b.tvl) || 0;
+            const aprA = parseFloat(a.apr) || 0;
+            const aprB = parseFloat(b.apr) || 0;
+
             // Primary sort: Weight (descending)
-            if (a.weight !== b.weight) {
-                return b.weight - a.weight;
+            if (weightA !== weightB) {
+                return weightB - weightA;
             }
 
             // Secondary sort: TVL (descending)
-            if (a.tvl !== b.tvl) {
-                return b.tvl - a.tvl;
+            if (tvlA !== tvlB) {
+                return tvlB - tvlA;
             }
 
             // Tertiary sort: APR (descending)
-            return b.apr - a.apr;
+            return aprB - aprA;
         });
 
         return pairs;
@@ -1355,17 +1363,17 @@ class HomePage extends BaseComponent {
                 name: pairName,
                 lpToken: pairInfo.address,
                 platform: pairInfo.platform || 'Unknown',
-                weight: parseInt(pairInfo.weight) || 0,
+                weight: parseFloat(pairInfo.weight) || 0,  // Ensure it's a number
                 isActive: pairInfo.isActive,
-                apr: apr,
+                apr: parseFloat(apr) || 0,  // Ensure it's a number
                 aprFormatted: `${apr.toFixed(1)}%`,
-                tvl: tvl,
-                tvlInTokens: tvlInTokens,
-                totalStaked: tvlInTokens,
-                lpTokenPrice: lpTokenPrice,
-                rewardTokenPrice: rewardTokenPrice,
-                myShare: myShare,
-                myEarnings: myEarnings,
+                tvl: parseFloat(tvl) || 0,  // Ensure it's a number
+                tvlInTokens: parseFloat(tvlInTokens) || 0,  // Ensure it's a number
+                totalStaked: parseFloat(tvlInTokens) || 0,  // Ensure it's a number
+                lpTokenPrice: parseFloat(lpTokenPrice) || 0,  // Ensure it's a number
+                rewardTokenPrice: parseFloat(rewardTokenPrice) || 0,  // Ensure it's a number
+                myShare: parseFloat(myShare) || 0,  // Ensure it's a number
+                myEarnings: parseFloat(myEarnings) || 0,  // Ensure it's a number
                 isNew: false,
                 isHot: apr > 100,
                 stakersCount: 0, // Would need additional contract call
