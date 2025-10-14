@@ -298,24 +298,7 @@ class HomePage {
         return `
             <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
                 <td>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="width: 32px; height: 32px; background: linear-gradient(45deg, #2196F3, #21CBF3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
-                                ${pair.token0Symbol}
-                            </div>
-                            <div style="width: 32px; height: 32px; background: linear-gradient(45deg, #FF9800, #FFC107); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; margin-left: -8px;">
-                                ${pair.token1Symbol}
-                            </div>
-                        </div>
-                        <div>
-                            <div style="font-weight: 600; font-size: 16px;">
-                                ${pair.token0Symbol}/${pair.token1Symbol}
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 14px;">
-                                ${pair.name || 'LP Token'}
-                            </div>
-                        </div>
-                    </div>
+                    ${this.formatPairName(`${pair.token0Symbol}/${pair.token1Symbol}`, pair.address)}
                 </td>
                 <td>
                     <span class="chip chip-primary">${pair.platform || 'Uniswap V2'}</span>
@@ -385,7 +368,8 @@ class HomePage {
             // Handle row click (open modal on default tab)
             if (e.target.closest('.pair-row')) {
                 const pairId = e.target.closest('.pair-row').dataset.pairId;
-                if (!e.target.closest('button')) {
+                // Don't trigger on buttons, links, or pair name links
+                if (!e.target.closest('button') && !e.target.closest('a') && !e.target.closest('.pair-name-link')) {
                     // Check if wallet is connected before opening modal
                     if (!this.isWalletConnected()) {
                         if (window.notificationManager) {
@@ -885,6 +869,146 @@ class HomePage {
         }
 
         console.log('📊 Fallback data loaded:', this.pairs.length, 'pairs');
+    }
+
+    /**
+     * Get token color for avatar
+     */
+    getTokenColor(tokenSymbol) {
+        const colors = {
+            'LIB': '#3B82F6',      // Blue
+            'USDT': '#26A17B',     // Tether Green
+            'USDC': '#2775CA',     // USDC Blue
+            'DAI': '#F5AC37',      // DAI Gold
+            'WETH': '#627EEA',     // Ethereum Purple
+            'ETH': '#627EEA',      // Ethereum Purple
+            'WBTC': '#F7931A',     // Bitcoin Orange
+            'BTC': '#F7931A',      // Bitcoin Orange
+            'MATIC': '#8247E5',    // Polygon Purple
+            'TOKEN': '#FF9800'     // Default Orange
+        };
+        return colors[tokenSymbol.toUpperCase()] || '#6B7280';
+    }
+
+    /**
+     * Create token avatar HTML
+     */
+    createTokenAvatar(tokenSymbol) {
+        const symbol = tokenSymbol.toUpperCase();
+        const color = this.getTokenColor(symbol);
+        const initial = symbol.substring(0, 3);
+        
+        return `
+            <div class="token-avatar" style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: ${color};
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            ">${initial}</div>
+        `;
+    }
+
+    /**
+     * Format pair name for display with token avatars and Uniswap link
+     */
+    formatPairName(pairName, lpTokenAddress = '') {
+        if (!pairName) return pairName;
+
+        let token1 = '';
+        let token2 = '';
+        let formattedName = pairName;
+
+        // If already formatted (contains /), extract tokens
+        if (pairName.includes('/')) {
+            const parts = pairName.split('/');
+            token1 = parts[0].trim();
+            token2 = parts[1].replace('LP', '').trim();
+            formattedName = `${token1}/${token2}`;
+        }
+        // Handle "LIB-USDT" format
+        else if (pairName.includes('-')) {
+            const parts = pairName.split('-');
+            token1 = parts[0].trim();
+            token2 = parts[1].trim();
+            formattedName = `${token1}/${token2}`;
+        }
+        // Handle LP prefix format: "LPLIBETH" -> "LIB/ETH"
+        else if (pairName.startsWith('LP') && pairName.length > 4) {
+            const tokens = pairName.substring(2); // Remove "LP"
+
+            // Try to split into two tokens
+            const commonTokens = ['USDC', 'USDT', 'DAI', 'WETH', 'ETH', 'WBTC', 'BTC', 'LIB', 'MATIC'];
+
+            for (const token of commonTokens) {
+                if (tokens.endsWith(token)) {
+                    token1 = tokens.substring(0, tokens.length - token.length);
+                    token2 = token;
+                    if (token1.length > 0) {
+                        formattedName = `${token1}/${token2}`;
+                        break;
+                    }
+                }
+                if (tokens.startsWith(token)) {
+                    token1 = token;
+                    token2 = tokens.substring(token.length);
+                    if (token2.length > 0) {
+                        formattedName = `${token1}/${token2}`;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: split in half if tokens not found
+            if (!token1 || !token2) {
+                const mid = Math.floor(tokens.length / 2);
+                token1 = tokens.substring(0, mid);
+                token2 = tokens.substring(mid);
+                formattedName = `${token1}/${token2}`;
+            }
+        }
+
+        // Create pair display with avatars and Uniswap link
+        if (token1 && token2) {
+            const avatar1 = this.createTokenAvatar(token1);
+            const avatar2 = this.createTokenAvatar(token2);
+            const uniswapUrl = lpTokenAddress ? 
+                `https://app.uniswap.org/explore/pools/polygon/${lpTokenAddress}` : 
+                `https://app.uniswap.org/explore/pools`;
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="display: flex; align-items: center;">
+                        ${avatar1}
+                        <div style="margin-left: -8px; z-index: 1;">${avatar2}</div>
+                    </div>
+                    <a href="${uniswapUrl}" target="_blank" rel="noopener noreferrer" 
+                       class="pair-name-link"
+                       style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer; transition: all 0.2s ease; padding: 4px 0;"
+                       onmouseover="this.style.opacity='0.8'"
+                       onmouseout="this.style.opacity='1'"
+                       title="View pool on Uniswap">
+                        <span style="font-weight: 700; color: var(--primary-main); font-size: 14px;">${formattedName}</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-main)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; transition: all 0.2s ease; min-width: 20px;">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                    <span style="font-size: 11px; color: var(--text-secondary); font-family: monospace;">${pairName}</span>
+                </div>
+            `;
+        }
+
+        // Return original if no pattern matched
+        return formattedName;
     }
 
     /**

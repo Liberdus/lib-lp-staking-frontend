@@ -6599,7 +6599,7 @@ class AdminPage {
                                 <div class="pair-info" style="overflow: hidden;">
                                     <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">${pair.name}</div>
                                     <div style="font-size: 11px; color: var(--text-secondary); font-family: monospace; word-break: break-all; line-height: 1.4;">${pair.address}</div>
-                                </div>
+                            </div>
                                 <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
                                     <div style="display: flex; flex-direction: column; min-width: 100px;">
                                         <span style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Current</span>
@@ -6607,14 +6607,14 @@ class AdminPage {
                                     </div>
                                     <div style="display: flex; flex-direction: column; flex: 1; min-width: 180px;">
                                         <label for="weight-${index}" style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">New Weight</label>
-                                        <input type="number"
-                                               class="form-input weight-input"
-                                               id="weight-${index}"
+                                <input type="number"
+                                       class="form-input weight-input"
+                                       id="weight-${index}"
                                                placeholder="Enter new weight"
-                                               min="1" max="10000"
+                                       min="1" max="10000"
                                                style="padding: 10px 12px; border: 1px solid var(--divider); border-radius: 6px; background: var(--background-default); color: var(--text-primary); font-size: 16px; font-weight: 500; width: 100%; box-sizing: border-box;"
-                                               data-pair="${pair.address}"
-                                               data-current="${this.formatWeight(pair.weight)}">
+                                       data-pair="${pair.address}"
+                                       data-current="${this.formatWeight(pair.weight)}">
                                     </div>
                                 </div>
                             </div>
