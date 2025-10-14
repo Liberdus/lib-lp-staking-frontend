@@ -1015,7 +1015,7 @@ class HomePage {
      * Extract token symbol from pair name
      */
     extractTokenSymbol(pairName) {
-        if (!pairName) return 'TOKEN';
+        if (!pairName) return 'USDT';
 
         // Try to extract the second token from patterns like "LIB/USDC" or "LIB-USDC"
         const match = pairName.match(/LIB[\/\-](\w+)/i);
@@ -1025,12 +1025,14 @@ class HomePage {
 
         // Fallback patterns
         if (pairName.toLowerCase().includes('usdc')) return 'USDC';
+        if (pairName.toLowerCase().includes('usdt')) return 'USDT';
         if (pairName.toLowerCase().includes('eth')) return 'ETH';
         if (pairName.toLowerCase().includes('btc')) return 'BTC';
         if (pairName.toLowerCase().includes('dai')) return 'DAI';
         if (pairName.toLowerCase().includes('matic')) return 'MATIC';
 
-        return 'TOKEN';
+        // Default to USDT instead of TOKEN
+        return 'USDT';
     }
 
     /**
@@ -1040,7 +1042,14 @@ class HomePage {
         try {
             // Extract pair name from platform or use address
             const pairName = this.extractPairName(pairInfo.address, pairInfo.platform);
-            const tokens = this.extractTokenSymbols(pairName);
+            
+            // Use existing token symbols if available, otherwise extract from pair name
+            let tokens;
+            if (pairInfo.token0Symbol && pairInfo.token1Symbol) {
+                tokens = { token0: pairInfo.token0Symbol, token1: pairInfo.token1Symbol };
+            } else {
+                tokens = this.extractTokenSymbols(pairName);
+            }
 
             // Get additional data if available
             let tvl = 0;
@@ -1173,8 +1182,40 @@ class HomePage {
             return { token0: parts[0].trim(), token1: parts[1].trim() };
         }
 
-        // Fallback for unknown formats
-        return { token0: 'TOKEN', token1: 'PAIR' };
+        // Handle LP prefix format: "LPLIBUSDT" -> "LIB/USDT"
+        if (pairName.startsWith('LP') && pairName.length > 4) {
+            const tokens = pairName.substring(2); // Remove "LP"
+            
+            // Try to split into two tokens using common token patterns
+            const commonTokens = ['USDC', 'USDT', 'DAI', 'WETH', 'ETH', 'WBTC', 'BTC', 'LIB', 'MATIC'];
+            
+            for (const token of commonTokens) {
+                if (tokens.endsWith(token)) {
+                    const token1 = tokens.substring(0, tokens.length - token.length);
+                    const token2 = token;
+                    if (token1.length > 0) {
+                        return { token0: token1, token1: token2 };
+                    }
+                }
+                if (tokens.startsWith(token)) {
+                    const token1 = token;
+                    const token2 = tokens.substring(token.length);
+                    if (token2.length > 0) {
+                        return { token0: token1, token1: token2 };
+                    }
+                }
+            }
+            
+            // Fallback: split in half
+            const mid = Math.floor(tokens.length / 2);
+            const token1 = tokens.substring(0, mid);
+            const token2 = tokens.substring(mid);
+            return { token0: token1, token1: token2 };
+        }
+
+        // Fallback for unknown formats - try to extract from address or use LIB/USDT as default
+        console.warn(`Could not parse pair name: ${pairName}, using LIB/USDT as fallback`);
+        return { token0: 'LIB', token1: 'USDT' };
     }
 
     openStakingModal(pairId, tab = 'stake') {
