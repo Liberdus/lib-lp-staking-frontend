@@ -85,6 +85,7 @@ class MasterInitializer {
         const coreScripts = [
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
+            'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
             'js/core/loading-manager.js',
@@ -138,6 +139,18 @@ class MasterInitializer {
                 console.log('✅ Unified Cache initialized');
             } catch (error) {
                 console.error('❌ Failed to initialize UnifiedCache:', error);
+            }
+        }
+
+        // Initialize unified theme manager
+        if (window.UnifiedThemeManager) {
+            try {
+                window.unifiedThemeManager = new window.UnifiedThemeManager();
+                window.unifiedThemeManager.initialize();
+                this.components.set('unifiedThemeManager', window.unifiedThemeManager);
+                console.log('✅ Unified Theme Manager initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize UnifiedThemeManager:', error);
             }
         }
 

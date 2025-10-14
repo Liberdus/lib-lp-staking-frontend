@@ -1480,7 +1480,7 @@ class AdminPage {
                 <header class="admin-header">
                     <div class="admin-header-content">
                         <div class="admin-header-left">
-                            <button class="btn btn-secondary back-btn" onclick="window.location.href='index.html'" title="Back to Staking Page">
+                            <button class="btn btn-secondary back-btn" onclick="navigateToHome()" title="Back to Staking Page">
                                 ← Back to Staking
                             </button>
                             <h1 class="admin-title">Admin Panel</h1>
@@ -7765,7 +7765,37 @@ class AdminPage {
             return "0.000";
         }
     }
+
+    /**
+     * Navigate to home page with optimized loading
+     */
+    navigateToHome() {
+        console.log('🏠 Navigating to home page...');
+        
+        // Show loading indicator
+        if (window.notificationManager) {
+            window.notificationManager.info('Navigating', 'Loading homepage...');
+        }
+        
+        // Use history API for faster navigation if possible
+        if (window.history && window.history.length > 1) {
+            window.history.back();
+        } else {
+            // Fallback to direct navigation
+            window.location.href = 'index.html';
+        }
+    }
 }
 
 // Export for global access
 window.AdminPage = AdminPage;
+
+// Make navigateToHome globally available
+window.navigateToHome = function() {
+    if (window.adminPage && window.adminPage.navigateToHome) {
+        window.adminPage.navigateToHome();
+    } else {
+        // Fallback navigation
+        window.location.href = 'index.html';
+    }
+};
