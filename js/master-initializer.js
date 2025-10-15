@@ -641,26 +641,8 @@ class MasterInitializer {
             }
         });
 
-        // Wallet account change handler
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
-                if (window.walletManager) {
-                    if (accounts.length === 0) {
-                        window.walletManager.disconnect();
-                    } else {
-                        window.walletManager.account = accounts[0];
-                        window.walletManager.updateUI();
-                    }
-                }
-            });
-
-            window.ethereum.on('chainChanged', (chainId) => {
-                console.log('Chain changed:', chainId);
-                if (window.notificationManager) {
-                    window.notificationManager.info('Network Changed', 'Please refresh the page if needed');
-                }
-            });
-        }
+        // Note: Wallet account change handlers are already set up in setupWalletIntegration()
+        // to avoid duplication and ensure proper optional chaining
 
         // Set up wallet connection event listeners for contract manager initialization
         this.setupContractManagerIntegration();
