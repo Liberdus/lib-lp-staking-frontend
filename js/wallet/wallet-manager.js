@@ -607,15 +607,31 @@ class WalletManager {
     /**
      * Handle accounts changed event
      */
-    handleAccountsChanged(accounts) {
+    async handleAccountsChanged(accounts) {
         this.log('Accounts changed:', accounts);
 
         if (!accounts || accounts.length === 0) {
             // User disconnected
             this.disconnect();
         } else if (accounts[0] !== this.address) {
-            // User switched accounts
+            const wasDisconnected = !this.address;
+            
+            // User switched accounts or reconnected
             this.address = accounts[0];
+            
+            // If we were disconnected, re-initialize provider and signer
+            if (wasDisconnected && window.ethereum) {
+                this.log('Re-initializing provider and signer after reconnection');
+                try {
+                    this.provider = new ethers.providers.Web3Provider(window.ethereum);
+                    this.signer = this.provider.getSigner();
+                    this.chainId = await this.provider.getNetwork().then(n => n.chainId);
+                    this.walletType = 'metamask';
+                } catch (error) {
+                    this.logError('Failed to re-initialize provider/signer:', error);
+                }
+            }
+            
             this.storeConnectionInfo();
             
             this.notifyListeners('accountChanged', {
