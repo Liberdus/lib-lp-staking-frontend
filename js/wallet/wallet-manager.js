@@ -619,14 +619,19 @@ class WalletManager {
             // User switched accounts or reconnected
             this.address = accounts[0];
             
-            // If we were disconnected, re-initialize provider and signer
+            // Re-initialize provider/signer if reconnecting after disconnect
             if (wasDisconnected && window.ethereum) {
                 this.log('Re-initializing provider and signer after reconnection');
                 try {
                     this.provider = new ethers.providers.Web3Provider(window.ethereum);
                     this.signer = this.provider.getSigner();
                     this.chainId = await this.provider.getNetwork().then(n => n.chainId);
-                    this.walletType = 'metamask';
+                    
+                    // Detect wallet type: prioritize specific wallet flags, fallback to metamask/injected
+                    this.walletType = window.ethereum.isTrust ? 'trust' : 
+                                     window.ethereum.isCoinbaseWallet ? 'coinbase' :
+                                     window.ethereum.isBraveWallet ? 'brave' :
+                                     window.ethereum.isMetaMask ? 'metamask' : 'injected';
                 } catch (error) {
                     this.logError('Failed to re-initialize provider/signer:', error);
                 }
