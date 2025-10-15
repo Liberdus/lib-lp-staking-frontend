@@ -4958,7 +4958,7 @@ class ContractManager {
 
             // Get base gas estimate with timeout
             const gasEstimate = await Promise.race([
-                contract[methodName].estimateGas(...args, options),
+                contract.estimateGas[methodName](...args, options),
                 new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Gas estimation timeout')), 5000)
                 )
