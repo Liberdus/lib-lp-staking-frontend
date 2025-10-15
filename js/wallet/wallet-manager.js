@@ -625,7 +625,7 @@ class WalletManager {
                 try {
                     this.provider = new ethers.providers.Web3Provider(window.ethereum);
                     this.signer = this.provider.getSigner();
-                    this.chainId = await this.provider.getNetwork().then(n => n.chainId);
+                    this.chainId = (await this.provider.getNetwork()).chainId;
                     
                     // Detect wallet type: prioritize specific wallet flags, fallback to metamask/injected
                     this.walletType = window.ethereum.isTrust ? 'trust' : 
