@@ -641,9 +641,6 @@ class MasterInitializer {
             }
         });
 
-        // Note: Wallet account change handlers are already set up in setupWalletIntegration()
-        // to avoid duplication and ensure proper optional chaining
-
         // Set up wallet connection event listeners for contract manager initialization
         this.setupContractManagerIntegration();
     }
