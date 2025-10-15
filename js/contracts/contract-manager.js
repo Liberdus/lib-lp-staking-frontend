@@ -4743,6 +4743,9 @@ class ContractManager {
                 console.log(`[TX MONITOR]   Status: SUCCESS (1)`);
                 console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
 
+                // add success to receipt. needed for ui to detect and display success.
+                receipt.success = true;
+
                 this.log(`✅ Transaction confirmed in ${totalTime}s - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
 
                 resolve(receipt);
