@@ -669,10 +669,6 @@ class AdminPage {
             // Navigation event listeners
             this.setupNavigationListeners();
 
-            // Moved to init, needed for account changes to be detected
-            // Wallet connection event listeners
-            /* this.setupWalletListeners(); */
-
             // Contract interaction event listeners
             this.setupContractListeners();
 
