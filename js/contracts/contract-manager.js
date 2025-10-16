@@ -1895,8 +1895,6 @@ class ContractManager {
             if (!userAddress) {
                 throw new Error('No address provided and no signer available');
             }
-
-            // DEFAULT_ADMIN_ROLE is bytes32(0)
             const ADMIN_ROLE = await window.contractManager.stakingContract.ADMIN_ROLE();
             return await this.stakingContract.hasRole(ADMIN_ROLE, userAddress);
         }, 'hasAdminRole');
