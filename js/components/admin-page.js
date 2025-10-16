@@ -1160,6 +1160,7 @@ class AdminPage {
         if (accounts.length === 0) {
             // No accounts connected
             this.handleWalletDisconnected();
+            this.stopAutoRefresh();
         } else {
             // Account switched
             const newAddress = accounts[0];
