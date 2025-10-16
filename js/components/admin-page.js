@@ -14,9 +14,6 @@ class AdminPage {
         this.isRefreshing = false; // Prevent overlapping refreshes
         this.autoRefreshActive = false; // Prevent multiple auto-refresh timers
 
-        // Admin role constant (will be fetched from contract)
-        /* this.ADMIN_ROLE = null; // Will be fetched from contract during initialization */
-
         // Development mode from centralized config
         // SECURITY: Default to false (production mode) if DEV_CONFIG is not loaded
         this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? false;
