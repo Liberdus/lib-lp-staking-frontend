@@ -320,6 +320,9 @@ class AdminPage {
                 return; // Stop initialization
             }
             console.log('✅ Correct network (Polygon Amoy)');
+            
+            // Setup wallet listeners to handle account changes
+            this.setupWalletListeners();
 
             // Verify admin access
             console.log('🔍 Verifying admin access...');
@@ -666,9 +669,6 @@ class AdminPage {
             // Navigation event listeners
             this.setupNavigationListeners();
 
-            // Wallet connection event listeners
-            this.setupWalletListeners();
-
             // Contract interaction event listeners
             this.setupContractListeners();
 
@@ -829,9 +829,14 @@ class AdminPage {
 
         // Listen for account changes
         if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
+            window.ethereum.on('accountsChanged', async (accounts) => {
                 console.log('🔄 Accounts changed:', accounts);
-                this.handleAccountsChanged(accounts);
+                try {
+                    await this.handleAccountsChanged(accounts);
+                } catch (error) {
+                    console.error('❌ Error handling account change:', error);
+                    this.showError('Account Switch Error', 'Failed to switch accounts. Please refresh the page.');
+                }
             });
 
             window.ethereum.on('chainChanged', (chainId) => {
@@ -1149,12 +1154,13 @@ class AdminPage {
         this.showConnectWalletPrompt();
     }
 
-    handleAccountsChanged(accounts) {
+    async handleAccountsChanged(accounts) {
         console.log('🔄 Handling accounts changed:', accounts);
 
         if (accounts.length === 0) {
             // No accounts connected
             this.handleWalletDisconnected();
+            this.stopAutoRefresh();
         } else {
             // Account switched
             const newAddress = accounts[0];
@@ -1166,7 +1172,18 @@ class AdminPage {
             }
 
             // Re-verify admin access with new account
-            this.verifyAdminAccess();
+            await this.verifyAdminAccess();
+            
+            // Stop auto-refresh and update UI based on authorization
+            this.stopAutoRefresh();
+            if (this.isAuthorized) {
+                console.log('✅ New account authorized, reloading interface...');
+                await this.loadAdminInterface();
+                this.startAutoRefresh();
+            } else {
+                console.log('❌ New account unauthorized, access denied');
+                this.showUnauthorizedAccess();
+            }
         }
     }
 
