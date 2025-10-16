@@ -2000,6 +2000,7 @@ class AdminPage {
         proposal.executed = proposal.executed || false;
         proposal.rejected = proposal.rejected || false;
         proposal.id = proposal.id || 'unknown';
+        proposal.approvedBy = proposal.approvedBy || [];
 
         const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
         const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
@@ -3505,6 +3506,7 @@ class AdminPage {
             proposal.executed = proposal.executed || false;
             proposal.rejected = proposal.rejected || false;
             proposal.id = proposal.id || 'unknown';
+            proposal.approvedBy = proposal.approvedBy || [];
 
             const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
             const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
@@ -3554,19 +3556,7 @@ class AdminPage {
                     </td>
                     <td>
                         <div class="action-buttons">
-                            ${!proposal.executed && !proposal.rejected ? `
-                                <button class="btn btn-sm btn-success" onclick="adminPage.approveAction('${proposal.id}')" title="Approve Proposal">
-                                    Approve
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="adminPage.rejectAction('${proposal.id}')" title="Reject Proposal">
-                                    Reject
-                                </button>
-                                ${canExecute ? `
-                                    <button class="btn btn-sm btn-primary" onclick="adminPage.executeAction('${proposal.id}')" title="Execute Proposal">
-                                        Execute
-                                    </button>
-                                ` : ''}
-                            ` : ''}
+                            ${!proposal.executed && !proposal.rejected ? this.renderProposalActionButtons(proposal, canExecute) : ''}
                         </div>
                     </td>
                 </tr>
