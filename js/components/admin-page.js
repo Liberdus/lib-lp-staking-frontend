@@ -40,8 +40,13 @@ class AdminPage {
         this.lastKnownProposalCount = 0; // Track last known total proposal count
         this.isSelectiveUpdateEnabled = true; // Enable selective update system
 
-        // Initialize mock system immediately
-        this.initializeMockSystem();
+        // Initialize mock system only in development mode
+        if (this.DEVELOPMENT_MODE) {
+            console.log('🚧 Development mode: Initializing mock system');
+            this.initializeMockSystem();
+        } else {
+            console.log('🚀 Production mode: Skipping mock system');
+        }
 
         // Initialize asynchronously (don't await in constructor)
         this.init().catch(error => {
