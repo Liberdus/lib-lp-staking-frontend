@@ -320,6 +320,9 @@ class AdminPage {
                 return; // Stop initialization
             }
             console.log('✅ Correct network (Polygon Amoy)');
+            
+            // Setup wallet listeners to handle account changes
+            this.setupWalletListeners();
 
             // Verify admin access
             console.log('🔍 Verifying admin access...');
@@ -666,8 +669,9 @@ class AdminPage {
             // Navigation event listeners
             this.setupNavigationListeners();
 
+            // Moved to init, needed for account changes to be detected
             // Wallet connection event listeners
-            this.setupWalletListeners();
+            /* this.setupWalletListeners(); */
 
             // Contract interaction event listeners
             this.setupContractListeners();
