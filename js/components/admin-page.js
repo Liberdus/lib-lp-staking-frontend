@@ -14,11 +14,12 @@ class AdminPage {
         this.isRefreshing = false; // Prevent overlapping refreshes
         this.autoRefreshActive = false; // Prevent multiple auto-refresh timers
 
-        // Admin role constant (should match contract)
-        this.ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000'; // DEFAULT_ADMIN_ROLE
+        // Admin role constant (will be fetched from contract)
+        /* this.ADMIN_ROLE = null; // Will be fetched from contract during initialization */
 
         // Development mode from centralized config
-        this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? true;
+        // SECURITY: Default to false (production mode) if DEV_CONFIG is not loaded
+        this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? false;
 
         // Professional Mock Data System
         this.mockProposals = new Map();
@@ -476,10 +477,7 @@ class AdminPage {
             if (window.contractManager?.stakingContract) {
                 try {
                     // Try to call hasRole function
-                    const hasAdminRole = await window.contractManager.stakingContract.hasRole(
-                        this.ADMIN_ROLE,
-                        this.userAddress
-                    );
+                    const hasAdminRole = await window.contractManager.hasAdminRole(this.userAddress);
 
                     this.isAuthorized = hasAdminRole;
                     console.log(`🔐 Contract role check: ${hasAdminRole ? 'AUTHORIZED' : 'DENIED'}`);
