@@ -6683,7 +6683,7 @@ class AdminPage {
 
         // Surface toast-style feedback when the notification manager exists
         if (window.notificationManager) {
-            window.notificationManager.success('Success', text);
+            window.notificationManager.success(text);
         } else if (!canShowInline) {
             alert('✅ ' + text);
         }
@@ -6724,7 +6724,7 @@ class AdminPage {
         }
 
         if (window.notificationManager) {
-            window.notificationManager.error('Error', message);
+            window.notificationManager.error(message);
         } else if (!canShowInline) {
             alert('❌ ' + message);
         }
