@@ -1170,7 +1170,7 @@ class AdminPage {
 
             // Check permission asynchronously and update
             if (typeof NetworkPermission !== 'undefined') {
-                NetworkPermission.hasAmoyPermission().then(hasPermission => {
+                NetworkPermission.hasNetworkPermission().then(hasPermission => {
                     this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal, networkName);
                 }).catch(error => {
                     console.error('Error checking permission after chain change:', error);
@@ -1370,7 +1370,7 @@ class AdminPage {
 
         // Schedule async permission check to update indicator
         if (typeof NetworkPermission !== 'undefined') {
-            NetworkPermission.hasAmoyPermission().then(hasPermission => {
+            NetworkPermission.hasNetworkPermission().then(hasPermission => {
                 this.updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName);
             }).catch(error => {
                 console.error('Error checking network permission:', error);

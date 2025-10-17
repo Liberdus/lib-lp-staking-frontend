@@ -63,7 +63,7 @@ class NetworkIndicator {
         if (this.context === 'home') {
             return 'window.requestHomeNetworkPermission()';
         } else {
-            return 'window.requestAmoyPermission()';
+            return 'window.requestNetworkPermission()';
         }
     }
 
@@ -82,7 +82,7 @@ class NetworkIndicator {
             // Check permission
             let hasPermission = false;
             if (typeof NetworkPermission !== 'undefined') {
-                hasPermission = await NetworkPermission.hasAmoyPermission();
+                hasPermission = await NetworkPermission.hasNetworkPermission();
             }
 
             // Update HTML

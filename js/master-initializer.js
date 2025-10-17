@@ -708,14 +708,15 @@ class MasterInitializer {
             console.log('🔄 Handling wallet connection and initializing contracts...');
 
             if (window.contractManager && window.walletManager) {
-                // Check if we have Amoy permission before upgrading to wallet mode
-                const hasAmoyPermission = typeof NetworkPermission !== 'undefined' 
-                    ? await NetworkPermission.hasAmoyPermission() 
+                // Check if we have network permission before upgrading to wallet mode
+                const hasNetworkPermission = typeof NetworkPermission !== 'undefined' 
+                    ? await NetworkPermission.hasNetworkPermission() 
                     : false;
                 
-                if (!hasAmoyPermission) {
-                    console.log('📊 Wallet connected but no Amoy permission - staying in read-only mode');
-                    console.log('💡 ContractManager will upgrade when Amoy permission is granted');
+                if (!hasNetworkPermission) {
+                    const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                    console.log(`📊 Wallet connected but no ${networkName} permission - staying in read-only mode`);
+                    console.log(`💡 ContractManager will upgrade when ${networkName} permission is granted`);
                     // Don't upgrade yet - stay in read-only mode
                     // User will see pools but not their personal data
                     return;

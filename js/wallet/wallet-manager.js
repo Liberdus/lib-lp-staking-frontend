@@ -206,15 +206,16 @@ class WalletManager {
             // Store connection info
             this.storeConnectionInfo();
 
-            // CRITICAL: Request Amoy network permission BEFORE notifying listeners
+            // CRITICAL: Request network permission BEFORE notifying listeners
             // This prevents ContractManager from querying on wrong network
             try {
                 if (typeof NetworkPermission !== 'undefined') {
-                    const hasPermission = await NetworkPermission.hasAmoyPermission();
+                    const hasPermission = await NetworkPermission.hasNetworkPermission();
                     if (!hasPermission) {
-                        this.log('🔐 Requesting Amoy network permission...');
-                        await NetworkPermission.requestAmoyPermission('metamask');
-                        this.log('✅ Amoy network permission granted');
+                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                        this.log(`🔐 Requesting ${networkName} network permission...`);
+                        await NetworkPermission.requestNetworkPermission('metamask');
+                        this.log(`✅ ${networkName} network permission granted`);
                     }
                 }
             } catch (error) {

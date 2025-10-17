@@ -57,7 +57,7 @@ class NetworkManager {
     async hasRequiredNetworkPermission() {
         if (typeof NetworkPermission !== 'undefined') {
             try {
-                return await NetworkPermission.hasAmoyPermission();
+                return await NetworkPermission.hasNetworkPermission();
             } catch (error) {
                 console.error('Error checking network permission:', error);
                 return false;

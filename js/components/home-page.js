@@ -296,7 +296,7 @@ class HomePage {
 
     renderPairRow(pair) {
         const isConnected = this.isWalletConnected();
-        const canTransact = isConnected && pair.hasAmoyPermission !== false;
+        const canTransact = isConnected && pair.hasNetworkPermission !== false;
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
@@ -386,13 +386,14 @@ class HomePage {
                         return; // Don't open modal
                     }
                     
-                    // Check if wallet has Amoy permission
+                    // Check if wallet has network permission
                     const pair = this.pairs.find(p => p.id === pairId);
-                    if (pair && pair.hasAmoyPermission === false) {
+                    if (pair && pair.hasNetworkPermission === false) {
+                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                'Amoy Network Permission Required',
-                                'Please grant Amoy network permission to make transactions'
+                                `${networkName} Network Permission Required`,
+                                `Please grant ${networkName} network permission to make transactions`
                             );
                         }
                         return; // Don't open modal
@@ -639,26 +640,27 @@ class HomePage {
                 console.log('📊 Pairs data after calculation:', this.pairs.map(p => ({ name: p.name, tvl: p.tvl, apr: p.apr })));
                 this.render(); // Re-render with TVL and APR data
 
-                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND has Amoy permission
+                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND has network permission
                 const isWalletConnected = this.isWalletConnected() && window.walletManager?.currentAccount;
-                const hasAmoyPermission = isWalletConnected && typeof NetworkPermission !== 'undefined' 
-                    ? await NetworkPermission.hasAmoyPermission() 
+                const hasNetworkPermission = isWalletConnected && typeof NetworkPermission !== 'undefined' 
+                    ? await NetworkPermission.hasNetworkPermission() 
                     : false;
                 
                 // Store permission flag in pairs for button states
                 this.pairs.forEach(pair => {
-                    pair.hasAmoyPermission = hasAmoyPermission;
+                    pair.hasNetworkPermission = hasNetworkPermission;
                 });
                 
-                if (isWalletConnected && hasAmoyPermission) {
+                if (isWalletConnected && hasNetworkPermission) {
                     console.log('⚡ Loading user stake data in parallel...');
                     console.log('👛 Using wallet address:', window.walletManager.currentAccount);
-                } else if (isWalletConnected && !hasAmoyPermission) {
-                    console.log('📊 Read-only mode: Wallet connected but no Amoy permission');
-                    console.log('💡 Grant Amoy permission to see your stakes and make transactions');
+                } else if (isWalletConnected && !hasNetworkPermission) {
+                    const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                    console.log(`📊 Read-only mode: Wallet connected but no ${networkName} permission`);
+                    console.log(`💡 Grant ${networkName} permission to see your stakes and make transactions`);
                 }
                 
-                if (isWalletConnected && hasAmoyPermission) {
+                if (isWalletConnected && hasNetworkPermission) {
 
                     const userDataPromises = allPairsInfo.map(async (pairInfo, i) => {
                         if (pairInfo.address === '0x0000000000000000000000000000000000000000') {
@@ -1433,7 +1435,7 @@ class HomePage {
         // Check permission asynchronously
         if (typeof NetworkPermission !== 'undefined') {
             try {
-                const hasPermission = await NetworkPermission.hasAmoyPermission();
+                const hasPermission = await NetworkPermission.hasNetworkPermission();
 
                 indicator.style.display = 'flex';
 

@@ -9,9 +9,9 @@
 class NetworkPermission {
     /**
      * Get the expected chain ID from centralized config
-     * @returns {number} Chain ID (e.g., 80002 for Polygon Amoy)
+     * @returns {number} Chain ID (e.g., 80002)
      */
-    static get AMOY_CHAIN_ID() {
+    static get CHAIN_ID() {
         return window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
     }
 
@@ -19,8 +19,8 @@ class NetworkPermission {
      * Get the expected chain ID in hex format
      * @returns {string} Chain ID in hex (e.g., '0x13882')
      */
-    static get AMOY_CHAIN_ID_HEX() {
-        return '0x' + NetworkPermission.AMOY_CHAIN_ID.toString(16);
+    static get CHAIN_ID_HEX() {
+        return '0x' + NetworkPermission.CHAIN_ID.toString(16);
     }
 
     /**
@@ -29,7 +29,7 @@ class NetworkPermission {
      */
     static getNetworkConfig() {
         return {
-            chainId: NetworkPermission.AMOY_CHAIN_ID_HEX,
+            chainId: NetworkPermission.CHAIN_ID_HEX,
             chainName: window.CONFIG?.NETWORK?.NAME || 'Polygon Amoy Testnet',
             rpcUrls: [
                 window.CONFIG?.NETWORK?.RPC_URL || 'https://rpc-amoy.polygon.technology',
@@ -47,10 +47,10 @@ class NetworkPermission {
     }
 
     /**
-     * Check if we have permission to use the Amoy network
-     * @returns {Promise<boolean>} True if wallet is connected and on Amoy network
+     * Check if we have permission to use the configured network
+     * @returns {Promise<boolean>} True if wallet is connected and on the configured network
      */
-    static async hasAmoyPermission() {
+    static async hasNetworkPermission() {
         try {
             if (!window.ethereum) return false;
 
@@ -63,25 +63,26 @@ class NetworkPermission {
                 return false; // Not connected to dApp
             }
 
-            // Check if currently on Amoy network
+            // Check if currently on configured network
             const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const amoyChainIdHex = '0x' + NetworkPermission.AMOY_CHAIN_ID.toString(16);
+            const expectedChainIdHex = NetworkPermission.CHAIN_ID_HEX;
             
-            return currentChainId === amoyChainIdHex;
+            return currentChainId === expectedChainIdHex;
 
         } catch (error) {
-            console.error('Error checking Amoy permission:', error);
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+            console.error(`Error checking ${networkName} permission:`, error);
             return false;
         }
     }
 
     /**
-     * Request permission to use the Amoy network
+     * Request permission to use the configured network
      * This adds the network to MetaMask and ensures we can interact with it
      * @param {string} walletType - Type of wallet ('metamask', 'walletconnect')
      * @returns {Promise<boolean>} True if permission granted
      */
-    static async requestAmoyPermission(walletType = 'metamask') {
+    static async requestNetworkPermission(walletType = 'metamask') {
         try {
             if (walletType === 'metamask') {
                 return await NetworkPermission._requestMetaMaskPermission();
@@ -93,7 +94,8 @@ class NetworkPermission {
                 throw new Error(`Unsupported wallet type: ${walletType}`);
             }
         } catch (error) {
-            console.error('Failed to request Amoy permission:', error);
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+            console.error(`Failed to request ${networkName} permission:`, error);
             throw error;
         }
     }
@@ -109,7 +111,8 @@ class NetworkPermission {
         }
 
         try {
-            console.log('🔐 Requesting Amoy network permission...');
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+            console.log(`🔐 Requesting ${networkName} network permission...`);
 
             // First, ensure we have account permissions
             try {
@@ -125,8 +128,8 @@ class NetworkPermission {
                 // If error is "already processing", continue anyway
             }
 
-            // Add Amoy network to MetaMask
-            await NetworkPermission.addAmoyNetworkIfNeeded();
+            // Add configured network to MetaMask
+            await NetworkPermission.addNetworkIfNeeded();
             return true;
 
         } catch (error) {
@@ -136,16 +139,17 @@ class NetworkPermission {
     }
 
     /**
-     * Add Amoy network to MetaMask if not already added
+     * Add configured network to MetaMask if not already added
      * @returns {Promise<void>}
      */
-    static async addAmoyNetworkIfNeeded() {
+    static async addNetworkIfNeeded() {
         if (!window.ethereum) {
             throw new Error('MetaMask not installed');
         }
 
         try {
             const networkConfig = NetworkPermission.getNetworkConfig();
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
 
             // Try to add the network
             // If already added, this will just succeed silently or return an error we can ignore
@@ -156,20 +160,22 @@ class NetworkPermission {
 
 
         } catch (error) {
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+            
             // Error code 4902 means the chain has not been added
             if (error.code === 4902) {
-                throw new Error('Failed to add Amoy network to MetaMask');
+                throw new Error(`Failed to add ${networkName} network to MetaMask`);
             }
             
             // Error code -32602 means chain already added (can be ignored)
             if (error.code === -32602) {
-                console.log('Amoy network already added');
+                console.log(`${networkName} network already added`);
                 return;
             }
 
             // User rejected
             if (error.code === 4001) {
-                throw new Error('User rejected adding Amoy network');
+                throw new Error(`User rejected adding ${networkName} network`);
             }
 
             // Other errors
@@ -230,11 +236,11 @@ class NetworkPermission {
      */
     static async requestPermissionWithUIUpdate(context = 'admin') {
         try {
-            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || NetworkPermission.AMOY_CHAIN_ID;
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || NetworkPermission.CHAIN_ID;
             const networkName = NetworkPermission.getNetworkName(expectedChainId);
 
             // Request permission using modern approach
-            await NetworkPermission.requestAmoyPermission('metamask');
+            await NetworkPermission.requestNetworkPermission('metamask');
 
             // Update UI based on context
             if (context === 'admin' && window.adminPage) {
@@ -262,7 +268,8 @@ class NetworkPermission {
             return true;
         } catch (error) {
             console.error('❌ Failed to get network permission:', error);
-            const errorMessage = 'Failed to get network permission. Please grant permission for Amoy network in MetaMask.';
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'the configured network';
+            const errorMessage = `Failed to get network permission. Please grant permission for ${networkName} network in MetaMask.`;
             
             if (context === 'admin') {
                 alert(errorMessage);
