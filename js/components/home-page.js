@@ -1109,11 +1109,17 @@ class HomePage {
                 console.log(`Could not get additional data for ${pairName}:`, dataError.message);
             }
 
-            // Get user-specific data if wallet is connected
+            // Get user-specific data if wallet is connected AND on correct network
             let userSharesPercentage = '0.00';
             let userEarnings = '0.00';
 
-            if (this.isWalletConnected() && window.walletManager?.currentAccount) {
+            // Check if we have network permission before querying user data
+            const hasNetworkPermission = this.isWalletConnected() && 
+                                          window.walletManager?.currentAccount && 
+                                          typeof NetworkPermission !== 'undefined' &&
+                                          await NetworkPermission.hasNetworkPermission();
+
+            if (hasNetworkPermission) {
                 try {
                     const userStake = await window.contractManager.getUserStake(
                         window.walletManager.currentAccount,
