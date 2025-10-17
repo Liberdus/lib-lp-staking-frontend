@@ -18,9 +18,7 @@ class NetworkIndicator {
      * @returns {string} HTML string
      */
     createHTML(hasPermission, chainId, networkName) {
-        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
-        const onExpectedNetwork = chainId === expectedChainId;
         
         // Determine CSS classes
         let statusClass = 'network-wrong';

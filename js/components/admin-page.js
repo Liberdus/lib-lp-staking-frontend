@@ -4590,14 +4590,8 @@ class AdminPage {
             }
 
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const expectedChainId = '0x13882'; // Polygon Amoy
-
-            if (chainId !== expectedChainId) {
-                console.warn(`⚠️ Wrong network: ${chainId}, expected: ${expectedChainId}`);
-                return false;
-            }
-
-            return true;
+            const expectedChainId = '0x' + window.CONFIG.NETWORK.CHAIN_ID.toString(16);
+            return chainId === expectedChainId;
         } catch (error) {
             console.error('❌ Network status check failed:', error);
             return false;
