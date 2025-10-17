@@ -4089,19 +4089,6 @@ class AdminPage {
         }
     }
 
-    showError(title, message) {
-        const container = document.getElementById('admin-section-content') || document.body;
-        container.innerHTML = `
-            <div class="error-display">
-                <h3>❌ ${title}</h3>
-                <p>${message}</p>
-                <button class="btn btn-primary" onclick="adminPage.init()">
-                    Retry
-                </button>
-            </div>
-        `;
-    }
-
     startAutoRefresh() {
         // Prevent multiple auto-refresh timers
         if (this.autoRefreshActive) {
@@ -6102,25 +6089,6 @@ class AdminPage {
         return /^0x[a-fA-F0-9]{40}$/.test(address);
     }
 
-    // Helper methods for error and success handling
-    showError(message) {
-        console.error('❌ Error:', message);
-        if (window.notificationManager) {
-            window.notificationManager.error('Error', message);
-        } else {
-            alert('❌ Error: ' + message);
-        }
-    }
-
-    showSuccess(message) {
-        console.log('✅ Success:', message);
-        if (window.notificationManager) {
-            window.notificationManager.success('Success', message);
-        } else {
-            alert('✅ ' + message);
-        }
-    }
-
     // Refresh admin data once without causing infinite loops
     refreshAdminDataOnce() {
         // Use a flag to prevent multiple simultaneous refreshes
@@ -6478,23 +6446,6 @@ class AdminPage {
         console.log('✅ Contract information displayed in UI');
     }
 
-    // Helper methods for user feedback
-    showSuccess(message) {
-        if (window.notificationManager) {
-            window.notificationManager.success('Success', message);
-        } else {
-            alert('✅ ' + message);
-        }
-    }
-
-    showError(message) {
-        if (window.notificationManager) {
-            window.notificationManager.error('Error', message);
-        } else {
-            alert('❌ ' + message);
-        }
-    }
-
     // Refresh admin data once (prevent multiple refreshes)
     refreshAdminDataOnce() {
         if (this.refreshTimeout) {
@@ -6720,12 +6671,63 @@ class AdminPage {
         button.disabled = false;
     }
 
+    // Helper methods for user feedback
     showSuccess(message) {
-        this.showMessage(message, 'success');
+        const text = message || 'Action completed successfully';
+        const canShowInline = typeof this.showMessage === 'function' && !!document.querySelector('.modal-body');
+
+        // Show inline feedback when a modal is open
+        if (canShowInline) {
+            this.showMessage(text, 'success');
+        }
+
+        // Surface toast-style feedback when the notification manager exists
+        if (window.notificationManager) {
+            window.notificationManager.success('Success', text);
+        } else if (!canShowInline) {
+            alert('✅ ' + text);
+        }
     }
 
-    showError(message) {
-        this.showMessage(message, 'error');
+    showError(titleOrMessage, detail) {
+        const hasDetail = typeof detail === 'string' && detail.trim().length > 0;
+
+        if (hasDetail) {
+            const title = titleOrMessage || 'Error';
+            const message = detail;
+
+            console.error('❌ Error:', title, '-', message);
+
+            const container = document.getElementById('admin-section-content') || document.body;
+            container.innerHTML = `
+                <div class="error-display">
+                    <h3>❌ ${title}</h3>
+                    <p>${message}</p>
+                    <button class="btn btn-primary" onclick="adminPage.init()">
+                        Retry
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        const message = typeof titleOrMessage === 'string' && titleOrMessage.trim().length > 0
+            ? titleOrMessage
+            : 'An unexpected error occurred';
+
+        console.error('❌ Error:', message);
+
+        const canShowInline = typeof this.showMessage === 'function' && !!document.querySelector('.modal-body');
+
+        if (canShowInline) {
+            this.showMessage(message, 'error');
+        }
+
+        if (window.notificationManager) {
+            window.notificationManager.error('Error', message);
+        } else if (!canShowInline) {
+            alert('❌ ' + message);
+        }
     }
 
     showMessage(message, type = 'info') {
