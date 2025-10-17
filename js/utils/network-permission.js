@@ -185,29 +185,6 @@ class NetworkPermission {
     }
 
     /**
-     * Get current permissions for debugging
-     * @returns {Promise<Array>} Array of permissions
-     */
-    static async getCurrentPermissions() {
-        try {
-            if (!window.ethereum) {
-                return [];
-            }
-
-            const permissions = await window.ethereum.request({
-                method: 'wallet_getPermissions'
-            });
-
-            console.log('Current MetaMask permissions:', permissions);
-            return permissions;
-
-        } catch (error) {
-            console.error('Error getting permissions:', error);
-            return [];
-        }
-    }
-
-    /**
      * Get network name for a given chain ID
      * @param {number} chainId - Chain ID
      * @returns {string} Network name
