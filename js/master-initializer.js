@@ -89,7 +89,6 @@ class MasterInitializer {
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
             'js/utils/network-permission.js',   // Network permission handler (must load before wallet-manager)
-            'js/components/network-indicator.js', // Reusable network indicator component
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
