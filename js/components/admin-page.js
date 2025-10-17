@@ -2092,25 +2092,20 @@ class AdminPage {
             proposalId: proposal.id
         });
 
-        // Disable approve button if user has already approved
-        const approveDisabled = hasAlreadyApproved;
-        const approveDisabledClass = hasAlreadyApproved ? 'disabled' : '';
-        const approveDisabledAttr = hasAlreadyApproved ? 'disabled' : '';
-        const approveTitle = hasAlreadyApproved ? 'You have already approved this proposal' : 'Approve Proposal';
-
         return `
             <button
-                class="btn btn-sm btn-success ${approveDisabledClass}"
+                class="btn btn-sm btn-success ${hasAlreadyApproved ? 'disabled' : ''}"
                 onclick="adminPage.approveAction('${proposal.id}')"
-                title="${approveTitle}"
-                ${approveDisabledAttr}
+                title="${hasAlreadyApproved ? 'You have already approved this proposal' : 'Approve Proposal'}"
+                ${hasAlreadyApproved ? 'disabled' : ''}
             >
                 Approve
             </button>
             <button
-                class="btn btn-sm btn-danger"
+                class="btn btn-sm btn-danger ${hasAlreadyApproved ? 'disabled' : ''}"
                 onclick="adminPage.rejectAction('${proposal.id}')"
-                title="Reject Proposal"
+                title="${hasAlreadyApproved ? 'You cannot reject after approving this proposal' : 'Reject Proposal'}"
+                ${hasAlreadyApproved ? 'disabled' : ''}
             >
                 Reject
             </button>
