@@ -314,12 +314,6 @@ class AdminPage {
             }
             console.log('✅ Wallet is connected');
 
-            // Check network permission (modern approach - don't block on active network)
-            console.log('🌐 Checking network permission...');
-            const chainId = window.walletManager.getChainId();
-            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-            console.log('🌐 Current chain ID:', chainId, 'Expected:', expectedChainId);
-
             // Setup wallet listeners to handle account changes
             this.setupWalletListeners();
 
