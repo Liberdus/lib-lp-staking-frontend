@@ -191,7 +191,7 @@
         }
 
         // Start checking after a short delay
-        setTimeout(checkDependencies, 1000);
+        setTimeout(checkDependencies, 500);
 
         // Prevent duplicate script loading and initialization
         if (window.adminPanelLoaded) {
@@ -386,7 +386,7 @@
         // Auto-initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             console.log('📄 DOM loaded, waiting for system initialization...');
-            // Wait a bit for master initializer to complete
+            // Allow master initializer microtasks to complete
             setTimeout(() => {
                 console.log('🔐 Starting admin panel initialization...');
 
@@ -417,7 +417,7 @@
                     sessionStorage.removeItem('adminInitRetryCount');
                     initializeAdminPanel();
                 }
-            }, 3000); // Give master initializer time to complete
+            }, 0); // Kick off on next tick
         });
 
         // Network switcher function
