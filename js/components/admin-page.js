@@ -2803,31 +2803,6 @@ class AdminPage {
             return false; // Fall back to full refresh
         }
     }
-
-    /**
-     * Check network connectivity and wallet connection
-     */
-    async checkNetworkConnectivity() {
-        try {
-            // Check if wallet is connected
-            if (!window.walletManager || !window.walletManager.isConnected()) {
-                throw new Error('Wallet not connected');
-            }
-
-            // Try a simple contract call to test connectivity
-            const contractManager = await this.ensureContractReady();
-            if (contractManager?.stakingContract) {
-                await contractManager.stakingContract.actionCounter();
-                return true;
-            }
-            
-            throw new Error('Contract manager not available');
-        } catch (error) {
-            console.error('❌ Network connectivity check failed:', error);
-            return false;
-        }
-    }
-
     /**
      * Force attempt to load real proposals (for manual retry)
      */
@@ -2840,10 +2815,9 @@ class AdminPage {
                 window.notificationManager.info('Loading Real Data', 'Checking network connectivity...');
             }
 
-            // First check network connectivity
-            const networkOk = await this.checkNetworkConnectivity();
-            if (!networkOk) {
-                throw new Error('Network connectivity check failed - please check wallet connection and network');
+            // Check if wallet is connected
+            if (!window.walletManager || !window.walletManager.isConnected()) {
+                throw new Error('Wallet not connected');
             }
 
             if (window.notificationManager) {
