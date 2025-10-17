@@ -77,9 +77,9 @@ class ContractManager {
                 // Note: Removed rate-limited demo endpoints that cause CORS errors
             ],
             networkConfig: {
-                chainId: 80002, // Polygon Amoy testnet
-                name: 'Polygon Amoy Testnet',
-                currency: 'MATIC',
+                chainId: window.CONFIG?.NETWORK?.CHAIN_ID || 80002, // Use centralized config
+                name: window.CONFIG?.NETWORK?.NAME || 'Polygon Amoy Testnet',
+                currency: window.CONFIG?.NETWORK?.NATIVE_CURRENCY?.symbol || 'MATIC',
                 explorerUrl: 'https://amoy.polygonscan.com'
             }
         };
@@ -147,7 +147,8 @@ class ContractManager {
             if (window.ethereum) {
                 try {
                     this.log('🦊 Attempting to use MetaMask provider (CORS-free)...');
-                    const metamaskProvider = new ethers.providers.Web3Provider(window.ethereum);
+                    // Use 'any' network to allow network changes without errors
+                    const metamaskProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
 
                     // Test the connection with timeout
                     const networkPromise = metamaskProvider.getNetwork();
@@ -161,7 +162,7 @@ class ContractManager {
                     // Use MetaMask provider for read-only operations
                     this.provider = metamaskProvider;
                     this.signer = null; // No signer in read-only mode
-                    this.log('✅ Using MetaMask provider (read-only mode)');
+                    this.log('✅ Using MetaMask provider (read-only mode) with network-change tolerance');
 
                 } catch (metamaskError) {
                     this.log('⚠️ MetaMask provider failed, trying RPC fallbacks:', metamaskError.message);
@@ -472,9 +473,10 @@ class ContractManager {
 
                 const network = await Promise.race([networkPromise, timeoutPromise]);
 
-                // Verify correct network
-                if (network.chainId !== 80002) {
-                    throw new Error(`Wrong network: expected 80002, got ${network.chainId}`);
+                // Verify correct network (using centralized config)
+                const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+                if (network.chainId !== expectedChainId) {
+                    throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                 }
 
                 // Test block number retrieval (tests node sync)
@@ -608,9 +610,10 @@ class ContractManager {
 
                     const network = await Promise.race([networkPromise, timeoutPromise]);
 
-                    // Verify correct network
-                    if (network.chainId !== 80002) {
-                        throw new Error(`Wrong network: expected 80002, got ${network.chainId}`);
+                    // Verify correct network (using centralized config)
+                    const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+                    if (network.chainId !== expectedChainId) {
+                        throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                     }
 
                     // Test a simple call to ensure provider is fully functional
@@ -2489,7 +2492,7 @@ class ContractManager {
                 chainId: networkInfo.chainId,
                 networkName: networkInfo.name,
                 gasPrice: ethers.utils.formatUnits(gasPrice, 'gwei') + ' gwei',
-                isPolygonAmoy: networkInfo.chainId === 80002
+                isPolygonAmoy: networkInfo.chainId === (window.CONFIG?.NETWORK?.CHAIN_ID || 80002)
             };
             console.log(`[DIAGNOSTIC]   Chain ID: ${diagnosticResults.checks.network.chainId}`);
             console.log(`[DIAGNOSTIC]   Network: ${diagnosticResults.checks.network.networkName}`);
@@ -2546,7 +2549,8 @@ class ContractManager {
             // Generate Recommendations
             console.log(`[DIAGNOSTIC] 💡 Generating Recommendations`);
             if (!diagnosticResults.checks.network.isPolygonAmoy) {
-                diagnosticResults.recommendations.push('Switch to Polygon Amoy testnet (Chain ID: 80002)');
+                const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+                diagnosticResults.recommendations.push(`Switch to Polygon Amoy testnet (Chain ID: ${expectedChainId})`);
             }
             if (!diagnosticResults.checks.signer.hasSufficientBalance) {
                 diagnosticResults.recommendations.push('Get more MATIC from Polygon Amoy faucet for gas fees');
@@ -2599,10 +2603,11 @@ class ContractManager {
             // Create Web3Provider directly from MetaMask
             const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
 
-            // Ensure we're on the correct network
+            // Ensure we're on the correct network (using centralized config)
             const network = await web3Provider.getNetwork();
-            if (network.chainId !== 80002) {
-                throw new Error('Please switch to Polygon Amoy Testnet (Chain ID: 80002) in MetaMask');
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            if (network.chainId !== expectedChainId) {
+                throw new Error(`Please switch to Polygon Amoy Testnet (Chain ID: ${expectedChainId}) in MetaMask`);
             }
 
             // Get signer from Web3Provider
@@ -2622,7 +2627,7 @@ class ContractManager {
                 // If verification fails, try to recreate signer
                 if (window.ethereum) {
                     console.log('🔧 Recreating signer...');
-                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
                     this.signer = provider.getSigner();
                     this.provider = provider;
 
@@ -4627,6 +4632,37 @@ class ContractManager {
                 lastError = error;
                 this.logError(`${operationName} attempt ${attempt} failed:`, error);
 
+                // Check for "underlying network changed" error that needs provider recreation
+                const isNetworkChangedError = error.code === 'NETWORK_ERROR' ||
+                                            (error.message && error.message.includes('underlying network changed'));
+
+                if (isNetworkChangedError && attempt <= retries) {
+                    this.log(`🔄 Network change detected, recreating provider...`);
+                    
+                    // Recreate the provider with fresh network detection
+                    if (window.ethereum) {
+                        try {
+                            const newProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+                            this.provider = newProvider;
+                            
+                            // If we have a signer, recreate it too
+                            if (this.signer) {
+                                this.signer = newProvider.getSigner();
+                                await this.initializeContracts();
+                                this.log('✅ Provider and signer recreated after network change');
+                            } else {
+                                this.log('✅ Read-only provider recreated after network change');
+                            }
+                            
+                            // Small delay to let the network stabilize
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            continue; // Retry immediately with new provider
+                        } catch (recreateError) {
+                            this.logError('❌ Failed to recreate provider:', recreateError);
+                        }
+                    }
+                }
+
                 // Check for RPC errors that should trigger provider switch
                 const isRpcError = error.code === -32603 ||
                                  (error.error && error.error.code === -32603) ||
@@ -5053,7 +5089,7 @@ class ContractManager {
             // Get signer if wallet is connected
             if (window.ethereum) {
                 try {
-                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
                     this.signer = provider.getSigner();
                     this.log('✅ Signer obtained from MetaMask during provider switch');
                 } catch (error) {
@@ -5286,8 +5322,14 @@ class ContractManager {
 
             case 'NETWORK_ERROR':
                 actions.push({
-                    label: 'Switch Network',
-                    action: () => this.switchToCorrectNetwork()
+                    label: 'Grant Network Permission',
+                    action: () => {
+                        if (typeof NetworkPermission !== 'undefined') {
+                            NetworkPermission.requestPermissionWithUIUpdate('admin');
+                        } else {
+                            alert('Please grant permission for Amoy network in MetaMask');
+                        }
+                    }
                 });
                 break;
 
@@ -5326,19 +5368,6 @@ class ContractManager {
         }
     }
 
-    /**
-     * Switch to correct network
-     */
-    async switchToCorrectNetwork() {
-        try {
-            if (window.walletManager) {
-                await window.walletManager.switchNetwork(80002); // Polygon Amoy
-                this.log('Switched to correct network');
-            }
-        } catch (error) {
-            this.logError('Failed to switch network:', error);
-        }
-    }
 
     /**
      * Refresh user balance

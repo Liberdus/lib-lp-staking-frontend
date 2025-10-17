@@ -37,11 +37,35 @@ class NetworkManager {
     }
 
     /**
+     * @deprecated Use hasRequiredNetworkPermission() instead for permission-based validation
      * Check if current network is the default/required network
+     * Note: With modern permission-based approach, this checks active network
+     * For permission checking, use hasRequiredNetworkPermission() instead
      */
     isCorrectNetwork(chainId = null) {
+        // Use centralized config instead of hardcoded value
         const targetChainId = chainId || this.getCurrentChainId();
-        return targetChainId === this.defaultNetwork;
+        const requiredChainId = window.CONFIG?.NETWORK?.CHAIN_ID || this.defaultNetwork;
+        return targetChainId === requiredChainId;
+    }
+
+    /**
+     * Check if we have required network permission (modern approach)
+     * This is preferred over isCorrectNetwork() for permission-based validation
+     * @returns {Promise<boolean>} True if has permission for required network
+     */
+    async hasRequiredNetworkPermission() {
+        if (typeof NetworkPermission !== 'undefined') {
+            try {
+                return await NetworkPermission.hasAmoyPermission();
+            } catch (error) {
+                console.error('Error checking network permission:', error);
+                return false;
+            }
+        }
+        // Fallback to checking active network if NetworkPermission not available
+        console.warn('NetworkPermission utility not available, falling back to active network check');
+        return this.isCorrectNetwork();
     }
 
     /**

@@ -88,6 +88,8 @@ class MasterInitializer {
         const coreScripts = [
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
+            'js/utils/network-permission.js',   // Network permission handler (must load before wallet-manager)
+            'js/components/network-indicator.js', // Reusable network indicator component
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
@@ -429,7 +431,7 @@ class MasterInitializer {
                 window.ethereum.on('chainChanged', (chainId) => {
                     console.log('Chain changed:', chainId);
                     if (window.notificationManager) {
-                        window.notificationManager.info('Network Changed', 'Please refresh the page if needed');
+                        window.notificationManager.info('Network Changed');
                     }
                 });
             }
@@ -706,6 +708,19 @@ class MasterInitializer {
             console.log('🔄 Handling wallet connection and initializing contracts...');
 
             if (window.contractManager && window.walletManager) {
+                // Check if we have Amoy permission before upgrading to wallet mode
+                const hasAmoyPermission = typeof NetworkPermission !== 'undefined' 
+                    ? await NetworkPermission.hasAmoyPermission() 
+                    : false;
+                
+                if (!hasAmoyPermission) {
+                    console.log('📊 Wallet connected but no Amoy permission - staying in read-only mode');
+                    console.log('💡 ContractManager will upgrade when Amoy permission is granted');
+                    // Don't upgrade yet - stay in read-only mode
+                    // User will see pools but not their personal data
+                    return;
+                }
+                
                 const provider = window.walletManager.provider;
                 const signer = window.walletManager.signer;
 

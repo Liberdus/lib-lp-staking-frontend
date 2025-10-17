@@ -36,6 +36,7 @@ class HomePage {
         this.attachEventListeners();
         this.setupContractManagerListeners();
         this.setupWalletChangeDetection();
+        this.setupNetworkIndicator();
         this.loadDataWhenReady();
         this.isInitialized = true;
 
@@ -79,11 +80,13 @@ class HomePage {
         // Listen for wallet connection changes
         document.addEventListener('walletConnected', (event) => {
             console.log('🏠 HomePage: Wallet connected, refreshing data...');
+            this.updateNetworkIndicator();
             this.refreshDataAfterWalletChange();
         });
 
         document.addEventListener('walletDisconnected', () => {
             console.log('🏠 HomePage: Wallet disconnected, refreshing data...');
+            this.updateNetworkIndicator();
             this.refreshDataAfterWalletChange();
         });
 
@@ -96,6 +99,7 @@ class HomePage {
 
             window.ethereum.on('chainChanged', (chainId) => {
                 console.log('🏠 HomePage: Chain changed:', chainId);
+                this.updateNetworkIndicator();
                 this.refreshDataAfterWalletChange();
             });
         }
@@ -292,6 +296,7 @@ class HomePage {
 
     renderPairRow(pair) {
         const isConnected = this.isWalletConnected();
+        const canTransact = isConnected && pair.hasAmoyPermission !== false;
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
@@ -319,7 +324,7 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="0"
-                            ${!isConnected ? 'disabled' : ''}
+                            ${!canTransact ? 'disabled' : ''}
                             style="min-width: 100px;">
                         <span class="material-icons" style="font-size: 16px;">share</span>
                         ${userShares}%
@@ -330,7 +335,7 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="2"
-                            ${!isConnected ? 'disabled' : ''}
+                            ${!canTransact ? 'disabled' : ''}
                             style="min-width: 120px;">
                         <span class="material-icons" style="font-size: 16px;">redeem</span>
                         ${userEarnings} LIB
@@ -338,15 +343,15 @@ class HomePage {
                 </td>
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary btn-stake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || !pair.stakingEnabled ? 'disabled' : ''}>
+                        <button class="btn btn-primary btn-stake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || !pair.stakingEnabled ? 'disabled' : ''}>
                             <span class="material-icons">add</span>
                             Stake
                         </button>
-                        <button class="btn btn-secondary btn-unstake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || parseFloat(userShares) === 0 ? 'disabled' : ''}>
+                        <button class="btn btn-secondary btn-unstake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || parseFloat(userShares) === 0 ? 'disabled' : ''}>
                             <span class="material-icons">remove</span>
                             Unstake
                         </button>
-                        <button class="btn btn-text btn-claim" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!isConnected || parseFloat(userEarnings) === 0 ? 'disabled' : ''}>
+                        <button class="btn btn-text btn-claim" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || parseFloat(userEarnings) === 0 ? 'disabled' : ''}>
                             <span class="material-icons">redeem</span>
                             Claim
                         </button>
@@ -380,6 +385,19 @@ class HomePage {
                         }
                         return; // Don't open modal
                     }
+                    
+                    // Check if wallet has Amoy permission
+                    const pair = this.pairs.find(p => p.id === pairId);
+                    if (pair && pair.hasAmoyPermission === false) {
+                        if (window.notificationManager) {
+                            window.notificationManager.warning(
+                                'Amoy Network Permission Required',
+                                'Please grant Amoy network permission to make transactions'
+                            );
+                        }
+                        return; // Don't open modal
+                    }
+                    
                     this.openStakingModal(pairId);
                 }
             }
@@ -621,10 +639,26 @@ class HomePage {
                 console.log('📊 Pairs data after calculation:', this.pairs.map(p => ({ name: p.name, tvl: p.tvl, apr: p.apr })));
                 this.render(); // Re-render with TVL and APR data
 
-                // OPTIMIZATION 3: Load user data in parallel if wallet connected
-                if (this.isWalletConnected() && window.walletManager?.currentAccount) {
+                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND has Amoy permission
+                const isWalletConnected = this.isWalletConnected() && window.walletManager?.currentAccount;
+                const hasAmoyPermission = isWalletConnected && typeof NetworkPermission !== 'undefined' 
+                    ? await NetworkPermission.hasAmoyPermission() 
+                    : false;
+                
+                // Store permission flag in pairs for button states
+                this.pairs.forEach(pair => {
+                    pair.hasAmoyPermission = hasAmoyPermission;
+                });
+                
+                if (isWalletConnected && hasAmoyPermission) {
                     console.log('⚡ Loading user stake data in parallel...');
                     console.log('👛 Using wallet address:', window.walletManager.currentAccount);
+                } else if (isWalletConnected && !hasAmoyPermission) {
+                    console.log('📊 Read-only mode: Wallet connected but no Amoy permission');
+                    console.log('💡 Grant Amoy permission to see your stakes and make transactions');
+                }
+                
+                if (isWalletConnected && hasAmoyPermission) {
 
                     const userDataPromises = allPairsInfo.map(async (pairInfo, i) => {
                         if (pairInfo.address === '0x0000000000000000000000000000000000000000') {
@@ -1348,6 +1382,86 @@ class HomePage {
             this.refreshInterval = null;
             this.autoRefreshActive = false; // Reset auto-refresh flag
             console.log('⏹️ HomePage: Auto-refresh stopped');
+        }
+    }
+
+    /**
+     * Setup network indicator and listeners
+     */
+    setupNetworkIndicator() {
+        // Update indicator initially
+        this.updateNetworkIndicator();
+
+        // Update on wallet connection/disconnection
+        document.addEventListener('walletConnected', () => {
+            this.updateNetworkIndicator();
+        });
+
+        document.addEventListener('walletDisconnected', () => {
+            const indicator = document.getElementById('network-indicator-home');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        });
+
+        // Update on network change
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', () => {
+                this.updateNetworkIndicator();
+            });
+        }
+    }
+
+    /**
+     * Update network indicator with current status
+     */
+    async updateNetworkIndicator() {
+        const indicator = document.getElementById('network-indicator-home');
+        if (!indicator) return;
+
+        // Only show if wallet is connected
+        if (!window.walletManager || !window.walletManager.isConnected()) {
+            indicator.style.display = 'none';
+            return;
+        }
+
+        const chainId = window.walletManager.getChainId();
+        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+        const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
+        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+
+        // Check permission asynchronously
+        if (typeof NetworkPermission !== 'undefined') {
+            try {
+                const hasPermission = await NetworkPermission.hasAmoyPermission();
+
+                indicator.style.display = 'flex';
+
+                if (hasPermission) {
+                    // Green indicator - has permission
+                    indicator.innerHTML = `
+                        <span class="network-status-dot green"></span>
+                        <span class="network-name">${expectedNetworkName}</span>
+                    `;
+                    indicator.className = 'network-indicator-home has-permission';
+                } else {
+                    // Red indicator - missing permission, show current network
+                    indicator.innerHTML = `
+                        <span class="network-status-dot red"></span>
+                        <span class="network-name">${networkName || 'Unknown'}</span>
+                        <button class="btn-grant-permission" onclick="NetworkPermission.requestPermissionWithUIUpdate('home')">
+                            Grant ${expectedNetworkName} Permission
+                        </button>
+                    `;
+                    indicator.className = 'network-indicator-home missing-permission';
+                }
+            } catch (error) {
+                console.error('Error checking network permission:', error);
+                indicator.style.display = 'none';
+            }
+        } else {
+            // Fallback if NetworkPermission not available
+            indicator.style.display = 'none';
         }
     }
 

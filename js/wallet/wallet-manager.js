@@ -206,7 +206,23 @@ class WalletManager {
             // Store connection info
             this.storeConnectionInfo();
 
-            // CRITICAL FIX: Notify listeners with enhanced error handling
+            // CRITICAL: Request Amoy network permission BEFORE notifying listeners
+            // This prevents ContractManager from querying on wrong network
+            try {
+                if (typeof NetworkPermission !== 'undefined') {
+                    const hasPermission = await NetworkPermission.hasAmoyPermission();
+                    if (!hasPermission) {
+                        this.log('🔐 Requesting Amoy network permission...');
+                        await NetworkPermission.requestAmoyPermission('metamask');
+                        this.log('✅ Amoy network permission granted');
+                    }
+                }
+            } catch (error) {
+                this.logError('[WalletManager] Failed to get network permission:', error);
+                // Don't block connection, but warn that queries may fail
+            }
+
+            // Now notify listeners - ContractManager will have network permission
             this.notifyListeners('connected', {
                 address: this.address,
                 chainId: this.chainId,
@@ -611,6 +627,13 @@ class WalletManager {
         this.log('Accounts changed:', accounts);
 
         if (!accounts || accounts.length === 0) {
+            // Check if this is a network change (we have a stored address)
+            // MetaMask sometimes sends empty accounts during network switches
+            if (this.address) {
+                this.log('Empty accounts during network change - ignoring');
+                return; // Don't disconnect during network changes
+            }
+            
             // User disconnected
             this.disconnect();
         } else if (accounts[0] !== this.address) {
@@ -666,7 +689,15 @@ class WalletManager {
      * Handle disconnect event
      */
     handleDisconnect(code, reason) {
-        this.log('Wallet disconnected:', code, reason);
+        this.log('Disconnect event - code:', code, 'reason:', reason);
+        
+        // Don't disconnect if we still have an address (likely a network change)
+        // MetaMask sometimes fires disconnect during network switches
+        if (this.address) {
+            this.log('Disconnect during network change - ignoring');
+            return;
+        }
+        
         this.disconnect();
     }
 

@@ -314,18 +314,12 @@ class AdminPage {
             }
             console.log('✅ Wallet is connected');
 
-            // CRITICAL: Check network BEFORE authorization
-            console.log('🌐 Checking network...');
+            // Check network permission (modern approach - don't block on active network)
+            console.log('🌐 Checking network permission...');
             const chainId = window.walletManager.getChainId();
-            console.log('🌐 Current chain ID:', chainId);
+            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
+            console.log('🌐 Current chain ID:', chainId, 'Expected:', expectedChainId);
 
-            if (chainId && chainId !== 80002) {
-                console.log('❌ Wrong network detected:', chainId);
-                this.showWrongNetworkError(chainId);
-                return; // Stop initialization
-            }
-            console.log('✅ Correct network (Polygon Amoy)');
-            
             // Setup wallet listeners to handle account changes
             this.setupWalletListeners();
 
@@ -534,39 +528,6 @@ class AdminPage {
         `;
     }
 
-    showWrongNetworkError(currentChainId) {
-        const container = document.getElementById('admin-content') || document.body;
-        const networkName = this.getNetworkName(currentChainId);
-
-        container.innerHTML = `
-            <div class="admin-connect-prompt">
-                <div class="connect-card network-error-card">
-                    <div class="error-icon">🔴</div>
-                    <h2>Wrong Network</h2>
-                    <p class="error-message">You are connected to <strong>${networkName}</strong></p>
-                    <p class="error-detail">Chain ID: ${currentChainId}</p>
-                    <div class="network-requirement">
-                        <p>This admin panel requires:</p>
-                        <div class="required-network">
-                            <span class="network-badge">Polygon Amoy Testnet</span>
-                            <span class="chain-id-badge">Chain ID: 80002</span>
-                        </div>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" onclick="adminPage.switchToAmoy()">
-                            🔄 Switch to Polygon Amoy
-                        </button>
-                        <button class="btn btn-secondary" onclick="window.location.href='index.html'">
-                            ← Back to Home
-                        </button>
-                    </div>
-                    <div class="help-text">
-                        <p><small>💡 Tip: Make sure MetaMask has permission to access this site</small></p>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
 
     showUnauthorizedAccess() {
         const container = document.getElementById('admin-content') || document.body;
@@ -1195,15 +1156,32 @@ class AdminPage {
     handleChainChanged(chainId) {
         console.log('🌐 Handling chain changed:', chainId);
 
-        const expectedChainId = '0x13882'; // Polygon Amoy (80002 in hex)
+        // Update network indicator when chain changes
+        const indicator = document.getElementById('network-indicator');
+        if (indicator) {
+            const chainIdDecimal = parseInt(chainId, 16);
+            const networkName = NetworkPermission?.getNetworkName(chainIdDecimal) || 'Unknown';
+            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
 
-        if (chainId !== expectedChainId) {
-            console.warn('⚠️ Wrong network detected');
-            this.showError('Wrong Network', 'Please switch to Polygon Amoy Testnet');
-        } else {
-            console.log('✅ Correct network detected');
-            // Refresh data after network change
-            this.refreshData();
+            // Update the indicator display
+            const networkIcon = indicator.querySelector('.network-icon');
+            const networkNameEl = indicator.querySelector('.network-name');
+            const networkIdEl = indicator.querySelector('.network-id');
+
+            if (networkIcon) networkIcon.textContent = chainIdDecimal === expectedChainId ? '🟢' : '⚠️';
+            if (networkNameEl) networkNameEl.textContent = networkName;
+            if (networkIdEl) networkIdEl.textContent = `Chain ID: ${chainIdDecimal}`;
+
+            indicator.className = chainIdDecimal === expectedChainId ? 'network-indicator network-correct' : 'network-indicator network-wrong';
+
+            // Check permission asynchronously and update
+            if (typeof NetworkPermission !== 'undefined') {
+                NetworkPermission.hasAmoyPermission().then(hasPermission => {
+                    this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal, networkName);
+                }).catch(error => {
+                    console.error('Error checking permission after chain change:', error);
+                });
+            }
         }
     }
 
@@ -1384,22 +1362,37 @@ class AdminPage {
 
     /**
      * Create network indicator component
+     * Modern approach: Shows permission status instead of blocking on active network
      */
     createNetworkIndicator() {
         const chainId = window.walletManager?.getChainId();
-        const isCorrectNetwork = chainId === 80002;
-        const networkName = this.getNetworkName(chainId);
+        const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
+        const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
+        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+
+        // We'll check permission asynchronously and update the indicator
+        // For now, show current network status
+        const onExpectedNetwork = chainId === expectedChainId;
+
+        // Schedule async permission check to update indicator
+        if (typeof NetworkPermission !== 'undefined') {
+            NetworkPermission.hasAmoyPermission().then(hasPermission => {
+                this.updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName);
+            }).catch(error => {
+                console.error('Error checking network permission:', error);
+            });
+        }
 
         return `
-            <div class="network-indicator ${isCorrectNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
-                <span class="network-icon">${isCorrectNetwork ? '🟢' : '🔴'}</span>
+            <div class="network-indicator ${onExpectedNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
+                <span class="network-icon">${onExpectedNetwork ? '🟢' : '⚠️'}</span>
                 <div class="network-info">
                     <span class="network-name">${networkName}</span>
                     <span class="network-id">Chain ID: ${chainId || 'Not Connected'}</span>
                 </div>
-                ${!isCorrectNetwork && chainId ? `
-                    <button class="btn btn-sm btn-warning" onclick="adminPage.switchToAmoy()" title="Switch to Polygon Amoy">
-                        Switch Network
+                ${!onExpectedNetwork ? `
+                    <button class="btn btn-sm btn-warning" onclick="NetworkPermission.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
+                        Grant ${expectedNetworkName} Permission
                     </button>
                 ` : ''}
             </div>
@@ -1407,78 +1400,40 @@ class AdminPage {
     }
 
     /**
-     * Get network name from chain ID
+     * Update network indicator with permission information
      */
-    getNetworkName(chainId) {
-        const networks = {
-            1: 'Ethereum Mainnet',
-            5: 'Goerli Testnet',
-            137: 'Polygon Mainnet',
-            80001: 'Mumbai Testnet',
-            80002: 'Polygon Amoy',
-            11155111: 'Sepolia Testnet'
-        };
+    updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName) {
+        const indicator = document.getElementById('network-indicator');
+        const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
+        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+        const onExpectedNetwork = chainId === expectedChainId;
 
-        if (!chainId) return 'Not Connected';
-        return networks[chainId] || `Unknown Network`;
-    }
-
-    /**
-     * Switch to Polygon Amoy network
-     */
-    async switchToAmoy() {
-        try {
-            console.log('🔄 Switching to Polygon Amoy...');
-
-            if (!window.ethereum) {
-                throw new Error('MetaMask not found');
-            }
-
-            // Request network switch
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x13882' }], // 80002 in hex
-            });
-
-            console.log('✅ Switched to Polygon Amoy');
-
-            // Reload admin page after switch
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-
-        } catch (error) {
-            console.error('❌ Failed to switch network:', error);
-
-            // If network doesn't exist, try to add it
-            if (error.code === 4902) {
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                            chainId: '0x13882',
-                            chainName: 'Polygon Amoy Testnet',
-                            nativeCurrency: {
-                                name: 'MATIC',
-                                symbol: 'MATIC',
-                                decimals: 18
-                            },
-                            rpcUrls: ['https://rpc-amoy.polygon.technology'],
-                            blockExplorerUrls: ['https://amoy.polygonscan.com']
-                        }]
-                    });
-
-                    console.log('✅ Added and switched to Polygon Amoy');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-
-                } catch (addError) {
-                    console.error('❌ Failed to add network:', addError);
-                    alert('Please manually add Polygon Amoy network in MetaMask');
+        if (indicator) {
+            if (hasPermission) {
+                indicator.className = 'network-indicator network-correct';
+                const iconElement = indicator.querySelector('.network-icon');
+                if (iconElement) iconElement.textContent = '🟢';
+                
+                // Remove any existing permission button
+                const existingButton = indicator.querySelector('button');
+                if (existingButton) {
+                    existingButton.remove();
                 }
             } else {
-                alert('Failed to switch network. Please switch manually in MetaMask.');
+                indicator.className = 'network-indicator network-wrong';
+                const iconElement = indicator.querySelector('.network-icon');
+                if (iconElement) iconElement.textContent = '⚠️';
+                
+                // Add permission button if not present
+                const existingButton = indicator.querySelector('button');
+                if (!existingButton) {
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-sm btn-warning';
+                    button.textContent = `Grant ${expectedNetworkName} Permission`;
+                    button.onclick = () => NetworkPermission.requestPermissionWithUIUpdate('admin');
+                    button.title = `Grant permission for ${expectedNetworkName}`;
+                    indicator.appendChild(button);
+                }
             }
         }
     }
@@ -2853,39 +2808,20 @@ class AdminPage {
      * Check network connectivity and wallet connection
      */
     async checkNetworkConnectivity() {
-        console.log('🌐 Checking network connectivity...');
-
         try {
             // Check if wallet is connected
             if (!window.walletManager || !window.walletManager.isConnected()) {
                 throw new Error('Wallet not connected');
             }
 
-            // Check if we're on the correct network
-            const currentChainId = await window.walletManager.getCurrentChainId();
-            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-
-            console.log('🔗 Network check:', {
-                currentChainId,
-                expectedChainId,
-                match: currentChainId === expectedChainId
-            });
-
-            if (currentChainId !== expectedChainId) {
-                throw new Error(`Wrong network. Expected ${expectedChainId}, got ${currentChainId}`);
-            }
-
             // Try a simple contract call to test connectivity
             const contractManager = await this.ensureContractReady();
-            if (contractManager && contractManager.stakingContract) {
-                // Try to get action counter (simple read operation)
+            if (contractManager?.stakingContract) {
                 await contractManager.stakingContract.actionCounter();
-                console.log('✅ Network connectivity check passed');
                 return true;
-            } else {
-                throw new Error('Contract manager not available');
             }
-
+            
+            throw new Error('Contract manager not available');
         } catch (error) {
             console.error('❌ Network connectivity check failed:', error);
             return false;
