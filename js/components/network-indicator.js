@@ -19,7 +19,7 @@ class NetworkIndicator {
      */
     createHTML(hasPermission, chainId, networkName) {
         const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
-        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
         const onExpectedNetwork = chainId === expectedChainId;
         
         // Determine CSS classes

@@ -1362,7 +1362,7 @@ class AdminPage {
         const chainId = window.walletManager?.getChainId();
         const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
         const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
-        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // We'll check permission asynchronously and update the indicator
         // For now, show current network status
@@ -1398,9 +1398,7 @@ class AdminPage {
      */
     updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName) {
         const indicator = document.getElementById('network-indicator');
-        const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
-        const onExpectedNetwork = chainId === expectedChainId;
+        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         if (indicator) {
             if (hasPermission) {

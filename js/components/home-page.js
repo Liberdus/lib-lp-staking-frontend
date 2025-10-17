@@ -1428,9 +1428,8 @@ class HomePage {
         }
 
         const chainId = window.walletManager.getChainId();
-        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
         const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
-        const expectedNetworkName = NetworkPermission?.getNetworkName(expectedChainId) || 'Polygon Amoy';
+        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // Check permission asynchronously
         if (typeof NetworkPermission !== 'undefined') {
