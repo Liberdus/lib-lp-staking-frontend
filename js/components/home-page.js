@@ -20,10 +20,10 @@ class HomePage {
         this.refreshDebounceTimer = null; // Debounce timer for wallet/network changes
 
         // OPTIMIZATION: Simple caching for contract data that doesn't change frequently
+        // Note: pairsInfo is NOT cached (can be changed by admin, fetch fresh every time)
         this.cache = {
             hourlyRewardRate: { value: null, timestamp: 0, ttl: 300000 }, // 5 minutes
-            totalWeight: { value: null, timestamp: 0, ttl: 60000 },       // 1 minute
-            pairsInfo: { value: null, timestamp: 0, ttl: 120000 }         // 2 minutes
+            totalWeight: { value: null, timestamp: 0, ttl: 60000 }        // 1 minute
         };
 
         this.init();
@@ -535,9 +535,16 @@ class HomePage {
 
             const promises = [];
             const now = Date.now();
+            
+            // Check if cache should be used (only if values exist AND not expired AND not null)
+            const canUseCache = (cacheObj) => {
+                return cacheObj.value !== null && 
+                       cacheObj.value !== undefined && 
+                       (now - cacheObj.timestamp) < cacheObj.ttl;
+            };
 
             // Check cache for hourly reward rate
-            if (this.cache.hourlyRewardRate.value && (now - this.cache.hourlyRewardRate.timestamp) < this.cache.hourlyRewardRate.ttl) {
+            if (canUseCache(this.cache.hourlyRewardRate)) {
                 promises.push(Promise.resolve(this.cache.hourlyRewardRate.value));
                 console.log('📦 Using cached hourly reward rate');
             } else {
@@ -548,7 +555,7 @@ class HomePage {
             }
 
             // Check cache for total weight
-            if (this.cache.totalWeight.value && (now - this.cache.totalWeight.timestamp) < this.cache.totalWeight.ttl) {
+            if (canUseCache(this.cache.totalWeight)) {
                 promises.push(Promise.resolve(this.cache.totalWeight.value));
                 console.log('📦 Using cached total weight');
             } else {
@@ -558,18 +565,10 @@ class HomePage {
                 }));
             }
 
-            // Check cache for pairs info
-            if (this.cache.pairsInfo.value && (now - this.cache.pairsInfo.timestamp) < this.cache.pairsInfo.ttl) {
-                promises.push(Promise.resolve(this.cache.pairsInfo.value));
-                console.log('📦 Using cached pairs info');
-            } else {
-                promises.push(window.contractManager.getAllPairsInfo().then(value => {
-                    this.cache.pairsInfo = { value, timestamp: now, ttl: this.cache.pairsInfo.ttl };
-                    return value;
-                }));
-            }
+            // Always fetch fresh pairs info - never cache (weights can be changed by admin)
+            promises.push(window.contractManager.getAllPairsInfo());
 
-            const [hourlyRateWei, totalWeightWei, allPairsInfo] = await Promise.all(promises);
+            let [hourlyRateWei, totalWeightWei, allPairsInfo] = await Promise.all(promises);
 
             // Process basic data immediately
             this.hourlyRewardRate = ethers.utils.formatEther(hourlyRateWei);
@@ -642,20 +641,22 @@ class HomePage {
                 console.log('📊 Pairs data after calculation:', this.pairs.map(p => ({ name: p.name, tvl: p.tvl, apr: p.apr })));
                 this.render(); // Re-render with TVL and APR data
 
-                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND on configured network
+                // OPTIMIZATION 3: Load user data in parallel if wallet connected
+                // Read-only provider can query user data from ANY network!
                 const isWalletConnected = this.isWalletConnected() && window.walletManager?.currentAccount;
                 const isOnCorrectNetwork = window.networkManager?.isOnRequiredNetwork() || false;
                 
-                if (isWalletConnected && isOnCorrectNetwork) {
+                if (isWalletConnected) {
                     console.log('⚡ Loading user stake data in parallel...');
                     console.log('👛 Using wallet address:', window.walletManager.currentAccount);
-                } else if (isWalletConnected && !isOnCorrectNetwork) {
-                    const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
-                    console.log(`📊 Read-only mode: Wallet connected but not on ${networkName}`);
-                    console.log(`💡 Switch to ${networkName} to see your stakes and make transactions`);
-                }
-                
-                if (isWalletConnected && isOnCorrectNetwork) {
+                    
+                    if (!isOnCorrectNetwork) {
+                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                        const currentChainId = window.walletManager?.getChainId();
+                        const currentNetworkName = window.networkManager?.getNetworkName(currentChainId) || 'Unknown';
+                        console.log(`📊 Read-only mode: Wallet on ${currentNetworkName}, viewing ${networkName} data`);
+                        console.log(`💡 Switch to ${networkName} to make transactions`);
+                    }
 
                     const userDataPromises = allPairsInfo.map(async (pairInfo, i) => {
                         if (pairInfo.address === '0x0000000000000000000000000000000000000000') {
@@ -1442,7 +1443,6 @@ class HomePage {
         // Check permission asynchronously
         if (window.networkManager) {
             try {
-                const hadPermission = indicator.classList.contains('has-permission');
                 const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
 
                 indicator.style.display = 'flex';
@@ -1454,14 +1454,6 @@ class HomePage {
                         <span class="network-name">${expectedNetworkName}</span>
                     `;
                     indicator.className = 'network-indicator-home has-permission';
-                    
-                    // If permission was just granted (transition from no permission to has permission)
-                    // Clear cache and refresh data
-                    if (!hadPermission) {
-                        console.log('🔄 Network permission granted, clearing cache and refreshing data...');
-                        this.clearCache();
-                        await this.refreshData();
-                    }
                 } else {
                     // Red indicator - missing permission, show "No permission"
                     indicator.innerHTML = `
@@ -1484,13 +1476,12 @@ class HomePage {
     }
 
     /**
-     * Clear all cached data
+     * Clear cached data (for manual refresh or network changes)
      */
     clearCache() {
         console.log('🗑️ Clearing HomePage cache...');
         this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
         this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
-        this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
         console.log('✅ HomePage cache cleared');
     }
 

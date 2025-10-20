@@ -144,44 +144,29 @@ class ContractManager {
             this.log('✅ Ethers.js available');
 
             // Try MetaMask provider first (bypasses CORS issues)
-            if (window.ethereum) {
-                try {
-                    this.log('🦊 Attempting to use MetaMask provider (CORS-free)...');
-                    // Use 'any' network to allow network changes without errors
-                    const metamaskProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+            // BUGFIX: Don't use MetaMask provider with 'any' network - causes corrupted BigNumber data
+            // when wallet is on different network. Always use dedicated Amoy RPC for read-only mode.
+            this.log('🌐 Read-only mode: Using dedicated Amoy RPC (prevents BigNumber corruption)...');
+            
+            const amoyRpcUrl = window.CONFIG?.NETWORK?.RPC_URL || 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC';
+            
+            try {
+                this.log('🚀 Creating dedicated Amoy provider:', amoyRpcUrl);
+                const amoyProvider = new ethers.providers.JsonRpcProvider({
+                    url: amoyRpcUrl,
+                    timeout: 10000
+                });
 
-                    // Test the connection with timeout
-                    const networkPromise = metamaskProvider.getNetwork();
-                    const timeoutPromise = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('Network detection timeout')), 10000)
-                    );
+                // Verify connection
+                const network = await amoyProvider.getNetwork();
+                this.log(`✅ Amoy provider connected - Chain ID: ${network.chainId}`);
 
-                    const network = await Promise.race([networkPromise, timeoutPromise]);
-                    this.log('🦊 MetaMask network detected:', network.chainId, network.name);
+                this.provider = amoyProvider;
+                this.signer = null; // No signer in read-only mode
+                this.log('✅ Using dedicated Amoy RPC provider (read-only)');
 
-                    // Use MetaMask provider for read-only operations
-                    this.provider = metamaskProvider;
-                    this.signer = null; // No signer in read-only mode
-                    this.log('✅ Using MetaMask provider (read-only mode) with network-change tolerance');
-
-                } catch (metamaskError) {
-                    this.log('⚠️ MetaMask provider failed, trying RPC fallbacks:', metamaskError.message);
-
-                    // Fall back to RPC providers
-                    await this.setupFallbackProviders();
-                    await this.initializeFallbackProviders();
-                    this.log('📡 Fallback providers initialized:', this.fallbackProviders.length);
-
-                    if (this.fallbackProviders.length > 0) {
-                        this.provider = this.fallbackProviders[0];
-                        this.signer = null;
-                        this.log('✅ Using RPC fallback provider:', this.provider.connection?.url || 'Unknown');
-                    } else {
-                        throw new Error('No fallback providers available');
-                    }
-                }
-            } else {
-                this.log('🌐 MetaMask not available, using RPC providers...');
+            } catch (amoyError) {
+                this.log('⚠️ Primary Amoy RPC failed, trying fallbacks:', amoyError.message);
 
                 // Try direct provider creation first (faster)
                 try {
