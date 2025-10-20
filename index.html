@@ -354,6 +354,17 @@
             white-space: nowrap;
         }
         
+        .version-badge {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-left: 12px;
+            padding: 2px 8px;
+            background: var(--action-hover);
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+        
         /* Navigation */
         .nav-section {
             display: flex;
@@ -698,6 +709,12 @@
             .logo-text {
                 display: none;
             }
+            
+            .version-badge {
+                font-size: 10px;
+                margin-left: 8px;
+                padding: 2px 6px;
+            }
 
             .nav-section {
                 gap: var(--spacing-1);
@@ -861,6 +878,7 @@
                 <a href="index.html" class="logo-section" aria-label="Liberdus LP Staking - Home">
                     <img src="assets/logo.png" alt="Liberdus LP Staking" class="logo">
                     <span class="logo-text">Liberdus LP Staking</span>
+                    <span class="version-badge" id="app-version">v0.0.0</span>
                 </a>
 
 
@@ -939,6 +957,9 @@
 
     <div id="modal-container"></div>
     <div id="notification-container"></div>
+
+    <!-- Version Check System (runs first to ensure fresh cache) -->
+    <script src="js/utils/version-check.js"></script>
 
     <!-- Theme System (load early to prevent flash) -->
     <script src="js/core/unified-theme-manager.js"></script>
@@ -1264,6 +1285,16 @@
                 console.error('❌ UnifiedThemeManager not found');
             }
         }, 100);
+        
+        // Display version in header
+        if (window.getCurrentVersion) {
+            window.getCurrentVersion().then(function(version) {
+                const versionElement = document.getElementById('app-version');
+                if (versionElement) {
+                    versionElement.textContent = 'v' + version;
+                }
+            });
+        }
     });
     </script>
 </body>
