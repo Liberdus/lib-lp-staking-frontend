@@ -784,6 +784,72 @@
         .gap-2 {
             gap: var(--spacing-2);
         }
+
+        /* Network Indicator Styles */
+        .network-indicator-home {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .network-indicator-home.has-permission {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .network-indicator-home.missing-permission {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .network-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .network-status-dot.green {
+            background-color: #4caf50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+
+        .network-status-dot.red {
+            background-color: #f44336;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .network-name {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .btn-grant-permission {
+            margin-left: 8px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: var(--warning-main);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-grant-permission:hover {
+            background: var(--secondary-hover);
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -808,6 +874,10 @@
                         <span>Admin Panel</span>
                     </a>
 
+                    <!-- Network indicator -->
+                    <div id="network-indicator-home" class="network-indicator-home" style="display:none;">
+                        <!-- Populated by JavaScript -->
+                    </div>
 
                     <button id="connect-wallet-btn" class="connect-wallet-btn" aria-describedby="wallet-status">
                         <span class="material-icons" aria-hidden="true">account_balance_wallet</span>
