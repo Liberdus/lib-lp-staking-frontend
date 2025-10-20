@@ -111,6 +111,9 @@ class HomePage {
     async refreshDataAfterWalletChange() {
         console.log('🔄 Wallet changed, refreshing data...');
 
+        // Clear cache to ensure fresh data after wallet/network change
+        this.clearCache();
+
         // Small delay to ensure wallet manager is updated
         await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -1431,6 +1434,7 @@ class HomePage {
         // Check permission asynchronously
         if (window.networkManager) {
             try {
+                const hadPermission = indicator.classList.contains('has-permission');
                 const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
 
                 indicator.style.display = 'flex';
@@ -1442,6 +1446,14 @@ class HomePage {
                         <span class="network-name">${expectedNetworkName}</span>
                     `;
                     indicator.className = 'network-indicator-home has-permission';
+                    
+                    // If permission was just granted (transition from no permission to has permission)
+                    // Clear cache and refresh data
+                    if (!hadPermission) {
+                        console.log('🔄 Network permission granted, clearing cache and refreshing data...');
+                        this.clearCache();
+                        await this.refreshData();
+                    }
                 } else {
                     // Red indicator - missing permission, show "No permission"
                     indicator.innerHTML = `
@@ -1461,6 +1473,17 @@ class HomePage {
             // Fallback if networkManager not available
             indicator.style.display = 'none';
         }
+    }
+
+    /**
+     * Clear all cached data
+     */
+    clearCache() {
+        console.log('🗑️ Clearing HomePage cache...');
+        this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
+        this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
+        this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
+        console.log('✅ HomePage cache cleared');
     }
 
     destroy() {
