@@ -557,11 +557,8 @@ class AdminPage {
         // Load main components
         await this.loadMultiSignPanel();
 
-        // Load info card (creates HTML structure with mock data first)
+        // Load info card (initializes layout and pulls live contract data)
         await this.loadInfoCard();
-
-        // Then load real contract information (updates the HTML with real data)
-        await this.loadContractInformation();
 
         // Setup event listeners
         this.setupEventListeners();
@@ -1669,56 +1666,76 @@ class AdminPage {
         }
     }
 
+    getInfoCardSkeleton() {
+        return `
+            <div class="info-card">
+                <div class="card-header">
+                    <h3>Contract Information</h3>
+                    <button class="btn btn-sm" onclick="adminPage.refreshContractInfo()">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">💰 Reward Balance</div>
+                            <div class="info-value" data-info="reward-balance">Loading...</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">⏰ Hourly Rate</div>
+                            <div class="info-value" data-info="hourly-rate">Loading...</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">⚖️ Total Weight</div>
+                            <div class="info-value" data-info="total-weight">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div class="pairs-section">
+                        <h4>🔗 LP Pairs</h4>
+                        <div class="pairs-list" data-info="lp-pairs">
+                            <div class="info-value">Loading pairs...</div>
+                        </div>
+                    </div>
+
+                    <div class="signers-section">
+                        <h4>👥 Current Signers</h4>
+                        <div class="signers-list" data-info="signers">
+                            <div class="info-value">Loading signers...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     async loadInfoCard() {
         console.log('📊 Loading Info Card...');
         const cardDiv = document.getElementById('info-card');
 
-        try {
-            // Load contract info
-            const contractInfo = await this.loadContractInfo();
+        if (!cardDiv) {
+            console.warn('⚠️ Info card container not found.');
+            return;
+        }
 
-            cardDiv.innerHTML = `
-                <div class="info-card">
-                    <div class="card-header">
-                        <h3>Contract Information</h3>
-                        <button class="btn btn-sm" onclick="adminPage.refreshContractInfo()">
-                            🔄 Refresh
+        // Render layout with loading placeholders so the UI stays responsive while data loads
+        cardDiv.innerHTML = this.getInfoCardSkeleton();
+
+        try {
+            const result = await this.loadContractInformation();
+            if (!result || result.success === false) {
+                const errorMessage = (result && result.error && result.error.message) || 'An unknown error occurred.';
+                cardDiv.innerHTML = `
+                    <div class="error-panel">
+                        <h3>⚠️ Failed to load contract info</h3>
+                        <p>${errorMessage}</p>
+                        <button class="btn btn-secondary" onclick="adminPage.loadInfoCard()">
+                            🔄 Retry
                         </button>
                     </div>
-
-                    <div class="card-content">
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <div class="info-label">💰 Reward Balance</div>
-                                <div class="info-value" data-info="reward-balance">${contractInfo.rewardBalance}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">⏰ Hourly Rate</div>
-                                <div class="info-value" data-info="hourly-rate">${contractInfo.hourlyRate}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">⚖️ Total Weight</div>
-                                <div class="info-value" data-info="total-weight">${contractInfo.totalWeight}</div>
-                            </div>
-                        </div>
-
-                        <div class="pairs-section">
-                            <h4>🔗 LP Pairs</h4>
-                            <div class="pairs-list" data-info="lp-pairs">
-                                ${this.renderPairsList(contractInfo.pairs)}
-                            </div>
-                        </div>
-
-                        <div class="signers-section">
-                            <h4>👥 Current Signers</h4>
-                            <div class="signers-list" data-info="signers">
-                                ${this.renderSignersList(contractInfo.signers)}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
+                `;
+            }
         } catch (error) {
             console.error('❌ Failed to load Info Card:', error);
             cardDiv.innerHTML = `
@@ -3040,30 +3057,6 @@ class AdminPage {
         }
     }
 
-    async loadContractInfo() {
-        console.log('📊 Loading contract info...');
-
-        try {
-            // Mock data for now - replace with actual contract calls
-            return {
-                rewardBalance: '50,000',
-                hourlyRate: '100',
-                totalWeight: '1000',
-                pairs: [
-                    { address: '0x1234...5678', name: 'USDC/ETH', weight: 500 },
-                    { address: '0x8765...4321', name: 'USDC/MATIC', weight: 500 }
-                ],
-                signers: [
-                    '0x0B046B290C50f3FDf1C61ecE442d42D9D79BD814',
-                    '0x742d35Cc6634C0532925a3b8D0C9C0E5C5F0E5E5'
-                ]
-            };
-        } catch (error) {
-            console.error('❌ Failed to load contract info:', error);
-            throw error;
-        }
-    }
-
     /**
      * PERFORMANCE OPTIMIZATION: Render Load More button for pagination
      */
@@ -3670,13 +3663,25 @@ class AdminPage {
             return '<div class="no-data">No pairs configured</div>';
         }
 
-        return pairs.map(pair => `
-            <div class="pair-item">
-                <div class="pair-name">${this.formatPairName(pair.name)}</div>
-                <div class="pair-address">${this.formatAddress(pair.address)}</div>
-                <div class="pair-weight">Weight: ${this.formatWeight(pair.weight)}</div>
-            </div>
-        `).join('');
+        return pairs.map(pair => {
+            const displayName = pair && pair.name
+                ? this.formatPairName(pair.name)
+                : (pair && pair.address ? this.getPairNameByAddress(pair.address) : null) || 'Unknown Pair';
+            const displayAddress = pair && pair.address
+                ? this.formatAddress(pair.address)
+                : 'Unknown';
+            const displayWeight = (pair && typeof pair.weight !== 'undefined' && pair.weight !== null)
+                ? this.formatWeight(pair.weight)
+                : '0';
+
+            return `
+                <div class="pair-item">
+                    <div class="pair-name">${displayName}</div>
+                    <div class="pair-address">${displayAddress}</div>
+                    <div class="pair-weight">Weight: ${displayWeight}</div>
+                </div>
+            `;
+        }).join('');
     }
 
     renderSignersList(signers) {
@@ -4665,22 +4670,6 @@ class AdminPage {
         } else {
             return { expired: false, text: `${minutes}m remaining` };
         }
-    }
-
-    renderSignersList(signers, signatures) {
-        if (!signers || signers.length === 0) {
-            return '<div class="no-signers">No signers</div>';
-        }
-
-        return signers.map(signer => {
-            const hasSigned = signatures && signatures.includes(signer);
-            return `
-                <div class="signer-item ${hasSigned ? 'signed' : 'pending'}">
-                    <span class="signer-address">${this.formatAddress(signer)}</span>
-                    <span class="signature-status">${hasSigned ? '✓' : '○'}</span>
-                </div>
-            `;
-        }).join('');
     }
 
     renderDetailedSignatures(signers, signatures) {
@@ -5770,8 +5759,13 @@ class AdminPage {
     async refreshContractInfo() {
         console.log('🔄 Refreshing contract info...');
         try {
-            await this.loadContractInformation();
-            console.log('✅ Contract info refreshed');
+            const result = await this.loadContractInformation();
+            if (result && result.success) {
+                console.log('✅ Contract info refreshed');
+            } else {
+                const errorMessage = (result && result.error && result.error.message) || 'Unknown issue';
+                console.warn('⚠️ Contract info refresh completed with warnings:', errorMessage);
+            }
         } catch (error) {
             console.error('❌ Failed to refresh contract info:', error);
         }
@@ -6196,6 +6190,11 @@ class AdminPage {
     async loadContractInformation() {
         console.log('📊 Loading contract information from smart contract...');
 
+        const cardDiv = document.getElementById('info-card');
+        if (cardDiv && !cardDiv.querySelector('[data-info="reward-balance"]')) {
+            cardDiv.innerHTML = this.getInfoCardSkeleton();
+        }
+
         try {
             const contractManager = await this.ensureContractReady();
 
@@ -6273,6 +6272,7 @@ class AdminPage {
 
             console.log('✅ Contract information loaded:', contractInfo);
             this.displayContractInfo(contractInfo);
+            return { success: true, data: contractInfo };
 
         } catch (error) {
             console.error('❌ Failed to load contract information:', error);
@@ -6284,59 +6284,44 @@ class AdminPage {
                 pairs: [],
                 signers: []
             });
+            return { success: false, error };
         }
     }
 
     // Display contract information in the UI
-    displayContractInfo(info) {
+    displayContractInfo(info = {}) {
         console.log('🎭 Displaying contract information in UI...');
 
         // Update reward balance (already includes token symbol)
         const rewardBalanceEl = document.querySelector('[data-info="reward-balance"]');
         if (rewardBalanceEl) {
-            rewardBalanceEl.textContent = info.rewardBalance;
+            rewardBalanceEl.textContent = info.rewardBalance || 'N/A';
         }
 
         // Update hourly rate (already includes token symbol)
         const hourlyRateEl = document.querySelector('[data-info="hourly-rate"]');
         if (hourlyRateEl) {
-            hourlyRateEl.textContent = info.hourlyRate;
+            hourlyRateEl.textContent = info.hourlyRate || 'N/A';
         }
 
         // Update total weight
         const totalWeightEl = document.querySelector('[data-info="total-weight"]');
         if (totalWeightEl) {
-            totalWeightEl.textContent = info.totalWeight;
+            totalWeightEl.textContent = info.totalWeight || 'N/A';
         }
 
         // Update LP pairs with real contract data
         const pairsContainer = document.querySelector('[data-info="lp-pairs"]');
         if (pairsContainer) {
-            if (info.pairs && info.pairs.length > 0) {
-                pairsContainer.innerHTML = info.pairs.map(pair => `
-                    <div class="pair-item">
-                        <div class="pair-name">${pair.name || 'Unknown Pair'}</div>
-                        <div class="pair-address">${pair.address ? pair.address.substring(0, 6) + '...' + pair.address.substring(38) : 'N/A'}</div>
-                        <div class="pair-weight">Weight: ${pair.weight || '0'}</div>
-                    </div>
-                `).join('');
-            } else {
-                pairsContainer.innerHTML = '<div class="no-data">No LP pairs configured</div>';
-            }
+            pairsContainer.innerHTML = (info.pairs && info.pairs.length > 0)
+                ? this.renderPairsList(info.pairs)
+                : '<div class="no-data">No LP pairs configured</div>';
         }
 
         // Update signers with real contract data
         const signersContainer = document.querySelector('[data-info="signers"]');
         if (signersContainer) {
-            if (info.signers && info.signers.length > 0) {
-                signersContainer.innerHTML = info.signers.map(signer => `
-                    <div class="signer-item">
-                        ${signer.substring(0, 6)}...${signer.substring(38)}
-                    </div>
-                `).join('');
-            } else {
-                signersContainer.innerHTML = '<div class="no-data">No signers configured</div>';
-            }
+            signersContainer.innerHTML = this.renderSignersList(info.signers);
         }
 
         console.log('✅ Contract information displayed in UI');
