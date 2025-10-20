@@ -37,13 +37,11 @@ class NetworkManager {
     }
 
     /**
-     * @deprecated Use hasRequiredNetworkPermission() instead for permission-based validation
-     * Check if current network is the default/required network
-     * Note: With modern permission-based approach, this checks active network
-     * For permission checking, use hasRequiredNetworkPermission() instead
+     * Check if a chain ID matches the required network (synchronous helper)
+     * @param {number} chainId - Chain ID to check (defaults to current)
+     * @returns {boolean} True if on required network
      */
-    isCorrectNetwork(chainId = null) {
-        // Use centralized config instead of hardcoded value
+    isOnRequiredNetwork(chainId = null) {
         const targetChainId = chainId || this.getCurrentChainId();
         const requiredChainId = window.CONFIG?.NETWORK?.CHAIN_ID || this.defaultNetwork;
         return targetChainId === requiredChainId;
@@ -51,7 +49,6 @@ class NetworkManager {
 
     /**
      * Check if we have required network permission (modern approach)
-     * This is preferred over isCorrectNetwork() for permission-based validation
      * @returns {Promise<boolean>} True if has permission for required network
      */
     async hasRequiredNetworkPermission() {
@@ -65,9 +62,7 @@ class NetworkManager {
         }
         // Fallback to checking active network if NetworkPermission not available
         console.warn('NetworkPermission utility not available, falling back to active network check');
-        const currentChainId = this.getCurrentChainId();
-        const requiredChainId = window.CONFIG?.NETWORK?.CHAIN_ID || this.defaultNetwork;
-        return currentChainId === requiredChainId;
+        return this.isOnRequiredNetwork();
     }
 
     /**
@@ -193,7 +188,7 @@ class NetworkManager {
             chainId,
             networkInfo: this.getNetworkInfo(chainId),
             isSupported: this.isNetworkSupported(chainId),
-            isCorrect: this.isCorrectNetwork(chainId),
+            isCorrect: this.isOnRequiredNetwork(chainId),
             previousNetwork
         });
 
@@ -209,7 +204,7 @@ class NetworkManager {
         if (!warningElement) return;
 
         const chainId = this.getCurrentChainId();
-        const isCorrect = this.isCorrectNetwork(chainId);
+        const isCorrect = this.isOnRequiredNetwork(chainId);
         const isSupported = this.isNetworkSupported(chainId);
 
         if (!chainId || !isCorrect) {
@@ -245,7 +240,7 @@ class NetworkManager {
             networkInfo,
             isConnected: !!chainId,
             isSupported: this.isNetworkSupported(chainId),
-            isCorrect: this.isCorrectNetwork(chainId),
+            isCorrect: this.isOnRequiredNetwork(chainId),
             defaultNetwork: this.getNetworkInfo(this.defaultNetwork)
         };
     }
