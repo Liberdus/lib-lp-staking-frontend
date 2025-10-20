@@ -529,14 +529,11 @@ class AdminPage {
             <div class="admin-unauthorized">
                 <div class="unauthorized-card">
                     <h2>🚫 Access Denied</h2>
-                    <p>You don't have administrator privileges for this contract.</p>
+                    <p>Switch to an account with admin privileges for this contract.</p>
                     <div class="access-details">
                         <p><strong>Your Address:</strong> ${this.userAddress}</p>
                         <p><strong>Required Role:</strong> ADMIN_ROLE or Contract Owner</p>
                     </div>
-                    <button class="btn btn-secondary" onclick="connectWallet()">
-                        Try Different Wallet
-                    </button>
                 </div>
             </div>
         `;
