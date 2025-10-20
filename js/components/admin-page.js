@@ -1154,24 +1154,12 @@ class AdminPage {
         const indicator = document.getElementById('network-indicator');
         if (indicator) {
             const chainIdDecimal = parseInt(chainId, 16);
-            const networkName = window.networkManager?.getNetworkName(chainIdDecimal) || 'Unknown';
             const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-
-            // Update the indicator display
-            const networkIcon = indicator.querySelector('.network-icon');
-            const networkNameEl = indicator.querySelector('.network-name');
-            const networkIdEl = indicator.querySelector('.network-id');
-
-            if (networkIcon) networkIcon.textContent = chainIdDecimal === expectedChainId ? '🟢' : '⚠️';
-            if (networkNameEl) networkNameEl.textContent = networkName;
-            if (networkIdEl) networkIdEl.textContent = `Chain ID: ${chainIdDecimal}`;
-
-            indicator.className = chainIdDecimal === expectedChainId ? 'network-indicator network-correct' : 'network-indicator network-wrong';
 
             // Check permission asynchronously and update
             if (window.networkManager) {
                 window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                    this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal, networkName);
+                    this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal);
                 }).catch(error => {
                     console.error('Error checking permission after chain change:', error);
                 });
@@ -1371,7 +1359,7 @@ class AdminPage {
         // Schedule async permission check to update indicator
         if (window.networkManager) {
             window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                this.updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName);
+                this.updateNetworkIndicatorWithPermission(hasPermission, chainId);
             }).catch(error => {
                 console.error('Error checking network permission:', error);
             });
@@ -1381,8 +1369,8 @@ class AdminPage {
             <div class="network-indicator ${onExpectedNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
                 <span class="network-icon">${onExpectedNetwork ? '🟢' : '⚠️'}</span>
                 <div class="network-info">
-                    <span class="network-name">${networkName}</span>
-                    <span class="network-id">Chain ID: ${chainId || 'Not Connected'}</span>
+                    <span class="network-name">${onExpectedNetwork ? networkName : 'No permission'}</span>
+                    <span class="network-id">${onExpectedNetwork ? `Chain ID: ${chainId}` : ''}</span>
                 </div>
                 ${!onExpectedNetwork ? `
                     <button class="btn btn-sm btn-warning" onclick="window.networkManager.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
@@ -1396,15 +1384,24 @@ class AdminPage {
     /**
      * Update network indicator with permission information
      */
-    updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName) {
+    updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal) {
         const indicator = document.getElementById('network-indicator');
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
+        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
 
         if (indicator) {
+            const networkIcon = indicator.querySelector('.network-icon');
+            const networkNameEl = indicator.querySelector('.network-name');
+            const networkIdEl = indicator.querySelector('.network-id');
+
             if (hasPermission) {
                 indicator.className = 'network-indicator network-correct';
-                const iconElement = indicator.querySelector('.network-icon');
-                if (iconElement) iconElement.textContent = '🟢';
+                if (networkIcon) networkIcon.textContent = '🟢';
+                
+                // Show correct network name and chain ID
+                const networkName = window.networkManager?.getNetworkName(chainIdDecimal) || expectedNetworkName;
+                if (networkNameEl) networkNameEl.textContent = networkName;
+                if (networkIdEl) networkIdEl.textContent = `Chain ID: ${chainIdDecimal}`;
                 
                 // Remove any existing permission button
                 const existingButton = indicator.querySelector('button');
@@ -1413,8 +1410,11 @@ class AdminPage {
                 }
             } else {
                 indicator.className = 'network-indicator network-wrong';
-                const iconElement = indicator.querySelector('.network-icon');
-                if (iconElement) iconElement.textContent = '⚠️';
+                if (networkIcon) networkIcon.textContent = '⚠️';
+                
+                // Show "No permission" instead of wrong network name/chain ID
+                if (networkNameEl) networkNameEl.textContent = 'No permission';
+                if (networkIdEl) networkIdEl.textContent = '';
                 
                 // Add permission button if not present
                 const existingButton = indicator.querySelector('button');

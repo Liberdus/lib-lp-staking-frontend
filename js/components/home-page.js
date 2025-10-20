@@ -1443,10 +1443,10 @@ class HomePage {
                     `;
                     indicator.className = 'network-indicator-home has-permission';
                 } else {
-                    // Red indicator - missing permission, show current network
+                    // Red indicator - missing permission, show "No permission"
                     indicator.innerHTML = `
                         <span class="network-status-dot red"></span>
-                        <span class="network-name">${networkName || 'Unknown'}</span>
+                        <span class="network-name">No permission</span>
                         <button class="btn-grant-permission" onclick="window.networkManager.requestPermissionWithUIUpdate('home')">
                             Grant ${expectedNetworkName} Permission
                         </button>

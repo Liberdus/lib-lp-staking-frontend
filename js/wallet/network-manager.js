@@ -420,7 +420,7 @@ class NetworkManager {
             11155111: 'Sepolia',
             137: 'Polygon Mainnet',
             80001: 'Mumbai Testnet',
-            80002: 'Polygon Amoy',
+            80002: 'Amoy',
             31337: 'Localhost',
             59144: 'Linea'
         };
