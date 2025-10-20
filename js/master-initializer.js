@@ -88,7 +88,6 @@ class MasterInitializer {
         const coreScripts = [
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
-            'js/utils/network-permission.js',   // Network permission handler (must load before wallet-manager)
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
@@ -114,6 +113,7 @@ class MasterInitializer {
     async loadWalletSystems() {
         const walletScripts = [
             'js/wallet/wallet-manager.js',
+            'js/wallet/network-manager.js',
             'js/contracts/contract-manager.js'
         ];
 
@@ -707,15 +707,16 @@ class MasterInitializer {
             console.log('🔄 Handling wallet connection and initializing contracts...');
 
             if (window.contractManager && window.walletManager) {
-                // Check if we have network permission before upgrading to wallet mode
-                const hasNetworkPermission = typeof NetworkPermission !== 'undefined' 
-                    ? await NetworkPermission.hasNetworkPermission() 
+                // Check if wallet is on configured network before upgrading to wallet mode
+                // Use chainId from event data to avoid timing issues
+                const isOnRequiredNetwork = window.networkManager 
+                    ? window.networkManager.isOnRequiredNetwork(walletDetails?.chainId) 
                     : false;
                 
-                if (!hasNetworkPermission) {
+                if (!isOnRequiredNetwork) {
                     const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
-                    console.log(`📊 Wallet connected but no ${networkName} permission - staying in read-only mode`);
-                    console.log(`💡 ContractManager will upgrade when ${networkName} permission is granted`);
+                    console.log(`📊 Wallet connected but not on ${networkName} - staying in read-only mode`);
+                    console.log(`💡 ContractManager will upgrade when switched to ${networkName}`);
                     // Don't upgrade yet - stay in read-only mode
                     // User will see pools but not their personal data
                     return;

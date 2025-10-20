@@ -1154,7 +1154,7 @@ class AdminPage {
         const indicator = document.getElementById('network-indicator');
         if (indicator) {
             const chainIdDecimal = parseInt(chainId, 16);
-            const networkName = NetworkPermission?.getNetworkName(chainIdDecimal) || 'Unknown';
+            const networkName = window.networkManager?.getNetworkName(chainIdDecimal) || 'Unknown';
             const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
 
             // Update the indicator display
@@ -1169,8 +1169,8 @@ class AdminPage {
             indicator.className = chainIdDecimal === expectedChainId ? 'network-indicator network-correct' : 'network-indicator network-wrong';
 
             // Check permission asynchronously and update
-            if (typeof NetworkPermission !== 'undefined') {
-                NetworkPermission.hasNetworkPermission().then(hasPermission => {
+            if (window.networkManager) {
+                window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
                     this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal, networkName);
                 }).catch(error => {
                     console.error('Error checking permission after chain change:', error);
@@ -1361,7 +1361,7 @@ class AdminPage {
     createNetworkIndicator() {
         const chainId = window.walletManager?.getChainId();
         const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-        const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
+        const networkName = window.networkManager?.getNetworkName(chainId) || 'Unknown';
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // We'll check permission asynchronously and update the indicator
@@ -1369,8 +1369,8 @@ class AdminPage {
         const onExpectedNetwork = chainId === expectedChainId;
 
         // Schedule async permission check to update indicator
-        if (typeof NetworkPermission !== 'undefined') {
-            NetworkPermission.hasNetworkPermission().then(hasPermission => {
+        if (window.networkManager) {
+            window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
                 this.updateNetworkIndicatorWithPermission(hasPermission, chainId, networkName);
             }).catch(error => {
                 console.error('Error checking network permission:', error);
@@ -1385,7 +1385,7 @@ class AdminPage {
                     <span class="network-id">Chain ID: ${chainId || 'Not Connected'}</span>
                 </div>
                 ${!onExpectedNetwork ? `
-                    <button class="btn btn-sm btn-warning" onclick="NetworkPermission.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
+                    <button class="btn btn-sm btn-warning" onclick="window.networkManager.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
                         Grant ${expectedNetworkName} Permission
                     </button>
                 ` : ''}
@@ -1422,7 +1422,7 @@ class AdminPage {
                     const button = document.createElement('button');
                     button.className = 'btn btn-sm btn-warning';
                     button.textContent = `Grant ${expectedNetworkName} Permission`;
-                    button.onclick = () => NetworkPermission.requestPermissionWithUIUpdate('admin');
+                    button.onclick = () => window.networkManager.requestPermissionWithUIUpdate('admin');
                     button.title = `Grant permission for ${expectedNetworkName}`;
                     indicator.appendChild(button);
                 }
@@ -4590,7 +4590,7 @@ class AdminPage {
             }
 
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const expectedChainId = '0x' + window.CONFIG.NETWORK.CHAIN_ID.toString(16);
+            const expectedChainId = window.networkManager?.getChainIdHex() || ('0x' + window.CONFIG.NETWORK.CHAIN_ID.toString(16));
             return chainId === expectedChainId;
         } catch (error) {
             console.error('❌ Network status check failed:', error);

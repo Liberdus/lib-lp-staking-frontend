@@ -296,7 +296,7 @@ class HomePage {
 
     renderPairRow(pair) {
         const isConnected = this.isWalletConnected();
-        const canTransact = isConnected && pair.hasNetworkPermission !== false;
+        const canTransact = isConnected && (window.networkManager?.isOnRequiredNetwork() || false);
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
@@ -386,14 +386,13 @@ class HomePage {
                         return; // Don't open modal
                     }
                     
-                    // Check if wallet has network permission
-                    const pair = this.pairs.find(p => p.id === pairId);
-                    if (pair && pair.hasNetworkPermission === false) {
+                    // Check if wallet is on configured network
+                    if (!(window.networkManager?.isOnRequiredNetwork() || false)) {
                         const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                `${networkName} Network Permission Required`,
-                                `Please grant ${networkName} network permission to make transactions`
+                                `${networkName} Network Required`,
+                                `Please switch to ${networkName} network to make transactions`
                             );
                         }
                         return; // Don't open modal
@@ -640,27 +639,20 @@ class HomePage {
                 console.log('📊 Pairs data after calculation:', this.pairs.map(p => ({ name: p.name, tvl: p.tvl, apr: p.apr })));
                 this.render(); // Re-render with TVL and APR data
 
-                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND has network permission
+                // OPTIMIZATION 3: Load user data in parallel if wallet connected AND on configured network
                 const isWalletConnected = this.isWalletConnected() && window.walletManager?.currentAccount;
-                const hasNetworkPermission = isWalletConnected && typeof NetworkPermission !== 'undefined' 
-                    ? await NetworkPermission.hasNetworkPermission() 
-                    : false;
+                const isOnCorrectNetwork = window.networkManager?.isOnRequiredNetwork() || false;
                 
-                // Store permission flag in pairs for button states
-                this.pairs.forEach(pair => {
-                    pair.hasNetworkPermission = hasNetworkPermission;
-                });
-                
-                if (isWalletConnected && hasNetworkPermission) {
+                if (isWalletConnected && isOnCorrectNetwork) {
                     console.log('⚡ Loading user stake data in parallel...');
                     console.log('👛 Using wallet address:', window.walletManager.currentAccount);
-                } else if (isWalletConnected && !hasNetworkPermission) {
+                } else if (isWalletConnected && !isOnCorrectNetwork) {
                     const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
-                    console.log(`📊 Read-only mode: Wallet connected but no ${networkName} permission`);
-                    console.log(`💡 Grant ${networkName} permission to see your stakes and make transactions`);
+                    console.log(`📊 Read-only mode: Wallet connected but not on ${networkName}`);
+                    console.log(`💡 Switch to ${networkName} to see your stakes and make transactions`);
                 }
                 
-                if (isWalletConnected && hasNetworkPermission) {
+                if (isWalletConnected && isOnCorrectNetwork) {
 
                     const userDataPromises = allPairsInfo.map(async (pairInfo, i) => {
                         if (pairInfo.address === '0x0000000000000000000000000000000000000000') {
@@ -1113,13 +1105,12 @@ class HomePage {
             let userSharesPercentage = '0.00';
             let userEarnings = '0.00';
 
-            // Check if we have network permission before querying user data
-            const hasNetworkPermission = this.isWalletConnected() && 
-                                          window.walletManager?.currentAccount && 
-                                          typeof NetworkPermission !== 'undefined' &&
-                                          await NetworkPermission.hasNetworkPermission();
+            // Check if we're on configured network before querying user data
+            const isOnCorrectNetwork = this.isWalletConnected() && 
+                                        window.walletManager?.currentAccount && 
+                                        (window.networkManager?.isOnRequiredNetwork() || false);
 
-            if (hasNetworkPermission) {
+            if (isOnCorrectNetwork) {
                 try {
                     const userStake = await window.contractManager.getUserStake(
                         window.walletManager.currentAccount,
@@ -1434,13 +1425,13 @@ class HomePage {
         }
 
         const chainId = window.walletManager.getChainId();
-        const networkName = NetworkPermission?.getNetworkName(chainId) || 'Unknown';
+        const networkName = window.networkManager?.getNetworkName(chainId) || 'Unknown';
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // Check permission asynchronously
-        if (typeof NetworkPermission !== 'undefined') {
+        if (window.networkManager) {
             try {
-                const hasPermission = await NetworkPermission.hasNetworkPermission();
+                const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
 
                 indicator.style.display = 'flex';
 
@@ -1456,7 +1447,7 @@ class HomePage {
                     indicator.innerHTML = `
                         <span class="network-status-dot red"></span>
                         <span class="network-name">${networkName || 'Unknown'}</span>
-                        <button class="btn-grant-permission" onclick="NetworkPermission.requestPermissionWithUIUpdate('home')">
+                        <button class="btn-grant-permission" onclick="window.networkManager.requestPermissionWithUIUpdate('home')">
                             Grant ${expectedNetworkName} Permission
                         </button>
                     `;
@@ -1467,7 +1458,7 @@ class HomePage {
                 indicator.style.display = 'none';
             }
         } else {
-            // Fallback if NetworkPermission not available
+            // Fallback if networkManager not available
             indicator.style.display = 'none';
         }
     }

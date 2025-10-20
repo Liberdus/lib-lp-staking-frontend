@@ -5324,8 +5324,8 @@ class ContractManager {
                 actions.push({
                     label: 'Grant Network Permission',
                     action: () => {
-                        if (typeof NetworkPermission !== 'undefined') {
-                            NetworkPermission.requestPermissionWithUIUpdate('admin');
+                        if (window.networkManager) {
+                            window.networkManager.requestPermissionWithUIUpdate('admin');
                         } else {
                             alert('Please grant permission for Amoy network in MetaMask');
                         }

@@ -209,12 +209,12 @@ class WalletManager {
             // CRITICAL: Request network permission BEFORE notifying listeners
             // This prevents ContractManager from querying on wrong network
             try {
-                if (typeof NetworkPermission !== 'undefined') {
-                    const hasPermission = await NetworkPermission.hasNetworkPermission();
+                if (window.networkManager) {
+                    const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
                     if (!hasPermission) {
                         const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
                         this.log(`🔐 Requesting ${networkName} network permission...`);
-                        await NetworkPermission.requestNetworkPermission('metamask');
+                        await window.networkManager.requestNetworkPermission('metamask');
                         this.log(`✅ ${networkName} network permission granted`);
                     }
                 }
