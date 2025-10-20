@@ -65,7 +65,9 @@ class NetworkManager {
         }
         // Fallback to checking active network if NetworkPermission not available
         console.warn('NetworkPermission utility not available, falling back to active network check');
-        return this.isCorrectNetwork();
+        const currentChainId = this.getCurrentChainId();
+        const requiredChainId = window.CONFIG?.NETWORK?.CHAIN_ID || this.defaultNetwork;
+        return currentChainId === requiredChainId;
     }
 
     /**
