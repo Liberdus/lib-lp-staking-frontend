@@ -112,11 +112,15 @@ class HomePage {
         // Cancel any pending refresh
         clearTimeout(this.refreshDebounceTimer);
         
-        // Schedule new refresh after 300ms (waits for rapid events to settle)
+        // Schedule new refresh after 500ms (waits for rapid events + network transition to settle)
         this.refreshDebounceTimer = setTimeout(async () => {
-            console.log('🔄 Wallet/network changed, refreshing data...');
+            console.log('🔄 Wallet/network changed, clearing cache and refreshing data...');
+            // Clear cache to remove stale provider references
+            this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
+            this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
+            this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
             await this.loadData();
-        }, 300);
+        }, 500);
     }
 
     /**
