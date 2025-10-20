@@ -111,54 +111,61 @@
     }
 
     /**
-     * Auto-detect page and get appropriate critical files
-     * @returns {string[]} List of critical files for current page
+     * Get all critical files to reload
+     * Reloads everything to ensure complete consistency across pages
+     * @returns {string[]} List of all critical files
      */
     function getCriticalFiles() {
-        const isAdmin = window.location.pathname.includes('admin.html');
-        
-        if (isAdmin) {
-            // Admin page loads all scripts directly (not via dynamic import)
-            return [
-                'admin.html',
-                'js/utils/version-check.js',
-                'js/config/app-config.js',
-                'js/config/dev-config.js',
-                'js/core/unified-theme-manager.js',
-                'js/debug-logger.js',
-                'js/utils/unified-cache.js',
-                'js/utils/cache-integration.js',
-                'js/utils/logger.js',
-                'js/utils/event-manager.js',
-                'js/utils/storage-manager.js',
-                'js/utils/network-health-check.js',
-                'js/core/error-handler.js',
-                'js/core/notification-manager.js',
-                'js/wallet/wallet-manager.js',
-                'js/wallet/metamask-connector.js',
-                'js/wallet/walletconnect-connector.js',
-                'js/contracts/contract-manager.js',
-                'js/components/optimized-admin-state.js',
-                'js/components/optimistic-ui-updates.js',
-                'js/components/efficient-dom-updates.js',
-                'js/components/performance-monitor.js',
-                'js/components/admin-page.js',
-                'js/master-initializer.js',
-                'libs/ethers.umd.min.js',
-                'css/admin-theme.css',
-                'css/admin.css'
-            ];
-        } else {
-            // Homepage uses dynamic loading via master-initializer.js
-            return [
-                'index.html',
-                'js/utils/version-check.js',
-                'js/core/unified-theme-manager.js',
-                'js/master-initializer.js',
-                'libs/ethers.umd.min.js',
-                'css/day10-enhancements.css'
-            ];
-        }
+        return [
+            // HTML pages
+            'index.html',
+            'admin.html',
+            
+            // Version check (this file)
+            'js/utils/version-check.js',
+            
+            // Config
+            'js/config/app-config.js',
+            'js/config/dev-config.js',
+            
+            // Core systems
+            'js/core/unified-theme-manager.js',
+            'js/core/error-handler.js',
+            'js/core/notification-manager.js',
+            'js/debug-logger.js',
+            'js/master-initializer.js',
+            
+            // Utils
+            'js/utils/unified-cache.js',
+            'js/utils/cache-integration.js',
+            'js/utils/logger.js',
+            'js/utils/event-manager.js',
+            'js/utils/storage-manager.js',
+            'js/utils/network-health-check.js',
+            
+            // Wallet
+            'js/wallet/wallet-manager.js',
+            'js/wallet/metamask-connector.js',
+            'js/wallet/walletconnect-connector.js',
+            
+            // Contracts
+            'js/contracts/contract-manager.js',
+            
+            // Components
+            'js/components/optimized-admin-state.js',
+            'js/components/optimistic-ui-updates.js',
+            'js/components/efficient-dom-updates.js',
+            'js/components/performance-monitor.js',
+            'js/components/admin-page.js',
+            
+            // Libraries
+            'libs/ethers.umd.min.js',
+            
+            // Stylesheets
+            'css/day10-enhancements.css',
+            'css/admin-theme.css',
+            'css/admin.css'
+        ];
     }
 
     // Export to window for manual use if needed
