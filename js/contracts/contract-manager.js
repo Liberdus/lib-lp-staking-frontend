@@ -4617,37 +4617,6 @@ class ContractManager {
                 lastError = error;
                 this.logError(`${operationName} attempt ${attempt} failed:`, error);
 
-                // Check for "underlying network changed" error that needs provider recreation
-                const isNetworkChangedError = error.code === 'NETWORK_ERROR' ||
-                                            (error.message && error.message.includes('underlying network changed'));
-
-                if (isNetworkChangedError && attempt <= retries) {
-                    this.log(`🔄 Network change detected, recreating provider...`);
-                    
-                    // Recreate the provider with fresh network detection
-                    if (window.ethereum) {
-                        try {
-                            const newProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-                            this.provider = newProvider;
-                            
-                            // If we have a signer, recreate it too
-                            if (this.signer) {
-                                this.signer = newProvider.getSigner();
-                                await this.initializeContracts();
-                                this.log('✅ Provider and signer recreated after network change');
-                            } else {
-                                this.log('✅ Read-only provider recreated after network change');
-                            }
-                            
-                            // Small delay to let the network stabilize
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                            continue; // Retry immediately with new provider
-                        } catch (recreateError) {
-                            this.logError('❌ Failed to recreate provider:', recreateError);
-                        }
-                    }
-                }
-
                 // Check for RPC errors that should trigger provider switch
                 const isRpcError = error.code === -32603 ||
                                  (error.error && error.error.code === -32603) ||

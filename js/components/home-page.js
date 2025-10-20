@@ -17,13 +17,12 @@ class HomePage {
         this.totalWeight = '0';
         this.lastWalletAddress = null;
         this.lastNetworkId = null;
-        this.refreshDebounceTimer = null; // Debounce timer for wallet/network changes
-
+        this.refreshDebounceTimer = null; // Prevent overlapping refreshes during rapid network changes
         // OPTIMIZATION: Simple caching for contract data that doesn't change frequently
-        // Note: pairsInfo is NOT cached (can be changed by admin, fetch fresh every time)
         this.cache = {
             hourlyRewardRate: { value: null, timestamp: 0, ttl: 300000 }, // 5 minutes
-            totalWeight: { value: null, timestamp: 0, ttl: 60000 }        // 1 minute
+            totalWeight: { value: null, timestamp: 0, ttl: 60000 },       // 1 minute
+            pairsInfo: { value: null, timestamp: 0, ttl: 120000 }         // 2 minutes
         };
 
         this.init();
@@ -107,16 +106,15 @@ class HomePage {
     }
 
     /**
-     * Refresh data after wallet/network changes (debounced to prevent duplicate loads)
-     * When MetaMask fires multiple events rapidly (disconnect/connect/chainChange),
-     * this waits 300ms after the LAST event before refreshing once.
+     * Refresh data after wallet/network changes (debounced to prevent overlapping loads)
      */
     refreshDataAfterWalletChange() {
+        // Cancel any pending refresh
         clearTimeout(this.refreshDebounceTimer);
+        
+        // Schedule new refresh after 300ms (waits for rapid events to settle)
         this.refreshDebounceTimer = setTimeout(async () => {
-            console.log('🔄 Wallet changed, refreshing data...');
-            this.clearCache();
-            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('🔄 Wallet/network changed, refreshing data...');
             await this.loadData();
         }, 300);
     }
@@ -535,16 +533,9 @@ class HomePage {
 
             const promises = [];
             const now = Date.now();
-            
-            // Check if cache should be used (only if values exist AND not expired AND not null)
-            const canUseCache = (cacheObj) => {
-                return cacheObj.value !== null && 
-                       cacheObj.value !== undefined && 
-                       (now - cacheObj.timestamp) < cacheObj.ttl;
-            };
 
             // Check cache for hourly reward rate
-            if (canUseCache(this.cache.hourlyRewardRate)) {
+            if (this.cache.hourlyRewardRate.value && (now - this.cache.hourlyRewardRate.timestamp) < this.cache.hourlyRewardRate.ttl) {
                 promises.push(Promise.resolve(this.cache.hourlyRewardRate.value));
                 console.log('📦 Using cached hourly reward rate');
             } else {
@@ -555,7 +546,7 @@ class HomePage {
             }
 
             // Check cache for total weight
-            if (canUseCache(this.cache.totalWeight)) {
+            if (this.cache.totalWeight.value && (now - this.cache.totalWeight.timestamp) < this.cache.totalWeight.ttl) {
                 promises.push(Promise.resolve(this.cache.totalWeight.value));
                 console.log('📦 Using cached total weight');
             } else {
@@ -565,10 +556,18 @@ class HomePage {
                 }));
             }
 
-            // Always fetch fresh pairs info - never cache (weights can be changed by admin)
-            promises.push(window.contractManager.getAllPairsInfo());
+            // Check cache for pairs info
+            if (this.cache.pairsInfo.value && (now - this.cache.pairsInfo.timestamp) < this.cache.pairsInfo.ttl) {
+                promises.push(Promise.resolve(this.cache.pairsInfo.value));
+                console.log('📦 Using cached pairs info');
+            } else {
+                promises.push(window.contractManager.getAllPairsInfo().then(value => {
+                    this.cache.pairsInfo = { value, timestamp: now, ttl: this.cache.pairsInfo.ttl };
+                    return value;
+                }));
+            }
 
-            let [hourlyRateWei, totalWeightWei, allPairsInfo] = await Promise.all(promises);
+            const [hourlyRateWei, totalWeightWei, allPairsInfo] = await Promise.all(promises);
 
             // Process basic data immediately
             this.hourlyRewardRate = ethers.utils.formatEther(hourlyRateWei);
@@ -1473,16 +1472,6 @@ class HomePage {
             // Fallback if networkManager not available
             indicator.style.display = 'none';
         }
-    }
-
-    /**
-     * Clear cached data (for manual refresh or network changes)
-     */
-    clearCache() {
-        console.log('🗑️ Clearing HomePage cache...');
-        this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
-        this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
-        console.log('✅ HomePage cache cleared');
     }
 
     destroy() {

@@ -206,24 +206,7 @@ class WalletManager {
             // Store connection info
             this.storeConnectionInfo();
 
-            // CRITICAL: Request network permission BEFORE notifying listeners
-            // This prevents ContractManager from querying on wrong network
-            try {
-                if (window.networkManager) {
-                    const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
-                    if (!hasPermission) {
-                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
-                        this.log(`🔐 Requesting ${networkName} network permission...`);
-                        await window.networkManager.requestNetworkPermission('metamask');
-                        this.log(`✅ ${networkName} network permission granted`);
-                    }
-                }
-            } catch (error) {
-                this.logError('[WalletManager] Failed to get network permission:', error);
-                // Don't block connection, but warn that queries may fail
-            }
-
-            // Now notify listeners - ContractManager will have network permission
+            // CRITICAL FIX: Notify listeners with enhanced error handling
             this.notifyListeners('connected', {
                 address: this.address,
                 chainId: this.chainId,
