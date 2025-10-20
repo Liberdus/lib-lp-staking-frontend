@@ -1442,6 +1442,7 @@ class AdminPage {
                                 ← Back to Staking
                             </button>
                             <h1 class="admin-title">Admin Panel</h1>
+                            <span class="version-badge" id="admin-version">v0.0.0</span>
                         </div>
                         <div class="admin-header-right">
                             ${this.createNetworkIndicator()}
@@ -1514,6 +1515,16 @@ class AdminPage {
                 </div>
             </div>
         `;
+        
+        // Display version in header
+        if (window.getCurrentVersion) {
+            window.getCurrentVersion().then(version => {
+                const versionElement = document.getElementById('admin-version');
+                if (versionElement) {
+                    versionElement.textContent = 'v' + version;
+                }
+            });
+        }
     }
 
     async loadMultiSignPanel() {
