@@ -120,7 +120,7 @@ class HomePage {
             this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
             this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
             await this.loadData();
-        }, 500);
+        }, 1000);
     }
 
     /**
