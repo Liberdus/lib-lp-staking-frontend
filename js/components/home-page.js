@@ -17,6 +17,7 @@ class HomePage {
         this.totalWeight = '0';
         this.lastWalletAddress = null;
         this.lastNetworkId = null;
+        this.refreshDebounceTimer = null; // Debounce timer for wallet/network changes
 
         // OPTIMIZATION: Simple caching for contract data that doesn't change frequently
         this.cache = {
@@ -106,19 +107,18 @@ class HomePage {
     }
 
     /**
-     * Refresh data after wallet connection/disconnection
+     * Refresh data after wallet/network changes (debounced to prevent duplicate loads)
+     * When MetaMask fires multiple events rapidly (disconnect/connect/chainChange),
+     * this waits 300ms after the LAST event before refreshing once.
      */
-    async refreshDataAfterWalletChange() {
-        console.log('🔄 Wallet changed, refreshing data...');
-
-        // Clear cache to ensure fresh data after wallet/network change
-        this.clearCache();
-
-        // Small delay to ensure wallet manager is updated
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Reload data to show user-specific information
-        await this.loadData();
+    refreshDataAfterWalletChange() {
+        clearTimeout(this.refreshDebounceTimer);
+        this.refreshDebounceTimer = setTimeout(async () => {
+            console.log('🔄 Wallet changed, refreshing data...');
+            this.clearCache();
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await this.loadData();
+        }, 300);
     }
 
     /**
@@ -717,6 +717,14 @@ class HomePage {
             console.log(`📊 Performance improvement: ~${Math.max(0, 100 - (totalTime / 100)).toFixed(0)}% faster than sequential loading`);
         } catch (error) {
             console.error('❌ Failed to load blockchain data:', error);
+            
+            // Network switched mid-load - gracefully show empty state, next refresh will fix
+            if (error.code === 'NETWORK_ERROR' || error.message?.includes('underlying network changed')) {
+                console.log('🔄 Network changed during load, skipping (will retry on next refresh)');
+                this.pairs = [];
+                return;
+            }
+            
             throw error;
         }
     }
@@ -1488,6 +1496,7 @@ class HomePage {
 
     destroy() {
         this.stopAutoRefresh();
+        clearTimeout(this.refreshDebounceTimer);
     }
 }
 
