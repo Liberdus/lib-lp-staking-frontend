@@ -112,7 +112,7 @@
 
     /**
      * Get all critical files to reload
-     * Reloads everything to ensure complete consistency across pages
+     * Auto-generated from directory scan - includes all JS, CSS, and HTML files
      * @returns {string[]} List of all critical files
      */
     function getCriticalFiles() {
@@ -121,50 +121,94 @@
             'index.html',
             'admin.html',
             
-            // Version check (this file)
-            'js/utils/version-check.js',
+            // JavaScript - Components
+            'js/components/admin-page.js',
+            'js/components/apr-display.js',
+            'js/components/base-component.js',
+            'js/components/efficient-dom-updates.js',
+            'js/components/home-page.js',
+            'js/components/modal.js',
+            'js/components/notification.js',
+            'js/components/optimistic-ui-updates.js',
+            'js/components/optimized-admin-state.js',
+            'js/components/pending-rewards-display.js',
+            'js/components/performance-monitor.js',
+            'js/components/staking-modal-new.js',
+            'js/components/staking-modal.js',
+            'js/components/transaction-status.js',
+            'js/components/wallet-popup.js',
             
-            // Config
+            // JavaScript - Config
             'js/config/app-config.js',
+            'js/config/demo-config.js',
             'js/config/dev-config.js',
             
-            // Core systems
-            'js/core/unified-theme-manager.js',
+            // JavaScript - Contracts
+            'js/contracts/contract-manager.js',
+            
+            // JavaScript - Core
+            'js/core/accessibility-manager.js',
+            'js/core/animation-manager.js',
             'js/core/error-handler.js',
+            'js/core/loading-manager.js',
+            'js/core/notification-manager-new.js',
             'js/core/notification-manager.js',
+            'js/core/theme-manager-new.js',
+            'js/core/unified-theme-manager.js',
+            
+            // JavaScript - Root
             'js/debug-logger.js',
             'js/master-initializer.js',
             
-            // Utils
-            'js/utils/unified-cache.js',
+            // JavaScript - Pages
+            'js/pages/admin.js',
+            'js/pages/home.js',
+            
+            // JavaScript - Utils
+            'js/utils/admin-test.js',
             'js/utils/cache-integration.js',
-            'js/utils/logger.js',
             'js/utils/event-manager.js',
-            'js/utils/storage-manager.js',
+            'js/utils/gas-estimator.js',
+            'js/utils/helpers.js',
+            'js/utils/logger.js',
             'js/utils/network-health-check.js',
+            'js/utils/price-feeds.js',
+            'js/utils/production-logger.js',
+            'js/utils/rewards-calculator.js',
+            'js/utils/rewards-history.js',
+            'js/utils/rpc-test.js',
+            'js/utils/ses-safe-handler.js',
+            'js/utils/storage-manager.js',
+            'js/utils/transaction-queue.js',
+            'js/utils/unified-cache.js',
+            'js/utils/version-check.js',
             
-            // Wallet
-            'js/wallet/wallet-manager.js',
+            // JavaScript - Wallet
             'js/wallet/metamask-connector.js',
+            'js/wallet/network-manager.js',
+            'js/wallet/wallet-manager.js',
             'js/wallet/walletconnect-connector.js',
-            
-            // Contracts
-            'js/contracts/contract-manager.js',
-            
-            // Components
-            'js/components/optimized-admin-state.js',
-            'js/components/optimistic-ui-updates.js',
-            'js/components/efficient-dom-updates.js',
-            'js/components/performance-monitor.js',
-            'js/components/admin-page.js',
             
             // Libraries
             'libs/ethers.umd.min.js',
             
-            // Stylesheets
-            'css/day10-enhancements.css',
+            // Config files (non-JS)
+            'config/constants.js',
+            
+            // CSS - All stylesheets
+            'css/admin-homepage-theme.css',
             'css/admin-theme.css',
-            'css/admin.css'
+            'css/admin.css',
+            'css/base.css',
+            'css/component-library.css',
+            'css/components.css',
+            'css/day10-enhancements.css',
+            'css/home-page.css',
+            'css/in-development.css',
+            'css/main.css',
+            'css/responsive.css',
+            'css/variables.css',
+            'css/wallet-popup.css'
         ];
     }
 
