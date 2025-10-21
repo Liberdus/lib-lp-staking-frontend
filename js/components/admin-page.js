@@ -1505,14 +1505,6 @@ class AdminPage {
                     </div>
                 </div>
 
-                <div class="admin-footer">
-                    <div class="refresh-status">
-                        <span id="last-refresh">Last updated: Loading...</span>
-                        <button class="btn btn-sm refresh-btn" type="button">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                </div>
             </div>
         `;
         
@@ -1567,7 +1559,14 @@ class AdminPage {
             panelDiv.innerHTML = `
                 <div class="multisign-panel">
                     <div class="panel-header">
-                        <h2>Multi-Signature Proposals</h2>
+                        <div class="panel-title-row">
+                            <h2>Multi-Signature Proposals</h2>
+                            <div class="panel-refresh">
+                                <button class="btn btn-sm refresh-btn" type="button" onclick="adminPage.refreshData()">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                        </div>
                         <div class="panel-controls">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="hide-executed" checked>
