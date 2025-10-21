@@ -5995,92 +5995,6 @@ class AdminPage {
         }
     }
 
-    // Form submission handler
-    async handleFormSubmission(formId) {
-        const form = document.getElementById(formId);
-        if (!form) return;
-
-        const submitBtn = form.querySelector('button[type="submit"]') || document.querySelector(`button[form="${formId}"]`);
-
-        try {
-            this.showLoading(submitBtn);
-
-            switch (formId) {
-                case 'add-pair-form':
-                    await this.submitAddPairProposal();
-                    break;
-                case 'remove-pair-form':
-                    await this.submitRemovePairProposal();
-                    break;
-                case 'update-weights-form':
-                    await this.submitUpdateWeightsProposal();
-                    break;
-                case 'change-signer-form':
-                    await this.submitChangeSignerProposal();
-                    break;
-                case 'withdrawal-form':
-                    await this.submitWithdrawalProposal();
-                    break;
-                case 'hourly-rate-form':
-                    await this.submitHourlyRateProposal();
-                    break;
-                default:
-                    throw new Error('Unknown form type');
-            }
-
-            this.showSuccess('Proposal created successfully!');
-            this.closeModal();
-
-            // SELECTIVE UPDATE OPTIMIZATION: Use smart proposal addition instead of full refresh
-            const optimizedTypes = ['change-signer-form', 'withdrawal-form'];
-            if (!optimizedTypes.includes(formId)) {
-                // Use selective update system for better performance
-                setTimeout(async () => {
-                    try {
-                        await this.addSingleNewProposal();
-                        console.log('🎯 [FORM SUBMISSION] Single proposal added after creation');
-                    } catch (error) {
-                        console.warn('⚠️ [FORM SUBMISSION] Failed to add single proposal, falling back to full refresh');
-                        if (this.loadProposals) {
-                            this.loadProposals();
-                        }
-                    }
-                }, 2000); // Wait 2 seconds for blockchain confirmation
-            }
-
-        } catch (error) {
-            console.error('Form submission error:', error);
-            this.showError(error.message || 'Failed to create proposal. Please try again.');
-        } finally {
-            this.hideLoading(submitBtn);
-        }
-    }
-
-    // UI Helper methods
-    showLoading(button) {
-        if (!button) return;
-
-        const textSpan = button.querySelector('.btn-text');
-        const loadingSpan = button.querySelector('.btn-loading');
-
-        if (textSpan) textSpan.style.display = 'none';
-        if (loadingSpan) loadingSpan.style.display = 'inline-flex';
-
-        button.disabled = true;
-    }
-
-    hideLoading(button) {
-        if (!button) return;
-
-        const textSpan = button.querySelector('.btn-text');
-        const loadingSpan = button.querySelector('.btn-loading');
-
-        if (textSpan) textSpan.style.display = 'inline';
-        if (loadingSpan) loadingSpan.style.display = 'none';
-
-        button.disabled = false;
-    }
-
     // Helper methods for user feedback
     showSuccess(message) {
         const text = message || 'Action completed successfully';
@@ -6203,16 +6117,11 @@ class AdminPage {
                 this.closeModal();
 
                 // Show success message
-                let successMessage = 'Hourly rate change proposal submitted successfully';
-                if (result.isDemo) {
-                    successMessage += ' (Demo Mode)';
+                let successMessage = '✅ Hourly rate change proposal submitted successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Created', successMessage);
-                } else {
-                    alert('✅ ' + successMessage);
-                }
+                this.showSuccess(successMessage);
 
                 // Refresh data once without causing loops
                 this.refreshAdminDataOnce();
@@ -6337,38 +6246,12 @@ class AdminPage {
             if (result.transactionHash) {
                 successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
             }
-            if (result.isDemo) {
-                successMessage += ' (Demo Mode)';
-            }
 
             this.showSuccess(successMessage);
 
-            // Add to mock proposal system for realistic demo
-            const newProposal = this.createMockProposal({
-                type: 'ADD_PAIR',
-                title: `Add ${pairName} Pair`,
-                description: `Add ${pairName} liquidity pair from ${platform} with weight ${weightNum}. ${description || 'No additional description provided.'}`,
-                proposer: this.userAddress || '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-                status: 'PENDING',
-                requiredApprovals: 3,
-                currentApprovals: 0,
-                transactionHash: result.transactionHash,
-                blockNumber: result.blockNumber,
-                data: {
-                    pairAddress: pairAddress,
-                    pairName: pairName,
-                    platform: platform,
-                    weight: weightNum
-                },
-                transactionHash: result.transactionHash,
-                isDemo: result.isDemo || false
-            });
-
             console.log('[ADD PAIR UI] 📋 Transaction details:', {
                 hash: result.transactionHash,
-                message: result.message,
-                proposalId: newProposal.id,
-                isDemo: result.isDemo
+                message: result.message
             });
 
             // Close modal
@@ -6466,9 +6349,6 @@ class AdminPage {
             if (result.transactionHash) {
                 successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
             }
-            if (result.isDemo) {
-                successMessage += ' (Demo Mode)';
-            }
 
             this.showSuccess(successMessage);
             this.closeModal();
@@ -6510,26 +6390,28 @@ class AdminPage {
 
         // Collect weight updates
         const weightUpdates = [];
-        weightInputs.forEach(input => {
+        for (const input of weightInputs) {
             const newWeight = input.value.trim();
-            if (newWeight) {
-                const pairAddress = input.dataset.pair;
-                const currentWeight = parseInt(input.dataset.current);
-                const newWeightNum = parseInt(newWeight);
+            if (!newWeight) {
+                continue;
+            }
+
+            const pairAddress = input.dataset.pair;
+            const currentWeight = parseInt(input.dataset.current, 10);
+            const newWeightNum = parseInt(newWeight, 10);
 
                 if (isNaN(newWeightNum) || newWeightNum < 1 || newWeightNum > 10000) {
                     throw new Error(`Invalid weight value: ${newWeight}. Must be between 1-10,000`);
                 }
 
-                if (newWeightNum !== currentWeight) {
-                    weightUpdates.push({
-                        pairAddress,
-                        newWeight: newWeightNum,
-                        currentWeight
-                    });
-                }
+            if (newWeightNum !== currentWeight) {
+                weightUpdates.push({
+                    pairAddress,
+                    newWeight: newWeightNum,
+                    currentWeight
+                });
             }
-        });
+        }
 
         if (weightUpdates.length === 0) {
             throw new Error('Please specify at least one weight change');
@@ -6548,6 +6430,10 @@ class AdminPage {
             if (!result.success) {
                 throw new Error(result.error || 'Failed to create weight update proposal');
             }
+
+            this.closeModal();
+            this.showSuccess('✅ Weight update proposal created successfully!');
+            this.refreshAdminDataOnce();
 
             return { success: true };
 
@@ -6643,41 +6529,13 @@ class AdminPage {
 
             this.closeModal();
 
-            // PERFORMANCE OPTIMIZATION: Add proposal optimistically instead of full refresh
-            const optimisticProposal = this.addProposalOptimistically({
-                actionType: 'CHANGE_SIGNER',
-                oldSigner: oldSigner,
-                newSigner: newSigner,
-                description: document.getElementById('signer-description')?.value || 'Change signer proposal'
-            }, result.transactionHash);
-
             // Show success message with transaction details
             let successMessage = '✅ Change signer proposal created successfully!';
             if (result.transactionHash) {
                 successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
             }
-            if (result.isDemo) {
-                successMessage += ' (Demo Mode)';
-            }
-
-            if (window.notificationManager) {
-                window.notificationManager.success('Proposal Created', successMessage);
-            } else {
-                this.showSuccess(successMessage);
-            }
-
-            // PERFORMANCE OPTIMIZATION: Update single proposal after confirmation instead of full refresh
-            if (result.transactionHash && !result.isDemo) {
-                setTimeout(async () => {
-                    try {
-                        await this.updateSingleProposal(optimisticProposal.id);
-                        console.log('🎯 [CHANGE SIGNER] Single proposal updated after confirmation');
-                    } catch (error) {
-                        console.warn('⚠️ [CHANGE SIGNER] Failed to update single proposal, falling back to full refresh');
-                        await this.refreshData();
-                    }
-                }, 2000); // Wait 2 seconds for blockchain confirmation
-            }
+            this.showSuccess(successMessage);
+            this.refreshAdminDataOnce();
 
         } catch (error) {
             console.error('[CHANGE SIGNER UI] ❌ Failed to create signer change proposal:', error);
@@ -6696,11 +6554,7 @@ class AdminPage {
                 }
             }
 
-            if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', errorMessage);
-            } else {
-                this.showError(errorMessage);
-            }
+            this.showError(errorMessage);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingChangeSigner = false;
@@ -6794,57 +6648,24 @@ class AdminPage {
 
             this.closeModal();
 
-            // PERFORMANCE OPTIMIZATION: Add proposal optimistically instead of full refresh
-            const optimisticProposal = this.addProposalOptimistically({
-                actionType: 'WITHDRAW_REWARDS',
-                recipient: recipient,
-                amount: amount,
-                description: `Withdraw ${amount} USDC to ${recipient.substring(0, 10)}...`
-            }, result.transactionHash);
-
-            // SUCCESS FEEDBACK FIX: Enhanced success message with special case handling
             let successMessage = '✅ Withdrawal proposal created successfully!';
-            let notificationTitle = 'Proposal Created';
 
             if (result.transactionHash) {
                 successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
             }
 
-            if (result.isDemo) {
-                successMessage += ' (Demo Mode)';
-            }
-
-            // Handle special success cases
             if (result.actionRejectedButSucceeded) {
                 successMessage += ' (Confirmed despite initial rejection)';
-                notificationTitle = 'Proposal Created Successfully';
                 console.log('[WITHDRAWAL UI] 🎯 ACTION_REJECTED override - transaction actually succeeded');
             }
 
             if (result.waitError) {
                 successMessage += ' (Confirmation pending)';
-                notificationTitle = 'Proposal Submitted';
                 console.log('[WITHDRAWAL UI] 🎯 tx.wait error override - transaction submitted successfully');
             }
 
-            if (window.notificationManager) {
-                window.notificationManager.success(notificationTitle, successMessage);
-            } else {
-                this.showSuccess(successMessage);
-            }
-
-            // PERFORMANCE OPTIMIZATION: Update single proposal after confirmation instead of full refresh
-            if (result.transactionHash && !result.isDemo) {
-                setTimeout(async () => {
-                    try {
-                        await this.updateSingleProposal(optimisticProposal.id);
-                        console.log('🎯 [WITHDRAWAL] Single proposal updated after confirmation');
-                    } catch (error) {
-                        console.warn('⚠️ [WITHDRAWAL] Failed to update single proposal, falling back to full refresh');
-                        await this.refreshData();
-                    }
-                }, 2000); // Wait 2 seconds for blockchain confirmation
-            }
+            this.showSuccess(successMessage);
+            this.refreshAdminDataOnce();
 
         } catch (error) {
             console.error('[WITHDRAWAL UI] ❌ Failed to create withdrawal proposal:', error);
@@ -6863,11 +6684,7 @@ class AdminPage {
                 }
             }
 
-            if (window.notificationManager) {
-                window.notificationManager.error('Proposal Failed', errorMessage);
-            } else {
-                this.showError(errorMessage);
-            }
+            this.showError(errorMessage);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingWithdrawal = false;
