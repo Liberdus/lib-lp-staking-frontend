@@ -1936,7 +1936,7 @@ class AdminPage {
      * PERFORMANCE OPTIMIZATION: Render single proposal in UI
      */
     renderSingleProposal(proposal, isNew = false) {
-        const proposalsTable = document.querySelector('#proposals-table tbody');
+        const proposalsTable = document.querySelector('.proposals-table tbody');
         if (!proposalsTable) return;
 
         const existingRow = document.querySelector(`[data-proposal-id="${proposal.id}"]`);
@@ -7282,12 +7282,9 @@ class AdminPage {
             const result = await window.contractManager.executeProposal(proposalId);
 
             if (result.success) {
-                if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Executed', `Successfully executed proposal #${proposalId}`);
-                }
-
-                // PERFORMANCE OPTIMIZATION: Update single proposal instead of full refresh
-                await this.updateSingleProposal(proposalId);
+                console.log('✅ Proposal executed successfully');
+                this.showSuccess(`✅ Proposal #${proposalId} executed successfully! The proposed action has been carried out on the blockchain.`);
+                this.refreshAdminDataOnce();
             } else {
                 throw new Error(result.error);
             }
