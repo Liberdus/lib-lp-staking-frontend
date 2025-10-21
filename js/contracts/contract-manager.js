@@ -2024,52 +2024,47 @@ class ContractManager {
             const errorMessage = error.message || error.technicalMessage || '';
             const errorCode = error.code;
 
+            // Detect explicit wallet rejection regardless of provider wording
+            const normalizedMessage = typeof errorMessage === 'string' ? errorMessage.toLowerCase() : '';
+            if (errorCode === 4001 || errorCode === 'ACTION_REJECTED' || normalizedMessage.includes('user rejected')) {
+                console.warn('⚠️ User rejected transaction during proposeSetHourlyRewardRate');
+                return {
+                    success: false,
+                    error: 'Transaction was rejected by user',
+                    userRejected: true,
+                    originalError: error
+                };
+            }
+
             // Check for RPC/Network errors
             if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error') ||
                 errorMessage.includes('missing trie node') || errorCode === 'NETWORK_ERROR') {
-                console.warn('⚠️ Network/RPC error detected, creating mock proposal for demo');
-
-                // Create a realistic mock proposal for demo purposes
-                const mockProposalId = Math.floor(Math.random() * 1000) + 1;
+                console.warn('⚠️ Network/RPC error detected during proposeSetHourlyRewardRate');
                 return {
-                    success: true,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 100000) + 400000,
-                    gasUsed: '120000',
-                    proposalId: mockProposalId,
-                    message: 'Demo proposal created (network issues prevented real transaction)',
-                    isDemo: true
+                    success: false,
+                    error: 'Network error occurred while creating hourly rate proposal. Please retry once the connection stabilizes.',
+                    networkError: true,
+                    originalError: error
                 };
             }
 
             // Check if this is a signer issue and provide better error message
             if (errorCode === 'UNSUPPORTED_OPERATION' && errorMessage.includes('signer')) {
-                console.warn('⚠️ Signer error detected, creating mock proposal for demo');
-
-                // Create a realistic mock proposal for demo purposes
-                const mockProposalId = Math.floor(Math.random() * 1000) + 1;
+                console.warn('⚠️ Signer error detected during proposeSetHourlyRewardRate');
                 return {
-                    success: true,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 100000) + 400000,
-                    gasUsed: '120000',
-                    proposalId: mockProposalId,
-                    message: 'Demo proposal created (signer issues prevented real transaction)',
-                    isDemo: true
+                    success: false,
+                    error: 'Unable to access wallet signer. Please reconnect your wallet and try again.',
+                    signerUnavailable: true,
+                    originalError: error
                 };
             }
 
-            // For any other error, create mock proposal to keep demo working
-            console.warn('⚠️ Unknown error, creating mock proposal for demo:', errorMessage);
-            const mockProposalId = Math.floor(Math.random() * 1000) + 1;
+            console.warn('⚠️ Unknown error while creating hourly rate proposal:', errorMessage);
             return {
-                success: true,
-                transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                blockNumber: Math.floor(Math.random() * 100000) + 400000,
-                gasUsed: '120000',
-                proposalId: mockProposalId,
-                message: 'Demo proposal created (technical issues prevented real transaction)',
-                isDemo: true
+                success: false,
+                error: errorMessage || 'Failed to create hourly rate proposal.',
+                unknownError: true,
+                originalError: error
             };
         }
     }
@@ -2186,14 +2181,10 @@ class ContractManager {
                 console.log('⚠️ proposeAddPair function not available in deployed contract');
                 console.log('🔧 This contract may not have governance functions implemented');
 
-                // Return mock success for development
                 return {
-                    success: true,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 1000000),
-                    gasUsed: '21000',
-                    message: 'Mock transaction - contract function not available',
-                    isDemo: true
+                    success: false,
+                    error: 'proposeAddPair function is not available on the deployed contract.',
+                    methodUnavailable: true
                 };
             }
 
@@ -2704,12 +2695,9 @@ class ContractManager {
             if (typeof this.stakingContract.proposeRemovePair !== 'function') {
                 console.log('⚠️ proposeRemovePair function not available in deployed contract');
                 return {
-                    success: true,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 1000000),
-                    gasUsed: '21000',
-                    message: 'Mock transaction - contract function not available',
-                    isDemo: true
+                    success: false,
+                    error: 'proposeRemovePair function is not available on the deployed contract.',
+                    methodUnavailable: true
                 };
             }
 
@@ -2769,7 +2757,7 @@ class ContractManager {
             console.log(`[REMOVE PAIR FIX]   Error code: ${errorCode}`);
 
             // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001) {
+            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
                 return {
                     success: false,
                     error: 'Transaction was rejected by user',
@@ -2838,12 +2826,9 @@ class ContractManager {
                 console.log('⚠️ Contract instance:', this.stakingContract);
                 console.log('⚠️ Available functions:', this.stakingContract ? Object.getOwnPropertyNames(this.stakingContract.functions || {}) : 'No contract');
                 return {
-                    success: true,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 1000000),
-                    gasUsed: '21000',
-                    message: 'Mock transaction - contract function not available',
-                    isDemo: true
+                    success: false,
+                    error: 'proposeChangeSigner function is not available on the deployed contract.',
+                    methodUnavailable: true
                 };
             }
 
@@ -2909,7 +2894,7 @@ class ContractManager {
             console.log(`[CHANGE SIGNER FIX]   Error code: ${errorCode}`);
 
             // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001) {
+            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
                 return {
                     success: false,
                     error: 'Transaction was rejected by user',
