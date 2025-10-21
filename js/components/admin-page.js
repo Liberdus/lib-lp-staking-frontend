@@ -1936,7 +1936,7 @@ class AdminPage {
      * PERFORMANCE OPTIMIZATION: Render single proposal in UI
      */
     renderSingleProposal(proposal, isNew = false) {
-        const proposalsTable = document.querySelector('.proposals-table tbody');
+        const proposalsTable = document.querySelector('#proposals-table tbody');
         if (!proposalsTable) return;
 
         const existingRow = document.querySelector(`[data-proposal-id="${proposal.id}"]`);
