@@ -209,19 +209,6 @@ class AdminPage {
     }
 
     /**
-     * Get all mock proposals with realistic data
-     */
-    getMockProposals() {
-        return Array.from(this.mockProposals.values()).map(proposal => ({
-            ...proposal,
-            votes: Array.from(this.mockVotes.get(proposal.id)?.entries() || []).map(([signer, voteData]) => ({
-                signer,
-                ...voteData
-            }))
-        }));
-    }
-
-    /**
      * Show initialization error to user
      */
     showInitializationError(error) {
@@ -1240,19 +1227,6 @@ class AdminPage {
         }
 
         return isValid;
-    }
-
-    validateForm(form) {
-        const inputs = form.querySelectorAll('.form-input[data-validation]');
-        let isFormValid = true;
-
-        inputs.forEach(input => {
-            if (!this.validateFormInput(input)) {
-                isFormValid = false;
-            }
-        });
-
-        return isFormValid;
     }
 
     showTransactionStatus(status, message, hash, error = null) {
@@ -3946,15 +3920,6 @@ class AdminPage {
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
     }
 
-    formatNumber(num) {
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toString();
-    }
-
     /**
      * Add demo data indicator to the UI
      */
@@ -4237,20 +4202,6 @@ class AdminPage {
         }
 
         return window.contractManager;
-    }
-
-    // Safe contract call wrapper
-    async safeContractCall(contractMethod, ...args) {
-        try {
-            await this.ensureContractReady();
-
-            const result = await contractMethod(...args);
-            return { success: true, data: result };
-
-        } catch (error) {
-            console.error('❌ Contract call failed:', error);
-            return { success: false, error: error.message };
-        }
     }
 
     // Multi-signature utility methods
@@ -5581,32 +5532,6 @@ class AdminPage {
 
     isValidAddress(address) {
         return /^0x[a-fA-F0-9]{40}$/.test(address);
-    }
-
-    // Refresh admin data once without causing infinite loops
-    refreshAdminDataOnce() {
-        // Use a flag to prevent multiple simultaneous refreshes
-        if (this.isRefreshing) {
-            console.log('⏳ Refresh already in progress, skipping...');
-            return;
-        }
-
-        this.isRefreshing = true;
-        console.log('🔄 Refreshing admin data once...');
-
-        setTimeout(() => {
-            try {
-                this.loadMultiSignPanel();
-                this.loadContractStats();
-            } catch (error) {
-                console.error('❌ Error refreshing admin data:', error);
-            } finally {
-                // Reset flag after a delay
-                setTimeout(() => {
-                    this.isRefreshing = false;
-                }, 2000);
-            }
-        }, 500);
     }
 
     // React-like safe contract call with RPC failover and fallback values
