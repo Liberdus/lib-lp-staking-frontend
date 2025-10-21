@@ -402,7 +402,6 @@ class AdminPage {
             } else {
                 console.log('✅ Network health check passed');
             }
-
         } catch (error) {
             console.warn('⚠️ Network health check error:', error.message);
             // Don't throw error - let the system try to continue
@@ -1807,7 +1806,14 @@ class AdminPage {
                 case 'SET_HOURLY_REWARD_RATE':
                     return {
                         ...baseProposal,
-                        newHourlyRewardRate: BigInt(Math.floor(parseFloat(proposal.details?.newHourlyRewardRate || '100') * 1e18))
+                        newHourlyRewardRate: (() => {
+                            const rawRate = proposal.details?.newHourlyRewardRate ?? '100';
+                            const rateString = rawRate.toString();
+                            if (ethers?.utils?.parseEther) {
+                                return BigInt(ethers.utils.parseEther(rateString).toString());
+                            }
+                            return BigInt(Math.floor(parseFloat(rateString || '100') * 1e18));
+                        })()
                     };
                 case 'REMOVE_PAIR':
                     return {
@@ -3783,7 +3789,9 @@ class AdminPage {
                 totalTVL: 0,
                 totalStakers: 0,
                 totalRewards: 0,
+                rewardBalance: null,
                 rewardToken: null,
+                rewardTokenSymbol: '',
                 hourlyRewardRate: 0,
                 requiredApprovals: 0,
                 actionCounter: 0
@@ -3798,6 +3806,9 @@ class AdminPage {
                 this.contractStats.hourlyRewardRate = 0;
                 this.contractStats.requiredApprovals = 3;
                 this.contractStats.actionCounter = 2; // We know we have 2 proposals
+                const symbol = this.contractStats.rewardTokenSymbol || 'USDC';
+                this.contractStats.rewardTokenSymbol = symbol;
+                this.contractStats.rewardBalance = `0.00 ${symbol}`;
             } else {
                 // Try to load real data with React-like safe calls
                 this.contractStats.rewardToken = await this.safeContractCall(
@@ -3827,6 +3838,25 @@ class AdminPage {
                 console.log(`📊 hourlyRewardRate: ${this.contractStats.hourlyRewardRate}`);
                 console.log(`📊 requiredApprovals: ${this.contractStats.requiredApprovals}`);
                 console.log(`📊 actionCounter: ${this.contractStats.actionCounter}`);
+
+                const symbol = await this.safeContractCall(
+                    () => contractManager.rewardTokenContract.symbol(),
+                    this.contractStats.rewardTokenSymbol || 'USDC'
+                );
+                this.contractStats.rewardTokenSymbol = symbol;
+
+                this.contractStats.rewardBalance = await this.safeContractCall(
+                    async () => {
+                        const stakingAddress = contractManager.stakingContract?.address;
+                        if (!stakingAddress) {
+                            throw new Error('Staking contract address not available');
+                        }
+                        const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
+                        const balanceValue = Number(ethers.utils.formatEther(balance));
+                        return `${balanceValue.toFixed(2)} ${symbol}`;
+                    },
+                    `0.00 ${symbol}`
+                );
             }
 
             // Get pairs information (with error handling)
@@ -3855,6 +3885,7 @@ class AdminPage {
             console.error('❌ Failed to load contract stats:', error);
 
             // Provide fallback demo values instead of zeros for better UX
+            const fallbackSymbol = (this.contractStats && this.contractStats.rewardTokenSymbol) || 'USDC';
             this.contractStats = {
                 activePairs: 3,
                 totalPairs: 5,
@@ -3865,6 +3896,8 @@ class AdminPage {
                 hourlyRewardRate: 0.1,
                 requiredApprovals: 3,
                 actionCounter: 2,
+                rewardTokenSymbol: fallbackSymbol,
+                rewardBalance: `0.00 ${fallbackSymbol}`,
                 isDemo: true // Flag to indicate these are demo values
             };
 
@@ -4767,10 +4800,10 @@ class AdminPage {
                     <div class="modal-body">
                         <form id="hourly-rate-form" class="admin-form">
                             <div class="form-group">
-                                <label for="new-rate">New Hourly Rate (${this.rewardTokenSymbol || 'USDC'})</label>
+                                <label for="new-rate">New Hourly Rate (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
-                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRate || 'Loading...'}</small>
+                                <small class="form-help">Current rate: ${ethers.utils.formatEther(this.contractStats?.hourlyRewardRate) || 'Loading...'}</small>
                             </div>
 
                             <div class="form-group">
@@ -5246,10 +5279,10 @@ class AdminPage {
                     <div class="modal-body">
                         <form id="withdrawal-form" onsubmit="adminPage.submitWithdrawalProposal(event)">
                             <div class="form-group">
-                                <label for="withdrawal-amount">Amount (${this.rewardTokenSymbol || 'USDC'})</label>
+                                <label for="withdrawal-amount">Amount (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="withdrawal-amount" step="0.01" min="0" required
                                        placeholder="Enter amount to withdraw">
-                                <small class="form-help">Available balance: ${this.contractStats?.rewardBalance || 'Loading...'}</small>
+                                <small class="form-help">Available balance: ${this.contractStats?.rewardBalance || (this.contractStats?.rewardTokenSymbol ? `0.00 ${this.contractStats.rewardTokenSymbol}` : 'Loading...')}</small>
                             </div>
 
                             <div class="form-group">
@@ -5730,37 +5763,37 @@ class AdminPage {
             // Load real contract data
             const contractInfo = {};
 
-            // Get reward token symbol dynamically and store it
-            this.rewardTokenSymbol = await this.safeContractCall(
-                async () => {
-                    const symbol = await contractManager.rewardTokenContract.symbol();
-                    return symbol;
-                },
-                'USDC' // fallback
+            const fallbackSymbol = this.contractStats?.rewardTokenSymbol || 'USDC';
+            const rewardTokenSymbol = await this.safeContractCall(
+                () => contractManager.rewardTokenContract.symbol(),
+                fallbackSymbol
             );
-            console.log('💰 Reward token symbol:', this.rewardTokenSymbol);
-            const rewardTokenSymbol = this.rewardTokenSymbol;
+            console.log('💰 Reward token symbol:', rewardTokenSymbol);
+            if (!this.contractStats) {
+                this.contractStats = {};
+            }
+            this.contractStats.rewardTokenSymbol = rewardTokenSymbol;
 
-            // Get reward balance - real data only
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
-                    const stakingAddress = contractManager.stakingContract.address;
+                    const stakingAddress = contractManager.stakingContract?.address;
                     if (!stakingAddress) {
                         throw new Error('Staking contract address not available');
                     }
                     const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
-                    const balanceNum = Number(balance) / 1e18;
-                    return `${balanceNum.toFixed(2)} ${rewardTokenSymbol}`;
+                    const balanceValue = Number(ethers.utils.formatEther(balance));
+                    return `${balanceValue.toFixed(2)} ${rewardTokenSymbol}`;
                 },
                 `0.00 ${rewardTokenSymbol}`
             );
 
-            // Get hourly rate - real data only
+            this.contractStats.rewardBalance = contractInfo.rewardBalance;
+
             contractInfo.hourlyRate = await this.safeContractCall(
                 async () => {
                     const rate = await contractManager.stakingContract.hourlyRewardRate();
-                    const rateNum = Number(rate) / 1e18;
-                    return `${rateNum.toFixed(4)} ${rewardTokenSymbol}/hour`;
+                    const rateValue = Number(ethers.utils.formatEther(rate));
+                    return `${rateValue.toFixed(4)} ${rewardTokenSymbol}/hour`;
                 },
                 `0.0000 ${rewardTokenSymbol}/hour`
             );
@@ -5806,13 +5839,17 @@ class AdminPage {
         } catch (error) {
             console.error('❌ Failed to load contract information:', error);
             // Show error state
-            this.displayContractInfo({
+            const errorInfo = {
                 rewardBalance: 'Error',
                 hourlyRate: 'Error',
                 totalWeight: 'Error',
                 pairs: [],
                 signers: []
-            });
+            };
+            this.contractStats = this.contractStats || {};
+            this.contractStats.rewardTokenSymbol = this.contractStats.rewardTokenSymbol || 'USDC';
+            this.contractStats.rewardBalance = errorInfo.rewardBalance;
+            this.displayContractInfo(errorInfo);
             return { success: false, error };
         }
     }
