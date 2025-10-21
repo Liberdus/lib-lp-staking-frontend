@@ -1123,6 +1123,10 @@
     background: rgba(220, 53, 69, 0.1);
 }
 
+.proposal-row.expired {
+    background: rgba(108, 117, 125, 0.12);
+}
+
 .proposal-id {
     background: rgba(108, 117, 125, 0.3);
     color: #ffffff;
@@ -1280,6 +1284,13 @@
     background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(231, 76, 60, 0.2));
     color: #e74c3c;
     border: 1px solid rgba(231, 76, 60, 0.4);
+}
+
+.status.expired,
+.status-badge.expired {
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.2), rgba(108, 117, 125, 0.1));
+    color: #adb5bd;
+    border: 1px solid rgba(173, 181, 189, 0.4);
 }
 
 @keyframes pulse {

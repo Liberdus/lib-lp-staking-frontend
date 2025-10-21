@@ -1419,10 +1419,13 @@ class ContractManager {
      */
     async getAction(actionId) {
         return await this.executeWithRetry(async () => {
-            const [action, approvals] = await Promise.all([
+            const [action, approvals, expiredOverride] = await Promise.all([
                 this.stakingContract.actions(actionId),
-                this.stakingContract.getActionApproval(actionId)
+                this.stakingContract.getActionApproval(actionId),
+                this.stakingContract.isActionExpired(actionId)
             ]);
+
+            const expired = expiredOverride !== undefined ? !!expiredOverride : action.expired;
             return {
                 actionType: action.actionType,
                 newHourlyRewardRate: action.newHourlyRewardRate.toString(),
@@ -1436,7 +1439,7 @@ class ContractManager {
                 recipient: action.recipient,
                 withdrawAmount: action.withdrawAmount.toString(),
                 executed: action.executed,
-                expired: action.expired,
+                expired: expired,
                 approvals: action.approvals,
                 approvedBy: approvals,
                 proposedTime: action.proposedTime.toNumber(),
@@ -1458,12 +1461,13 @@ class ContractManager {
                 throw new Error(`Invalid action ID: ${actionId}`);
             }
 
-            // Fetch action details, pairs, weights, and approvals in parallel for efficiency
-            const [action, pairs, weights, approvedBy] = await Promise.all([
+            // Fetch action details, pairs, weights, approvals, and expiration in parallel
+            const [action, pairs, weights, approvedBy, expiredOverride] = await Promise.all([
                 this.stakingContract.actions(BigInt(numericActionId)),
                 this.stakingContract.getActionPairs(numericActionId),
                 this.stakingContract.getActionWeights(numericActionId),
-                this.stakingContract.getActionApproval(numericActionId)
+                this.stakingContract.getActionApproval(numericActionId),
+                this.stakingContract.isActionExpired(numericActionId)
             ]);
 
             console.log(`[SINGLE ACTION] ✅ Successfully fetched action ${actionId}:`, {
@@ -1479,7 +1483,7 @@ class ContractManager {
                 actionType: action.actionType,
                 executed: action.executed,
                 rejected: action.rejected,
-                expired: action.expired,
+                expired: expiredOverride !== undefined ? !!expiredOverride : action.expired,
                 approvals: action.approvals,
                 proposer: action.proposer,
                 createdAt: action.proposedTime ? action.proposedTime.toString() : Date.now().toString(),
@@ -1550,14 +1554,23 @@ class ContractManager {
         return await this.safeContractCall(
             async () => {
                 try {
-                    const rawAction = await this.stakingContract.actions(BigInt(actionId));
+                    const [rawAction, expiredOverride] = await Promise.all([
+                        this.stakingContract.actions(BigInt(actionId)),
+                        this.stakingContract.isActionExpired(BigInt(actionId))
+                    ]);
                     this.log(`🔍 Raw action ${actionId}:`, rawAction);
+
+                    const storedExpired = rawAction?.expired ?? (Array.isArray(rawAction) ? rawAction[10] : rawAction?.[10]);
+                    const finalExpired = expiredOverride !== undefined
+                        ? Boolean(expiredOverride)
+                        : (storedExpired !== undefined ? Boolean(storedExpired) : false);
 
                     // Handle different return formats
                     if (rawAction) {
                         // If it's already an object with properties
                         if (rawAction.actionType !== undefined) {
                             this.log(`✅ Action ${actionId} is object format`);
+                            rawAction.expired = finalExpired;
                             return rawAction;
                         }
 
@@ -1575,7 +1588,7 @@ class ContractManager {
                                 recipient: rawAction[7],
                                 withdrawAmount: rawAction[8],
                                 executed: rawAction[9],
-                                expired: rawAction[10],
+                                expired: finalExpired,
                                 approvals: rawAction[11],
                                 proposedTime: rawAction[12],
                                 rejected: rawAction[13],
@@ -1600,7 +1613,7 @@ class ContractManager {
                                 recipient: rawAction[7],
                                 withdrawAmount: rawAction[8],
                                 executed: rawAction[9],
-                                expired: rawAction[10],
+                                expired: finalExpired,
                                 approvals: rawAction[11],
                                 proposedTime: rawAction[12],
                                 rejected: rawAction[13],
@@ -1700,7 +1713,7 @@ class ContractManager {
 
                 try {
                     // Load action, pairs, weights, and approvals in parallel
-                    const [action, pairs, weights, approvedBy] = await Promise.all([
+                    const [action, pairs, weights, approvedBy, expiredOverride] = await Promise.all([
                         blockTag
                             ? contract.actions(BigInt(actionId), { blockTag })
                             : contract.actions(BigInt(actionId)),
@@ -1712,7 +1725,10 @@ class ContractManager {
                             : contract.getActionWeights(actionId),
                         blockTag
                             ? contract.getActionApproval(actionId, { blockTag })
-                            : contract.getActionApproval(actionId)
+                            : contract.getActionApproval(actionId),
+                        blockTag
+                            ? contract.isActionExpired(actionId, { blockTag })
+                            : contract.isActionExpired(actionId)
                     ]);
 
                     const formattedAction = {
@@ -1729,7 +1745,7 @@ class ContractManager {
                         recipient: action.recipient,
                         withdrawAmount: action.withdrawAmount.toString(),
                         executed: action.executed,
-                        expired: action.expired,
+                        expired: expiredOverride !== undefined ? !!expiredOverride : action.expired,
                         approvals: action.approvals,
                         approvedBy: approvedBy,
                         proposedTime: action.proposedTime.toNumber(),
@@ -1832,7 +1848,7 @@ class ContractManager {
             const batchPromises = batchIds.map(async (actionId) => {
                 try {
                     // Load action, pairs, weights, and approvals in parallel
-                    const [action, pairs, weights, approvedBy] = await Promise.all([
+                    const [action, pairs, weights, approvedBy, expiredOverride] = await Promise.all([
                         blockTag
                             ? contract.actions(BigInt(actionId), { blockTag })
                             : contract.actions(BigInt(actionId)),
@@ -1844,7 +1860,10 @@ class ContractManager {
                             : contract.getActionWeights(actionId),
                         blockTag
                             ? contract.getActionApproval(actionId, { blockTag })
-                            : contract.getActionApproval(actionId)
+                            : contract.getActionApproval(actionId),
+                        blockTag
+                            ? contract.isActionExpired(actionId, { blockTag })
+                            : contract.isActionExpired(actionId)
                     ]);
 
                     return {
@@ -1861,7 +1880,7 @@ class ContractManager {
                         recipient: action.recipient,
                         withdrawAmount: action.withdrawAmount.toString(),
                         executed: action.executed,
-                        expired: action.expired,
+                        expired: expiredOverride !== undefined ? !!expiredOverride : action.expired,
                         approvals: action.approvals,
                         approvedBy: approvedBy,
                         proposedTime: action.proposedTime.toNumber(),
@@ -3744,10 +3763,13 @@ class ContractManager {
      */
     async getAction(actionId) {
         try {
-            const [action, approvedBy] = await Promise.all([
+            const [action, approvedBy, expiredOverride] = await Promise.all([
                 this.stakingContract.actions(actionId),
-                this.stakingContract.getActionApproval(actionId)
+                this.stakingContract.getActionApproval(actionId),
+                this.stakingContract.isActionExpired(actionId)
             ]);
+
+            const expired = expiredOverride !== undefined ? !!expiredOverride : action.expired;
             return {
                 actionType: action.actionType,
                 newHourlyRewardRate: action.newHourlyRewardRate,
@@ -3761,7 +3783,7 @@ class ContractManager {
                 recipient: action.recipient,
                 withdrawAmount: action.withdrawAmount,
                 executed: action.executed,
-                expired: action.expired,
+                expired: expired,
                 approvals: action.approvals,
                 approvedBy: approvedBy,
                 proposedTime: action.proposedTime,
