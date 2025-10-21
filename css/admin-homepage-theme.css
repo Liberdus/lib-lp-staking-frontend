@@ -1439,12 +1439,8 @@ button.btn span:not(.btn-loading),
 /* ========================================
    THEME TRANSITION SMOOTHNESS
    ======================================== */
-* {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
-}
-
-/* Exclude animations and transforms from theme transition */
-*:not(.spinner):not(.loading-skeleton) {
+/* Exclude theme toggle button from wildcard transition to allow its own animations */
+*:not(.spinner):not(.loading-skeleton):not(.theme-toggle):not(.theme-toggle *) {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
 
