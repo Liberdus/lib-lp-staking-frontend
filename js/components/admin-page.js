@@ -1424,6 +1424,30 @@ class AdminPage {
         }
     }
 
+    /**
+     * Create wallet address display component
+     */
+    createWalletAddressDisplay() {
+        // Get wallet address from multiple sources
+        const address = this.userAddress 
+            || window.walletManager?.address 
+            || window.walletConnection?.address;
+
+        const walletIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px;">
+            <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+        </svg>`;
+
+        const displayText = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not Connected';
+        const title = address ? `Connected: ${address}` : 'No wallet connected';
+
+        return `
+            <div class="wallet-address-display" title="${title}">
+                ${walletIcon}
+                <span class="wallet-address-text">${displayText}</span>
+            </div>
+        `;
+    }
+
     createAdminLayout() {
         const container = document.getElementById('admin-content') || document.body;
         const devModeIndicator = this.DEVELOPMENT_MODE
@@ -1446,6 +1470,7 @@ class AdminPage {
                         </div>
                         <div class="admin-header-right">
                             ${this.createNetworkIndicator()}
+                            ${this.createWalletAddressDisplay()}
                             <nav class="admin-nav">
                                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
                                     <span class="material-icons-outlined">light_mode</span>
