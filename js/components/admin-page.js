@@ -1998,9 +1998,9 @@ class AdminPage {
         proposal.id = proposal.id || 'unknown';
         proposal.approvedBy = proposal.approvedBy || [];
 
-        const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
-        const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
-        const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
+        const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected && !proposal.expired;
+        const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : proposal.expired ? 'expired' : canExecute ? 'ready' : 'pending';
+        const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : proposal.expired ? '⏰ Expired' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
 
         // Enhanced action type display with icons
         const actionTypeDisplay = this.getActionTypeDisplay(proposal.actionType);
@@ -2041,7 +2041,7 @@ class AdminPage {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        ${!proposal.executed && !proposal.rejected ? this.renderProposalActionButtons(proposal, canExecute) : ''}
+                        ${!proposal.executed && !proposal.rejected && !proposal.expired ? this.renderProposalActionButtons(proposal, canExecute) : ''}
                     </div>
                 </td>
             </tr>
@@ -3422,9 +3422,9 @@ class AdminPage {
             proposal.id = proposal.id || 'unknown';
             proposal.approvedBy = proposal.approvedBy || [];
 
-            const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected;
-            const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : canExecute ? 'ready' : 'pending';
-            const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
+            const canExecute = proposal.approvals >= proposal.requiredApprovals && !proposal.executed && !proposal.rejected && !proposal.expired;
+            const statusClass = proposal.executed ? 'executed' : proposal.rejected ? 'rejected' : proposal.expired ? 'expired' : canExecute ? 'ready' : 'pending';
+            const statusText = proposal.executed ? '✅ Executed' : proposal.rejected ? '❌ Rejected' : proposal.expired ? '⏰ Expired' : canExecute ? '🚀 Ready to Execute' : '⏳ Pending';
 
             // Add visual indicator for ready-to-execute proposals
             if (canExecute) {
@@ -3470,7 +3470,7 @@ class AdminPage {
                     </td>
                     <td>
                         <div class="action-buttons">
-                            ${!proposal.executed && !proposal.rejected ? this.renderProposalActionButtons(proposal, canExecute) : ''}
+                            ${!proposal.executed && !proposal.rejected && !proposal.expired ? this.renderProposalActionButtons(proposal, canExecute) : ''}
                         </div>
                     </td>
                 </tr>

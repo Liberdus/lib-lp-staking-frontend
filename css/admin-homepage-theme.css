@@ -258,6 +258,13 @@ body {
     border: 1px solid var(--info-main) !important;
 }
 
+.status-badge.expired,
+.status.expired {
+    background: rgba(158, 158, 158, 0.1) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid rgba(158, 158, 158, 0.4) !important;
+}
+
 /* ========================================
    ACTION TYPE BADGES - HOMEPAGE COLORS
    ======================================== */
@@ -641,6 +648,10 @@ textarea::placeholder {
 
 .proposal-row.rejected {
     background: rgba(244, 67, 54, 0.05) !important;
+}
+
+.proposal-row.expired {
+    background: rgba(158, 158, 158, 0.05) !important;
 }
 
 /* ========================================
