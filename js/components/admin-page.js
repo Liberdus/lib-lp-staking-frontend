@@ -2070,34 +2070,32 @@ class AdminPage {
 
         return `
             <button
-                class="btn btn-sm btn-success ${hasAlreadyApproved ? 'disabled' : ''}"
+                class="btn btn-icon-compact btn-success ${hasAlreadyApproved ? 'disabled' : ''}"
                 onclick="adminPage.approveAction('${proposal.id}')"
                 title="${hasAlreadyApproved ? 'You have already approved this proposal' : 'Approve Proposal'}"
                 ${hasAlreadyApproved ? 'disabled' : ''}
             >
-                Approve
+                ✓
             </button>
             <button
-                class="btn btn-sm btn-danger ${hasAlreadyApproved ? 'disabled' : ''}"
+                class="btn btn-icon-compact btn-danger ${hasAlreadyApproved ? 'disabled' : ''}"
                 onclick="adminPage.rejectAction('${proposal.id}')"
                 title="${hasAlreadyApproved ? 'You cannot reject after approving this proposal' : 'Reject Proposal'}"
                 ${hasAlreadyApproved ? 'disabled' : ''}
             >
-                Reject
+                ✕
             </button>
             ${canExecute ? `
                 <button
-                    class="btn btn-sm btn-primary"
+                    class="btn btn-icon-compact btn-primary"
                     onclick="adminPage.executeAction('${proposal.id}')"
                     title="Execute Proposal"
                 >
-                    Execute
+                    ▶
                 </button>
             ` : ''}
             ${hasAlreadyApproved ? `
-                <div class="own-proposal-notice">
-                    <small>✅ You ${isProposer ? 'created and ' : ''}approved this</small>
-                </div>
+                <span class="approval-badge" title="You ${isProposer ? 'created and ' : ''}approved this">👤</span>
             ` : ''}
         `;
     }
