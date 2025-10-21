@@ -7264,13 +7264,8 @@ class AdminPage {
             window.notificationManager.info('Navigating', 'Loading homepage...');
         }
         
-        // Use history API for faster navigation if possible
-        if (window.history && window.history.length > 1) {
-            window.history.back();
-        } else {
-            // Fallback to direct navigation
-            window.location.href = 'index.html';
-        }
+        // Always navigate directly to index.html to ensure correct destination
+        window.location.href = 'index.html';
     }
 }
 
