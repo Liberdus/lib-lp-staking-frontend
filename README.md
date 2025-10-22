@@ -73,7 +73,8 @@ A professional, production-ready vanilla JavaScript implementation of a decentra
 ```
 lp-staking-vanilla/
 ├── index.html              # Homepage
-├── admin.html              # Admin panel
+├── admin/                  # Admin panel
+│   └── index.html         # Admin panel entry point
 ├── assets/                 # Images and static assets
 │   ├── abi/               # Contract ABIs
 │   ├── images/            # UI images
