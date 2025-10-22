@@ -1722,12 +1722,14 @@ class ContractManager {
 
             console.log(`[MULTICALL] 📦 Preparing ${actionIds.length} actions for batch load...`);
 
-            // Prepare all calls: action + pairs + weights for each ID
+            // Prepare all calls: action + pairs + weights + approvals + expired for each ID
             const calls = [];
             actionIds.forEach(actionId => {
                 calls.push(this.multicallService.createCall(contract, 'actions', [BigInt(actionId)]));
                 calls.push(this.multicallService.createCall(contract, 'getActionPairs', [actionId]));
                 calls.push(this.multicallService.createCall(contract, 'getActionWeights', [actionId]));
+                calls.push(this.multicallService.createCall(contract, 'getActionApproval', [actionId]));
+                calls.push(this.multicallService.createCall(contract, 'isActionExpired', [actionId]));
             });
 
             console.log(`[MULTICALL] 🚀 Executing ${calls.length} calls in single batch...`);
@@ -1740,15 +1742,17 @@ class ContractManager {
                 return null;
             }
 
-            // Parse results (3 results per action)
+            // Parse results (5 results per action)
             const actions = [];
             const contractInterface = contract.interface;
 
             actionIds.forEach((actionId, index) => {
-                const baseIndex = index * 3;
+                const baseIndex = index * 5;
                 const actionResult = results[baseIndex];
                 const pairsResult = results[baseIndex + 1];
                 const weightsResult = results[baseIndex + 2];
+                const approvalsResult = results[baseIndex + 3];
+                const expiredResult = results[baseIndex + 4];
 
                 if (!actionResult?.success) {
                     console.warn(`[MULTICALL] ⚠️ Action ${actionId} call failed`);
@@ -1763,21 +1767,31 @@ class ContractManager {
                     const pairs = pairsResult?.success 
                         ? this.multicallService.decodeResult(
                             contractInterface, 'getActionPairs', pairsResult.returnData
-                        )?.[0] || []
+                        ) || []
                         : [];
                     const weights = weightsResult?.success
                         ? this.multicallService.decodeResult(
                             contractInterface, 'getActionWeights', weightsResult.returnData
-                        )?.[0] || []
+                        ) || []
                         : [];
+                    const approvedBy = approvalsResult?.success
+                        ? this.multicallService.decodeResult(
+                            contractInterface, 'getActionApproval', approvalsResult.returnData
+                        ) || []
+                        : [];
+                    const expired = expiredResult?.success
+                        ? this.multicallService.decodeResult(
+                            contractInterface, 'isActionExpired', expiredResult.returnData
+                        ) || false
+                        : false;
 
                     if (action) {
                         actions.push({
                             id: actionId,
                             actionType: action.actionType,
                             newHourlyRewardRate: action.newHourlyRewardRate.toString(),
-                            pairs: pairs.map(p => p.toString()),
-                            weights: weights.map(w => w.toString()),
+                            pairs: Array.isArray(pairs) ? pairs.map(p => p.toString()) : [],
+                            weights: Array.isArray(weights) ? weights.map(w => w.toString()) : [],
                             pairToAdd: action.pairToAdd,
                             pairNameToAdd: action.pairNameToAdd,
                             platformToAdd: action.platformToAdd,
@@ -1786,9 +1800,9 @@ class ContractManager {
                             recipient: action.recipient,
                             withdrawAmount: action.withdrawAmount.toString(),
                             executed: action.executed,
-                            expired: action.expired,
+                            expired: expired || action.expired, // Use multicall result or fallback to action data
                             approvals: action.approvals,
-                            approvedBy: action.approvedBy,
+                            approvedBy: Array.isArray(approvedBy) ? approvedBy.map(a => a.toString()) : (action.approvedBy || []),
                             proposedTime: action.proposedTime.toNumber(),
                             rejected: action.rejected
                         });
