@@ -7042,7 +7042,7 @@ class AdminPage {
         }
         
         // Always navigate directly to index.html to ensure correct destination
-        window.location.href = './';
+        window.location.href = '../';
     }
 }
 
@@ -7055,6 +7055,6 @@ window.navigateToHome = function() {
         window.adminPage.navigateToHome();
     } else {
         // Fallback navigation
-        window.location.href = 'index.html';
+        window.location.href = '../';
     }
 };
