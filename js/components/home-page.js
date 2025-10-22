@@ -105,6 +105,7 @@ class HomePage {
                 console.log('🏠 HomePage: Chain changed:', chainId);
                 this.updateNetworkIndicator();
                 this.refreshDataAfterWalletChange();
+                this.checkAdminAccess();
             });
         }
     }
