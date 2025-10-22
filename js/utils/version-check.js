@@ -164,7 +164,6 @@
             `${basePath}js/master-initializer.js`,
             
             // JavaScript - Pages
-            `${basePath}js/pages/admin.js`,
             `${basePath}js/pages/home.js`,
             
             // JavaScript - Utils (only existing files)
