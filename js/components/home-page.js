@@ -18,6 +18,7 @@ class HomePage {
         this.lastWalletAddress = null;
         this.lastNetworkId = null;
         this.refreshDebounceTimer = null; // Prevent overlapping refreshes during rapid network changes
+        this.isAdmin = false; // Track admin status
         // OPTIMIZATION: Simple caching for contract data that doesn't change frequently
         this.cache = {
             hourlyRewardRate: { value: null, timestamp: 0, ttl: 300000 }, // 5 minutes
@@ -82,12 +83,14 @@ class HomePage {
             console.log('🏠 HomePage: Wallet connected, refreshing data...');
             this.updateNetworkIndicator();
             this.refreshDataAfterWalletChange();
+            this.checkAdminAccess();
         });
 
         document.addEventListener('walletDisconnected', () => {
             console.log('🏠 HomePage: Wallet disconnected, refreshing data...');
             this.updateNetworkIndicator();
             this.refreshDataAfterWalletChange();
+            this.hideAdminButton();
         });
 
         // Listen for account changes (MetaMask)
@@ -95,12 +98,14 @@ class HomePage {
             window.ethereum.on('accountsChanged', (accounts) => {
                 console.log('🏠 HomePage: Accounts changed:', accounts);
                 this.refreshDataAfterWalletChange();
+                this.checkAdminAccess();
             });
 
             window.ethereum.on('chainChanged', (chainId) => {
                 console.log('🏠 HomePage: Chain changed:', chainId);
                 this.updateNetworkIndicator();
                 this.refreshDataAfterWalletChange();
+                this.checkAdminAccess();
             });
         }
     }
@@ -130,6 +135,7 @@ class HomePage {
         if (window.contractManager && window.contractManager.isReady()) {
             console.log('🏠 HomePage: ContractManager already ready, loading data immediately...');
             this.loadData();
+            this.checkAdminAccess();
             // Auto-refresh disabled - manual refresh only
         } else {
             console.log('🏠 HomePage: Waiting for ContractManager to be ready...');
@@ -1481,6 +1487,86 @@ class HomePage {
     destroy() {
         this.stopAutoRefresh();
         clearTimeout(this.refreshDebounceTimer);
+    }
+
+    /**
+     * Check if the connected account has admin access
+     */
+    async checkAdminAccess() {
+        const adminButton = document.getElementById('admin-panel-link');
+        if (!adminButton) return;
+
+        // Check if wallet is connected
+        if (!this.isWalletConnected()) {
+            this.hideAdminButton();
+            return;
+        }
+
+        try {
+            // Get the current user address
+            const userAddress = await window.contractManager?.getCurrentSigner();
+            if (!userAddress) {
+                this.hideAdminButton();
+                return;
+            }
+
+            // Development mode check
+            if (window.DEV_CONFIG?.AUTHORIZED_ADMINS) {
+                const isAuthorizedAdmin = window.DEV_CONFIG.AUTHORIZED_ADMINS.some(
+                    admin => admin.toLowerCase() === userAddress.toLowerCase()
+                );
+                if (isAuthorizedAdmin) {
+                    this.showAdminButton();
+                    return;
+                }
+            }
+
+            // Check if user has admin role from contract
+            if (window.contractManager?.hasAdminRole) {
+                const hasAdminRole = await window.contractManager.hasAdminRole(userAddress);
+                if (hasAdminRole) {
+                    this.showAdminButton();
+                    return;
+                }
+            }
+
+            // Check if user is the contract owner
+            if (window.contractManager?.stakingContract?.owner) {
+                const owner = await window.contractManager.stakingContract.owner();
+                if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                    this.showAdminButton();
+                    return;
+                }
+            }
+
+            // If none of the checks passed, hide the button
+            this.hideAdminButton();
+        } catch (error) {
+            console.error('Error checking admin access:', error);
+            this.hideAdminButton();
+        }
+    }
+
+    /**
+     * Show the admin button
+     */
+    showAdminButton() {
+        const adminButton = document.getElementById('admin-panel-link');
+        if (adminButton) {
+            adminButton.style.display = 'flex';
+            this.isAdmin = true;
+        }
+    }
+
+    /**
+     * Hide the admin button
+     */
+    hideAdminButton() {
+        const adminButton = document.getElementById('admin-panel-link');
+        if (adminButton) {
+            adminButton.style.display = 'none';
+            this.isAdmin = false;
+        }
     }
 }
 
