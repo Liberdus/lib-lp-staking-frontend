@@ -64,15 +64,21 @@ class NetworkManager {
                 return false; // Not connected to dApp
             }
 
-            // Check if currently on configured network
+            // Check if wallet is on the correct network for the selected app network
             const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
             const expectedChainIdHex = this.getChainIdHex();
             
-            return currentChainId === expectedChainIdHex;
+            // If wallet is on wrong network, we need permission to switch
+            if (currentChainId !== expectedChainIdHex) {
+                console.log(`🔄 Wallet on chain ${currentChainId}, but app expects ${expectedChainIdHex}`);
+                return false; // Need permission to switch networks
+            }
+
+            // Permission is granted if wallet is connected to dApp and on correct network
+            return true;
 
         } catch (error) {
-            const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
-            console.error(`Error checking ${networkName} permission:`, error);
+            console.error('Error checking wallet permissions:', error);
             return false;
         }
     }

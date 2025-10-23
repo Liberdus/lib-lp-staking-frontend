@@ -1112,6 +1112,51 @@ class ContractManager {
     }
 
     /**
+     * Switch to a different network and reinitialize contracts
+     * @param {string} networkKey - The network key to switch to
+     */
+    async switchNetwork(networkKey) {
+        try {
+            this.log(`🌐 Switching to ${networkKey} network...`);
+
+            // Reset initialization state
+            this.isInitialized = false;
+            this.isInitializing = false;
+            this.initializationPromise = null;
+
+            // Clear existing contracts
+            this.stakingContract = null;
+            this.rewardTokenContract = null;
+            this.lpTokenContracts.clear();
+
+            // Update RPC URLs for the new network
+            const network = window.CONFIG.NETWORKS[networkKey];
+            if (network) {
+                this.rpcUrls = [network.RPC_URL, ...network.FALLBACK_RPCS];
+                this.log(`📡 Updated RPC URLs for ${network.NAME}:`, this.rpcUrls.length);
+            }
+
+            // Check if the new network has valid contract addresses
+            const contracts = window.CONFIG.CONTRACTS;
+            if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+                this.log(`⚠️ No contracts deployed on ${network.NAME} - skipping initialization`);
+                this.isInitialized = true; // Mark as initialized but with no contracts
+                return true;
+            }
+
+            // Reinitialize with new network configuration
+            await this.initializeReadOnly();
+            
+            this.log(`✅ Successfully switched to ${networkKey} network`);
+            return true;
+
+        } catch (error) {
+            this.logError(`❌ Failed to switch to ${networkKey} network:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * Check if staking contract is properly initialized
      */
     isStakingContractReady() {
@@ -1601,8 +1646,11 @@ class ContractManager {
                         // If it's already an object with properties
                         if (rawAction.actionType !== undefined) {
                             this.log(`✅ Action ${actionId} is object format`);
-                            rawAction.expired = finalExpired;
-                            return rawAction;
+                            // Create a new object instead of modifying the frozen one
+                            return {
+                                ...rawAction,
+                                expired: finalExpired
+                            };
                         }
 
                         // If it's a tuple array (correct ABI structure - 14 fields)
@@ -2087,14 +2135,34 @@ class ContractManager {
      * Check if an address has admin role
      */
     async hasAdminRole(address = null) {
-        return await this.executeWithRetry(async () => {
-            const userAddress = address || (this.signer ? await this.signer.getAddress() : null);
-            if (!userAddress) {
-                throw new Error('No address provided and no signer available');
-            }
-            const ADMIN_ROLE = await window.contractManager.stakingContract.ADMIN_ROLE();
-            return await this.stakingContract.hasRole(ADMIN_ROLE, userAddress);
-        }, 'hasAdminRole');
+        // Check if there are valid contracts for the current network
+        const contracts = window.CONFIG.CONTRACTS;
+        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+            this.log('⚠️ No contracts deployed on current network - admin role check skipped');
+            return false;
+        }
+
+        // Check if contract is properly initialized
+        if (!this.stakingContract) {
+            this.log('⚠️ Staking contract not initialized - admin role check skipped');
+            return false;
+        }
+
+        try {
+            return await this.executeWithRetry(async () => {
+                const userAddress = address || (this.signer ? await this.signer.getAddress() : null);
+                if (!userAddress) {
+                    throw new Error('No address provided and no signer available');
+                }
+                const ADMIN_ROLE = await this.stakingContract.ADMIN_ROLE();
+                return await this.stakingContract.hasRole(ADMIN_ROLE, userAddress);
+            }, 'hasAdminRole');
+        } catch (error) {
+            // Graceful error handling for admin role checks
+            this.logWarn(`⚠️ Admin role check failed gracefully: ${error.message}`);
+            this.logWarn('This is expected when contracts are not deployed or user lacks admin permissions');
+            return false;
+        }
     }
 
     // ============ ADMIN PROPOSAL FUNCTIONS ============
@@ -2851,7 +2919,8 @@ class ContractManager {
             const network = await web3Provider.getNetwork();
             const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
             if (network.chainId !== expectedChainId) {
-                throw new Error(`Please switch to Polygon Amoy Testnet (Chain ID: ${expectedChainId}) in MetaMask`);
+                const networkName = window.CONFIG?.NETWORK?.NAME || 'the correct network';
+                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in MetaMask`);
             }
 
             // Get signer from Web3Provider
@@ -4801,9 +4870,23 @@ class ContractManager {
                 }
 
                 // Try fallback provider for network errors
-                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR') && this.canUseFallbackProvider()) {
-                    this.log('Network error detected, trying fallback provider...');
-                    await this.tryFallbackProvider();
+                const isNetworkError = processedError.category === 'network' || 
+                                     error.code === 'NETWORK_ERROR' ||
+                                     error.message?.includes('401') ||
+                                     error.message?.includes('403') ||
+                                     error.message?.includes('429') ||
+                                     error.message?.includes('timeout') ||
+                                     error.message?.includes('Internal JSON-RPC error') ||
+                                     error.message?.includes('could not detect network');
+                
+                if (isNetworkError && this.canUseFallbackProvider()) {
+                    this.log('🌐 Network/RPC error detected, trying fallback provider...');
+                    const switched = await this.tryFallbackProvider();
+                    if (switched) {
+                        this.log('✅ Successfully switched to fallback provider');
+                    } else {
+                        this.logWarn('⚠️ Failed to switch to fallback provider, continuing with current provider');
+                    }
                 }
 
                 throw error; // Re-throw for retry logic
@@ -5694,16 +5777,27 @@ class ContractManager {
             return errorFallback;
         }
 
+        // Check if contract is deployed on current network
+        const contracts = window.CONFIG.CONTRACTS;
+        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+            this.log(`⚠️ No staking contract deployed on current network - ${functionName} skipped gracefully`);
+            return errorFallback;
+        }
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 return await contractFunction();
 
             } catch (error) {
-                // Check for contract not initialized errors
-                if (error.message.includes('not initialized') ||
+                // Check for contract not deployed errors
+                if (error.message.includes('call revert exception') ||
+                    error.message.includes('execution reverted') ||
+                    error.message.includes('contract not deployed') ||
                     error.message.includes('not a function') ||
-                    error.message.includes('Cannot read properties of null')) {
-                    this.logError(`❌ Contract initialization error for ${functionName}:`, error.message);
+                    error.message.includes('Cannot read properties of null') ||
+                    error.message.includes('not initialized')) {
+                    this.logWarn(`⚠️ Contract call failed gracefully for ${functionName}: ${error.message}`);
+                    this.logWarn('This is expected when contracts are not deployed on the current network');
                     return errorFallback;
                 }
 

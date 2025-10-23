@@ -548,6 +548,9 @@ class AdminPage {
         // Setup event listeners
         this.setupEventListeners();
 
+        // Setup network selector
+        this.setupNetworkSelector();
+
         // Start auto-refresh
         this.startAutoRefresh();
     }
@@ -625,6 +628,39 @@ class AdminPage {
         } catch (error) {
             console.error('❌ Failed to setup event listeners:', error);
         }
+    }
+
+    /**
+     * Set up network selector
+     */
+    setupNetworkSelector() {
+        if (!window.networkSelector) {
+            console.warn('⚠️ Network selector not available');
+            return;
+        }
+
+        // Initialize network selector with change handler
+        window.networkSelector.init(async (networkKey, context) => {
+            console.log(`🌐 Network changed to ${networkKey} in ${context}`);
+            
+            // Refresh contract data for new network
+            if (window.contractManager) {
+                try {
+                    await window.contractManager.initialize();
+                    await this.loadContractStats();
+                    await this.loadMultiSignPanel();
+                } catch (error) {
+                    console.error('❌ Error refreshing contract data:', error);
+                }
+            }
+
+            // Update network indicator
+            this.updateNetworkIndicatorWithPermission(
+                await window.networkManager?.hasRequiredNetworkPermission() || false,
+                window.walletManager?.getChainId()
+            );
+        });
+
     }
 
     /**
@@ -1341,13 +1377,56 @@ class AdminPage {
                     <span class="network-name">${onExpectedNetwork ? networkName : 'No permission'}</span>
                     <span class="network-id">${onExpectedNetwork ? `Chain ID: ${chainId}` : ''}</span>
                 </div>
+                <div id="admin-network-selector"></div>
                 ${!onExpectedNetwork ? `
-                    <button class="btn btn-sm btn-warning" onclick="window.networkManager.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
-                        Grant ${expectedNetworkName} Permission
+                    <button class="btn btn-sm btn-warning" onclick="${this.getAdminPermissionButtonAction(expectedNetworkName)}" title="${this.getAdminPermissionButtonTitle(expectedNetworkName)}">
+                        ${this.getAdminPermissionButtonText(expectedNetworkName)}
                     </button>
                 ` : ''}
             </div>
         `;
+    }
+
+    /**
+     * Get the appropriate button text for the admin permission button
+     * @param {string} networkName - The network name
+     * @returns {string} - The button text
+     */
+    getAdminPermissionButtonText(networkName) {
+        // For Polygon Mainnet, show "Add Polygon Mainnet" since it's likely not in MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'Add Polygon';
+        }
+        // For other networks, show "Grant [Network] Permission"
+        return `Grant ${networkName} Permission`;
+    }
+
+    /**
+     * Get the appropriate button action for the admin permission button
+     * @param {string} networkName - The network name
+     * @returns {string} - The button action
+     */
+    getAdminPermissionButtonAction(networkName) {
+        // For Polygon Mainnet, add network to MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'addPolygonMainnetToMetaMask()';
+        }
+        // For other networks, use the standard permission request
+        return `window.networkManager.requestPermissionWithUIUpdate('admin')`;
+    }
+
+    /**
+     * Get the appropriate button title for the admin permission button
+     * @param {string} networkName - The network name
+     * @returns {string} - The button title
+     */
+    getAdminPermissionButtonTitle(networkName) {
+        // For Polygon Mainnet, show "Add Polygon Mainnet to MetaMask"
+        if (networkName === 'Polygon Mainnet') {
+            return 'Add Polygon to MetaMask';
+        }
+        // For other networks, show "Grant permission for [Network]"
+        return `Grant permission for ${networkName}`;
     }
 
     /**
@@ -1377,6 +1456,23 @@ class AdminPage {
                 if (existingButton) {
                     existingButton.remove();
                 }
+
+                // Add network selector if not present
+                if (!indicator.querySelector('#admin-network-selector')) {
+                    const selectorDiv = document.createElement('div');
+                    selectorDiv.id = 'admin-network-selector';
+                    indicator.appendChild(selectorDiv);
+                    
+                    // Initialize network selector
+                    setTimeout(() => {
+                        if (window.networkSelector) {
+                            console.log('🌐 Creating admin network selector...');
+                            window.networkSelector.createSelector('admin-network-selector', 'admin');
+                        } else {
+                            console.warn('⚠️ Network selector not available for admin page');
+                        }
+                    }, 100);
+                }
             } else {
                 indicator.className = 'network-indicator network-wrong';
                 if (networkIcon) networkIcon.textContent = '⚠️';
@@ -1385,6 +1481,23 @@ class AdminPage {
                 if (networkNameEl) networkNameEl.textContent = 'No permission';
                 if (networkIdEl) networkIdEl.textContent = '';
                 
+                // Add network selector if not present
+                if (!indicator.querySelector('#admin-network-selector')) {
+                    const selectorDiv = document.createElement('div');
+                    selectorDiv.id = 'admin-network-selector';
+                    indicator.appendChild(selectorDiv);
+                    
+                    // Initialize network selector
+                    setTimeout(() => {
+                        if (window.networkSelector) {
+                            console.log('🌐 Creating admin network selector...');
+                            window.networkSelector.createSelector('admin-network-selector', 'admin');
+                        } else {
+                            console.warn('⚠️ Network selector not available for admin page');
+                        }
+                    }, 100);
+                }
+
                 // Add permission button if not present
                 const existingButton = indicator.querySelector('button');
                 if (!existingButton) {

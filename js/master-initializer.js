@@ -89,6 +89,7 @@ class MasterInitializer {
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
             'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
+            'js/core/error-handler.js',        // Error handling system
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
@@ -144,6 +145,7 @@ class MasterInitializer {
 
         const uiScripts = [
             'js/components/wallet-popup.js',
+            'js/components/network-selector.js',
             'js/components/home-page.js',
             'js/components/staking-modal-new.js'
         ];
@@ -189,6 +191,10 @@ class MasterInitializer {
             } catch (error) {
                 console.error('❌ Failed to initialize ErrorHandler:', error);
             }
+        } else if (window.errorHandler) {
+            console.log('✅ Error Handler already initialized');
+        } else {
+            console.warn('⚠️ ErrorHandler not available - some systems will use fallback error handling');
         }
 
         // Initialize theme manager
