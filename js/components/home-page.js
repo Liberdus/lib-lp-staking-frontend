@@ -38,6 +38,7 @@ class HomePage {
         this.setupContractManagerListeners();
         this.setupWalletChangeDetection();
         this.setupNetworkIndicator();
+        this.setupNetworkSelector();
         this.loadDataWhenReady();
         this.isInitialized = true;
 
@@ -101,11 +102,17 @@ class HomePage {
                 this.checkAdminAccess();
             });
 
+            // Re-check permissions when wallet network changes
             window.ethereum.on('chainChanged', (chainId) => {
                 console.log('🏠 HomePage: Chain changed:', chainId);
+                // Only update the network indicator to re-check permissions
                 this.updateNetworkIndicator();
-                this.refreshDataAfterWalletChange();
-                this.checkAdminAccess();
+            });
+
+            // Re-check permissions when page regains focus (in case permissions were removed in another tab)
+            window.addEventListener('focus', () => {
+                console.log('🏠 HomePage: Page focused, re-checking permissions...');
+                this.updateNetworkIndicator();
             });
         }
     }
@@ -527,6 +534,24 @@ class HomePage {
     }
 
     /**
+     * Load empty data when no contracts are deployed
+     */
+    loadEmptyData() {
+        console.log('📊 Loading empty data for network without contracts...');
+        
+        // Set empty data
+        this.hourlyRewardRate = 0;
+        this.totalWeight = 0;
+        this.pairsData = [];
+        
+        // Update display
+        this.updateHourlyRateDisplay(0);
+        this.render();
+        
+        console.log('✅ Empty data loaded successfully');
+    }
+
+    /**
      * Load real blockchain data from contracts - OPTIMIZED FOR SPEED
      */
     async loadBlockchainData() {
@@ -535,6 +560,14 @@ class HomePage {
 
         if (!window.contractManager || !window.contractManager.isReady()) {
             throw new Error('Contract manager not ready');
+        }
+
+        // Check if there are valid contracts for the current network
+        const contracts = window.CONFIG.CONTRACTS;
+        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+            console.log('⚠️ No contracts deployed on current network - loading empty data');
+            this.loadEmptyData();
+            return;
         }
 
         try {
@@ -1407,18 +1440,79 @@ class HomePage {
         });
 
         document.addEventListener('walletDisconnected', () => {
-            const indicator = document.getElementById('network-indicator-home');
-            if (indicator) {
-                indicator.style.display = 'none';
-            }
+            // Update network indicator to show disconnected state
+            this.updateNetworkIndicator();
         });
 
         // Update on network change
         if (window.ethereum) {
-            window.ethereum.on('chainChanged', () => {
-                this.updateNetworkIndicator();
-            });
+            // Removed chainChanged handler - system should only use dropdown selection
+            // window.ethereum.on('chainChanged', () => {
+            //     this.updateNetworkIndicator();
+            // });
         }
+    }
+
+    /**
+     * Get the appropriate button text for the permission button
+     * @param {string} networkName - The network name
+     * @returns {string} - The button text
+     */
+    getPermissionButtonText(networkName) {
+        // For Polygon Mainnet, show "Add Polygon Mainnet" since it's likely not in MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'Add Polygon';
+        }
+        // For other networks, show "Grant [Network] Permission"
+        return `Grant ${networkName} Permission`;
+    }
+
+    /**
+     * Get the appropriate button action for the permission button
+     * @param {string} networkName - The network name
+     * @returns {string} - The button action
+     */
+    getPermissionButtonAction(networkName) {
+        // For Polygon Mainnet, add network to MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'addPolygonMainnetToMetaMask()';
+        }
+        // For other networks, use the standard permission request
+        return `window.networkManager.requestPermissionWithUIUpdate('home')`;
+    }
+
+    /**
+     * Set up network selector
+     */
+    setupNetworkSelector() {
+        if (!window.networkSelector) {
+            console.warn('⚠️ Network selector not available');
+            return;
+        }
+
+        // Initialize network selector with change handler
+        window.networkSelector.init(async (networkKey, context) => {
+            console.log(`🌐 Network changed to ${networkKey} in ${context}`);
+            
+            // Clear cache to ensure fresh data is fetched for new network
+            this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
+            this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
+            this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
+            
+            // Refresh contract data for new network
+            if (window.contractManager) {
+                try {
+                    await window.contractManager.initialize();
+                    this.loadDataWhenReady();
+                } catch (error) {
+                    console.error('❌ Error refreshing contract data:', error);
+                }
+            }
+
+            // Update network indicator
+            this.updateNetworkIndicator();
+        });
+
     }
 
     /**
@@ -1428,49 +1522,77 @@ class HomePage {
         const indicator = document.getElementById('network-indicator-home');
         if (!indicator) return;
 
-        // Only show if wallet is connected
-        if (!window.walletManager || !window.walletManager.isConnected()) {
-            indicator.style.display = 'none';
-            return;
-        }
+        // Always show the network indicator (with or without wallet)
+        indicator.style.display = 'flex';
 
-        const chainId = window.walletManager.getChainId();
-        const networkName = window.networkManager?.getNetworkName(chainId) || 'Unknown';
+        // Show loading state initially
+        indicator.innerHTML = `
+            <span class="network-status-dot gray"></span>
+            <div id="home-network-selector"></div>
+        `;
+        indicator.className = 'network-indicator-home loading';
+
+        const isWalletConnected = window.walletManager && window.walletManager.isConnected();
+        const chainId = isWalletConnected ? window.walletManager.getChainId() : null;
+        const networkName = isWalletConnected ? (window.networkManager?.getNetworkName(chainId) || 'Unknown') : 'Not connected';
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
-        // Check permission asynchronously
-        if (window.networkManager) {
+        // Check permission asynchronously if wallet is connected
+        if (isWalletConnected && window.networkManager) {
             try {
                 const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
-
-                indicator.style.display = 'flex';
 
                 if (hasPermission) {
                     // Green indicator - has permission
                     indicator.innerHTML = `
                         <span class="network-status-dot green"></span>
-                        <span class="network-name">${expectedNetworkName}</span>
+                        <div id="home-network-selector"></div>
                     `;
                     indicator.className = 'network-indicator-home has-permission';
                 } else {
                     // Red indicator - missing permission, show "No permission"
+                    const buttonText = this.getPermissionButtonText(expectedNetworkName);
+                    const buttonAction = this.getPermissionButtonAction(expectedNetworkName);
+                    
                     indicator.innerHTML = `
                         <span class="network-status-dot red"></span>
-                        <span class="network-name">No permission</span>
-                        <button class="btn-grant-permission" onclick="window.networkManager.requestPermissionWithUIUpdate('home')">
-                            Grant ${expectedNetworkName} Permission
+                        <div id="home-network-selector"></div>
+                        <button class="btn-grant-permission" onclick="${buttonAction}">
+                            ${buttonText}
                         </button>
                     `;
                     indicator.className = 'network-indicator-home missing-permission';
                 }
             } catch (error) {
                 console.error('Error checking network permission:', error);
-                indicator.style.display = 'none';
+                // Fallback to no permission state
+                const buttonText = this.getPermissionButtonText(expectedNetworkName);
+                const buttonAction = this.getPermissionButtonAction(expectedNetworkName);
+                
+                indicator.innerHTML = `
+                    <span class="network-status-dot red"></span>
+                    <div id="home-network-selector"></div>
+                    <button class="btn-grant-permission" onclick="${buttonAction}">
+                        ${buttonText}
+                    </button>
+                `;
+                indicator.className = 'network-indicator-home missing-permission';
             }
         } else {
-            // Fallback if networkManager not available
-            indicator.style.display = 'none';
+            // No wallet connected - show network selector only
+            indicator.innerHTML = `
+                <span class="network-status-dot gray"></span>
+                <div id="home-network-selector"></div>
+            `;
+            indicator.className = 'network-indicator-home no-wallet';
         }
+
+        // Add network selector after DOM update (only if not already present)
+        setTimeout(() => {
+            if (window.networkSelector && !document.querySelector('#home-network-selector select')) {
+                window.networkSelector.createSelector('home-network-selector', 'home');
+            }
+        }, 100);
     }
 
     destroy() {
@@ -1556,6 +1678,16 @@ class HomePage {
             adminButton.style.display = 'none';
             this.isAdmin = false;
         }
+    }
+}
+
+// Global function for adding Polygon Mainnet to MetaMask
+async function addPolygonMainnetToMetaMask() {
+    try {
+        await window.networkSelector.addNetworkToMetaMaskAndSwitch('POLYGON_MAINNET');
+        window.location.reload();
+    } catch (error) {
+        console.error('Failed to add Polygon:', error);
     }
 }
 
