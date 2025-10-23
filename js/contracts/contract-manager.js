@@ -4242,7 +4242,7 @@ class ContractManager {
             userData.set(pairAddress, {
                 balance: balanceResult?.success ? this.multicallService.decodeResult(erc20Interface, 'balanceOf', balanceResult.returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
                 allowance: allowanceResult?.success ? this.multicallService.decodeResult(erc20Interface, 'allowance', allowanceResult.returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
-                stake: decodedStakeInfo?.stakedAmount || ethers.BigNumber.from(0),
+                stake: decodedStakeInfo?.amount || ethers.BigNumber.from(0),
                 pendingRewards: decodedStakeInfo?.pendingRewards || ethers.BigNumber.from(0)
             });
         });
