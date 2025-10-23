@@ -1682,16 +1682,17 @@ class ContractManager {
                     provider
                 );
 
-                return await this._getAllActionsInternal(contractWithProvider, blockTag);
+                // Force 'latest' block to bypass caching
+                return await this._getAllActionsInternal(contractWithProvider, 'latest');
             }, 'getAllActions');
 
         } catch (error) {
             const errorMsg = error?.message || 'Unknown error';
             this.logError('⚠️ All providers failed for getAllActions, trying fallback:', errorMsg);
 
-            // Fallback to standard method
+            // Fallback to standard method with latest block
             return await this.executeWithRetry(async () => {
-                return await this._getAllActionsInternal(this.stakingContract);
+                return await this._getAllActionsInternal(this.stakingContract, 'latest');
             }, 'getAllActions');
         }
     }
@@ -1700,12 +1701,13 @@ class ContractManager {
      * Load all actions using Multicall (ULTRA-FAST)
      * Reduces RPC calls by 66% (1 call instead of 3 per action)
      */
-    async _getAllActionsWithMulticall(contract) {
+    async _getAllActionsWithMulticall(contract, blockTag = null) {
         try {
             const startTime = performance.now();
             
-            // Get action counter
-            const counter = await contract.actionCounter();
+            // Get action counter with blockTag to ensure fresh data
+            const counterOptions = blockTag ? { blockTag } : {};
+            const counter = await contract.actionCounter(counterOptions);
             const actionCount = counter.toNumber();
             
             if (actionCount === 0) {
@@ -1720,7 +1722,7 @@ class ContractManager {
                 actionIds.push(i);
             }
 
-            console.log(`[MULTICALL] 📦 Preparing ${actionIds.length} actions for batch load...`);
+            console.log(`[MULTICALL] 📦 Preparing ${actionIds.length} actions for batch load... (block: ${blockTag || 'default'})`);
 
             // Prepare all calls: action + pairs + weights + approvals + expired for each ID
             const calls = [];
@@ -1734,8 +1736,12 @@ class ContractManager {
 
             console.log(`[MULTICALL] 🚀 Executing ${calls.length} calls in single batch...`);
 
-            // Execute all calls in single RPC request
-            const results = await this.multicallService.batchCall(calls, { timeout: 20000 });
+            // Execute all calls in single RPC request with blockTag for fresh data
+            const multicallOptions = { timeout: 20000 };
+            if (blockTag) {
+                multicallOptions.blockTag = blockTag;
+            }
+            const results = await this.multicallService.batchCall(calls, multicallOptions);
 
             if (!results) {
                 console.log('[MULTICALL] ⚠️ Batch call returned null');
@@ -1830,10 +1836,10 @@ class ContractManager {
     async _getAllActionsInternal(contract, blockTag = null) {
         console.log('[ACTIONS] 🔍 Loading actions using optimized pagination...');
 
-        // Try Multicall if available (90% faster) - only skip if blockTag is explicitly provided
+        // Always try Multicall if available (90% faster) - pass blockTag through
         if (this.multicallService && this.multicallService.isReady()) {
             try {
-                const result = await this._getAllActionsWithMulticall(contract);
+                const result = await this._getAllActionsWithMulticall(contract, blockTag);
                 if (result) {
                     console.log('[ACTIONS] ⚡ Used Multicall optimization');
                     return result;
@@ -1843,7 +1849,7 @@ class ContractManager {
             }
         }
 
-        // Get action counter with block tag if provided
+        // Get action counter with block tag if provided (force latest to bypass cache)
         const counter = blockTag
             ? await contract.actionCounter({ blockTag })
             : await contract.actionCounter();

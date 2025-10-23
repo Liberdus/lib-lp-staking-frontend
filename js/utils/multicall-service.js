@@ -108,6 +108,7 @@
         async tryAggregate(calls, options = {}) {
             const requireSuccess = options.requireSuccess === true;
             const timeout = options.timeout || 10000; // 10s default timeout
+            const blockTag = options.blockTag; // Support blockTag for fresh queries
 
             if (!this.isAvailable) {
                 console.warn('⚠️ Multicall not available, returning null for fallback');
@@ -122,8 +123,9 @@
                 const startTime = performance.now();
                 this.stats.totalCalls++;
 
-                // Execute with timeout
-                const callPromise = this.multicallContract.tryAggregate(requireSuccess, calls);
+                // Execute with timeout and optional blockTag
+                const callOptions = blockTag ? { blockTag } : {};
+                const callPromise = this.multicallContract.tryAggregate(requireSuccess, calls, callOptions);
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Multicall timeout')), timeout)
                 );
@@ -139,7 +141,8 @@
                 this.stats.totalTimeSaved += timeSaved;
                 this.stats.successfulCalls++;
 
-                console.log(`⚡ Multicall: ${calls.length} calls in ${timeTaken.toFixed(0)}ms (saved ~${timeSaved.toFixed(0)}ms)`);
+                const blockInfo = blockTag ? ` (block: ${blockTag})` : '';
+                console.log(`⚡ Multicall: ${calls.length} calls in ${timeTaken.toFixed(0)}ms (saved ~${timeSaved.toFixed(0)}ms)${blockInfo}`);
 
                 return results;
 
