@@ -2118,26 +2118,21 @@ class AdminPage {
         console.log('🔄 Refreshing admin panel data...');
 
         try {
+            // IMPORTANT: Clear proposal cache to force fresh data
+            this.proposalsCache.clear();
+            this.proposalStates.clear();
+
             // Always refresh contract stats AND contract information (lightweight)
             await Promise.all([
                 this.loadContractStats(),
                 this.loadContractInformation()
             ]);
 
-            // Try selective proposal updates first
-            if (this.isSelectiveUpdateEnabled && this.isUsingRealData) {
-                const selectiveUpdateSuccess = await this.trySelectiveProposalUpdate();
-
-                if (selectiveUpdateSuccess) {
-                    console.log('✅ Admin panel data refreshed using selective updates (with contract info)');
-                    return;
-                }
-            }
-
-            // Fall back to full refresh if selective updates failed or disabled
-            console.log('🔄 Using full refresh...');
+            // ALWAYS do full refresh to ensure we get latest data from blockchain
+            // Selective updates are disabled during manual refresh to guarantee fresh data
+            console.log('🔄 Using full refresh to get latest blockchain data...');
             await this.loadMultiSignPanel();
-            console.log('✅ Admin panel data refreshed using full refresh (with contract info)');
+            console.log('✅ Admin panel data refreshed with fresh blockchain data');
 
         } catch (error) {
             console.error('❌ Failed to refresh data:', error);
