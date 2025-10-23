@@ -4222,11 +4222,15 @@ class ContractManager {
             const pairAddress = pair.address || pair.lpToken;
             const [balanceResult, allowanceResult, stakeResult] = results.slice(baseIndex, baseIndex + 3);
 
+            const decodedStakeInfo = stakeResult?.success  
+                ? this.multicallService.decodeResult(this.stakingContract, 'getUserStakeInfo', stakeResult.returnData)  
+                : null;
+
             userData.set(pairAddress, {
                 balance: balanceResult?.success ? this.multicallService.decodeResult(erc20Interface, 'balanceOf', balanceResult.returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
                 allowance: allowanceResult?.success ? this.multicallService.decodeResult(erc20Interface, 'allowance', allowanceResult.returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
-                stake: stakeResult?.success ? this.multicallService.decodeResult(this.stakingContract, 'getUserStakeInfo', stakeResult.returnData)?.stakedAmount || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
-                pendingRewards: stakeResult?.success ? this.multicallService.decodeResult(this.stakingContract, 'getUserStakeInfo', stakeResult.returnData)?.pendingRewards || ethers.BigNumber.from(0) : ethers.BigNumber.from(0)
+                stake: decodedStakeInfo?.stakedAmount || ethers.BigNumber.from(0),
+                pendingRewards: decodedStakeInfo?.pendingRewards || ethers.BigNumber.from(0)
             });
         });
 

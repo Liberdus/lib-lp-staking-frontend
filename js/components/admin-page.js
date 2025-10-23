@@ -3848,31 +3848,31 @@ class AdminPage {
                             defaults.ACTION_COUNTER
                         )
                     );
+
+                    const symbol = await this.safeContractCall(
+                        () => contractManager.rewardTokenContract.symbol(),
+                        this.contractStats.rewardTokenSymbol || 'USDC'
+                    );
+                    this.contractStats.rewardTokenSymbol = symbol;
+
+                    this.contractStats.rewardBalance = await this.safeContractCall(
+                        async () => {
+                            const stakingAddress = contractManager.stakingContract?.address;
+                            if (!stakingAddress) {
+                                throw new Error('Staking contract address not available');
+                            }
+                            const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
+                            const balanceValue = Number(ethers.utils.formatEther(balance));
+                            return `${balanceValue.toFixed(2)} ${symbol}`;
+                        },
+                        `0.00 ${symbol}`
+                    );
                 }
 
                 console.log(`📊 rewardToken: ${this.contractStats.rewardToken}`);
                 console.log(`📊 hourlyRewardRate: ${this.contractStats.hourlyRewardRate}`);
                 console.log(`📊 requiredApprovals: ${this.contractStats.requiredApprovals}`);
                 console.log(`📊 actionCounter: ${this.contractStats.actionCounter}`);
-
-                const symbol = await this.safeContractCall(
-                    () => contractManager.rewardTokenContract.symbol(),
-                    this.contractStats.rewardTokenSymbol || 'USDC'
-                );
-                this.contractStats.rewardTokenSymbol = symbol;
-
-                this.contractStats.rewardBalance = await this.safeContractCall(
-                    async () => {
-                        const stakingAddress = contractManager.stakingContract?.address;
-                        if (!stakingAddress) {
-                            throw new Error('Staking contract address not available');
-                        }
-                        const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
-                        const balanceValue = Number(ethers.utils.formatEther(balance));
-                        return `${balanceValue.toFixed(2)} ${symbol}`;
-                    },
-                    `0.00 ${symbol}`
-                );
             }
 
             // Get pairs information (with error handling)
