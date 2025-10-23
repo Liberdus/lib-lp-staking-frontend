@@ -2766,8 +2766,15 @@ class ContractManager {
             // Check if accounts are connected
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (accounts.length === 0) {
-                console.log('🔐 Requesting MetaMask connection...');
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                console.log('🔐 No connected accounts, requesting MetaMask connection...');
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                } catch (connectionError) {
+                    if (connectionError.code === 4001) {
+                        throw new Error('User rejected MetaMask connection');
+                    }
+                    throw new Error('Failed to connect to MetaMask: ' + connectionError.message);
+                }
             }
 
             // Always create a fresh Web3Provider for transactions (CRITICAL FIX)
@@ -5785,11 +5792,38 @@ class ContractManager {
      */
     async getCurrentSigner() {
         try {
+            // First check if MetaMask is available and has connected accounts
+            if (typeof window.ethereum === 'undefined') {
+                console.log('[ContractManager] MetaMask not available');
+                return null;
+            }
+
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length === 0) {
+                console.log('[ContractManager] No connected accounts');
+                return null;
+            }
+
             if (!this.signer) {
                 await this.ensureSigner();
             }
+            
+            // Verify the signer is still valid
+            if (!this.signer) {
+                console.log('[ContractManager] No valid signer available');
+                return null;
+            }
+
             return await this.signer.getAddress();
         } catch (error) {
+            // Handle specific disconnection errors gracefully
+            if (error.code === 'UNSUPPORTED_OPERATION' || 
+                error.message?.includes('unknown account') ||
+                error.message?.includes('missing provider')) {
+                console.log('[ContractManager] Wallet disconnected or not available');
+                return null;
+            }
+            
             this.logError('Failed to get current signer address:', error);
             return null;
         }
