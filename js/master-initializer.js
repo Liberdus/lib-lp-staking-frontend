@@ -88,6 +88,7 @@ class MasterInitializer {
         const coreScripts = [
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
+            'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',

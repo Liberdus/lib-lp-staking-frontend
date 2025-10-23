@@ -257,10 +257,12 @@ class AdminPage {
             await this.waitForSystemReady();
             console.log('✅ System ready check completed');
 
-            // Perform network health check before contract manager initialization
-            console.log('🏥 Starting network health check...');
-            await this.performNetworkHealthCheck();
-            console.log('✅ Network health check completed');
+            // Network health check removed for performance optimization
+            // The contract manager already includes network connectivity checks and RPC failover mechanisms,
+            // making this redundant 20-second delay unnecessary. The system will gracefully handle network
+            // issues when loading data, providing better user experience with faster initialization.
+            console.log('🏥 Skipping network health check for faster initialization...');
+            // await this.performNetworkHealthCheck();
 
             // Wait for contract manager to be ready
             if (!window.contractManager?.isReady()) {
@@ -3808,53 +3810,69 @@ class AdminPage {
                 this.contractStats.rewardTokenSymbol = symbol;
                 this.contractStats.rewardBalance = `0.00 ${symbol}`;
             } else {
-                // Try to load real data with React-like safe calls
-                this.contractStats.rewardToken = await this.safeContractCall(
-                    () => contractManager.stakingContract.rewardToken(),
-                    '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c'
-                );
+                // Try multicall for better performance (5 calls -> 1 call)
+                const stats = await contractManager.getContractStatsWithMulticall();
 
-                const hourlyRate = await this.safeContractCall(
-                    () => contractManager.stakingContract.hourlyRewardRate(),
-                    0
-                );
-                this.contractStats.hourlyRewardRate = this.convertBigIntToNumber(hourlyRate);
+                if (stats) {
+                    // Use multicall results with config defaults
+                    const defaults = window.CONFIG?.DEFAULTS || {};
+                    this.contractStats.rewardToken = stats.rewardToken || defaults.REWARD_TOKEN;
+                    this.contractStats.hourlyRewardRate = stats.hourlyRewardRate ? 
+                        Number(ethers.utils.formatEther(stats.hourlyRewardRate)) : defaults.HOURLY_REWARD_RATE;
+                    this.contractStats.requiredApprovals = stats.requiredApprovals?.toNumber() || defaults.REQUIRED_APPROVALS;
+                    this.contractStats.actionCounter = stats.actionCounter?.toNumber() || defaults.ACTION_COUNTER;
+                    this.contractStats.totalWeight = stats.totalWeight ? 
+                        Number(ethers.utils.formatEther(stats.totalWeight)) : defaults.TOTAL_WEIGHT;
+                } else {
+                    // Fallback to individual calls with config defaults
+                    const defaults = window.CONFIG?.DEFAULTS || {};
+                    this.contractStats.rewardToken = await this.safeContractCall(
+                        () => contractManager.stakingContract.rewardToken(), 
+                        defaults.REWARD_TOKEN
+                    );
+                    this.contractStats.hourlyRewardRate = this.convertBigIntToNumber(
+                        await this.safeContractCall(
+                            () => contractManager.stakingContract.hourlyRewardRate(), 
+                            defaults.HOURLY_REWARD_RATE
+                        )
+                    );
+                    this.contractStats.requiredApprovals = this.convertBigIntToNumber(
+                        await this.safeContractCall(
+                            () => contractManager.stakingContract.REQUIRED_APPROVALS(), 
+                            defaults.REQUIRED_APPROVALS
+                        )
+                    );
+                    this.contractStats.actionCounter = this.convertBigIntToNumber(
+                        await this.safeContractCall(
+                            () => contractManager.stakingContract.actionCounter(), 
+                            defaults.ACTION_COUNTER
+                        )
+                    );
 
-                const requiredApprovals = await this.safeContractCall(
-                    () => contractManager.stakingContract.REQUIRED_APPROVALS(),
-                    3
-                );
-                this.contractStats.requiredApprovals = this.convertBigIntToNumber(requiredApprovals);
+                    const symbol = await this.safeContractCall(
+                        () => contractManager.rewardTokenContract.symbol(),
+                        this.contractStats.rewardTokenSymbol || 'USDC'
+                    );
+                    this.contractStats.rewardTokenSymbol = symbol;
 
-                const actionCounter = await this.safeContractCall(
-                    () => contractManager.stakingContract.actionCounter(),
-                    3 // We can see from logs that we have 3 actions
-                );
-                this.contractStats.actionCounter = this.convertBigIntToNumber(actionCounter);
+                    this.contractStats.rewardBalance = await this.safeContractCall(
+                        async () => {
+                            const stakingAddress = contractManager.stakingContract?.address;
+                            if (!stakingAddress) {
+                                throw new Error('Staking contract address not available');
+                            }
+                            const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
+                            const balanceValue = Number(ethers.utils.formatEther(balance));
+                            return `${balanceValue.toFixed(2)} ${symbol}`;
+                        },
+                        `0.00 ${symbol}`
+                    );
+                }
 
                 console.log(`📊 rewardToken: ${this.contractStats.rewardToken}`);
                 console.log(`📊 hourlyRewardRate: ${this.contractStats.hourlyRewardRate}`);
                 console.log(`📊 requiredApprovals: ${this.contractStats.requiredApprovals}`);
                 console.log(`📊 actionCounter: ${this.contractStats.actionCounter}`);
-
-                const symbol = await this.safeContractCall(
-                    () => contractManager.rewardTokenContract.symbol(),
-                    this.contractStats.rewardTokenSymbol || 'USDC'
-                );
-                this.contractStats.rewardTokenSymbol = symbol;
-
-                this.contractStats.rewardBalance = await this.safeContractCall(
-                    async () => {
-                        const stakingAddress = contractManager.stakingContract?.address;
-                        if (!stakingAddress) {
-                            throw new Error('Staking contract address not available');
-                        }
-                        const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
-                        const balanceValue = Number(ethers.utils.formatEther(balance));
-                        return `${balanceValue.toFixed(2)} ${symbol}`;
-                    },
-                    `0.00 ${symbol}`
-                );
             }
 
             // Get pairs information (with error handling)
@@ -4801,7 +4819,7 @@ class AdminPage {
                                 <label for="new-rate">New Hourly Rate (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
-                                <small class="form-help">Current rate: ${ethers.utils.formatEther(this.contractStats?.hourlyRewardRate) || 'Loading...'}</small>
+                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRewardRate || 'Loading...'} ${this.contractStats?.rewardTokenSymbol || 'USDC'}/hour</small>
                             </div>
 
                             <div class="form-group">

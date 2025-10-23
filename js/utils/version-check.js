@@ -164,7 +164,6 @@
             `${basePath}js/master-initializer.js`,
             
             // JavaScript - Pages
-            `${basePath}js/pages/admin.js`,
             `${basePath}js/pages/home.js`,
             
             // JavaScript - Utils (only existing files)
@@ -185,6 +184,7 @@
             `${basePath}js/utils/transaction-queue.js`,
             `${basePath}js/utils/unified-cache.js`,
             `${basePath}js/utils/version-check.js`,
+            `${basePath}js/utils/multicall-service.js`,
             
             // JavaScript - Wallet
             `${basePath}js/wallet/metamask-connector.js`,
