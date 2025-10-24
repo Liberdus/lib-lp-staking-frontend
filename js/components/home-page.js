@@ -1614,6 +1614,12 @@ class HomePage {
         }
 
         try {
+            // Wait for contract manager to be ready before making contract calls
+            if (window.contractManager && !window.contractManager.isReady()) {
+                console.log('⏳ Contract manager not ready, waiting...');
+                await window.contractManager.waitForReady(10000); // Wait up to 10 seconds
+            }
+
             // Get the current user address (network-agnostic for permission checks)
             const userAddress = await window.contractManager?.getCurrentSignerForPermissions();
             if (!userAddress) {
@@ -1632,30 +1638,83 @@ class HomePage {
                 }
             }
 
-            // Check if user has admin role from contract
+            // Check if user has admin role from contract (with timeout and error handling)
             if (window.contractManager?.hasAdminRole) {
-                const hasAdminRole = await window.contractManager.hasAdminRole(userAddress);
-                if (hasAdminRole) {
-                    this.showAdminButton();
-                    return;
+                try {
+                    // Add timeout to prevent hanging on network switching
+                    const hasAdminRole = await Promise.race([
+                        window.contractManager.hasAdminRole(userAddress),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Admin role check timeout')), 5000)
+                        )
+                    ]);
+                    if (hasAdminRole) {
+                        this.showAdminButton();
+                        return;
+                    }
+                } catch (adminRoleError) {
+                    console.warn('Admin role check failed (expected during network switching):', adminRoleError.message);
+                    // Don't hide button on timeout/network errors - keep current state
                 }
             }
 
-            // Check if user is the contract owner
+            // Check if user is the contract owner (with timeout and error handling)
             if (window.contractManager?.stakingContract?.owner) {
-                const owner = await window.contractManager.stakingContract.owner();
-                if (owner.toLowerCase() === userAddress.toLowerCase()) {
-                    this.showAdminButton();
-                    return;
+                try {
+                    // Add timeout to prevent hanging on network switching
+                    const owner = await Promise.race([
+                        window.contractManager.stakingContract.owner(),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Owner check timeout')), 5000)
+                        )
+                    ]);
+                    if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                        this.showAdminButton();
+                        return;
+                    }
+                } catch (ownerError) {
+                    console.warn('Owner check failed (expected during network switching):', ownerError.message);
+                    // Don't hide button on timeout/network errors - keep current state
                 }
             }
 
-            // If none of the checks passed, hide the button
-            this.hideAdminButton();
+            // Only hide button if we're sure the user doesn't have admin access
+            // Don't hide on network switching errors
+            if (!this.isNetworkSwitching()) {
+                this.hideAdminButton();
+            } else {
+                // If we're network switching, retry the admin check after a delay
+                console.log('⏳ Network switching in progress, retrying admin check in 5 seconds...');
+                setTimeout(() => {
+                    this.checkAdminAccess();
+                }, 5000);
+            }
         } catch (error) {
             console.error('Error checking admin access:', error);
-            this.hideAdminButton();
+            // Only hide button if it's not a network switching error
+            if (!this.isNetworkSwitching()) {
+                this.hideAdminButton();
+            } else {
+                // If we're network switching, retry the admin check after a delay
+                console.log('⏳ Network switching in progress, retrying admin check in 5 seconds...');
+                setTimeout(() => {
+                    this.checkAdminAccess();
+                }, 5000);
+            }
         }
+    }
+
+    /**
+     * Check if we're currently in the middle of a network switch
+     */
+    isNetworkSwitching() {
+        // Check if contract manager is initializing
+        if (window.contractManager && window.contractManager.isInitializing) {
+            return true;
+        }
+        
+        // Check if we're in the middle of a network switch
+        return window.CONFIG && window.CONFIG._networkSwitching === true;
     }
 
     /**
