@@ -6433,7 +6433,8 @@ class AdminPage {
 
         // Validate description
         if (!description || description.trim().length < 10) {
-            throw new Error('Please provide a detailed description for the weight changes (minimum 10 characters)');
+            this.showError('Please provide a detailed description for the weight changes (minimum 10 characters)');
+            return;
         }
 
         // Collect weight updates
@@ -6448,9 +6449,10 @@ class AdminPage {
             const currentWeight = parseInt(input.dataset.current, 10);
             const newWeightNum = parseInt(newWeight, 10);
 
-                if (isNaN(newWeightNum) || newWeightNum < 1 || newWeightNum > 10000) {
-                    throw new Error(`Invalid weight value: ${newWeight}. Must be between 1-10,000`);
-                }
+            if (isNaN(newWeightNum) || newWeightNum < 1 || newWeightNum > 10000) {
+                this.showError(`Invalid weight value: ${newWeight}. Must be between 1-10,000`);
+                return;
+            }
 
             if (newWeightNum !== currentWeight) {
                 weightUpdates.push({
@@ -6462,7 +6464,8 @@ class AdminPage {
         }
 
         if (weightUpdates.length === 0) {
-            throw new Error('Please specify at least one weight change');
+            this.showError('Please specify at least one weight change');
+            return;
         }
 
         try {
@@ -6472,22 +6475,55 @@ class AdminPage {
             const lpTokens = weightUpdates.map(update => update.pairAddress);
             const weights = weightUpdates.map(update => update.newWeight);
 
+            console.log('[UPDATE WEIGHTS UI] 🚀 Creating weight update proposal...');
+            
             // Create batch weight update proposal
             const result = await contractManager.proposeUpdatePairWeights(lpTokens, weights);
 
+            console.log('[UPDATE WEIGHTS UI] 📊 Transaction result:', result);
+
+            // Handle the result based on response format
             if (!result.success) {
-                throw new Error(result.error || 'Failed to create weight update proposal');
+                // Enhanced error handling based on error type
+                let errorMessage = result.error || 'Failed to create weight update proposal';
+
+                if (result.accessDenied) {
+                    errorMessage = 'Access Denied: You need admin privileges to create proposals.';
+                } else if (result.insufficientFunds) {
+                    errorMessage = 'Insufficient funds for gas fees';
+                } else if (result.userRejected) {
+                    errorMessage = 'Transaction was cancelled by user';
+                } else if (result.networkError) {
+                    errorMessage = 'Network connection error';
+                } else if (result.gasError) {
+                    errorMessage = 'Gas Error: Network congestion detected. Please try again with higher gas fees.';
+                }
+
+                this.showError(errorMessage);
+                return;
             }
 
+            // Success handling
+            console.log('[UPDATE WEIGHTS UI] ✅ Transaction successful!');
+
+            // Show success message with transaction details
+            let successMessage = '✅ Weight update proposal created successfully!';
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+
+            this.showSuccess(successMessage);
             this.closeModal();
-            this.showSuccess('✅ Weight update proposal created successfully!');
             this.refreshAdminDataOnce();
 
             return { success: true };
 
         } catch (error) {
-            console.error('Failed to create weight update proposal:', error);
-            throw error;
+            // This catch block handles unexpected errors that might occur
+            // during form data collection or ensureContractReady(), not from contract-manager
+            console.error('[UPDATE WEIGHTS UI] ❌ Unexpected error during proposal submission:', error);
+            this.showError(`Unexpected error: ${error.message || 'Failed to create weight update proposal'}`);
+            return { success: false };
         }
     }
 

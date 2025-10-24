@@ -2324,24 +2324,88 @@ class ContractManager {
             };
 
         } catch (error) {
-            // Suppress misleading console errors - this method works correctly
-            console.log(`[UPDATE WEIGHTS] ℹ️ Note: This method works correctly despite any error messages`);
+            this.logError('Failed to propose update pair weights:', error);
 
-            // Return the original result format to maintain compatibility
-            return await this.executeTransactionWithRetry(async () => {
-                const weightsWei = weights.map(w => ethers.utils.parseEther(w.toString()));
-                const gasLimit = 400000;
-                const gasPrice = ethers.utils.parseUnits('50', 'gwei'); // Reasonable gas price
+            // Enhanced error analysis and handling (same pattern as other proposal methods)
+            const errorMessage = error.message || error.technicalMessage || error.reason || '';
+            const errorCode = error.code;
 
-                const contractWithSigner = this.stakingContract.connect(this.signer);
-                const tx = await contractWithSigner.proposeUpdatePairWeights(lpTokens, weightsWei, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
-                this.log('Propose update weights transaction sent:', tx.hash);
-                // CRITICAL FIX: Return tx object, not receipt
-                return tx;
-            }, 'proposeUpdatePairWeights');
+            // Detect explicit wallet rejection regardless of provider wording
+            const normalizedMessage = typeof errorMessage === 'string' ? errorMessage.toLowerCase() : '';
+            if (errorCode === 4001 || errorCode === 'ACTION_REJECTED' || normalizedMessage.includes('user rejected')) {
+                return {
+                    success: false,
+                    error: 'Transaction was rejected by user',
+                    userRejected: true,
+                    originalError: error
+                };
+            }
+
+            // Check for access control errors
+            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE') ||
+                errorMessage.includes('missing role') || errorMessage.includes('not authorized')) {
+                return {
+                    success: false,
+                    error: 'Access denied: You do not have admin privileges to create proposals',
+                    accessDenied: true
+                };
+            }
+
+            // Check for insufficient funds or gas errors
+            if (errorMessage.includes('insufficient funds') || errorMessage.includes('gas required exceeds allowance') ||
+                errorCode === 'INSUFFICIENT_FUNDS' || errorMessage.includes('out of gas')) {
+                return {
+                    success: false,
+                    error: 'Insufficient funds for gas or transaction amount. Please ensure you have enough MATIC for gas fees.',
+                    insufficientFunds: true
+                };
+            }
+
+            // Check for gas estimation errors
+            if (errorMessage.includes('gas') && (errorMessage.includes('estimate') || errorMessage.includes('limit'))) {
+                return {
+                    success: false,
+                    error: 'Gas estimation failed. The transaction may fail or network conditions are poor.',
+                    gasError: true
+                };
+            }
+
+            // Check for RPC/Network errors
+            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error') ||
+                errorMessage.includes('missing trie node') || errorCode === 'NETWORK_ERROR' ||
+                errorMessage.includes('network') || errorMessage.includes('connection')) {
+                return {
+                    success: false,
+                    error: 'Network error occurred. Please check your connection and try again.',
+                    networkError: true
+                };
+            }
+
+            // Check for nonce errors (stuck transactions)
+            if (errorMessage.includes('nonce') || errorMessage.includes('replacement transaction underpriced')) {
+                return {
+                    success: false,
+                    error: 'Transaction nonce error. You may have pending transactions. Try resetting your MetaMask account or wait for pending transactions to complete.',
+                    nonceError: true
+                };
+            }
+
+            // Check for signer issues
+            if (errorCode === 'UNSUPPORTED_OPERATION' && errorMessage.includes('signer')) {
+                return {
+                    success: false,
+                    error: 'Unable to access wallet signer. Please reconnect your wallet and try again.',
+                    signerUnavailable: true
+                };
+            }
+
+            // For any other error, provide detailed feedback
+            return {
+                success: false,
+                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
+                unknownError: true,
+                originalError: error
+            };
         }
     }
 
