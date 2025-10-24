@@ -783,17 +783,6 @@
             gap: var(--spacing-2);
         }
 
-        /* Network Indicator Styles */
-        .network-indicator-home {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-        }
-
         .network-indicator-home.has-permission {
             background: rgba(76, 175, 80, 0.1);
             border: 1px solid rgba(76, 175, 80, 0.3);
@@ -834,7 +823,7 @@
 
         .btn-grant-permission {
             margin-left: 8px;
-            padding: 4px 8px;
+            padding: 2px 8px;
             font-size: 0.75rem;
             background: var(--warning-main);
             color: white;
@@ -842,6 +831,11 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s ease;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            white-space: nowrap;
         }
 
         .btn-grant-permission:hover {
