@@ -95,27 +95,38 @@ class NetworkSelector {
     async handleNetworkChange(networkKey, context) {
         console.log(`🌐 Switching to ${networkKey} network...`);
 
-        // Switch network in config
-        const success = window.CONFIG.switchNetwork(networkKey);
-        if (!success) {
-            console.error(`❌ Failed to switch to ${networkKey}`);
-            return;
-        }
+        // Set network switching flag to prevent admin button from being hidden during switching
+        window.CONFIG._networkSwitching = true;
 
-        // Update the network name display immediately
-        this.updateNetworkNameDisplay(networkKey, context);
-
-        // Switch contract manager to new network (regardless of wallet connection)
-        if (window.contractManager && window.contractManager.switchNetwork) {
-            try {
-                console.log(`🔄 Calling contractManager.switchNetwork(${networkKey})...`);
-                await window.contractManager.switchNetwork(networkKey);
-                console.log(`✅ Contract manager switched to ${networkKey}`);
-            } catch (error) {
-                console.error('❌ Error switching contract manager:', error);
+        try {
+            // Switch network in config
+            const success = window.CONFIG.switchNetwork(networkKey);
+            if (!success) {
+                console.error(`❌ Failed to switch to ${networkKey}`);
+                return;
             }
-        } else {
-            console.warn('⚠️ Contract manager or switchNetwork method not available');
+
+            // Update the network name display immediately
+            this.updateNetworkNameDisplay(networkKey, context);
+
+            // Switch contract manager to new network (regardless of wallet connection)
+            if (window.contractManager && window.contractManager.switchNetwork) {
+                try {
+                    console.log(`🔄 Calling contractManager.switchNetwork(${networkKey})...`);
+                    await window.contractManager.switchNetwork(networkKey);
+                    console.log(`✅ Contract manager switched to ${networkKey}`);
+                } catch (error) {
+                    console.error('❌ Error switching contract manager:', error);
+                }
+            } else {
+                console.warn('⚠️ Contract manager or switchNetwork method not available');
+            }
+        } finally {
+            // Clear network switching flag after a delay to allow contracts to initialize
+            setTimeout(() => {
+                window.CONFIG._networkSwitching = false;
+                console.log('✅ Network switching completed');
+            }, 3000); // 3 second delay to allow contract initialization
         }
 
         // If wallet is not connected, just update the UI
