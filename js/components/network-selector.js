@@ -161,9 +161,7 @@ class NetworkSelector {
         // Update any elements that show the current network name
         const networkNameElements = document.querySelectorAll('.network-name');
         networkNameElements.forEach(element => {
-            if (element.textContent !== 'No permission') {
-                element.textContent = window.CONFIG.NETWORK.NAME;
-            }
+            element.textContent = window.CONFIG.NETWORK.NAME;
         });
 
         // Update the selector value if it exists
@@ -184,9 +182,7 @@ class NetworkSelector {
         // Update network name in the indicator
         const networkNameElements = document.querySelectorAll('.network-name');
         networkNameElements.forEach(element => {
-            if (element.textContent !== 'No permission') {
-                element.textContent = networkName;
-            }
+            element.textContent = networkName;
         });
 
         console.log(`📝 Updated network name display to: ${networkName}`);

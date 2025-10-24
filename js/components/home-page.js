@@ -1550,7 +1550,7 @@ class HomePage {
                     `;
                     indicator.className = 'network-indicator-home has-permission';
                 } else {
-                    // Red indicator - missing permission, show "No permission"
+                    // Red indicator - missing permission
                     const buttonText = this.getPermissionButtonText(expectedNetworkName);
                     const buttonAction = this.getPermissionButtonAction(expectedNetworkName);
                     
@@ -1614,8 +1614,8 @@ class HomePage {
         }
 
         try {
-            // Get the current user address
-            const userAddress = await window.contractManager?.getCurrentSigner();
+            // Get the current user address (network-agnostic for permission checks)
+            const userAddress = await window.contractManager?.getCurrentSignerForPermissions();
             if (!userAddress) {
                 this.hideAdminButton();
                 return;

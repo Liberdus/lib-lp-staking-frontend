@@ -11,13 +11,13 @@ window.CONFIG = {
         AMOY: {
             CHAIN_ID: 80002,
             NAME: 'Amoy',
-            RPC_URL: 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
+            RPC_URL: 'https://rpc-amoy.polygon.technology',
             FALLBACK_RPCS: [
-                'https://polygon-amoy.g.alchemy.com/v2/0abef17687cb430ca83c21ccc5bcbdd2',
-                'https://polygon-amoy.drpc.org',
                 'https://polygon-amoy-bor-rpc.publicnode.com',
-                'https://rpc-amoy.polygon.technology',
-                'https://rpc.ankr.com/polygon_amoy'
+                'https://rpc.ankr.com/polygon_amoy',
+                'https://polygon-amoy.drpc.org',
+                'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
+                'https://polygon-amoy.g.alchemy.com/v2/0abef17687cb430ca83c21ccc5bcbdd2'
             ],
             BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
             NATIVE_CURRENCY: {
@@ -40,10 +40,11 @@ window.CONFIG = {
             NAME: 'Polygon Mainnet',
             RPC_URL: 'https://polygon-rpc.com', // Public RPC endpoint
             FALLBACK_RPCS: [
-                'https://rpc-mainnet.maticvigil.com',
                 'https://polygon-mainnet.chainstacklabs.com',
+                'https://polygon-mainnet.public.blastapi.io', // BlastAPI fallback
+                'https://rpc.ankr.com/polygon',
                 'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC', // Alchemy fallback
-                'https://polygon.llamapr.com'
+                'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161' // Infura fallback
             ],
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: {
@@ -172,7 +173,7 @@ window.CONFIG = {
     // Development Configuration
     DEV: {
         DEBUG: false,
-        CONSOLE_LOGS: true,
+        CONSOLE_LOGS: false,
         PERFORMANCE_MONITORING: false
     },
 

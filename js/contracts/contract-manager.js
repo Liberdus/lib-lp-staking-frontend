@@ -29,7 +29,8 @@ class ContractManager {
 
         // Enhanced RPC Failover System
         this.currentRpcIndex = 0;
-        this.rpcUrls = window.CONFIG?.RPC?.POLYGON_AMOY || [
+        // Initialize with current network's RPC URLs (will be updated by switchNetwork)
+        this.rpcUrls = window.CONFIG?.NETWORK?.RPC_URL ? [window.CONFIG.NETWORK.RPC_URL, ...(window.CONFIG.NETWORK.FALLBACK_RPCS || [])] : [
             'https://rpc-amoy.polygon.technology',
             'https://polygon-amoy-bor-rpc.publicnode.com',
             'https://rpc.ankr.com/polygon_amoy',
@@ -69,7 +70,7 @@ class ContractManager {
             gasLimitMultiplier: 1.2,
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
             providerTimeout: 2000, // Reduced from 5000ms for faster failover
-            fallbackRPCs: [
+            fallbackRPCs: window.CONFIG?.NETWORK?.FALLBACK_RPCS || [
                 // Optimized order: fastest and most reliable first
                 'https://rpc-amoy.polygon.technology',                    // ✅ Official & Fastest
                 'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ PublicNode - Very reliable
@@ -146,35 +147,36 @@ class ContractManager {
 
             // Try MetaMask provider first (bypasses CORS issues)
             // BUGFIX: Don't use MetaMask provider with 'any' network - causes corrupted BigNumber data
-            // when wallet is on different network. Always use dedicated Amoy RPC for read-only mode.
-            this.log('🌐 Read-only mode: Using dedicated Amoy RPC (prevents BigNumber corruption)...');
+            // when wallet is on different network. Always use dedicated network RPC for read-only mode.
+            this.log('🌐 Read-only mode: Using dedicated network RPC (prevents BigNumber corruption)...');
             
-            const amoyRpcUrl = window.CONFIG?.NETWORK?.RPC_URL || 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC';
+            // Use the current network's RPC URL (updated by switchNetwork)
+            const networkRpcUrl = this.rpcUrls && this.rpcUrls.length > 0 ? this.rpcUrls[0] : window.CONFIG?.NETWORK?.RPC_URL || 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC';
             
             try {
-                this.log('🚀 Creating dedicated Amoy provider:', amoyRpcUrl);
-                const amoyProvider = new ethers.providers.JsonRpcProvider({
-                    url: amoyRpcUrl,
+                this.log('🚀 Creating dedicated network provider:', networkRpcUrl);
+                const networkProvider = new ethers.providers.JsonRpcProvider({
+                    url: networkRpcUrl,
                     timeout: 10000
                 });
 
                 // Verify connection
-                const network = await amoyProvider.getNetwork();
-                this.log(`✅ Amoy provider connected - Chain ID: ${network.chainId}`);
+                const network = await networkProvider.getNetwork();
+                this.log(`✅ Network provider connected - Chain ID: ${network.chainId}`);
 
-                this.provider = amoyProvider;
+                this.provider = networkProvider;
                 this.signer = null; // No signer in read-only mode
-                this.log('✅ Using dedicated Amoy RPC provider (read-only)');
+                this.log('✅ Using dedicated network RPC provider (read-only)');
 
-            } catch (amoyError) {
-                this.log('⚠️ Primary Amoy RPC failed, trying fallbacks:', amoyError.message);
+            } catch (networkError) {
+                this.log('⚠️ Primary network RPC failed, trying fallbacks:', networkError.message);
 
                 // Try direct provider creation first (faster)
                 try {
-                    this.log('🚀 Attempting direct provider creation with Polygon official...');
-                    const polygonUrl = 'https://rpc-amoy.polygon.technology';
+                    this.log('🚀 Attempting direct provider creation with network fallback...');
+                    const fallbackUrl = this.rpcUrls && this.rpcUrls.length > 1 ? this.rpcUrls[1] : 'https://rpc-amoy.polygon.technology';
                     const directProvider = new ethers.providers.JsonRpcProvider({
-                        url: polygonUrl,
+                        url: fallbackUrl,
                         timeout: 8000
                     });
 
@@ -184,7 +186,7 @@ class ContractManager {
 
                     this.provider = directProvider;
                     this.signer = null;
-                    this.log('✅ Using direct Polygon provider');
+                    this.log('✅ Using direct network provider');
 
                 } catch (directError) {
                     this.log('⚠️ Direct provider failed, trying fallback system:', directError.message);
@@ -505,7 +507,16 @@ class ContractManager {
                 return provider;
 
             } catch (error) {
-                this.log(`❌ RPC ${i + 1} failed: ${error.message}`);
+                // Handle specific error types
+                if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                    this.log(`❌ RPC ${i + 1} failed: Authentication error (401) - ${rpcUrl}`);
+                } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+                    this.log(`❌ RPC ${i + 1} failed: Access forbidden (403) - ${rpcUrl}`);
+                } else if (error.message?.includes('429') || error.message?.includes('rate limit')) {
+                    this.log(`❌ RPC ${i + 1} failed: Rate limited (429) - ${rpcUrl}`);
+                } else {
+                    this.log(`❌ RPC ${i + 1} failed: ${error.message}`);
+                }
                 continue;
             }
         }
@@ -556,7 +567,7 @@ class ContractManager {
 
         // Setup default RPC URLs if not configured
         if (!this.config.fallbackRPCs || this.config.fallbackRPCs.length === 0) {
-            this.config.fallbackRPCs = [
+            this.config.fallbackRPCs = window.CONFIG?.NETWORK?.FALLBACK_RPCS || [
                 'https://rpc-amoy.polygon.technology',
                 'https://polygon-amoy.drpc.org',
                 'https://polygon-amoy-bor-rpc.publicnode.com'
@@ -675,7 +686,7 @@ class ContractManager {
                 this.log('🚨 EMERGENCY FALLBACK: Attempting to create provider without testing...');
 
                 try {
-                    const emergencyRpc = 'https://rpc-amoy.polygon.technology';
+                    const emergencyRpc = this.rpcUrls && this.rpcUrls.length > 0 ? this.rpcUrls[0] : 'https://rpc-amoy.polygon.technology';
                     const emergencyProvider = new ethers.providers.JsonRpcProvider(emergencyRpc);
                     this.fallbackProviders.push(emergencyProvider);
                     this.log('🚨 Emergency provider created (untested):', emergencyRpc);
@@ -1128,6 +1139,13 @@ class ContractManager {
             this.stakingContract = null;
             this.rewardTokenContract = null;
             this.lpTokenContracts.clear();
+
+            // Reset MulticallService
+            if (this.multicallService) {
+                this.log('🔄 Resetting MulticallService for network switch...');
+                this.multicallService.reset();
+                this.multicallService = null;
+            }
 
             // Update RPC URLs for the new network
             const network = window.CONFIG.NETWORKS[networkKey];
@@ -2918,8 +2936,24 @@ class ContractManager {
             // Ensure we're on the correct network (using centralized config)
             const network = await web3Provider.getNetwork();
             const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
-            if (network.chainId !== expectedChainId) {
-                const networkName = window.CONFIG?.NETWORK?.NAME || 'the correct network';
+            
+            // Check permissions for the selected network regardless of current network
+            const selectedNetwork = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            
+            if (selectedNetwork === expectedChainId) {
+                console.log(`🌐 ${networkName} selected in UI, checking permissions...`);
+                
+                // Check if we have permission for the selected network
+                const hasPermission = await this.checkNetworkPermission();
+                if (!hasPermission) {
+                    console.log(`🔐 Requesting ${networkName} permission...`);
+                    const permissionGranted = await this.requestNetworkPermission();
+                    if (!permissionGranted) {
+                        throw new Error(`${networkName} permission required for transactions`);
+                    }
+                }
+            } else if (network.chainId !== expectedChainId) {
                 throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in MetaMask`);
             }
 
@@ -2972,6 +3006,248 @@ class ContractManager {
             console.error('❌ Failed to recreate contracts with signer:', error);
             console.log('⚠️ Continuing without signer update - demo mode will be used');
         }
+    }
+
+    /**
+     * Check if we have permission for the currently selected network
+     */
+    async checkNetworkPermission() {
+        try {
+            if (!window.ethereum) return false;
+            
+            // Get the currently selected network from UI config
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            
+            // Check if wallet is connected to dApp
+            const permissions = await window.ethereum.request({
+                method: 'wallet_getPermissions'
+            });
+
+            // Check if we have eth_accounts permission
+            const hasAccountPermission = permissions.some(p => p.parentCapability === 'eth_accounts');
+            if (!hasAccountPermission) {
+                console.log('🔐 No eth_accounts permission');
+                return false;
+            }
+
+            // Check if we're on the correct network
+            const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+            const expectedChainIdHex = '0x' + expectedChainId.toString(16);
+            
+            if (currentChainId !== expectedChainIdHex) {
+                console.log(`🔄 Wallet on chain ${currentChainId}, but need ${networkName} (${expectedChainIdHex})`);
+                return false;
+            }
+
+            console.log(`✅ ${networkName} permission confirmed (eth_accounts permission + correct network)`);
+            return true;
+        } catch (error) {
+            console.error('Error checking network permission:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Request permission for the currently selected network
+     */
+    async requestNetworkPermission() {
+        try {
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            console.log(`🔐 Requesting ${networkName} permission...`);
+            
+            // Show notification to user about permission request
+            if (window.notificationManager) {
+                window.notificationManager.show(
+                    `${networkName} Permission Required`,
+                    `This transaction requires permission to interact with ${networkName}. Please approve the permission request.`,
+                    'warning',
+                    { duration: 8000, persistent: true }
+                );
+            }
+
+            // Request account access (this will trigger permission dialog)
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            
+            if (!accounts || accounts.length === 0) {
+                console.log('❌ No accounts returned from permission request');
+                return false;
+            }
+
+            console.log(`✅ ${networkName} permission granted (eth_accounts permission)`);
+            
+            // Show success notification
+            if (window.notificationManager) {
+                window.notificationManager.show(
+                    'Permission Granted',
+                    `${networkName} permission granted. You can now make transactions when on the correct network.`,
+                    'success',
+                    { duration: 5000 }
+                );
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error requesting network permission:', error);
+            
+            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            
+            // Show error notification
+            if (window.notificationManager) {
+                window.notificationManager.show(
+                    'Permission Denied',
+                    `${networkName} permission was denied. Transaction cannot proceed.`,
+                    'error',
+                    { duration: 8000, persistent: true }
+                );
+            }
+            
+            return false;
+        }
+    }
+
+    // Add permission change listener to automatically update UI when permissions change
+    setupPermissionChangeListener() {
+        if (!window.ethereum) return;
+        
+        console.log('🔍 Setting up permission change listener...');
+        
+        // Listen for account changes (permission removal)
+        window.ethereum.on('accountsChanged', async (accounts) => {
+            console.log('🔐 Account change detected:', accounts);
+            
+            if (!accounts || accounts.length === 0) {
+                console.log('📊 Permission removed - switching to read-only mode');
+                this.signer = null;
+                this.transactionProvider = null;
+                
+                // Trigger UI update
+                this.updateUIState();
+                
+                // Show notification
+                if (window.notificationManager) {
+                    window.notificationManager.show(
+                        'Permission Removed',
+                        'Wallet permission was removed. Application is now in read-only mode.',
+                        'info',
+                        { duration: 5000 }
+                    );
+                }
+            } else {
+                // Account reconnected, check permissions and update UI
+                console.log('🔐 Account reconnected, checking permissions...');
+                await this.checkAndUpdatePermissionState();
+            }
+        });
+        
+        // Listen for network changes
+        window.ethereum.on('chainChanged', async (chainId) => {
+            console.log('🌐 Network changed to:', chainId);
+            await this.checkAndUpdatePermissionState();
+        });
+        
+        // Listen for permission changes
+        window.ethereum.on('disconnect', () => {
+            console.log('🔌 Wallet disconnected - switching to read-only mode');
+            this.signer = null;
+            this.transactionProvider = null;
+            
+            // Trigger UI update
+            this.updateUIState();
+        });
+        
+        console.log('✅ Permission change listener set up');
+    }
+    
+    // Check permission state and update UI accordingly
+    async checkAndUpdatePermissionState() {
+        try {
+            console.log('🔍 Checking permission state...');
+            
+            // Check if we have permission for the selected network
+            const hasPermission = await this.checkNetworkPermission();
+            const currentChainId = window.ethereum ? parseInt(await window.ethereum.request({ method: 'eth_chainId' }), 16) : null;
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            
+            console.log('Permission state:', { hasPermission, currentChainId, expectedChainId });
+            
+            if (hasPermission && currentChainId === expectedChainId) {
+                // We have permission and are on the correct network
+                console.log('✅ Permission confirmed, upgrading to transaction mode...');
+                await this.ensureSigner();
+                this.updateUIState();
+                
+                if (window.notificationManager) {
+                    const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+                    window.notificationManager.show(
+                        'Permission Granted',
+                        `${networkName} permission confirmed. You can now make transactions.`,
+                        'success',
+                        { duration: 5000 }
+                    );
+                }
+            } else {
+                // No permission or wrong network
+                console.log('❌ No permission or wrong network, switching to read-only mode...');
+                this.signer = null;
+                this.transactionProvider = null;
+                this.updateUIState();
+            }
+        } catch (error) {
+            console.error('Error checking permission state:', error);
+            this.signer = null;
+            this.transactionProvider = null;
+            this.updateUIState();
+        }
+    }
+    
+    // Update UI state based on current permission and network state
+    updateUIState() {
+        console.log('🔄 Updating UI state...');
+        
+        // Update network indicator
+        if (window.homePage && typeof window.homePage.updateNetworkIndicator === 'function') {
+            window.homePage.updateNetworkIndicator();
+        }
+        
+        // Update button states
+        this.updateButtonStates();
+        
+        // Trigger data refresh if needed
+        if (window.homePage && typeof window.homePage.loadStakingData === 'function') {
+            window.homePage.loadStakingData();
+        }
+    }
+    
+    // Update button states based on current permission state
+    updateButtonStates() {
+        const hasSigner = !!this.signer;
+        const isReadOnly = !hasSigner;
+        
+        console.log('🔘 Updating button states:', { hasSigner, isReadOnly });
+        
+        // Find all action buttons
+        const actionButtons = document.querySelectorAll('button[data-pair-id], button[class*="btn-"]');
+        
+        actionButtons.forEach(button => {
+            const buttonText = button.textContent.trim();
+            
+            // Check if this is a staking action button
+            if (buttonText.includes('Stake') || buttonText.includes('Unstake') || 
+                buttonText.includes('Claim') || buttonText.includes('redeem') || 
+                buttonText.includes('share')) {
+                
+                if (isReadOnly) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('disabled');
+                }
+            }
+        });
+        
+        console.log(`✅ Button states updated: ${isReadOnly ? 'disabled' : 'enabled'}`);
     }
 
     /**
@@ -4950,7 +5226,7 @@ class ContractManager {
         const providers = [];
 
         // OPTIMIZATION: Only use fastest, most reliable providers to reduce fallback time
-        const rpcUrls = [
+        const rpcUrls = this.rpcUrls && this.rpcUrls.length > 0 ? this.rpcUrls : [
             'https://rpc-amoy.polygon.technology',           // Polygon official (most reliable)
             'https://polygon-amoy-bor-rpc.publicnode.com',   // PublicNode (good performance)
             // Removed slower providers to reduce total fallback time
@@ -5983,6 +6259,41 @@ class ContractManager {
             }
             
             this.logError('Failed to get current signer address:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get current signer address for permission checks (network-agnostic)
+     * This version doesn't enforce network requirements for admin access checks
+     */
+    async getCurrentSignerForPermissions() {
+        try {
+            // First check if MetaMask is available and has connected accounts
+            if (typeof window.ethereum === 'undefined') {
+                console.log('[ContractManager] MetaMask not available');
+                return null;
+            }
+
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length === 0) {
+                console.log('[ContractManager] No connected accounts');
+                return null;
+            }
+
+            // For permission checks, we don't need to enforce network requirements
+            // Just get the address from the connected account
+            return accounts[0];
+        } catch (error) {
+            // Handle specific disconnection errors gracefully
+            if (error.code === 'UNSUPPORTED_OPERATION' || 
+                error.message?.includes('unknown account') ||
+                error.message?.includes('missing provider')) {
+                console.log('[ContractManager] Wallet disconnected or not available');
+                return null;
+            }
+            
+            this.logError('Failed to get current signer address for permissions:', error);
             return null;
         }
     }

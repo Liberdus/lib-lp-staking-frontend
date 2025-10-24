@@ -513,11 +513,44 @@ class AdminPage {
 
     showUnauthorizedAccess() {
         const container = document.getElementById('admin-content') || document.body;
+        const currentNetwork = window.CONFIG?.NETWORK?.NAME || 'Unknown Network';
+        const currentChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 'Unknown';
+        const currentContract = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT || 'Not configured';
+        
         container.innerHTML = `
             <div class="admin-unauthorized">
                 <div class="unauthorized-card">
                     <h2>🚫 Access Denied</h2>
-                    <p>Switch to an account with admin privileges for this contract.</p>
+                    <p><strong>Switch to an account with admin privileges for this contract.</strong></p>
+                    
+                    <div class="account-switcher">
+                        <h3>👤 Switch Admin Account</h3>
+                        <p>Use your wallet to switch to an account that has admin permissions for this contract.</p>
+                        <div class="network-info">
+                            <div class="network-details">
+                                <p><strong>Current Network:</strong> ${currentNetwork} (Chain ID: ${currentChainId})</p>
+                                <p><strong>Contract:</strong> ${currentContract}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="network-switcher">
+                        <h3>🌐 Alternative: Switch Network</h3>
+                        <p>Or try switching to a network where you have admin permissions:</p>
+                        <div class="network-status-container">
+                            <!-- Network status will be populated by JavaScript -->
+                        </div>
+                        <button id="connect-to-network-btn" class="connect-network-btn">
+                            🔗 Connect to Network
+                        </button>
+                        <div class="network-selector-container">
+                            <select id="unauthorized-network-select" class="network-select">
+                                <option value="AMOY" ${window.CONFIG?.SELECTED_NETWORK === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
+                                <option value="POLYGON_MAINNET" ${window.CONFIG?.SELECTED_NETWORK === 'POLYGON_MAINNET' ? 'selected' : ''}>Polygon Mainnet</option>
+                            </select>
+                        </div>
+                    </div>
+                    
                     <div class="access-details">
                         <p><strong>Your Address:</strong> ${this.userAddress}</p>
                         <p><strong>Required Role:</strong> ADMIN_ROLE or Contract Owner</p>
@@ -525,7 +558,195 @@ class AdminPage {
                 </div>
             </div>
         `;
+        
+        // Set up network selector for unauthorized access
+        this.setupUnauthorizedNetworkSelector();
     }
+
+    /**
+     * Set up network selector for unauthorized access screen
+     */
+    setupUnauthorizedNetworkSelector() {
+        const networkSelect = document.getElementById('unauthorized-network-select');
+        if (!networkSelect) {
+            console.warn('⚠️ Unauthorized network selector not found');
+            return;
+        }
+
+        networkSelect.addEventListener('change', async (event) => {
+            const selectedNetwork = event.target.value;
+            console.log(`🔄 Unauthorized access: Switching to ${selectedNetwork} network...`);
+            
+            try {
+                // Use the existing network selector functionality
+                if (window.networkSelector) {
+                    await window.networkSelector.handleNetworkChange(selectedNetwork, 'admin');
+                    console.log(`✅ Network switched to ${selectedNetwork} from unauthorized access screen`);
+                } else {
+                    console.error('❌ Network selector not available');
+                }
+            } catch (error) {
+                console.error('❌ Error switching network from unauthorized access:', error);
+            }
+        });
+
+        // Set up network detection and connection functionality
+        this.setupNetworkDetectionAndConnection();
+
+        console.log('✅ Unauthorized network selector set up');
+    }
+
+    /**
+     * Set up network detection and connection functionality for unauthorized access
+     */
+    async setupNetworkDetectionAndConnection() {
+        // Check current network status
+        await this.checkAndDisplayNetworkStatus();
+        
+        // Set up connect to network button
+        this.setupConnectToNetworkButton();
+        
+        // Set up network status monitoring
+        this.setupNetworkStatusMonitoring();
+    }
+
+    /**
+     * Check and display current network status
+     */
+    async checkAndDisplayNetworkStatus() {
+        const networkStatusContainer = document.querySelector('.network-status-container');
+        if (!networkStatusContainer) {
+            console.warn('⚠️ Network status container not found');
+            return;
+        }
+
+        try {
+            const isWalletConnected = window.walletManager && window.walletManager.isConnected();
+            const currentChainId = isWalletConnected ? window.walletManager.getChainId() : null;
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
+            const expectedNetworkName = window.CONFIG?.NETWORK?.NAME;
+
+            let statusHTML = '';
+            
+            if (!isWalletConnected) {
+                statusHTML = `
+                    <div class="network-status-item">
+                        <span class="status-icon">🔌</span>
+                        <span class="status-text">Wallet not connected</span>
+                    </div>
+                `;
+            } else if (currentChainId === expectedChainId) {
+                statusHTML = `
+                    <div class="network-status-item correct">
+                        <span class="status-icon">✅</span>
+                        <span class="status-text">Connected to ${expectedNetworkName}</span>
+                    </div>
+                `;
+            } else {
+                const currentNetworkName = window.networkManager?.getNetworkName(currentChainId) || 'Unknown Network';
+                statusHTML = `
+                    <div class="network-status-item incorrect">
+                        <span class="status-icon">⚠️</span>
+                        <span class="status-text">Connected to ${currentNetworkName} (Chain ID: ${currentChainId})</span>
+                        <span class="status-subtext">Need: ${expectedNetworkName} (Chain ID: ${expectedChainId})</span>
+                    </div>
+                `;
+            }
+
+            networkStatusContainer.innerHTML = statusHTML;
+        } catch (error) {
+            console.error('❌ Error checking network status:', error);
+            networkStatusContainer.innerHTML = `
+                <div class="network-status-item error">
+                    <span class="status-icon">❌</span>
+                    <span class="status-text">Error checking network status</span>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Set up connect to network button
+     */
+    setupConnectToNetworkButton() {
+        const connectButton = document.getElementById('connect-to-network-btn');
+        if (!connectButton) {
+            console.warn('⚠️ Connect to network button not found');
+            return;
+        }
+
+        connectButton.addEventListener('click', async () => {
+            await this.handleConnectToNetwork();
+        });
+    }
+
+    /**
+     * Handle connect to network button click
+     */
+    async handleConnectToNetwork() {
+        const connectButton = document.getElementById('connect-to-network-btn');
+        if (!connectButton) return;
+
+        // Show loading state
+        connectButton.disabled = true;
+        connectButton.innerHTML = '<span class="loading-spinner"></span> Connecting...';
+
+        try {
+            const isWalletConnected = window.walletManager && window.walletManager.isConnected();
+            
+            if (!isWalletConnected) {
+                // Connect wallet first
+                console.log('🔗 Connecting wallet...');
+                await window.walletManager.connect();
+            }
+
+            // Check if we're on the correct network
+            const currentChainId = window.walletManager.getChainId();
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
+            
+            if (currentChainId !== expectedChainId) {
+                console.log(`🔄 Switching to ${window.CONFIG.NETWORK.NAME}...`);
+                await window.networkSelector.switchWalletToNetwork(window.CONFIG.SELECTED_NETWORK);
+            }
+
+            // Refresh the page to check permissions again
+            console.log('🔄 Refreshing to check permissions...');
+            window.location.reload();
+
+        } catch (error) {
+            console.error('❌ Error connecting to network:', error);
+            
+            // Show error state
+            connectButton.innerHTML = '❌ Connection Failed';
+            connectButton.style.background = '#ef4444';
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                connectButton.disabled = false;
+                connectButton.innerHTML = '🔗 Connect to Network';
+                connectButton.style.background = '';
+            }, 3000);
+        }
+    }
+
+    /**
+     * Set up network status monitoring
+     */
+    setupNetworkStatusMonitoring() {
+        // Monitor network changes
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', () => {
+                console.log('🔄 Network changed, updating status...');
+                setTimeout(() => this.checkAndDisplayNetworkStatus(), 1000);
+            });
+
+            window.ethereum.on('accountsChanged', () => {
+                console.log('👤 Account changed, updating status...');
+                setTimeout(() => this.checkAndDisplayNetworkStatus(), 1000);
+            });
+        }
+    }
+
 
     async loadAdminInterface() {
         console.log('🎨 Loading admin interface...');
@@ -817,9 +1038,13 @@ class AdminPage {
                 }
             });
 
-            window.ethereum.on('chainChanged', (chainId) => {
+            window.ethereum.on('chainChanged', async (chainId) => {
                 console.log('🌐 Chain changed:', chainId);
-                this.handleChainChanged(chainId);
+                try {
+                    await this.handleChainChanged(chainId);
+                } catch (error) {
+                    console.error('❌ Error handling chain changed:', error);
+                }
             });
         }
     }
@@ -1165,7 +1390,7 @@ class AdminPage {
         }
     }
 
-    handleChainChanged(chainId) {
+    async handleChainChanged(chainId) {
         console.log('🌐 Handling chain changed:', chainId);
 
         // Update network indicator when chain changes
@@ -1182,6 +1407,25 @@ class AdminPage {
                     console.error('Error checking permission after chain change:', error);
                 });
             }
+        }
+
+        // CRITICAL: Re-verify admin access when network changes
+        // This ensures users are kicked out if they don't have admin permissions on the new network
+        console.log('🔐 Re-verifying admin access after network change...');
+        try {
+            await this.verifyAdminAccess();
+            
+            if (this.isAuthorized) {
+                console.log('✅ Admin access verified for new network');
+                // Reload the admin interface to ensure it's working with the new network
+                await this.loadAdminInterface();
+            } else {
+                console.log('❌ Admin access denied for new network - showing unauthorized access');
+                this.showUnauthorizedAccess();
+            }
+        } catch (error) {
+            console.error('❌ Error re-verifying admin access after network change:', error);
+            this.showUnauthorizedAccess();
         }
     }
 
@@ -1374,7 +1618,7 @@ class AdminPage {
             <div class="network-indicator ${onExpectedNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
                 <span class="network-icon">${onExpectedNetwork ? '🟢' : '⚠️'}</span>
                 <div class="network-info">
-                    <span class="network-name">${onExpectedNetwork ? networkName : 'No permission'}</span>
+                    <span class="network-name">${onExpectedNetwork ? networkName : ''}</span>
                     <span class="network-id">${onExpectedNetwork ? `Chain ID: ${chainId}` : ''}</span>
                 </div>
                 <div id="admin-network-selector"></div>
@@ -1458,44 +1702,40 @@ class AdminPage {
                 }
 
                 // Add network selector if not present
-                if (!indicator.querySelector('#admin-network-selector')) {
+                const adminSelector = indicator.querySelector('#admin-network-selector');
+                if (!adminSelector) {
                     const selectorDiv = document.createElement('div');
                     selectorDiv.id = 'admin-network-selector';
                     indicator.appendChild(selectorDiv);
-                    
-                    // Initialize network selector
-                    setTimeout(() => {
-                        if (window.networkSelector) {
-                            console.log('🌐 Creating admin network selector...');
-                            window.networkSelector.createSelector('admin-network-selector', 'admin');
-                        } else {
-                            console.warn('⚠️ Network selector not available for admin page');
-                        }
-                    }, 100);
+                }
+                
+                // Initialize network selector if it doesn't exist
+                const existingSelector = indicator.querySelector('#admin-network-selector select');
+                if (!existingSelector && window.networkSelector) {
+                    console.log('🌐 Creating admin network selector...');
+                    window.networkSelector.createSelector('admin-network-selector', 'admin');
                 }
             } else {
                 indicator.className = 'network-indicator network-wrong';
                 if (networkIcon) networkIcon.textContent = '⚠️';
                 
-                // Show "No permission" instead of wrong network name/chain ID
-                if (networkNameEl) networkNameEl.textContent = 'No permission';
+                // Clear network name when no permission
+                if (networkNameEl) networkNameEl.textContent = '';
                 if (networkIdEl) networkIdEl.textContent = '';
                 
                 // Add network selector if not present
-                if (!indicator.querySelector('#admin-network-selector')) {
+                const adminSelector = indicator.querySelector('#admin-network-selector');
+                if (!adminSelector) {
                     const selectorDiv = document.createElement('div');
                     selectorDiv.id = 'admin-network-selector';
                     indicator.appendChild(selectorDiv);
-                    
-                    // Initialize network selector
-                    setTimeout(() => {
-                        if (window.networkSelector) {
-                            console.log('🌐 Creating admin network selector...');
-                            window.networkSelector.createSelector('admin-network-selector', 'admin');
-                        } else {
-                            console.warn('⚠️ Network selector not available for admin page');
-                        }
-                    }, 100);
+                }
+                
+                // Initialize network selector if it doesn't exist
+                const existingSelector = indicator.querySelector('#admin-network-selector select');
+                if (!existingSelector && window.networkSelector) {
+                    console.log('🌐 Creating admin network selector...');
+                    window.networkSelector.createSelector('admin-network-selector', 'admin');
                 }
 
                 // Add permission button if not present

@@ -51,10 +51,24 @@
         }
 
         /**
+         * Reset the service for network switching
+         */
+        reset() {
+            this.provider = null;
+            this.chainId = null;
+            this.multicallContract = null;
+            this.isAvailable = false;
+            console.log('🔄 MulticallService reset for network switch');
+        }
+
+        /**
          * Initialize with provider and chain ID
          */
         async initialize(provider, chainId) {
             try {
+                // Reset any existing state
+                this.reset();
+                
                 this.provider = provider;
                 this.chainId = chainId;
 
@@ -74,9 +88,14 @@
                     provider
                 );
 
-                // Test if contract exists at address
+                // Test if contract exists at address with timeout
                 try {
-                    const code = await provider.getCode(multicallAddress);
+                    const codePromise = provider.getCode(multicallAddress);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Contract verification timeout')), 5000)
+                    );
+                    
+                    const code = await Promise.race([codePromise, timeoutPromise]);
                     if (code === '0x') {
                         console.warn(`⚠️ No contract at Multicall2 address ${multicallAddress}`);
                         this.isAvailable = false;
