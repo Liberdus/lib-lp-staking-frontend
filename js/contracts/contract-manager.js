@@ -3324,7 +3324,7 @@ class ContractManager {
             console.log(`[WITHDRAW REWARDS FIX]   Error code: ${errorCode}`);
 
             // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001) {
+            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
                 return {
                     success: false,
                     error: 'Transaction was rejected by user',

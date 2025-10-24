@@ -6226,109 +6226,25 @@ class AdminPage {
         }
 
         try {
-            console.log('[ADD PAIR UI] 🔧 Getting contract manager...');
             const contractManager = await this.ensureContractReady();
-
-            // STEP 1: Run diagnostic test first (optional but helpful for debugging)
-            console.log('[ADD PAIR UI] 🔍 Running diagnostic test...');
-            try {
-                const diagnostic = await contractManager.diagnosticTestAddPair(pairAddress, pairName, platform, weightNum);
-                console.log('[ADD PAIR UI] 📊 Diagnostic results:', diagnostic);
-
-                // Check for critical issues
-                if (diagnostic.recommendations && diagnostic.recommendations.length > 0) {
-                    console.warn('[ADD PAIR UI] ⚠️ Diagnostic recommendations:', diagnostic.recommendations);
-
-                    // Show warnings for non-critical issues
-                    const criticalIssues = diagnostic.recommendations.filter(rec =>
-                        rec.includes('not have admin') ||
-                        rec.includes('Switch to Polygon') ||
-                        rec.includes('not deployed')
-                    );
-
-                    if (criticalIssues.length > 0) {
-                        this.showError(`Pre-flight check failed: ${criticalIssues[0]}`);
-                        return;
-                    }
-                }
-            } catch (diagnosticError) {
-                console.warn('[ADD PAIR UI] ⚠️ Diagnostic test failed, proceeding anyway:', diagnosticError.message);
-            }
-
-            // STEP 2: Execute the actual transaction
-            console.log('[ADD PAIR UI] 🚀 Executing proposeAddPair transaction...');
             const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum);
 
-            console.log('[ADD PAIR UI] 📊 Transaction result:', result);
+            if (result.success) {
+                this.closeModal();
 
-            // STEP 3: Handle the result
-            if (!result.success) {
-                // Enhanced error handling based on error type
-                let errorMessage = result.error || 'Failed to create proposal';
-
-                if (result.accessDenied) {
-                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals. Please contact an administrator.';
-                } else if (result.insufficientFunds) {
-                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees. Please add funds to your wallet.';
-                } else if (result.userRejected) {
-                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
-                } else if (result.networkError) {
-                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
-                } else if (result.gasError) {
-                    errorMessage = '⛽ Gas Error: Network congestion detected. Please try again with higher gas fees.';
-                } else if (result.nonceError) {
-                    errorMessage = '🔢 Transaction Error: You may have pending transactions. Please wait or reset your MetaMask account.';
-                } else if (result.validationError) {
-                    errorMessage = `📋 Validation Error: ${result.error}`;
+                let successMessage = '✅ Add Pair proposal created successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                this.showError(errorMessage);
-                return;
+                this.showSuccess(successMessage);
+                this.refreshAdminDataOnce();
+            } else {
+                this.showError(result.error || 'Failed to create proposal');
             }
-
-            // STEP 4: Success handling
-            console.log('[ADD PAIR UI] ✅ Transaction successful!');
-
-            // Show success message with transaction details
-            let successMessage = '✅ Add Pair proposal created successfully!';
-            if (result.transactionHash) {
-                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
-            }
-
-            this.showSuccess(successMessage);
-
-            console.log('[ADD PAIR UI] 📋 Transaction details:', {
-                hash: result.transactionHash,
-                message: result.message
-            });
-
-            // Close modal
-            this.closeModal();
-
-            // Refresh admin data
-            this.refreshAdminDataOnce();
-
-            return result;
 
         } catch (error) {
-            console.error('[ADD PAIR UI] ❌ Failed to create add pair proposal:', error);
-
-            // Enhanced error handling for unexpected errors
-            let errorMessage = 'Failed to create proposal';
-            if (error.message) {
-                if (error.message.includes('user rejected')) {
-                    errorMessage = '👤 Transaction was cancelled by user';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = '💰 Insufficient funds for gas fees';
-                } else if (error.message.includes('network')) {
-                    errorMessage = '🌐 Network connection error';
-                } else {
-                    errorMessage = `Failed to create proposal: ${error.message}`;
-                }
-            }
-
-            this.showError(errorMessage);
-            throw error; // Re-throw for higher-level error handling
+            console.error('Failed to create add pair proposal:', error);
+            this.showError('Failed to create proposal: ' + error.message);
         }
     }
 
@@ -6339,13 +6255,6 @@ class AdminPage {
             const pairAddress = document.getElementById('remove-pair-select')?.value;
             const description = document.getElementById('remove-description')?.value;
             const confirmRemoval = document.getElementById('confirm-removal')?.checked;
-
-            console.log('🔍 Remove pair form data:', {
-                pairAddress,
-                description: description?.substring(0, 50) + '...',
-                descriptionLength: description?.length,
-                confirmRemoval
-            });
 
             // Validate required fields
             if (!pairAddress) {
@@ -6363,65 +6272,25 @@ class AdminPage {
                 return;
             }
 
-            console.log('✅ Validation passed, creating removal proposal...');
-
             const contractManager = await this.ensureContractReady();
             const result = await contractManager.proposeRemovePair(pairAddress);
 
-            console.log('[REMOVE PAIR UI] 📊 Transaction result:', result);
+            if (result.success) {
+                this.closeModal();
 
-            // Handle the result based on new response format
-            if (!result.success) {
-                // Enhanced error handling based on error type
-                let errorMessage = result.error || 'Failed to create removal proposal';
-
-                if (result.accessDenied) {
-                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
-                } else if (result.insufficientFunds) {
-                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
-                } else if (result.userRejected) {
-                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
-                } else if (result.networkError) {
-                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
+                let successMessage = '✅ Remove Pair proposal created successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                this.showError(errorMessage);
-                return;
+                this.showSuccess(successMessage);
+                this.refreshAdminDataOnce();
+            } else {
+                this.showError(result.error || 'Failed to create removal proposal');
             }
-
-            // Success handling
-            console.log('[REMOVE PAIR UI] ✅ Transaction successful!');
-
-            // Show success message with transaction details
-            let successMessage = '✅ Remove Pair proposal created successfully!';
-            if (result.transactionHash) {
-                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
-            }
-
-            this.showSuccess(successMessage);
-            this.closeModal();
-            this.refreshAdminDataOnce();
-            return result;
 
         } catch (error) {
-            console.error('[REMOVE PAIR UI] ❌ Failed to create removal proposal:', error);
-
-            // Enhanced error handling for unexpected errors
-            let errorMessage = 'Failed to create removal proposal';
-            if (error.message) {
-                if (error.message.includes('user rejected')) {
-                    errorMessage = '👤 Transaction was cancelled by user';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = '💰 Insufficient funds for gas fees';
-                } else if (error.message.includes('network')) {
-                    errorMessage = '🌐 Network connection error';
-                } else {
-                    errorMessage = `Failed to create removal proposal: ${error.message}`;
-                }
-            }
-
-            this.showError(errorMessage);
-            throw error;
+            console.error('Failed to create removal proposal:', error);
+            this.showError('Failed to create proposal: ' + error.message);
         }
     }
 
@@ -6475,55 +6344,25 @@ class AdminPage {
             const lpTokens = weightUpdates.map(update => update.pairAddress);
             const weights = weightUpdates.map(update => update.newWeight);
 
-            console.log('[UPDATE WEIGHTS UI] 🚀 Creating weight update proposal...');
-            
             // Create batch weight update proposal
             const result = await contractManager.proposeUpdatePairWeights(lpTokens, weights);
 
-            console.log('[UPDATE WEIGHTS UI] 📊 Transaction result:', result);
+            if (result.success) {
+                this.closeModal();
 
-            // Handle the result based on response format
-            if (!result.success) {
-                // Enhanced error handling based on error type
-                let errorMessage = result.error || 'Failed to create weight update proposal';
-
-                if (result.accessDenied) {
-                    errorMessage = 'Access Denied: You need admin privileges to create proposals.';
-                } else if (result.insufficientFunds) {
-                    errorMessage = 'Insufficient funds for gas fees';
-                } else if (result.userRejected) {
-                    errorMessage = 'Transaction was cancelled by user';
-                } else if (result.networkError) {
-                    errorMessage = 'Network connection error';
-                } else if (result.gasError) {
-                    errorMessage = 'Gas Error: Network congestion detected. Please try again with higher gas fees.';
+                let successMessage = '✅ Weight update proposal created successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                this.showError(errorMessage);
-                return;
+                this.showSuccess(successMessage);
+                this.refreshAdminDataOnce();
+            } else {
+                this.showError(result.error || 'Failed to create weight update proposal');
             }
-
-            // Success handling
-            console.log('[UPDATE WEIGHTS UI] ✅ Transaction successful!');
-
-            // Show success message with transaction details
-            let successMessage = '✅ Weight update proposal created successfully!';
-            if (result.transactionHash) {
-                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
-            }
-
-            this.showSuccess(successMessage);
-            this.closeModal();
-            this.refreshAdminDataOnce();
-
-            return { success: true };
 
         } catch (error) {
-            // This catch block handles unexpected errors that might occur
-            // during form data collection or ensureContractReady(), not from contract-manager
-            console.error('[UPDATE WEIGHTS UI] ❌ Unexpected error during proposal submission:', error);
-            this.showError(`Unexpected error: ${error.message || 'Failed to create weight update proposal'}`);
-            return { success: false };
+            console.error('Failed to create weight update proposal:', error);
+            this.showError('Failed to create proposal: ' + error.message);
         }
     }
 
@@ -6583,62 +6422,22 @@ class AdminPage {
             const contractManager = await this.ensureContractReady();
             const result = await contractManager.proposeChangeSigner(oldSigner, newSigner);
 
-            console.log('[CHANGE SIGNER UI] 📊 Transaction result:', result);
+            if (result.success) {
+                this.closeModal();
 
-            // Handle the result based on new response format
-            if (!result.success) {
-                // Enhanced error handling based on error type
-                let errorMessage = result.error || 'Failed to create change signer proposal';
-
-                if (result.accessDenied) {
-                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
-                } else if (result.insufficientFunds) {
-                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
-                } else if (result.userRejected) {
-                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
-                } else if (result.networkError) {
-                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
-                } else if (result.invalidOldSigner) {
-                    errorMessage = '❌ Invalid Old Signer: The old signer address is not currently an admin.';
-                } else if (result.signerAlreadyExists) {
-                    errorMessage = '❌ Signer Already Exists: The new signer address is already an admin.';
+                let successMessage = '✅ Change signer proposal created successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                this.showError(errorMessage);
-                return;
+                this.showSuccess(successMessage);
+                this.refreshAdminDataOnce();
+            } else {
+                this.showError(result.error || 'Failed to create change signer proposal');
             }
-
-            // Success handling
-            console.log('[CHANGE SIGNER UI] ✅ Transaction successful!');
-
-            this.closeModal();
-
-            // Show success message with transaction details
-            let successMessage = '✅ Change signer proposal created successfully!';
-            if (result.transactionHash) {
-                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
-            }
-            this.showSuccess(successMessage);
-            this.refreshAdminDataOnce();
 
         } catch (error) {
-            console.error('[CHANGE SIGNER UI] ❌ Failed to create signer change proposal:', error);
-
-            // Enhanced error handling for unexpected errors
-            let errorMessage = 'Failed to create signer change proposal';
-            if (error.message) {
-                if (error.message.includes('user rejected')) {
-                    errorMessage = '👤 Transaction was cancelled by user';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = '💰 Insufficient funds for gas fees';
-                } else if (error.message.includes('network')) {
-                    errorMessage = '🌐 Network connection error';
-                } else {
-                    errorMessage = `Failed to create signer change proposal: ${error.message}`;
-                }
-            }
-
-            this.showError(errorMessage);
+            console.error('Failed to create signer change proposal:', error);
+            this.showError('Failed to create proposal: ' + error.message);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingChangeSigner = false;
@@ -6702,73 +6501,22 @@ class AdminPage {
             const contractManager = await this.ensureContractReady();
             const result = await contractManager.proposeWithdrawal(amount, toAddress, description);
 
-            console.log('[WITHDRAWAL UI] 📊 Transaction result:', result);
+            if (result.success) {
+                this.closeModal();
 
-            // Handle the result based on new response format
-            if (!result.success) {
-                // Enhanced error handling based on error type
-                let errorMessage = result.error || 'Failed to create withdrawal proposal';
-
-                if (result.accessDenied) {
-                    errorMessage = '🔐 Access Denied: You need admin privileges to create proposals.';
-                } else if (result.insufficientFunds) {
-                    errorMessage = '💰 Insufficient Funds: You need more MATIC for gas fees.';
-                } else if (result.userRejected) {
-                    errorMessage = '👤 Transaction Cancelled: You rejected the transaction in MetaMask.';
-                } else if (result.networkError) {
-                    errorMessage = '🌐 Network Error: Please check your internet connection and try again.';
-                } else if (result.insufficientContractBalance) {
-                    errorMessage = '💸 Insufficient Contract Balance: The withdrawal amount exceeds available funds.';
-                } else if (result.invalidRecipient) {
-                    errorMessage = '❌ Invalid Recipient: Please verify the recipient address format.';
+                let successMessage = '✅ Withdrawal proposal created successfully!';
+                if (result.transactionHash) {
+                    successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
                 }
-
-                this.showError(errorMessage);
-                return;
+                this.showSuccess(successMessage);
+                this.refreshAdminDataOnce();
+            } else {
+                this.showError(result.error || 'Failed to create withdrawal proposal');
             }
-
-            // Success handling
-            console.log('[WITHDRAWAL UI] ✅ Transaction successful!');
-
-            this.closeModal();
-
-            let successMessage = '✅ Withdrawal proposal created successfully!';
-
-            if (result.transactionHash) {
-                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
-            }
-
-            if (result.actionRejectedButSucceeded) {
-                successMessage += ' (Confirmed despite initial rejection)';
-                console.log('[WITHDRAWAL UI] 🎯 ACTION_REJECTED override - transaction actually succeeded');
-            }
-
-            if (result.waitError) {
-                successMessage += ' (Confirmation pending)';
-                console.log('[WITHDRAWAL UI] 🎯 tx.wait error override - transaction submitted successfully');
-            }
-
-            this.showSuccess(successMessage);
-            this.refreshAdminDataOnce();
 
         } catch (error) {
-            console.error('[WITHDRAWAL UI] ❌ Failed to create withdrawal proposal:', error);
-
-            // Enhanced error handling for unexpected errors
-            let errorMessage = 'Failed to create withdrawal proposal';
-            if (error.message) {
-                if (error.message.includes('user rejected')) {
-                    errorMessage = '👤 Transaction was cancelled by user';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = '💰 Insufficient funds for gas fees';
-                } else if (error.message.includes('network')) {
-                    errorMessage = '🌐 Network connection error';
-                } else {
-                    errorMessage = `Failed to create withdrawal proposal: ${error.message}`;
-                }
-            }
-
-            this.showError(errorMessage);
+            console.error('Failed to create withdrawal proposal:', error);
+            this.showError('Failed to create proposal: ' + error.message);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingWithdrawal = false;
