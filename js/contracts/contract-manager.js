@@ -2177,8 +2177,8 @@ class ContractManager {
             }, 'hasAdminRole');
         } catch (error) {
             // Graceful error handling for admin role checks
-            this.logWarn(`⚠️ Admin role check failed gracefully: ${error.message}`);
-            this.logWarn('This is expected when contracts are not deployed or user lacks admin permissions');
+            console.warn(`⚠️ Admin role check failed gracefully: ${error.message}`);
+            console.warn('This is expected when contracts are not deployed or user lacks admin permissions');
             return false;
         }
     }
@@ -5161,7 +5161,7 @@ class ContractManager {
                     if (switched) {
                         this.log('✅ Successfully switched to fallback provider');
                     } else {
-                        this.logWarn('⚠️ Failed to switch to fallback provider, continuing with current provider');
+                        console.warn('⚠️ Failed to switch to fallback provider, continuing with current provider');
                     }
                 }
 
@@ -6072,8 +6072,8 @@ class ContractManager {
                     error.message.includes('not a function') ||
                     error.message.includes('Cannot read properties of null') ||
                     error.message.includes('not initialized')) {
-                    this.logWarn(`⚠️ Contract call failed gracefully for ${functionName}: ${error.message}`);
-                    this.logWarn('This is expected when contracts are not deployed on the current network');
+                    console.warn(`⚠️ Contract call failed gracefully for ${functionName}: ${error.message}`);
+                    console.warn('This is expected when contracts are not deployed on the current network');
                     return errorFallback;
                 }
 

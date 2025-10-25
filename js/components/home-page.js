@@ -1492,7 +1492,7 @@ class HomePage {
 
         // Initialize network selector with change handler
         window.networkSelector.init(async (networkKey, context) => {
-            console.log(`🌐 Network changed to ${networkKey} in ${context}`);
+            console.log(`🌐 Network changed to ${networkKey} in ${context} (home page callback)`);
             
             // Clear cache to ensure fresh data is fetched for new network
             this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
@@ -1587,9 +1587,11 @@ class HomePage {
             indicator.className = 'network-indicator-home no-wallet';
         }
 
-        // Add network selector after DOM update (only if not already present)
+        // Add network selector after DOM update
         setTimeout(() => {
-            if (window.networkSelector && !document.querySelector('#home-network-selector select')) {
+            const container = document.getElementById('home-network-selector');
+            if (container && window.networkSelector) {
+                container.innerHTML = '';
                 window.networkSelector.createSelector('home-network-selector', 'home');
             }
         }, 100);
@@ -1605,10 +1607,16 @@ class HomePage {
      */
     async checkAdminAccess() {
         const adminButton = document.getElementById('admin-panel-link');
-        if (!adminButton) return;
+        if (!adminButton) {
+            console.log('❌ Admin button not found in DOM');
+            return;
+        }
+
+        console.log('🔍 Checking admin access...');
 
         // Check if wallet is connected
         if (!this.isWalletConnected()) {
+            console.log('❌ Wallet not connected, hiding admin button');
             this.hideAdminButton();
             return;
         }
@@ -1623,9 +1631,12 @@ class HomePage {
             // Get the current user address (network-agnostic for permission checks)
             const userAddress = await window.contractManager?.getCurrentSignerForPermissions();
             if (!userAddress) {
+                console.log('❌ No user address available, hiding admin button');
                 this.hideAdminButton();
                 return;
             }
+
+            console.log('👤 Checking admin access for:', userAddress);
 
             // Development mode check
             if (window.DEV_CONFIG?.AUTHORIZED_ADMINS) {
@@ -1633,6 +1644,7 @@ class HomePage {
                     admin => admin.toLowerCase() === userAddress.toLowerCase()
                 );
                 if (isAuthorizedAdmin) {
+                    console.log('✅ User is authorized admin (dev config)');
                     this.showAdminButton();
                     return;
                 }
@@ -1641,6 +1653,7 @@ class HomePage {
             // Check if user has admin role from contract (with timeout and error handling)
             if (window.contractManager?.hasAdminRole) {
                 try {
+                    console.log('🔑 Checking admin role...');
                     // Add timeout to prevent hanging on network switching
                     const hasAdminRole = await Promise.race([
                         window.contractManager.hasAdminRole(userAddress),
@@ -1649,18 +1662,19 @@ class HomePage {
                         )
                     ]);
                     if (hasAdminRole) {
+                        console.log('✅ User has admin role');
                         this.showAdminButton();
                         return;
                     }
                 } catch (adminRoleError) {
-                    console.warn('Admin role check failed (expected during network switching):', adminRoleError.message);
-                    // Don't hide button on timeout/network errors - keep current state
+                    console.warn('⚠️ Admin role check failed:', adminRoleError.message);
                 }
             }
 
             // Check if user is the contract owner (with timeout and error handling)
             if (window.contractManager?.stakingContract?.owner) {
                 try {
+                    console.log('👑 Checking contract ownership...');
                     // Add timeout to prevent hanging on network switching
                     const owner = await Promise.race([
                         window.contractManager.stakingContract.owner(),
@@ -1669,38 +1683,22 @@ class HomePage {
                         )
                     ]);
                     if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                        console.log('✅ User is contract owner');
                         this.showAdminButton();
                         return;
                     }
                 } catch (ownerError) {
-                    console.warn('Owner check failed (expected during network switching):', ownerError.message);
-                    // Don't hide button on timeout/network errors - keep current state
+                    console.warn('⚠️ Owner check failed:', ownerError.message);
                 }
             }
 
-            // Only hide button if we're sure the user doesn't have admin access
-            // Don't hide on network switching errors
-            if (!this.isNetworkSwitching()) {
-                this.hideAdminButton();
-            } else {
-                // If we're network switching, retry the admin check after a delay
-                console.log('⏳ Network switching in progress, retrying admin check in 5 seconds...');
-                setTimeout(() => {
-                    this.checkAdminAccess();
-                }, 5000);
-            }
+            // If none of the checks passed, hide the button
+            console.log('❌ User does not have admin access - hiding button');
+            this.hideAdminButton();
         } catch (error) {
-            console.error('Error checking admin access:', error);
-            // Only hide button if it's not a network switching error
-            if (!this.isNetworkSwitching()) {
-                this.hideAdminButton();
-            } else {
-                // If we're network switching, retry the admin check after a delay
-                console.log('⏳ Network switching in progress, retrying admin check in 5 seconds...');
-                setTimeout(() => {
-                    this.checkAdminAccess();
-                }, 5000);
-            }
+            console.error('❌ Error checking admin access:', error);
+            console.log('❌ Error occurred - hiding admin button');
+            this.hideAdminButton();
         }
     }
 
@@ -1724,7 +1722,9 @@ class HomePage {
         const adminButton = document.getElementById('admin-panel-link');
         if (adminButton) {
             adminButton.style.display = 'flex';
+            adminButton.classList.remove('admin-checking');
             this.isAdmin = true;
+            console.log('✅ Admin button shown');
         }
     }
 
@@ -1735,7 +1735,23 @@ class HomePage {
         const adminButton = document.getElementById('admin-panel-link');
         if (adminButton) {
             adminButton.style.display = 'none';
+            adminButton.classList.remove('admin-checking');
             this.isAdmin = false;
+        }
+    }
+
+    /**
+     * Show admin button with checking indicator
+     */
+    showAdminButtonChecking() {
+        const adminButton = document.getElementById('admin-panel-link');
+        if (adminButton) {
+            adminButton.style.display = 'flex';
+            adminButton.classList.add('admin-checking');
+            this.isAdmin = false; // Not confirmed yet
+            console.log('⏳ Admin button shown with checking indicator');
+        } else {
+            console.log('⚠️ Admin button not found when trying to show checking indicator');
         }
     }
 }
