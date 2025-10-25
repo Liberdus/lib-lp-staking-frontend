@@ -905,6 +905,12 @@ class MasterInitializer {
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
+    // Prevent multiple initializations
+    if (window.masterInitializer && window.masterInitializer.isReady) {
+        console.log('⚠️ System already initialized, skipping...');
+        return;
+    }
+
     console.log('🚀 DOM loaded, starting system initialization...');
     window.masterInitializer = new MasterInitializer();
 

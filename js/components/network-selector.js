@@ -7,6 +7,7 @@ class NetworkSelector {
     constructor() {
         this.onNetworkChange = null;
         this.isInitialized = false;
+        this.eventListeners = new Map(); // Store event listeners for cleanup
     }
 
     /**
@@ -17,6 +18,11 @@ class NetworkSelector {
         this.onNetworkChange = onNetworkChange;
         this.isInitialized = true;
         console.log('🌐 Network selector initialized');
+        
+        // Attach event handlers to any existing network selectors
+        document.querySelectorAll('.network-selector').forEach(selector => {
+            this.attachEventHandlers(selector, selector.classList.contains('admin') ? 'admin' : 'home');
+        });
     }
 
     /**
@@ -34,13 +40,9 @@ class NetworkSelector {
         const selector = document.createElement('div');
         selector.className = `network-selector ${context}`;
         selector.innerHTML = this.getSelectorHTML();
-
-        // Add to container
         container.appendChild(selector);
-
-        // Wire up event handlers
+        
         this.attachEventHandlers(selector, context);
-
         console.log(`🌐 Network selector added to ${containerId}`);
     }
 
@@ -78,13 +80,20 @@ class NetworkSelector {
             return;
         }
 
-        console.log(`🔗 Attaching event listener to select element`);
-        select.addEventListener('change', (event) => {
-            const selectedNetwork = event.target.value;
-            console.log(`🔄 Network selector change event: ${selectedNetwork} in ${context}`);
-            this.handleNetworkChange(selectedNetwork, context);
-        });
-        console.log(`✅ Event listener attached successfully`);
+        // Remove any existing event listener
+        const selectId = select.id || 'network-select';
+        if (this.eventListeners.has(selectId)) {
+            select.removeEventListener('change', this.eventListeners.get(selectId));
+        }
+        
+        // Create and store new event listener
+        const listener = (event) => {
+            console.log(`🔄 Network selector change event: ${event.target.value} in ${context}`);
+            this.handleNetworkChange(event.target.value, context);
+        };
+        
+        this.eventListeners.set(selectId, listener);
+        select.addEventListener('change', listener);
     }
 
     /**
@@ -94,9 +103,13 @@ class NetworkSelector {
      */
     async handleNetworkChange(networkKey, context) {
         console.log(`🌐 Switching to ${networkKey} network...`);
-
-        // Set network switching flag to prevent admin button from being hidden during switching
+        
         window.CONFIG._networkSwitching = true;
+        
+        // Hide admin button immediately when switching networks
+        if (window.homePage?.hideAdminButton) {
+            window.homePage.hideAdminButton();
+        }
 
         try {
             // Switch network in config
@@ -109,24 +122,18 @@ class NetworkSelector {
             // Update the network name display immediately
             this.updateNetworkNameDisplay(networkKey, context);
 
-            // Switch contract manager to new network (regardless of wallet connection)
-            if (window.contractManager && window.contractManager.switchNetwork) {
+            // Switch contract manager to new network
+            if (window.contractManager?.switchNetwork) {
                 try {
-                    console.log(`🔄 Calling contractManager.switchNetwork(${networkKey})...`);
                     await window.contractManager.switchNetwork(networkKey);
                     console.log(`✅ Contract manager switched to ${networkKey}`);
                 } catch (error) {
                     console.error('❌ Error switching contract manager:', error);
                 }
-            } else {
-                console.warn('⚠️ Contract manager or switchNetwork method not available');
             }
         } finally {
-            // Clear network switching flag after a delay to allow contracts to initialize
-            setTimeout(() => {
-                window.CONFIG._networkSwitching = false;
-                console.log('✅ Network switching completed');
-            }, 3000); // 3 second delay to allow contract initialization
+            // Clear network switching flag after contract initialization
+            setTimeout(() => window.CONFIG._networkSwitching = false, 1000);
         }
 
         // If wallet is not connected, just update the UI
