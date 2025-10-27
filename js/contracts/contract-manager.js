@@ -30,12 +30,7 @@ class ContractManager {
         // Enhanced RPC Failover System
         this.currentRpcIndex = 0;
         // Initialize with current network's RPC URLs (will be updated by switchNetwork)
-        this.rpcUrls = window.CONFIG?.NETWORK?.RPC_URL ? [window.CONFIG.NETWORK.RPC_URL, ...(window.CONFIG.NETWORK.FALLBACK_RPCS || [])] : [
-            'https://rpc-amoy.polygon.technology',
-            'https://polygon-amoy-bor-rpc.publicnode.com',
-            'https://rpc.ankr.com/polygon_amoy',
-            'https://polygon-amoy.drpc.org'
-        ];
+        this.rpcUrls = [window.CONFIG?.NETWORK?.RPC_URL, ...(window.CONFIG?.NETWORK?.FALLBACK_RPCS || [])];
         this.rpcHealthStatus = new Map(); // Track RPC health
         this.lastRpcSwitch = 0; // Prevent rapid switching
 
@@ -70,14 +65,7 @@ class ContractManager {
             gasLimitMultiplier: 1.2,
             gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
             providerTimeout: 2000, // Reduced from 5000ms for faster failover
-            fallbackRPCs: window.CONFIG?.NETWORK?.FALLBACK_RPCS || [
-                // Optimized order: fastest and most reliable first
-                'https://rpc-amoy.polygon.technology',                    // ✅ Official & Fastest
-                'https://polygon-amoy-bor-rpc.publicnode.com',            // ✅ PublicNode - Very reliable
-                'https://rpc.ankr.com/polygon_amoy',                      // ✅ Ankr - Good performance
-                'https://polygon-amoy.drpc.org',                          // ✅ DRPC - Additional fallback
-                // Note: Removed rate-limited demo endpoints that cause CORS errors
-            ],
+            fallbackRPCs: window.CONFIG?.NETWORK?.FALLBACK_RPCS || [],
             networkConfig: {
                 chainId: window.CONFIG?.NETWORK?.CHAIN_ID || 80002, // Use centralized config
                 name: window.CONFIG?.NETWORK?.NAME || 'Polygon Amoy Testnet',
