@@ -1876,6 +1876,11 @@ class AdminPage {
         console.log('📋 Loading MultiSign Panel...');
         const panelDiv = document.getElementById('multisign-panel');
 
+        if (!panelDiv) {
+            console.warn('⚠️ Network status container not found');
+            return;
+        }
+
         try {
             // Show loading indicator
             panelDiv.innerHTML = `
@@ -2002,16 +2007,17 @@ class AdminPage {
                 `;
             }
 
-            panelDiv.innerHTML = `
-                <div class="error-panel">
-                    <h3>${errorTitle}</h3>
-                    <p class="error-message">${errorMessage}</p>
-                    ${suggestions}
-                    <div class="error-actions">
-                        <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
-                            🔄 Retry
-                        </button>
-                        <button class="btn btn-outline" onclick="adminPage.checkNetworkConnectivity().then(ok => console.log('Network check result:', ok))">
+            if (panelDiv) {
+                panelDiv.innerHTML = `
+                    <div class="error-panel">
+                        <h3>${errorTitle}</h3>
+                        <p class="error-message">${errorMessage}</p>
+                        ${suggestions}
+                        <div class="error-actions">
+                            <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
+                                🔄 Retry
+                            </button>
+                            <button class="btn btn-outline" onclick="adminPage.checkNetworkConnectivity().then(ok => console.log('Network check result:', ok))">
                             🌐 Check Network
                         </button>
                         <button class="btn btn-outline" onclick="adminPage.forceLoadRealProposals()">
@@ -2023,6 +2029,7 @@ class AdminPage {
                     </div>
                 </div>
             `;
+            }
         }
     }
 

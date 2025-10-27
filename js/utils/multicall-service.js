@@ -167,7 +167,18 @@
 
             } catch (error) {
                 this.stats.failedCalls++;
-                console.warn('⚠️ Multicall failed, returning null for fallback:', error.message);
+                
+                // Handle specific error types more gracefully
+                if (error.message.includes('CORS') || error.message.includes('network')) {
+                    console.warn('⚠️ Network error in multicall, returning null for fallback');
+                } else if (error.message.includes('timeout')) {
+                    console.warn('⚠️ Multicall timeout, returning null for fallback');
+                } else if (error.message.includes('rate limit') || error.message.includes('429')) {
+                    console.warn('⚠️ Rate limited in multicall, returning null for fallback');
+                } else {
+                    console.warn('⚠️ Multicall failed, returning null for fallback:', error.message);
+                }
+                
                 return null;
             }
         }

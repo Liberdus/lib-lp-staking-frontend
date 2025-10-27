@@ -11,11 +11,11 @@ window.CONFIG = {
         AMOY: {
             CHAIN_ID: 80002,
             NAME: 'Amoy',
-            RPC_URL: 'https://rpc-amoy.polygon.technology',
+            RPC_URL: 'https://polygon-amoy.drpc.org',
             FALLBACK_RPCS: [
-                'https://polygon-amoy-bor-rpc.publicnode.com',
                 'https://rpc.ankr.com/polygon_amoy',
-                'https://polygon-amoy.drpc.org',
+                'https://polygon-amoy-bor-rpc.publicnode.com',
+                'https://rpc-amoy.polygon.technology',
                 'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
                 'https://polygon-amoy.g.alchemy.com/v2/0abef17687cb430ca83c21ccc5bcbdd2'
             ],
@@ -38,11 +38,11 @@ window.CONFIG = {
         POLYGON_MAINNET: {
             CHAIN_ID: 137,
             NAME: 'Polygon Mainnet',
-            RPC_URL: 'https://polygon-rpc.com', // Public RPC endpoint
+            RPC_URL: 'https://rpc.ankr.com/polygon', // CORS-enabled RPC endpoint
             FALLBACK_RPCS: [
-                'https://polygon-mainnet.chainstacklabs.com',
                 'https://polygon-mainnet.public.blastapi.io', // BlastAPI fallback
-                'https://rpc.ankr.com/polygon',
+                'https://polygon-rpc.com', // Public RPC endpoint
+                'https://polygon-mainnet.chainstacklabs.com',
                 'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC', // Alchemy fallback
                 'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161' // Infura fallback
             ],
