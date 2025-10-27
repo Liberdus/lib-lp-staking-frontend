@@ -448,6 +448,29 @@
 .space-x-6 > * + * { margin-left: 1.5rem; }
 .space-x-8 > * + * { margin-left: 2rem; }
 
+/* Button Styling - Centralized */
+.btn-grant-permission {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    background: var(--warning-main);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.btn-grant-permission:hover {
+    background: var(--secondary-hover);
+    opacity: 0.9;
+}
+
 /* Network Selector Styles */
 .network-selector {
     display: flex;
@@ -580,9 +603,9 @@ html[data-theme="light"] .network-select:hover {
     min-width: 0;
 }
 
-/* Admin page network selector styling */
+/* Admin page network selector styling - match homepage exactly */
 .network-indicator .network-selector {
-    margin-left: 8px;
+    margin-left: 0;
     flex: 1;
     min-width: 0;
 }
@@ -593,9 +616,30 @@ html[data-theme="light"] .network-select:hover {
 }
 
 .network-indicator .network-select {
-    min-width: 120px;
-    font-size: 13px;
+    min-width: 0;
+    font-size: 15px;
     padding: 6px 24px 6px 8px;
+    width: 100%;
+    max-width: 146px;
+    height: 30px !important;
+    line-height: 18px;
+    box-sizing: border-box;
+}
+
+/* More specific rule for admin page network selector */
+#network-indicator .network-select {
+    height: 30px !important;
+    max-height: 30px !important;
+    line-height: normal !important;
+    font-size: 14px !important;
+    padding: 6px 24px 6px 8px !important;
+    vertical-align: middle !important;
+    background: rgba(0, 0, 0, 0.05) !important; /* Override admin CSS */
+}
+
+/* Ensure consistent background for both pages */
+#network-indicator-home .network-select {
+    background: rgba(0, 0, 0, 0.05) !important; /* Ensure consistency */
 }
 
 /* Status indicators */
@@ -637,6 +681,7 @@ html[data-theme="light"] .network-select:hover {
     cursor: default;
     box-sizing: border-box;
     position: relative;
+    max-width: 300px;
 }
 
 html[data-theme="dark"] .network-indicator-home {
@@ -663,9 +708,6 @@ html[data-theme="light"] .network-indicator-home {
     background: #888;
 }
 
-.network-indicator-home.loading .network-name {
-    color: #888;
-}
 
 /* Mobile responsive */
 @media (max-width: 768px) {

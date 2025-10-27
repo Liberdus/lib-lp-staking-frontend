@@ -1598,7 +1598,6 @@ class AdminPage {
     createNetworkIndicator() {
         const chainId = window.walletManager?.getChainId();
         const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-        const networkName = window.networkManager?.getNetworkName(chainId) || 'Unknown';
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // We'll check permission asynchronously and update the indicator
@@ -1615,15 +1614,11 @@ class AdminPage {
         }
 
         return `
-            <div class="network-indicator ${onExpectedNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
-                <span class="network-icon">${onExpectedNetwork ? '🟢' : '⚠️'}</span>
-                <div class="network-info">
-                    <span class="network-name">${onExpectedNetwork ? networkName : ''}</span>
-                    <span class="network-id">${onExpectedNetwork ? `Chain ID: ${chainId}` : ''}</span>
-                </div>
+            <div class="network-indicator-home ${onExpectedNetwork ? 'has-permission' : 'missing-permission'}" id="network-indicator">
+                <span class="network-status-dot ${onExpectedNetwork ? 'green' : 'red'}"></span>
                 <div id="admin-network-selector"></div>
                 ${!onExpectedNetwork ? `
-                    <button class="btn btn-sm btn-warning" onclick="${this.getAdminPermissionButtonAction(expectedNetworkName)}" title="${this.getAdminPermissionButtonTitle(expectedNetworkName)}">
+                    <button class="btn-grant-permission" onclick="${this.getAdminPermissionButtonAction(expectedNetworkName)}" title="${this.getAdminPermissionButtonTitle(expectedNetworkName)}">
                         ${this.getAdminPermissionButtonText(expectedNetworkName)}
                     </button>
                 ` : ''}
@@ -1679,21 +1674,15 @@ class AdminPage {
     updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal) {
         const indicator = document.getElementById('network-indicator');
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
-        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
 
         if (indicator) {
-            const networkIcon = indicator.querySelector('.network-icon');
-            const networkNameEl = indicator.querySelector('.network-name');
-            const networkIdEl = indicator.querySelector('.network-id');
+            const statusDot = indicator.querySelector('.network-status-dot');
 
             if (hasPermission) {
-                indicator.className = 'network-indicator network-correct';
-                if (networkIcon) networkIcon.textContent = '🟢';
-                
-                // Show correct network name and chain ID
-                const networkName = window.networkManager?.getNetworkName(chainIdDecimal) || expectedNetworkName;
-                if (networkNameEl) networkNameEl.textContent = networkName;
-                if (networkIdEl) networkIdEl.textContent = `Chain ID: ${chainIdDecimal}`;
+                indicator.className = 'network-indicator-home has-permission';
+                if (statusDot) {
+                    statusDot.className = 'network-status-dot green';
+                }
                 
                 // Remove any existing permission button
                 const existingButton = indicator.querySelector('button');
@@ -1713,15 +1702,13 @@ class AdminPage {
                 const existingSelector = indicator.querySelector('#admin-network-selector select');
                 if (!existingSelector && window.networkSelector) {
                     console.log('🌐 Creating admin network selector...');
-                    window.networkSelector.createSelector('admin-network-selector', 'admin');
+                    window.networkSelector.createSelector('admin-network-selector', 'home');
                 }
             } else {
-                indicator.className = 'network-indicator network-wrong';
-                if (networkIcon) networkIcon.textContent = '⚠️';
-                
-                // Clear network name when no permission
-                if (networkNameEl) networkNameEl.textContent = '';
-                if (networkIdEl) networkIdEl.textContent = '';
+                indicator.className = 'network-indicator-home missing-permission';
+                if (statusDot) {
+                    statusDot.className = 'network-status-dot red';
+                }
                 
                 // Add network selector if not present
                 const adminSelector = indicator.querySelector('#admin-network-selector');
@@ -1735,17 +1722,17 @@ class AdminPage {
                 const existingSelector = indicator.querySelector('#admin-network-selector select');
                 if (!existingSelector && window.networkSelector) {
                     console.log('🌐 Creating admin network selector...');
-                    window.networkSelector.createSelector('admin-network-selector', 'admin');
+                    window.networkSelector.createSelector('admin-network-selector', 'home');
                 }
 
                 // Add permission button if not present
                 const existingButton = indicator.querySelector('button');
                 if (!existingButton) {
                     const button = document.createElement('button');
-                    button.className = 'btn btn-sm btn-warning';
-                    button.textContent = `Grant ${expectedNetworkName} Permission`;
+                    button.className = 'btn-grant-permission';
+                    button.textContent = this.getAdminPermissionButtonText(expectedNetworkName);
                     button.onclick = () => window.networkManager.requestPermissionWithUIUpdate('admin');
-                    button.title = `Grant permission for ${expectedNetworkName}`;
+                    button.title = this.getAdminPermissionButtonTitle(expectedNetworkName);
                     indicator.appendChild(button);
                 }
             }

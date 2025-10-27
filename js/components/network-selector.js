@@ -169,12 +169,6 @@ class NetworkSelector {
      * Update network display elements
      */
     updateNetworkDisplay() {
-        // Update any elements that show the current network name
-        const networkNameElements = document.querySelectorAll('.network-name');
-        networkNameElements.forEach(element => {
-            element.textContent = window.CONFIG.NETWORK.NAME;
-        });
-
         // Update the selector value if it exists
         const selector = document.getElementById('network-select');
         if (selector) {
@@ -188,14 +182,7 @@ class NetworkSelector {
      * @param {string} context - Context ('home' or 'admin')
      */
     updateNetworkNameDisplay(networkKey, context) {
-        const networkName = window.CONFIG.NETWORKS[networkKey]?.NAME || networkKey;
-        
-        // Update network name in the indicator
-        const networkNameElements = document.querySelectorAll('.network-name');
-        networkNameElements.forEach(element => {
-            element.textContent = networkName;
-        });
-
+        const networkName = window.CONFIG.NETWORKS[networkKey]?.NAME || networkKey;        
         console.log(`📝 Updated network name display to: ${networkName}`);
     }
 
