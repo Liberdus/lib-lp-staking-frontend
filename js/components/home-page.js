@@ -1492,7 +1492,7 @@ class HomePage {
 
         // Initialize network selector with change handler
         window.networkSelector.init(async (networkKey, context) => {
-            console.log(`🌐 Network changed to ${networkKey} in ${context} (home page callback)`);
+            console.log(`🌐 Network changed to ${networkKey} in ${context}`);
             
             // Clear cache to ensure fresh data is fetched for new network
             this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
@@ -1607,16 +1607,12 @@ class HomePage {
      */
     async checkAdminAccess() {
         const adminButton = document.getElementById('admin-panel-link');
-        if (!adminButton) {
-            console.log('❌ Admin button not found in DOM');
-            return;
-        }
+        if (!adminButton) return;
 
         console.log('🔍 Checking admin access...');
 
         // Check if wallet is connected
         if (!this.isWalletConnected()) {
-            console.log('❌ Wallet not connected, hiding admin button');
             this.hideAdminButton();
             return;
         }
@@ -1624,14 +1620,12 @@ class HomePage {
         try {
             // Wait for contract manager to be ready before making contract calls
             if (window.contractManager && !window.contractManager.isReady()) {
-                console.log('⏳ Contract manager not ready, waiting...');
                 await window.contractManager.waitForReady(10000); // Wait up to 10 seconds
             }
 
             // Get the current user address (network-agnostic for permission checks)
             const userAddress = await window.contractManager?.getCurrentSignerForPermissions();
             if (!userAddress) {
-                console.log('❌ No user address available, hiding admin button');
                 this.hideAdminButton();
                 return;
             }
@@ -1644,7 +1638,6 @@ class HomePage {
                     admin => admin.toLowerCase() === userAddress.toLowerCase()
                 );
                 if (isAuthorizedAdmin) {
-                    console.log('✅ User is authorized admin (dev config)');
                     this.showAdminButton();
                     return;
                 }
@@ -1653,8 +1646,6 @@ class HomePage {
             // Check if user has admin role from contract (with timeout and error handling)
             if (window.contractManager?.hasAdminRole) {
                 try {
-                    console.log('🔑 Checking admin role...');
-                    // Add timeout to prevent hanging on network switching
                     const hasAdminRole = await Promise.race([
                         window.contractManager.hasAdminRole(userAddress),
                         new Promise((_, reject) => 
@@ -1662,7 +1653,6 @@ class HomePage {
                         )
                     ]);
                     if (hasAdminRole) {
-                        console.log('✅ User has admin role');
                         this.showAdminButton();
                         return;
                     }
@@ -1674,8 +1664,6 @@ class HomePage {
             // Check if user is the contract owner (with timeout and error handling)
             if (window.contractManager?.stakingContract?.owner) {
                 try {
-                    console.log('👑 Checking contract ownership...');
-                    // Add timeout to prevent hanging on network switching
                     const owner = await Promise.race([
                         window.contractManager.stakingContract.owner(),
                         new Promise((_, reject) => 
@@ -1683,7 +1671,6 @@ class HomePage {
                         )
                     ]);
                     if (owner.toLowerCase() === userAddress.toLowerCase()) {
-                        console.log('✅ User is contract owner');
                         this.showAdminButton();
                         return;
                     }
@@ -1693,11 +1680,9 @@ class HomePage {
             }
 
             // If none of the checks passed, hide the button
-            console.log('❌ User does not have admin access - hiding button');
             this.hideAdminButton();
         } catch (error) {
             console.error('❌ Error checking admin access:', error);
-            console.log('❌ Error occurred - hiding admin button');
             this.hideAdminButton();
         }
     }
@@ -1724,7 +1709,6 @@ class HomePage {
             adminButton.style.display = 'flex';
             adminButton.classList.remove('admin-checking');
             this.isAdmin = true;
-            console.log('✅ Admin button shown');
         }
     }
 
@@ -1749,9 +1733,6 @@ class HomePage {
             adminButton.style.display = 'flex';
             adminButton.classList.add('admin-checking');
             this.isAdmin = false; // Not confirmed yet
-            console.log('⏳ Admin button shown with checking indicator');
-        } else {
-            console.log('⚠️ Admin button not found when trying to show checking indicator');
         }
     }
 }

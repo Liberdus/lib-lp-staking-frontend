@@ -73,8 +73,6 @@ class NetworkSelector {
      */
     attachEventHandlers(selector, context) {
         const select = selector.querySelector('#network-select');
-        console.log(`🔍 Looking for #network-select in selector:`, selector);
-        console.log(`🔍 Found select element:`, select);
         if (!select) {
             console.error('❌ Network select element not found in selector');
             return;
@@ -88,7 +86,6 @@ class NetworkSelector {
         
         // Create and store new event listener
         const listener = (event) => {
-            console.log(`🔄 Network selector change event: ${event.target.value} in ${context}`);
             this.handleNetworkChange(event.target.value, context);
         };
         
@@ -126,7 +123,6 @@ class NetworkSelector {
             if (window.contractManager?.switchNetwork) {
                 try {
                     await window.contractManager.switchNetwork(networkKey);
-                    console.log(`✅ Contract manager switched to ${networkKey}`);
                 } catch (error) {
                     console.error('❌ Error switching contract manager:', error);
                 }
@@ -139,7 +135,6 @@ class NetworkSelector {
         // If wallet is not connected, just update the UI
         const isWalletConnected = window.walletManager && window.walletManager.isConnected();
         if (!isWalletConnected) {
-            console.log(`🔗 No wallet connected, will connect to ${window.CONFIG.NETWORK.NAME} when user connects`);
             // Update UI to show the selected network
             this.updateNetworkDisplay();
             
@@ -168,8 +163,6 @@ class NetworkSelector {
 
         // Update UI elements that show network info
         this.updateNetworkDisplay();
-        
-        console.log(`✅ Switched to ${window.CONFIG.NETWORK.NAME} network`);
     }
 
     /**
