@@ -213,16 +213,6 @@ class WalletManager {
                 walletType: this.walletType
             });
 
-            // Auto-switch to selected network if wallet is on different network
-            if (window.CONFIG && window.CONFIG.NETWORK) {
-                const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-                if (this.chainId !== expectedChainId) {
-                    console.log(`🔄 Wallet connected to chain ${this.chainId}, but app expects ${expectedChainId}`);
-                    console.log(`💡 User can switch networks using the dropdown or we can prompt to switch`);
-                    
-                }
-            }
-
             // Show success notification if NotificationManager is available
             if (window.notificationManager && typeof window.notificationManager.success === 'function') {
                 window.notificationManager.success(

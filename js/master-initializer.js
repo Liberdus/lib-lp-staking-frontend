@@ -281,9 +281,9 @@ class MasterInitializer {
             this.components.set('contractManager', window.contractManager);
             console.log('✅ Contract Manager created');
 
-            // Set up permission change listener
-            if (window.contractManager && typeof window.contractManager.setupPermissionChangeListener === 'function') {
-                window.contractManager.setupPermissionChangeListener();
+            // Set up permission change listener (now handled by network manager)
+            if (window.networkManager && typeof window.networkManager.setupPermissionChangeListener === 'function') {
+                window.networkManager.setupPermissionChangeListener();
             }
 
             // Initialize with read-only provider for data fetching

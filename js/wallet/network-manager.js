@@ -558,6 +558,231 @@ class NetworkManager {
     }
 
     /**
+     * Set up permission change listener to automatically update UI when permissions change
+     * Centralized UI state management for network and permission changes
+     */
+    setupPermissionChangeListener() {
+        if (!window.ethereum) return;
+        
+        console.log('🔍 Setting up permission change listener...');
+        
+        // Listen for account changes (permission removal)
+        window.ethereum.on('accountsChanged', async (accounts) => {
+            console.log('🔐 Account change detected:', accounts);
+            
+            if (!accounts || accounts.length === 0) {
+                console.log('📊 Permission removed - switching to read-only mode');
+                this.handlePermissionRemoved();
+            } else {
+                // Account reconnected, check permissions and update UI
+                console.log('🔐 Account reconnected, checking permissions...');
+                await this.checkAndUpdatePermissionState();
+            }
+        });
+        
+        // Listen for network changes
+        window.ethereum.on('chainChanged', async (chainId) => {
+            console.log('🌐 Network changed to:', chainId);
+            await this.checkAndUpdatePermissionState();
+        });
+        
+        // Listen for permission changes
+        window.ethereum.on('disconnect', () => {
+            console.log('🔌 Wallet disconnected - switching to read-only mode');
+            this.handleWalletDisconnected();
+        });
+        
+        console.log('✅ Permission change listener set up');
+    }
+
+    /**
+     * Handle permission removal
+     */
+    handlePermissionRemoved() {
+        // Notify contract manager to switch to read-only mode
+        if (window.contractManager) {
+            window.contractManager.signer = null;
+            window.contractManager.transactionProvider = null;
+        }
+        
+        // Update button states immediately
+        this.updateButtonStates();
+        
+        // Update UI state
+        this.updateUIState();
+        
+        // Show notification
+        if (window.notificationManager) {
+            window.notificationManager.show(
+                'Permission Removed',
+                'Wallet permission was removed. Application is now in read-only mode.',
+                'info',
+                { duration: 5000 }
+            );
+        }
+    }
+
+    /**
+     * Handle wallet disconnection
+     */
+    handleWalletDisconnected() {
+        // Notify contract manager to switch to read-only mode
+        if (window.contractManager) {
+            window.contractManager.signer = null;
+            window.contractManager.transactionProvider = null;
+        }
+        
+        // Update button states immediately
+        this.updateButtonStates();
+        
+        // Update UI state
+        this.updateUIState();
+    }
+
+    /**
+     * Check permission state and update UI accordingly
+     * Centralized permission checking with UI updates
+     */
+    async checkAndUpdatePermissionState() {
+        try {
+            console.log('🔍 Checking permission state...');
+            
+            // Check if we have permission for the selected network
+            const hasPermission = await this.hasRequiredNetworkPermission();
+            const currentChainId = window.ethereum ? parseInt(await window.ethereum.request({ method: 'eth_chainId' }), 16) : null;
+            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            
+            console.log('Permission state:', { hasPermission, currentChainId, expectedChainId });
+            
+            if (hasPermission && currentChainId === expectedChainId) {
+                // We have permission and are on the correct network
+                console.log('✅ Permission confirmed, upgrading to transaction mode...');
+                
+                // Notify contract manager to ensure signer
+                if (window.contractManager && typeof window.contractManager.ensureSigner === 'function') {
+                    await window.contractManager.ensureSigner();
+                }
+                
+                this.updateUIState();
+                
+                if (window.notificationManager) {
+                    const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+                    window.notificationManager.show(
+                        'Permission Granted',
+                        `${networkName} permission confirmed. You can now make transactions.`,
+                        'success',
+                        { duration: 5000 }
+                    );
+                }
+            } else {
+                // No permission or wrong network
+                console.log('❌ No permission or wrong network, switching to read-only mode...');
+                
+                // Notify contract manager to switch to read-only mode
+                if (window.contractManager) {
+                    window.contractManager.signer = null;
+                    window.contractManager.transactionProvider = null;
+                }
+                
+                // Update button states immediately
+                this.updateButtonStates();
+                
+                this.updateUIState();
+            }
+        } catch (error) {
+            console.error('Error checking permission state:', error);
+            
+            // Notify contract manager to switch to read-only mode on error
+            if (window.contractManager) {
+                window.contractManager.signer = null;
+                window.contractManager.transactionProvider = null;
+            }
+            
+            // Update button states immediately
+            this.updateButtonStates();
+            
+            this.updateUIState();
+        }
+    }
+
+    /**
+     * Update UI state based on current permission and network state
+     * Centralized UI state management
+     */
+    updateUIState() {
+        console.log('🔄 Updating UI state...');
+        
+        // ========================================
+        // HOME-PAGE SPECIFIC UI UPDATES
+        // ========================================
+        
+        // Update home-page network indicator
+        if (window.homePage && typeof window.homePage.updateNetworkIndicator === 'function') {
+            window.homePage.updateNetworkIndicator();
+        }
+        
+        // Trigger home-page data refresh
+        if (window.homePage && typeof window.homePage.loadStakingData === 'function') {
+            window.homePage.loadStakingData();
+        }
+        
+        // ========================================
+        // ADMIN-PAGE SPECIFIC UI UPDATES
+        // ========================================
+        
+        // Update admin network indicator
+        if (window.adminPage && typeof window.adminPage.updateNetworkIndicatorWithPermission === 'function') {
+            const chainId = window.walletManager?.getChainId();
+            this.hasRequiredNetworkPermission().then(hasPermission => {
+                window.adminPage.updateNetworkIndicatorWithPermission(hasPermission, chainId);
+            }).catch(error => {
+                console.error('Error checking network permission for admin:', error);
+            });
+        }
+        
+        // ========================================
+        // CONTRACT-SPECIFIC UI UPDATES
+        // ========================================
+        
+        // Update button states based on permission state
+        this.updateButtonStates();
+    }
+
+    /**
+     * Update button states based on current permission state
+     * Centralized button state management for staking actions
+     */
+    updateButtonStates() {
+        const hasSigner = !!window.contractManager?.signer;
+        const isReadOnly = !hasSigner;
+        
+        console.log('🔘 Updating button states:', { hasSigner, isReadOnly });
+        
+        // Find all action buttons
+        const actionButtons = document.querySelectorAll('button[data-pair-id], button[class*="btn-"]');
+        
+        actionButtons.forEach(button => {
+            const buttonText = button.textContent.trim();
+            
+            // Check if this is a staking action button
+            if (buttonText.includes('Stake') || buttonText.includes('Unstake') || 
+                buttonText.includes('Claim') || buttonText.includes('redeem') || 
+                buttonText.includes('share')) {
+                
+                if (isReadOnly) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('disabled');
+                }
+            }
+        });
+        
+        console.log(`✅ Button states updated: ${isReadOnly ? 'disabled' : 'enabled'}`);
+    }
+
+    /**
      * Error logging utility
      */
     logError(...args) {
