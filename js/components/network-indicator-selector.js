@@ -63,6 +63,7 @@ class NetworkSelector {
         this.onNetworkChange = null;
         this.isInitialized = false;
         this.eventListeners = new Map(); // Store event listeners for cleanup
+        this._networkSwitching = false; // Track network switching state
     }
 
     /**
@@ -156,7 +157,7 @@ class NetworkSelector {
     async handleNetworkChange(networkKey, context) {
         console.log(`🌐 Switching to ${networkKey} network...`);
         
-        window.CONFIG._networkSwitching = true;
+        this._networkSwitching = true;
         
         // Hide admin button immediately when switching networks
         if (window.homePage?.hideAdminButton) {
@@ -184,7 +185,7 @@ class NetworkSelector {
             }
         } finally {
             // Clear network switching flag immediately after contract operations complete
-            window.CONFIG._networkSwitching = false;
+            this._networkSwitching = false;
         }
 
         // If wallet is not connected, just update the UI
@@ -269,6 +270,14 @@ class NetworkSelector {
             name: window.CONFIG.NETWORK.NAME,
             chainId: window.CONFIG.NETWORK.CHAIN_ID
         };
+    }
+
+    /**
+     * Check if network is currently switching
+     * @returns {boolean} True if network is switching
+     */
+    isNetworkSwitching() {
+        return this._networkSwitching;
     }
 
     /**

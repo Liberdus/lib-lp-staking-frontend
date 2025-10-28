@@ -1581,7 +1581,7 @@ class HomePage {
         }
         
         // Check if we're in the middle of a network switch
-        return window.CONFIG && window.CONFIG._networkSwitching === true;
+        return window.networkSelector && window.networkSelector.isNetworkSwitching();
     }
 
     /**
