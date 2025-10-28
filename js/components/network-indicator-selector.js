@@ -1,9 +1,63 @@
 /**
+ * Network Indicator Selector Component
+ * Consolidated component for network status, permissions, and network switching
+ * Combines functionality from network-indicator.js, network-selector.js, and permission-utils.js
+ */
+
+/**
+ * Permission Utilities
+ * Shared functions for permission button text and actions
+ */
+class PermissionUtils {
+    /**
+     * Get the appropriate button text for permission buttons
+     * @param {string} networkName - The network name
+     * @returns {string} - The button text
+     */
+    static getPermissionButtonText(networkName) {
+        // For Polygon Mainnet, show "Add Polygon Mainnet" since it's likely not in MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'Add Polygon';
+        }
+        // For other networks, show "Grant [Network] Permission"
+        return `Grant ${networkName} Permission`;
+    }
+
+    /**
+     * Get the appropriate button action for permission buttons
+     * @param {string} networkName - The network name
+     * @param {string} context - Context ('home' or 'admin')
+     * @returns {string} - The button action
+     */
+    static getPermissionButtonAction(networkName, context = 'home') {
+        // For Polygon Mainnet, add network to MetaMask
+        if (networkName === 'Polygon Mainnet') {
+            return 'window.networkIndicatorSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
+        }
+        // For other networks, use the standard permission request
+        return `window.networkManager.requestPermissionWithUIUpdate('${context}')`;
+    }
+
+    /**
+     * Get the appropriate button title for permission buttons
+     * @param {string} networkName - The network name
+     * @returns {string} - The button title
+     */
+    static getPermissionButtonTitle(networkName) {
+        // For Polygon Mainnet, show "Add Polygon Mainnet to MetaMask"
+        if (networkName === 'Polygon Mainnet') {
+            return 'Add Polygon to MetaMask';
+        }
+        // For other networks, show "Grant permission for [Network]"
+        return `Grant permission for ${networkName}`;
+    }
+}
+
+/**
  * Network Selector Component
  * Provides a dropdown to switch between different networks
  * Delegates network switching to NetworkManager to avoid duplication
  */
-
 class NetworkSelector {
     constructor() {
         this.onNetworkChange = null;
@@ -187,7 +241,6 @@ class NetworkSelector {
         console.log(`📝 Updated network name display to: ${networkName}`);
     }
 
-
     /**
      * Get available networks for display
      */
@@ -312,10 +365,102 @@ class NetworkSelector {
     }
 }
 
-// Create global instance
+/**
+ * Network Indicator Component
+ * Shared component for displaying network status and permissions
+ * Used by both home page and admin page to reduce duplication
+ */
+class NetworkIndicator {
+    /**
+     * Update network indicator for a given context
+     * @param {string} indicatorId - ID of the indicator element
+     * @param {string} selectorId - ID of the network selector container
+     * @param {string} context - 'home' or 'admin'
+     */
+    static async update(indicatorId, selectorId, context = 'home') {
+        const indicator = document.getElementById(indicatorId);
+        if (!indicator) return;
+
+        // Always show the network indicator
+        indicator.style.display = 'flex';
+
+        // Show loading state initially
+        indicator.innerHTML = `
+            <span class="network-status-dot gray"></span>
+            <div id="${selectorId}"></div>
+        `;
+        indicator.className = `network-indicator-home loading`;
+
+        const isWalletConnected = window.walletManager && window.walletManager.isConnected();
+        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
+
+        // Check permission asynchronously if wallet is connected
+        if (isWalletConnected && window.networkManager) {
+            try {
+                const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
+
+                if (hasPermission) {
+                    // Green indicator - has permission
+                    indicator.innerHTML = `
+                        <span class="network-status-dot green"></span>
+                        <div id="${selectorId}"></div>
+                    `;
+                    indicator.className = `network-indicator-home has-permission`;
+                } else {
+                    // Red indicator - missing permission
+                    const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
+                    const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, context) || `window.networkManager.requestPermissionWithUIUpdate('${context}')`;
+                    
+                    indicator.innerHTML = `
+                        <span class="network-status-dot red"></span>
+                        <div id="${selectorId}"></div>
+                        <button class="btn-grant-permission" onclick="${buttonAction}">
+                            ${buttonText}
+                        </button>
+                    `;
+                    indicator.className = `network-indicator-home missing-permission`;
+                }
+            } catch (error) {
+                console.error('Error checking network permission:', error);
+                // Fallback to no permission state
+                const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
+                const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, context) || `window.networkManager.requestPermissionWithUIUpdate('${context}')`;
+                
+                indicator.innerHTML = `
+                    <span class="network-status-dot red"></span>
+                    <div id="${selectorId}"></div>
+                    <button class="btn-grant-permission" onclick="${buttonAction}">
+                        ${buttonText}
+                    </button>
+                `;
+                indicator.className = `network-indicator-home missing-permission`;
+            }
+        } else {
+            // No wallet connected - show network selector only
+            indicator.innerHTML = `
+                <span class="network-status-dot gray"></span>
+                <div id="${selectorId}"></div>
+            `;
+            indicator.className = `network-indicator-home no-wallet`;
+        }
+
+        // Add network selector after DOM update
+        setTimeout(() => {
+            const container = document.getElementById(selectorId);
+            if (container && window.networkSelector) {
+                container.innerHTML = '';
+                window.networkSelector.createSelector(selectorId, context);
+            }
+        }, 100);
+    }
+}
+
+// Create global instances
+window.PermissionUtils = PermissionUtils;
 window.networkSelector = new NetworkSelector();
+window.NetworkIndicator = NetworkIndicator;
 
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = NetworkSelector;
+    module.exports = { PermissionUtils, NetworkSelector, NetworkIndicator };
 }
