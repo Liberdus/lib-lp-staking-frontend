@@ -674,7 +674,20 @@ class StakingModalNew {
             // Show error notification
             if (window.notificationManager) {
                 const errorMsg = error.message || 'Failed to approve tokens';
-                window.notificationManager.show('error', `Approval failed: ${errorMsg}`);
+                let userFriendlyMessage = 'Failed to approve tokens';
+                
+                // Extract user-friendly message from error
+                if (errorMsg.includes('user rejected') || errorMsg.includes('user denied')) {
+                    userFriendlyMessage = 'Transaction cancelled by user';
+                } else if (errorMsg.includes('insufficient funds')) {
+                    userFriendlyMessage = 'Insufficient funds for transaction';
+                } else if (errorMsg.includes('network')) {
+                    userFriendlyMessage = 'Network connection issue';
+                } else if (errorMsg.includes('gas')) {
+                    userFriendlyMessage = 'Gas estimation failed';
+                }
+                
+                window.notificationManager.show('error', `Approval failed: ${userFriendlyMessage}`);
             }
 
             return false;
