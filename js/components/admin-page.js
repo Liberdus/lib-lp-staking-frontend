@@ -537,12 +537,6 @@ class AdminPage {
                     <div class="network-switcher">
                         <h3>🌐 Alternative: Switch Network</h3>
                         <p>Or try switching to a network where you have admin permissions:</p>
-                        <div class="network-status-container">
-                            <!-- Network status will be populated by JavaScript -->
-                        </div>
-                        <button id="connect-to-network-btn" class="connect-network-btn">
-                            🔗 Connect to Network
-                        </button>
                         <div class="network-selector-container">
                             <select id="unauthorized-network-select" class="network-select">
                                 <option value="AMOY" ${window.CONFIG?.SELECTED_NETWORK === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
@@ -590,162 +584,9 @@ class AdminPage {
             }
         });
 
-        // Set up network detection and connection functionality
-        this.setupNetworkDetectionAndConnection();
-
         console.log('✅ Unauthorized network selector set up');
     }
 
-    /**
-     * Set up network detection and connection functionality for unauthorized access
-     */
-    async setupNetworkDetectionAndConnection() {
-        // Check current network status
-        await this.checkAndDisplayNetworkStatus();
-        
-        // Set up connect to network button
-        this.setupConnectToNetworkButton();
-        
-        // Set up network status monitoring
-        this.setupNetworkStatusMonitoring();
-    }
-
-    /**
-     * Check and display current network status
-     */
-    async checkAndDisplayNetworkStatus() {
-        const networkStatusContainer = document.querySelector('.network-status-container');
-        if (!networkStatusContainer) {
-            console.warn('⚠️ Network status container not found');
-            return;
-        }
-
-        try {
-            const isWalletConnected = window.walletManager && window.walletManager.isConnected();
-            const currentChainId = isWalletConnected ? window.walletManager.getChainId() : null;
-            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
-            const expectedNetworkName = window.CONFIG?.NETWORK?.NAME;
-
-            let statusHTML = '';
-            
-            if (!isWalletConnected) {
-                statusHTML = `
-                    <div class="network-status-item">
-                        <span class="status-icon">🔌</span>
-                        <span class="status-text">Wallet not connected</span>
-                    </div>
-                `;
-            } else if (currentChainId === expectedChainId) {
-                statusHTML = `
-                    <div class="network-status-item correct">
-                        <span class="status-icon">✅</span>
-                        <span class="status-text">Connected to ${expectedNetworkName}</span>
-                    </div>
-                `;
-            } else {
-                const currentNetworkName = window.networkManager?.getNetworkName(currentChainId) || 'Unknown Network';
-                statusHTML = `
-                    <div class="network-status-item incorrect">
-                        <span class="status-icon">⚠️</span>
-                        <span class="status-text">Connected to ${currentNetworkName} (Chain ID: ${currentChainId})</span>
-                        <span class="status-subtext">Need: ${expectedNetworkName} (Chain ID: ${expectedChainId})</span>
-                    </div>
-                `;
-            }
-
-            networkStatusContainer.innerHTML = statusHTML;
-        } catch (error) {
-            console.error('❌ Error checking network status:', error);
-            networkStatusContainer.innerHTML = `
-                <div class="network-status-item error">
-                    <span class="status-icon">❌</span>
-                    <span class="status-text">Error checking network status</span>
-                </div>
-            `;
-        }
-    }
-
-    /**
-     * Set up connect to network button
-     */
-    setupConnectToNetworkButton() {
-        const connectButton = document.getElementById('connect-to-network-btn');
-        if (!connectButton) {
-            console.warn('⚠️ Connect to network button not found');
-            return;
-        }
-
-        connectButton.addEventListener('click', async () => {
-            await this.handleConnectToNetwork();
-        });
-    }
-
-    /**
-     * Handle connect to network button click
-     */
-    async handleConnectToNetwork() {
-        const connectButton = document.getElementById('connect-to-network-btn');
-        if (!connectButton) return;
-
-        // Show loading state
-        connectButton.disabled = true;
-        connectButton.innerHTML = '<span class="loading-spinner"></span> Connecting...';
-
-        try {
-            const isWalletConnected = window.walletManager && window.walletManager.isConnected();
-            
-            if (!isWalletConnected) {
-                // Connect wallet first
-                console.log('🔗 Connecting wallet...');
-                await window.walletManager.connect();
-            }
-
-            // Check if we're on the correct network
-            const currentChainId = window.walletManager.getChainId();
-            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
-            
-            if (currentChainId !== expectedChainId) {
-                console.log(`🔄 Switching to ${window.CONFIG.NETWORK.NAME}...`);
-                await window.networkSelector.switchWalletToNetwork(window.CONFIG.SELECTED_NETWORK);
-            }
-
-            // Refresh the page to check permissions again
-            console.log('🔄 Refreshing to check permissions...');
-            window.location.reload();
-
-        } catch (error) {
-            console.error('❌ Error connecting to network:', error);
-            
-            // Show error state
-            connectButton.innerHTML = '❌ Connection Failed';
-            connectButton.style.background = '#ef4444';
-            
-            // Reset button after 3 seconds
-            setTimeout(() => {
-                connectButton.disabled = false;
-                connectButton.innerHTML = '🔗 Connect to Network';
-                connectButton.style.background = '';
-            }, 3000);
-        }
-    }
-
-    /**
-     * Set up network status monitoring
-     */
-    setupNetworkStatusMonitoring() {
-        // Monitor network changes
-        if (window.ethereum) {
-            window.ethereum.on('chainChanged', () => {
-                console.log('🔄 Network changed, updating status...');
-                setTimeout(() => this.checkAndDisplayNetworkStatus(), 1000);
-            });
-
-            window.ethereum.on('accountsChanged', () => {
-                console.log('👤 Account changed, updating status...');
-                setTimeout(() => this.checkAndDisplayNetworkStatus(), 1000);
-            });
-        }
-    }
 
 
     async loadAdminInterface() {
@@ -1618,55 +1459,14 @@ class AdminPage {
                 <span class="network-status-dot ${onExpectedNetwork ? 'green' : 'red'}"></span>
                 <div id="admin-network-selector"></div>
                 ${!onExpectedNetwork ? `
-                    <button class="btn-grant-permission" onclick="${this.getAdminPermissionButtonAction(expectedNetworkName)}" title="${this.getAdminPermissionButtonTitle(expectedNetworkName)}">
-                        ${this.getAdminPermissionButtonText(expectedNetworkName)}
+                    <button class="btn-grant-permission" onclick="${window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'admin') || `window.networkManager.requestPermissionWithUIUpdate('admin')`}" title="${window.PermissionUtils?.getPermissionButtonTitle(expectedNetworkName) || `Grant permission for ${expectedNetworkName}`}">
+                        ${window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`}
                     </button>
                 ` : ''}
             </div>
         `;
     }
 
-    /**
-     * Get the appropriate button text for the admin permission button
-     * @param {string} networkName - The network name
-     * @returns {string} - The button text
-     */
-    getAdminPermissionButtonText(networkName) {
-        // For Polygon Mainnet, show "Add Polygon Mainnet" since it's likely not in MetaMask
-        if (networkName === 'Polygon Mainnet') {
-            return 'Add Polygon';
-        }
-        // For other networks, show "Grant [Network] Permission"
-        return `Grant ${networkName} Permission`;
-    }
-
-    /**
-     * Get the appropriate button action for the admin permission button
-     * @param {string} networkName - The network name
-     * @returns {string} - The button action
-     */
-    getAdminPermissionButtonAction(networkName) {
-        // For Polygon Mainnet, add network to MetaMask
-        if (networkName === 'Polygon Mainnet') {
-            return 'window.networkSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
-        }
-        // For other networks, use the standard permission request
-        return `window.networkManager.requestPermissionWithUIUpdate('admin')`;
-    }
-
-    /**
-     * Get the appropriate button title for the admin permission button
-     * @param {string} networkName - The network name
-     * @returns {string} - The button title
-     */
-    getAdminPermissionButtonTitle(networkName) {
-        // For Polygon Mainnet, show "Add Polygon Mainnet to MetaMask"
-        if (networkName === 'Polygon Mainnet') {
-            return 'Add Polygon to MetaMask';
-        }
-        // For other networks, show "Grant permission for [Network]"
-        return `Grant permission for ${networkName}`;
-    }
 
     /**
      * Update network indicator with permission information
@@ -1730,9 +1530,9 @@ class AdminPage {
                 if (!existingButton) {
                     const button = document.createElement('button');
                     button.className = 'btn-grant-permission';
-                    button.textContent = this.getAdminPermissionButtonText(expectedNetworkName);
+                    button.textContent = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
                     button.onclick = () => window.networkManager.requestPermissionWithUIUpdate('admin');
-                    button.title = this.getAdminPermissionButtonTitle(expectedNetworkName);
+                    button.title = window.PermissionUtils?.getPermissionButtonTitle(expectedNetworkName) || `Grant permission for ${expectedNetworkName}`;
                     indicator.appendChild(button);
                 }
             }

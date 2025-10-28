@@ -501,7 +501,9 @@ class NetworkManager {
      * @param {string} context - 'admin' or 'home'
      * @returns {Promise<boolean>} Success status
      */
-    async requestPermissionWithUIUpdate(context = 'admin') {
+    async requestPermissionWithUIUpdate(context = 'admin', showNotification = true) {
+        // Set flag for background permission checks
+        this._showPermissionNotification = showNotification;
         try {
             const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
             const networkName = this.getNetworkName(expectedChainId);
@@ -522,14 +524,16 @@ class NetworkManager {
                 }
             }
 
-            // Show success notification
-            const message = `${networkName} network permission granted`;
-            if (context === 'admin') {
-                alert(`✅ ${message}! You can now use the admin panel.`);
-            } else if (window.homepageNotificationManager) {
-                window.homepageNotificationManager.show('success', 'Permission Granted', message);
-            } else if (window.notificationManager) {
-                window.notificationManager.success('Permission Granted', message);
+            // Show success notification only if requested
+            if (showNotification) {
+                const message = `${networkName} network permission granted`;
+                if (context === 'admin') {
+                    alert(`✅ ${message}! You can now use the admin panel.`);
+                } else if (window.homepageNotificationManager) {
+                    window.homepageNotificationManager.show('success', 'Permission Granted', message);
+                } else if (window.notificationManager) {
+                    window.notificationManager.success('Permission Granted', message);
+                }
             }
 
             return true;
@@ -665,7 +669,8 @@ class NetworkManager {
                 
                 this.updateUIState();
                 
-                if (window.notificationManager) {
+                // Only show notification for explicit permission requests, not background checks
+                if (window.notificationManager && this._showPermissionNotification) {
                     const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
                     window.notificationManager.show(
                         'Permission Granted',

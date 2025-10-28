@@ -6016,30 +6016,15 @@ class ContractManager {
      */
     async getCurrentSignerForPermissions() {
         try {
-            // First check if MetaMask is available and has connected accounts
-            if (typeof window.ethereum === 'undefined') {
-                console.log('[ContractManager] MetaMask not available');
-                return null;
-            }
-
+            if (typeof window.ethereum === 'undefined') return null;
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length === 0) {
-                console.log('[ContractManager] No connected accounts');
-                return null;
-            }
-
-            // For permission checks, we don't need to enforce network requirements
-            // Just get the address from the connected account
-            return accounts[0];
+            return accounts.length > 0 ? accounts[0] : null;
         } catch (error) {
-            // Handle specific disconnection errors gracefully
             if (error.code === 'UNSUPPORTED_OPERATION' || 
                 error.message?.includes('unknown account') ||
                 error.message?.includes('missing provider')) {
-                console.log('[ContractManager] Wallet disconnected or not available');
                 return null;
             }
-            
             this.logError('Failed to get current signer address for permissions:', error);
             return null;
         }

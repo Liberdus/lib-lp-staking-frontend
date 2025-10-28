@@ -257,47 +257,24 @@ class NetworkSelector {
     /**
      * Add network to MetaMask and switch to it
      * Delegates to NetworkManager.addNetwork()
-     * @param {string} networkKey - The network key to add
+     * @param {string|Object} networkKeyOrObject - The network key or network object
      */
-    async addNetworkToMetaMaskAndSwitch(networkKey) {
+    async addNetworkToMetaMask(networkKeyOrObject) {
         // Store the original network
         const originalNetwork = window.CONFIG.SELECTED_NETWORK;
         
         try {
-            // Temporarily switch config to target network
-            window.CONFIG.SELECTED_NETWORK = networkKey;
+            let networkKey;
             
-            // Use NetworkManager's addNetwork method
-            await window.networkManager.addNetwork();
-            
-            return true;
-        } catch (addError) {
-            console.error(`❌ Failed to add ${networkKey} to MetaMask:`, addError);
-            
-            // Restore original network on error
-            window.CONFIG.SELECTED_NETWORK = originalNetwork;
-            
-            return false;
-        } finally {
-            // Restore the config
-            window.CONFIG.SELECTED_NETWORK = originalNetwork;
-        }
-    }
-
-    /**
-     * Add network to MetaMask if it's not already added
-     * Delegates to NetworkManager.addNetwork()
-     * @param {Object} network - The network configuration
-     */
-    async addNetworkToMetaMask(network) {
-        // Store the original network
-        const originalNetwork = window.CONFIG.SELECTED_NETWORK;
-        
-        try {
-            // Find the network key from the network object
-            const networkKey = Object.keys(window.CONFIG.NETWORKS).find(
-                key => window.CONFIG.NETWORKS[key] === network
-            );
+            // Handle both network key string and network object
+            if (typeof networkKeyOrObject === 'string') {
+                networkKey = networkKeyOrObject;
+            } else {
+                // Find the network key from the network object
+                networkKey = Object.keys(window.CONFIG.NETWORKS).find(
+                    key => window.CONFIG.NETWORKS[key] === networkKeyOrObject
+                );
+            }
             
             // Temporarily switch config to target network
             if (networkKey) {
@@ -327,7 +304,7 @@ class NetworkSelector {
      */
     async addNetworkToMetaMaskAndReload(networkKey) {
         try {
-            await this.addNetworkToMetaMaskAndSwitch(networkKey);
+            await this.addNetworkToMetaMask(networkKey);
             window.location.reload();
         } catch (error) {
             console.error(`Failed to add ${networkKey}:`, error);

@@ -1445,33 +1445,6 @@ class HomePage {
         });
     }
 
-    /**
-     * Get the appropriate button text for the permission button
-     * @param {string} networkName - The network name
-     * @returns {string} - The button text
-     */
-    getPermissionButtonText(networkName) {
-        // For Polygon Mainnet, show "Add Polygon Mainnet" since it's likely not in MetaMask
-        if (networkName === 'Polygon Mainnet') {
-            return 'Add Polygon';
-        }
-        // For other networks, show "Grant [Network] Permission"
-        return `Grant ${networkName} Permission`;
-    }
-
-    /**
-     * Get the appropriate button action for the permission button
-     * @param {string} networkName - The network name
-     * @returns {string} - The button action
-     */
-    getPermissionButtonAction(networkName) {
-        // For Polygon Mainnet, add network to MetaMask
-        if (networkName === 'Polygon Mainnet') {
-            return 'window.networkSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
-        }
-        // For other networks, use the standard permission request
-        return `window.networkManager.requestPermissionWithUIUpdate('home')`;
-    }
 
     /**
      * Set up network selector
@@ -1543,8 +1516,8 @@ class HomePage {
                     indicator.className = 'network-indicator-home has-permission';
                 } else {
                     // Red indicator - missing permission
-                    const buttonText = this.getPermissionButtonText(expectedNetworkName);
-                    const buttonAction = this.getPermissionButtonAction(expectedNetworkName);
+                    const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
+                    const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'home') || `window.networkManager.requestPermissionWithUIUpdate('home')`;
                     
                     indicator.innerHTML = `
                         <span class="network-status-dot red"></span>
@@ -1558,8 +1531,8 @@ class HomePage {
             } catch (error) {
                 console.error('Error checking network permission:', error);
                 // Fallback to no permission state
-                const buttonText = this.getPermissionButtonText(expectedNetworkName);
-                const buttonAction = this.getPermissionButtonAction(expectedNetworkName);
+                const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
+                const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'home') || `window.networkManager.requestPermissionWithUIUpdate('home')`;
                 
                 indicator.innerHTML = `
                     <span class="network-status-dot red"></span>
