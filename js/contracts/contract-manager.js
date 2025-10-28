@@ -4094,6 +4094,8 @@ class ContractManager {
                 errorMessage = 'Cannot reject after approving';
             } else if (error.technicalMessage && error.technicalMessage.includes('Cannot reject after approving')) {
                 errorMessage = 'Cannot reject after approving';
+            } else if (error.code && error.code.includes('ACTION_REJECTED')) {
+                errorMessage = 'Transaction was cancelled by user';
             }
 
             return {
