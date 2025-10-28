@@ -183,8 +183,8 @@ class NetworkSelector {
                 }
             }
         } finally {
-            // Clear network switching flag after contract initialization
-            setTimeout(() => window.CONFIG._networkSwitching = false, 1000);
+            // Clear network switching flag immediately after contract operations complete
+            window.CONFIG._networkSwitching = false;
         }
 
         // If wallet is not connected, just update the UI
