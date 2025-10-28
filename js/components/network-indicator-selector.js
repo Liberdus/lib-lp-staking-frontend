@@ -287,6 +287,7 @@ class NetworkSelector {
             // Use NetworkManager's switchNetwork method
             await window.networkManager.switchNetwork();
             
+            // On success, keep the new network selected
             return true;
         } catch (error) {
             console.error(`❌ Failed to switch to ${networkKey}:`, error);
@@ -301,9 +302,6 @@ class NetworkSelector {
             }
             
             return false;
-        } finally {
-            // Restore the config (will be set correctly by handleNetworkChange above)
-            window.CONFIG.SELECTED_NETWORK = originalNetwork;
         }
     }
 
