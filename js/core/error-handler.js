@@ -36,9 +36,6 @@ class ErrorHandler {
         
         // Error code mappings
         this.errorCodes = {
-            // MetaMask/Provider error codes
-            '4001': { category: 'WALLET', severity: 'low', retryable: false }, // User rejected request
-            
             // Network errors
             'NETWORK_ERROR': { category: 'NETWORK', severity: 'high', retryable: true },
             'TIMEOUT': { category: 'NETWORK', severity: 'medium', retryable: true },
@@ -119,14 +116,6 @@ class ErrorHandler {
         
         // Specific error message overrides
         this.specificMessages = {
-            // MetaMask/Provider specific error codes
-            '4001': {
-                title: 'Transaction Cancelled',
-                message: 'You cancelled the transaction in your wallet. No changes were made.',
-                action: 'Try Again'
-            },
-            
-            // General error messages
             'INSUFFICIENT_FUNDS': {
                 title: 'Insufficient Funds',
                 message: 'You do not have enough funds to complete this transaction, including gas fees.',
@@ -254,27 +243,9 @@ class ErrorHandler {
      * Extract error code from error object
      */
     extractErrorCode(error) {
-        // Check for ethers-specific error codes first
-        if (error.code) {
-            const codeStr = error.code.toString();
-            // Map ethers error codes to MetaMask codes
-            if (codeStr === 'ACTION_REJECTED' || codeStr === '4001') {
-                return '4001'; // User rejection
-            }
-            // If it's a known code in our mapping, return it
-            if (this.errorCodes[codeStr]) {
-                return codeStr;
-            }
-        }
-        
+        if (error.code) return error.code;
         if (error.reason) return error.reason;
         if (error.message) {
-            // Check for user rejection pattern
-            if (error.message.toLowerCase().includes('user rejected') || 
-                error.message.toLowerCase().includes('user denied')) {
-                return '4001';
-            }
-            
             // Try to extract common error patterns
             const patterns = [
                 /execution reverted/i,
@@ -565,27 +536,6 @@ class ErrorHandler {
             if (window.stateManager) {
                 const currentNotifications = window.stateManager.get('ui.notifications') || [];
                 window.stateManager.set('ui.notifications', [...currentNotifications, notification]);
-            }
-
-            // Display via notification manager
-            if (window.notificationManager) {
-                window.notificationManager.error(
-                    processedError.userMessage.title,
-                    processedError.userMessage.message,
-                    {
-                        duration: duration,
-                        persistent: !autoHide,
-                        id: processedError.id,
-                        actions: processedError.userMessage.action ? [{
-                            label: processedError.userMessage.action,
-                            handler: () => {
-                                if (processedError.retryable) {
-                                    window.location.reload();
-                                }
-                            }
-                        }] : []
-                    }
-                );
             }
 
             this.log('Error displayed to user:', processedError.id);
