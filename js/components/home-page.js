@@ -1530,12 +1530,19 @@ class HomePage {
             // Check if user has admin role from contract (with timeout and error handling)
             if (window.contractManager?.hasAdminRole) {
                 try {
+                    let timeoutId;
+                    const timeoutPromise = new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('Admin role check timeout')), 5000);
+                    });
+                    
                     const hasAdminRole = await Promise.race([
                         window.contractManager.hasAdminRole(userAddress),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Admin role check timeout')), 5000)
-                        )
+                        timeoutPromise
                     ]);
+                    
+                    // Clear the timeout since the race completed
+                    clearTimeout(timeoutId);
+                    
                     if (hasAdminRole) {
                         this.showAdminButton();
                         return;
@@ -1548,12 +1555,19 @@ class HomePage {
             // Check if user is the contract owner (with timeout and error handling)
             if (window.contractManager?.stakingContract?.owner) {
                 try {
+                    let timeoutId;
+                    const timeoutPromise = new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('Owner check timeout')), 5000);
+                    });
+                    
                     const owner = await Promise.race([
                         window.contractManager.stakingContract.owner(),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Owner check timeout')), 5000)
-                        )
+                        timeoutPromise
                     ]);
+                    
+                    // Clear the timeout since the race completed
+                    clearTimeout(timeoutId);
+                    
                     if (owner.toLowerCase() === userAddress.toLowerCase()) {
                         this.showAdminButton();
                         return;
