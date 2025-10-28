@@ -513,11 +513,38 @@ class AdminPage {
 
     showUnauthorizedAccess() {
         const container = document.getElementById('admin-content') || document.body;
+        const currentNetwork = window.CONFIG?.NETWORK?.NAME || 'Unknown Network';
+        const currentChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 'Unknown';
+        const currentContract = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT || 'Not configured';
+        
         container.innerHTML = `
             <div class="admin-unauthorized">
                 <div class="unauthorized-card">
                     <h2>🚫 Access Denied</h2>
-                    <p>Switch to an account with admin privileges for this contract.</p>
+                    <p><strong>Switch to an account with admin privileges for this contract.</strong></p>
+                    
+                    <div class="account-switcher">
+                        <h3>👤 Switch Admin Account</h3>
+                        <p>Use your wallet to switch to an account that has admin permissions for this contract.</p>
+                        <div class="network-info">
+                            <div class="network-details">
+                                <p><strong>Current Network:</strong> ${currentNetwork} (Chain ID: ${currentChainId})</p>
+                                <p><strong>Contract:</strong> ${currentContract}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="network-switcher">
+                        <h3>🌐 Alternative: Switch Network</h3>
+                        <p>Or try switching to a network where you have admin permissions:</p>
+                        <div class="network-selector-container">
+                            <select id="unauthorized-network-select" class="network-select">
+                                <option value="AMOY" ${window.CONFIG?.SELECTED_NETWORK === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
+                                <option value="POLYGON_MAINNET" ${window.CONFIG?.SELECTED_NETWORK === 'POLYGON_MAINNET' ? 'selected' : ''}>Polygon Mainnet</option>
+                            </select>
+                        </div>
+                    </div>
+                    
                     <div class="access-details">
                         <p><strong>Your Address:</strong> ${this.userAddress}</p>
                         <p><strong>Required Role:</strong> ADMIN_ROLE or Contract Owner</p>
@@ -525,7 +552,42 @@ class AdminPage {
                 </div>
             </div>
         `;
+        
+        // Set up network selector for unauthorized access
+        this.setupUnauthorizedNetworkSelector();
     }
+
+    /**
+     * Set up network selector for unauthorized access screen
+     */
+    setupUnauthorizedNetworkSelector() {
+        const networkSelect = document.getElementById('unauthorized-network-select');
+        if (!networkSelect) {
+            console.warn('⚠️ Unauthorized network selector not found');
+            return;
+        }
+
+        networkSelect.addEventListener('change', async (event) => {
+            const selectedNetwork = event.target.value;
+            console.log(`🔄 Unauthorized access: Switching to ${selectedNetwork} network...`);
+            
+            try {
+                // Use the existing network selector functionality
+                if (window.networkSelector) {
+                    await window.networkSelector.handleNetworkChange(selectedNetwork, 'admin');
+                    console.log(`✅ Network switched to ${selectedNetwork} from unauthorized access screen`);
+                } else {
+                    console.error('❌ Network selector not available');
+                }
+            } catch (error) {
+                console.error('❌ Error switching network from unauthorized access:', error);
+            }
+        });
+
+        console.log('✅ Unauthorized network selector set up');
+    }
+
+
 
     async loadAdminInterface() {
         console.log('🎨 Loading admin interface...');
@@ -547,6 +609,9 @@ class AdminPage {
 
         // Setup event listeners
         this.setupEventListeners();
+
+        // Setup network selector
+        this.setupNetworkSelector();
 
         // Start auto-refresh
         this.startAutoRefresh();
@@ -625,6 +690,36 @@ class AdminPage {
         } catch (error) {
             console.error('❌ Failed to setup event listeners:', error);
         }
+    }
+
+    /**
+     * Set up network selector
+     */
+    setupNetworkSelector() {
+        if (!window.networkSelector) {
+            console.warn('⚠️ Network selector not available');
+            return;
+        }
+
+        // Initialize network selector with change handler
+        window.networkSelector.init(async (networkKey, context) => {
+            console.log(`🌐 Network changed to ${networkKey} in ${context}`);
+            
+            // Refresh contract data for new network
+            if (window.contractManager) {
+                try {
+                    await window.contractManager.initialize();
+                    await this.loadContractStats();
+                    await this.loadMultiSignPanel();
+                } catch (error) {
+                    console.error('❌ Error refreshing contract data:', error);
+                }
+            }
+
+            // Update network indicator
+            window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
+        });
+
     }
 
     /**
@@ -781,9 +876,13 @@ class AdminPage {
                 }
             });
 
-            window.ethereum.on('chainChanged', (chainId) => {
+            window.ethereum.on('chainChanged', async (chainId) => {
                 console.log('🌐 Chain changed:', chainId);
-                this.handleChainChanged(chainId);
+                try {
+                    await this.handleChainChanged(chainId);
+                } catch (error) {
+                    console.error('❌ Error handling chain changed:', error);
+                }
             });
         }
     }
@@ -1129,7 +1228,7 @@ class AdminPage {
         }
     }
 
-    handleChainChanged(chainId) {
+    async handleChainChanged(chainId) {
         console.log('🌐 Handling chain changed:', chainId);
 
         // Update network indicator when chain changes
@@ -1141,11 +1240,30 @@ class AdminPage {
             // Check permission asynchronously and update
             if (window.networkManager) {
                 window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                    this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal);
+                    window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
                 }).catch(error => {
                     console.error('Error checking permission after chain change:', error);
                 });
             }
+        }
+
+        // CRITICAL: Re-verify admin access when network changes
+        // This ensures users are kicked out if they don't have admin permissions on the new network
+        console.log('🔐 Re-verifying admin access after network change...');
+        try {
+            await this.verifyAdminAccess();
+            
+            if (this.isAuthorized) {
+                console.log('✅ Admin access verified for new network');
+                // Reload the admin interface to ensure it's working with the new network
+                await this.loadAdminInterface();
+            } else {
+                console.log('❌ Admin access denied for new network - showing unauthorized access');
+                this.showUnauthorizedAccess();
+            }
+        } catch (error) {
+            console.error('❌ Error re-verifying admin access after network change:', error);
+            this.showUnauthorizedAccess();
         }
     }
 
@@ -1318,7 +1436,6 @@ class AdminPage {
     createNetworkIndicator() {
         const chainId = window.walletManager?.getChainId();
         const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-        const networkName = window.networkManager?.getNetworkName(chainId) || 'Unknown';
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // We'll check permission asynchronously and update the indicator
@@ -1328,76 +1445,26 @@ class AdminPage {
         // Schedule async permission check to update indicator
         if (window.networkManager) {
             window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                this.updateNetworkIndicatorWithPermission(hasPermission, chainId);
+                window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
             }).catch(error => {
                 console.error('Error checking network permission:', error);
             });
         }
 
         return `
-            <div class="network-indicator ${onExpectedNetwork ? 'network-correct' : 'network-wrong'}" id="network-indicator">
-                <span class="network-icon">${onExpectedNetwork ? '🟢' : '⚠️'}</span>
-                <div class="network-info">
-                    <span class="network-name">${onExpectedNetwork ? networkName : 'No permission'}</span>
-                    <span class="network-id">${onExpectedNetwork ? `Chain ID: ${chainId}` : ''}</span>
-                </div>
+            <div class="network-indicator-home ${onExpectedNetwork ? 'has-permission' : 'missing-permission'}" id="network-indicator">
+                <span class="network-status-dot ${onExpectedNetwork ? 'green' : 'red'}"></span>
+                <div id="admin-network-selector"></div>
                 ${!onExpectedNetwork ? `
-                    <button class="btn btn-sm btn-warning" onclick="window.networkManager.requestPermissionWithUIUpdate('admin')" title="Grant permission for ${expectedNetworkName}">
-                        Grant ${expectedNetworkName} Permission
+                    <button class="btn-grant-permission" onclick="${window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'admin') || `window.networkManager.requestPermissionWithUIUpdate('admin')`}" title="${window.PermissionUtils?.getPermissionButtonTitle(expectedNetworkName) || `Grant permission for ${expectedNetworkName}`}">
+                        ${window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`}
                     </button>
                 ` : ''}
             </div>
         `;
     }
 
-    /**
-     * Update network indicator with permission information
-     */
-    updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal) {
-        const indicator = document.getElementById('network-indicator');
-        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
-        const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
 
-        if (indicator) {
-            const networkIcon = indicator.querySelector('.network-icon');
-            const networkNameEl = indicator.querySelector('.network-name');
-            const networkIdEl = indicator.querySelector('.network-id');
-
-            if (hasPermission) {
-                indicator.className = 'network-indicator network-correct';
-                if (networkIcon) networkIcon.textContent = '🟢';
-                
-                // Show correct network name and chain ID
-                const networkName = window.networkManager?.getNetworkName(chainIdDecimal) || expectedNetworkName;
-                if (networkNameEl) networkNameEl.textContent = networkName;
-                if (networkIdEl) networkIdEl.textContent = `Chain ID: ${chainIdDecimal}`;
-                
-                // Remove any existing permission button
-                const existingButton = indicator.querySelector('button');
-                if (existingButton) {
-                    existingButton.remove();
-                }
-            } else {
-                indicator.className = 'network-indicator network-wrong';
-                if (networkIcon) networkIcon.textContent = '⚠️';
-                
-                // Show "No permission" instead of wrong network name/chain ID
-                if (networkNameEl) networkNameEl.textContent = 'No permission';
-                if (networkIdEl) networkIdEl.textContent = '';
-                
-                // Add permission button if not present
-                const existingButton = indicator.querySelector('button');
-                if (!existingButton) {
-                    const button = document.createElement('button');
-                    button.className = 'btn btn-sm btn-warning';
-                    button.textContent = `Grant ${expectedNetworkName} Permission`;
-                    button.onclick = () => window.networkManager.requestPermissionWithUIUpdate('admin');
-                    button.title = `Grant permission for ${expectedNetworkName}`;
-                    indicator.appendChild(button);
-                }
-            }
-        }
-    }
 
     /**
      * Create wallet address display component
@@ -1522,6 +1589,11 @@ class AdminPage {
     async loadMultiSignPanel() {
         console.log('📋 Loading MultiSign Panel...');
         const panelDiv = document.getElementById('multisign-panel');
+
+        if (!panelDiv) {
+            console.warn('⚠️ Network status container not found');
+            return;
+        }
 
         try {
             // Show loading indicator
@@ -1649,16 +1721,17 @@ class AdminPage {
                 `;
             }
 
-            panelDiv.innerHTML = `
-                <div class="error-panel">
-                    <h3>${errorTitle}</h3>
-                    <p class="error-message">${errorMessage}</p>
-                    ${suggestions}
-                    <div class="error-actions">
-                        <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
-                            🔄 Retry
-                        </button>
-                        <button class="btn btn-outline" onclick="adminPage.checkNetworkConnectivity().then(ok => console.log('Network check result:', ok))">
+            if (panelDiv) {
+                panelDiv.innerHTML = `
+                    <div class="error-panel">
+                        <h3>${errorTitle}</h3>
+                        <p class="error-message">${errorMessage}</p>
+                        ${suggestions}
+                        <div class="error-actions">
+                            <button class="btn btn-secondary" onclick="adminPage.loadMultiSignPanel()">
+                                🔄 Retry
+                            </button>
+                            <button class="btn btn-outline" onclick="adminPage.checkNetworkConnectivity().then(ok => console.log('Network check result:', ok))">
                             🌐 Check Network
                         </button>
                         <button class="btn btn-outline" onclick="adminPage.forceLoadRealProposals()">
@@ -1670,6 +1743,7 @@ class AdminPage {
                     </div>
                 </div>
             `;
+            }
         }
     }
 
