@@ -32,7 +32,7 @@ class PermissionUtils {
     static getPermissionButtonAction(networkName, context = 'home') {
         // For Polygon Mainnet, add network to MetaMask
         if (networkName === 'Polygon Mainnet') {
-            return 'window.networkIndicatorSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
+            return 'window.networkSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
         }
         // For other networks, use the standard permission request
         return `window.networkManager.requestPermissionWithUIUpdate('${context}')`;
