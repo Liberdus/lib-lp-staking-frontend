@@ -543,6 +543,9 @@ class NetworkManager {
             }
             
             throw error;
+        } finally {
+            // Reset flag to ensure clean state between calls
+            this._showPermissionNotification = false;
         }
     }
 
