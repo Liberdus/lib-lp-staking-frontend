@@ -1327,7 +1327,7 @@ class HomePage {
                 button.innerHTML = '<span class="material-icons">hourglass_empty</span> Claiming...';
             }
 
-            this.showNotification('info', 'Claiming rewards...');
+            window.notificationManager.info('Claiming rewards...');
 
             // Call contract manager to claim rewards
             if (window.contractManager && window.contractManager.claimRewards) {
@@ -1349,7 +1349,7 @@ class HomePage {
 
         } catch (error) {
             console.error('❌ Failed to claim rewards:', error);
-            this.showNotification('error', `Failed to claim rewards: ${error.message}`);
+            window.notificationManager.error(error);
         } finally {
             // Reset button state
             const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);

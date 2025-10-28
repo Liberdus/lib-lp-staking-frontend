@@ -4773,7 +4773,7 @@ class ContractManager {
             this.logError('❌ Failed to claim rewards:', error);
             return {
                 success: false,
-                error: error.message || 'Failed to claim rewards'
+                error: error.userMessage?.title || 'Failed to claim rewards'
             };
         }
     }
