@@ -5989,7 +5989,11 @@ class ContractManager {
     }
 
     /**
-     * Get current signer address
+     * Get current signer address for transaction operations
+     * Requires signer setup and network context. Use for sending transactions.
+     * For permission checks only, use getCurrentSignerForPermissions() instead.
+     * 
+     * @returns {Promise<string|null>} The signer address or null if not available
      */
     async getCurrentSigner() {
         try {
@@ -6032,7 +6036,10 @@ class ContractManager {
 
     /**
      * Get current signer address for permission checks (network-agnostic)
-     * This version doesn't enforce network requirements for admin access checks
+     * Directly queries wallet accounts without signer setup. Use for UI/permission checks.
+     * For transactions, use getCurrentSigner() instead.
+     * 
+     * @returns {Promise<string|null>} The connected wallet address or null if not connected
      */
     async getCurrentSignerForPermissions() {
         try {
