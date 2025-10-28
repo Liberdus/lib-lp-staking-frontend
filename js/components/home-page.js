@@ -82,14 +82,14 @@ class HomePage {
         // Listen for wallet connection changes
         document.addEventListener('walletConnected', (event) => {
             console.log('🏠 HomePage: Wallet connected, refreshing data...');
-            this.updateNetworkIndicator();
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             this.refreshDataAfterWalletChange();
             this.checkAdminAccess();
         });
 
         document.addEventListener('walletDisconnected', () => {
             console.log('🏠 HomePage: Wallet disconnected, refreshing data...');
-            this.updateNetworkIndicator();
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             this.refreshDataAfterWalletChange();
             this.hideAdminButton();
         });
@@ -106,13 +106,13 @@ class HomePage {
             window.ethereum.on('chainChanged', (chainId) => {
                 console.log('🏠 HomePage: Chain changed:', chainId);
                 // Only update the network indicator to re-check permissions
-                this.updateNetworkIndicator();
+                window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             });
 
             // Re-check permissions when page regains focus (in case permissions were removed in another tab)
             window.addEventListener('focus', () => {
                 console.log('🏠 HomePage: Page focused, re-checking permissions...');
-                this.updateNetworkIndicator();
+                window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             });
         }
     }
@@ -1432,16 +1432,16 @@ class HomePage {
      */
     setupNetworkIndicator() {
         // Update indicator initially
-        this.updateNetworkIndicator();
+        window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
 
         // Update on wallet connection/disconnection
         document.addEventListener('walletConnected', () => {
-            this.updateNetworkIndicator();
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
         });
 
         document.addEventListener('walletDisconnected', () => {
             // Update network indicator to show disconnected state
-            this.updateNetworkIndicator();
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
         });
     }
 
@@ -1475,92 +1475,11 @@ class HomePage {
             }
 
             // Update network indicator
-            this.updateNetworkIndicator();
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
         });
 
     }
 
-    /**
-     * Update network indicator with current status
-     */
-    async updateNetworkIndicator() {
-        const indicator = document.getElementById('network-indicator-home');
-        if (!indicator) return;
-
-        // Always show the network indicator (with or without wallet)
-        indicator.style.display = 'flex';
-
-        // Show loading state initially
-        indicator.innerHTML = `
-            <span class="network-status-dot gray"></span>
-            <div id="home-network-selector"></div>
-        `;
-        indicator.className = 'network-indicator-home loading';
-
-        const isWalletConnected = window.walletManager && window.walletManager.isConnected();
-        const chainId = isWalletConnected ? window.walletManager.getChainId() : null;
-        const networkName = isWalletConnected ? (window.networkManager?.getNetworkName(chainId) || 'Unknown') : 'Not connected';
-        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
-
-        // Check permission asynchronously if wallet is connected
-        if (isWalletConnected && window.networkManager) {
-            try {
-                const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
-
-                if (hasPermission) {
-                    // Green indicator - has permission
-                    indicator.innerHTML = `
-                        <span class="network-status-dot green"></span>
-                        <div id="home-network-selector"></div>
-                    `;
-                    indicator.className = 'network-indicator-home has-permission';
-                } else {
-                    // Red indicator - missing permission
-                    const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
-                    const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'home') || `window.networkManager.requestPermissionWithUIUpdate('home')`;
-                    
-                    indicator.innerHTML = `
-                        <span class="network-status-dot red"></span>
-                        <div id="home-network-selector"></div>
-                        <button class="btn-grant-permission" onclick="${buttonAction}">
-                            ${buttonText}
-                        </button>
-                    `;
-                    indicator.className = 'network-indicator-home missing-permission';
-                }
-            } catch (error) {
-                console.error('Error checking network permission:', error);
-                // Fallback to no permission state
-                const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
-                const buttonAction = window.PermissionUtils?.getPermissionButtonAction(expectedNetworkName, 'home') || `window.networkManager.requestPermissionWithUIUpdate('home')`;
-                
-                indicator.innerHTML = `
-                    <span class="network-status-dot red"></span>
-                    <div id="home-network-selector"></div>
-                    <button class="btn-grant-permission" onclick="${buttonAction}">
-                        ${buttonText}
-                    </button>
-                `;
-                indicator.className = 'network-indicator-home missing-permission';
-            }
-        } else {
-            // No wallet connected - show network selector only
-            indicator.innerHTML = `
-                <span class="network-status-dot gray"></span>
-                <div id="home-network-selector"></div>
-            `;
-            indicator.className = 'network-indicator-home no-wallet';
-        }
-
-        // Add network selector after DOM update
-        setTimeout(() => {
-            const container = document.getElementById('home-network-selector');
-            if (container && window.networkSelector) {
-                container.innerHTML = '';
-                window.networkSelector.createSelector('home-network-selector', 'home');
-            }
-        }, 100);
-    }
 
     destroy() {
         this.stopAutoRefresh();

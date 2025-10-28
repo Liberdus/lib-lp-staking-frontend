@@ -512,16 +512,10 @@ class NetworkManager {
             await this.requestNetworkPermission('metamask');
 
             // Update UI based on context
-            if (context === 'admin' && window.adminPage) {
-                const chainId = window.walletManager?.getChainId();
-                const currentNetworkName = this.getNetworkName(chainId);
-                if (typeof window.adminPage.updateNetworkIndicatorWithPermission === 'function') {
-                    window.adminPage.updateNetworkIndicatorWithPermission(true, chainId, currentNetworkName);
-                }
-            } else if (context === 'home' && window.homePage) {
-                if (typeof window.homePage.updateNetworkIndicator === 'function') {
-                    await window.homePage.updateNetworkIndicator();
-                }
+            if (context === 'admin' && window.NetworkIndicator) {
+                window.NetworkIndicator.update('network-indicator', 'admin-network-selector', 'admin');
+            } else if (context === 'home' && window.NetworkIndicator) {
+                await window.NetworkIndicator.update('network-indicator-home', 'home-network-selector', 'home');
             }
 
             // Show success notification only if requested
@@ -722,8 +716,8 @@ class NetworkManager {
         // ========================================
         
         // Update home-page network indicator
-        if (window.homePage && typeof window.homePage.updateNetworkIndicator === 'function') {
-            window.homePage.updateNetworkIndicator();
+        if (window.homePage && window.NetworkIndicator) {
+            window.NetworkIndicator.update('network-indicator-home', 'home-network-selector', 'home');
         }
         
         // Trigger home-page data refresh
@@ -736,13 +730,8 @@ class NetworkManager {
         // ========================================
         
         // Update admin network indicator
-        if (window.adminPage && typeof window.adminPage.updateNetworkIndicatorWithPermission === 'function') {
-            const chainId = window.walletManager?.getChainId();
-            this.hasRequiredNetworkPermission().then(hasPermission => {
-                window.adminPage.updateNetworkIndicatorWithPermission(hasPermission, chainId);
-            }).catch(error => {
-                console.error('Error checking network permission for admin:', error);
-            });
+        if (window.adminPage && window.NetworkIndicator) {
+            window.NetworkIndicator.update('network-indicator', 'admin-network-selector', 'admin');
         }
         
         // ========================================

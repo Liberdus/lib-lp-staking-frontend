@@ -89,7 +89,8 @@ class MasterInitializer {
             'js/utils/unified-cache.js',        // Load cache system first
             'js/utils/cache-integration.js',    // Then cache integration
             'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
-            'js/utils/permission-utils.js',    // Shared permission utilities
+            'js/utils/permission-utils.js',
+            'js/components/network-indicator.js',    // Shared permission utilities
             'js/core/error-handler.js',        // Error handling system
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/theme-manager-new.js',

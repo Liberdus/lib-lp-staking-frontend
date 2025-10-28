@@ -38,26 +38,20 @@ window.CONFIG = {
         POLYGON_MAINNET: {
             CHAIN_ID: 137,
             NAME: 'Polygon Mainnet',
-            RPC_URL: 'https://rpc.ankr.com/polygon', // CORS-enabled RPC endpoint
+            RPC_URL: 'https://rpc.ankr.com/polygon',
             FALLBACK_RPCS: [
-                'https://polygon-mainnet.public.blastapi.io', // BlastAPI fallback
-                'https://polygon-rpc.com', // Public RPC endpoint
+                'https://polygon-mainnet.public.blastapi.io',
+                'https://polygon-rpc.com',
                 'https://polygon-mainnet.chainstacklabs.com',
-                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC', // Alchemy fallback
-                'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161' // Infura fallback
+                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
+                'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'
             ],
             BLOCK_EXPLORER: 'https://polygonscan.com',
-            NATIVE_CURRENCY: {
-                name: 'MATIC',
-                symbol: 'MATIC',
-                decimals: 18
-            },
+            NATIVE_CURRENCY: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
             CONTRACTS: {
-                STAKING_CONTRACT: '0xef15eB728CEF704f40269319BBA495d4131Beb71', // Mainnet staking contract
-                REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76', // To be filled when deployed
-                LP_TOKENS: {
-                    // To be filled when deployed
-                }
+                STAKING_CONTRACT: '0xef15eB728CEF704f40269319BBA495d4131Beb71',
+                REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
+                LP_TOKENS: {}
             }
         }
     },

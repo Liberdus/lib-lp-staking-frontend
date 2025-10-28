@@ -717,10 +717,7 @@ class AdminPage {
             }
 
             // Update network indicator
-            this.updateNetworkIndicatorWithPermission(
-                await window.networkManager?.hasRequiredNetworkPermission() || false,
-                window.walletManager?.getChainId()
-            );
+            window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
         });
 
     }
@@ -1243,7 +1240,7 @@ class AdminPage {
             // Check permission asynchronously and update
             if (window.networkManager) {
                 window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                    this.updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal);
+                    window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
                 }).catch(error => {
                     console.error('Error checking permission after chain change:', error);
                 });
@@ -1448,7 +1445,7 @@ class AdminPage {
         // Schedule async permission check to update indicator
         if (window.networkManager) {
             window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
-                this.updateNetworkIndicatorWithPermission(hasPermission, chainId);
+                window.NetworkIndicator?.update('network-indicator', 'admin-network-selector', 'admin');
             }).catch(error => {
                 console.error('Error checking network permission:', error);
             });
@@ -1468,76 +1465,6 @@ class AdminPage {
     }
 
 
-    /**
-     * Update network indicator with permission information
-     */
-    updateNetworkIndicatorWithPermission(hasPermission, chainIdDecimal) {
-        const indicator = document.getElementById('network-indicator');
-        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
-
-        if (indicator) {
-            const statusDot = indicator.querySelector('.network-status-dot');
-
-            if (hasPermission) {
-                indicator.className = 'network-indicator-home has-permission';
-                if (statusDot) {
-                    statusDot.className = 'network-status-dot green';
-                }
-                
-                // Remove any existing permission button
-                const existingButton = indicator.querySelector('button');
-                if (existingButton) {
-                    existingButton.remove();
-                }
-
-                // Add network selector if not present
-                const adminSelector = indicator.querySelector('#admin-network-selector');
-                if (!adminSelector) {
-                    const selectorDiv = document.createElement('div');
-                    selectorDiv.id = 'admin-network-selector';
-                    indicator.appendChild(selectorDiv);
-                }
-                
-                // Initialize network selector if it doesn't exist
-                const existingSelector = indicator.querySelector('#admin-network-selector select');
-                if (!existingSelector && window.networkSelector) {
-                    console.log('🌐 Creating admin network selector...');
-                    window.networkSelector.createSelector('admin-network-selector', 'home');
-                }
-            } else {
-                indicator.className = 'network-indicator-home missing-permission';
-                if (statusDot) {
-                    statusDot.className = 'network-status-dot red';
-                }
-                
-                // Add network selector if not present
-                const adminSelector = indicator.querySelector('#admin-network-selector');
-                if (!adminSelector) {
-                    const selectorDiv = document.createElement('div');
-                    selectorDiv.id = 'admin-network-selector';
-                    indicator.appendChild(selectorDiv);
-                }
-                
-                // Initialize network selector if it doesn't exist
-                const existingSelector = indicator.querySelector('#admin-network-selector select');
-                if (!existingSelector && window.networkSelector) {
-                    console.log('🌐 Creating admin network selector...');
-                    window.networkSelector.createSelector('admin-network-selector', 'home');
-                }
-
-                // Add permission button if not present
-                const existingButton = indicator.querySelector('button');
-                if (!existingButton) {
-                    const button = document.createElement('button');
-                    button.className = 'btn-grant-permission';
-                    button.textContent = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
-                    button.onclick = () => window.networkManager.requestPermissionWithUIUpdate('admin');
-                    button.title = window.PermissionUtils?.getPermissionButtonTitle(expectedNetworkName) || `Grant permission for ${expectedNetworkName}`;
-                    indicator.appendChild(button);
-                }
-            }
-        }
-    }
 
     /**
      * Create wallet address display component
