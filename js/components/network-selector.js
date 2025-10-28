@@ -1,6 +1,7 @@
 /**
  * Network Selector Component
  * Provides a dropdown to switch between different networks
+ * Delegates network switching to NetworkManager to avoid duplication
  */
 
 class NetworkSelector {
@@ -219,107 +220,104 @@ class NetworkSelector {
 
     /**
      * Switch wallet to the selected network
+     * Delegates to NetworkManager to avoid duplication
      * @param {string} networkKey - The network key to switch to
      */
     async switchWalletToNetwork(networkKey) {
-        const network = window.CONFIG.NETWORKS[networkKey];
-        if (!network) {
-            console.error(`❌ Network ${networkKey} not found`);
-            return false;
-        }
-
+        // Store the original network
+        const originalNetwork = window.CONFIG.SELECTED_NETWORK;
+        
         try {
-            console.log(`🔄 Requesting MetaMask to switch to ${network.NAME} (Chain ID: ${network.CHAIN_ID})`);
-
-            // Check if we're already on the correct network
-            const currentChainId = window.walletManager?.getChainId();
-            if (currentChainId === network.CHAIN_ID) {
-                console.log(`✅ Already on ${network.NAME} network`);
-                return true;
-            }
-
-            // Request network switch
-            if (window.ethereum && window.ethereum.request) {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: `0x${network.CHAIN_ID.toString(16)}` }],
-                });
-                console.log(`✅ Successfully switched to ${network.NAME}`);
-                return true;
-            } else {
-                console.error('❌ MetaMask not available');
-                return false;
-            }
+            // Temporarily switch config to target network for NetworkManager
+            window.CONFIG.SELECTED_NETWORK = networkKey;
+            
+            // Use NetworkManager's switchNetwork method
+            await window.networkManager.switchNetwork();
+            
+            return true;
         } catch (error) {
-            console.error(`❌ Failed to switch to ${network.NAME}:`, error);
+            console.error(`❌ Failed to switch to ${networkKey}:`, error);
+            
+            // Restore original network on error
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
             
             // If the network is not added to MetaMask, try to add it
             if (error.code === 4902) {
-                console.log(`🔗 Network ${network.NAME} not found in MetaMask, attempting to add it...`);
-                return await this.addNetworkToMetaMask(network);
+                console.log(`🔗 Network ${networkKey} not found in MetaMask, attempting to add it...`);
+                return await this.addNetworkToMetaMask(window.CONFIG.NETWORKS[networkKey]);
             }
             
             return false;
+        } finally {
+            // Restore the config (will be set correctly by handleNetworkChange above)
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
         }
     }
 
     /**
      * Add network to MetaMask and switch to it
+     * Delegates to NetworkManager.addNetwork()
      * @param {string} networkKey - The network key to add
      */
     async addNetworkToMetaMaskAndSwitch(networkKey) {
-        const network = window.CONFIG.NETWORKS[networkKey];
-        if (!network) {
-            console.error(`❌ Network ${networkKey} not found`);
-            return false;
-        }
-
+        // Store the original network
+        const originalNetwork = window.CONFIG.SELECTED_NETWORK;
+        
         try {
-            console.log(`➕ Adding ${network.NAME} to MetaMask and switching...`);
+            // Temporarily switch config to target network
+            window.CONFIG.SELECTED_NETWORK = networkKey;
             
-            await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                    chainId: `0x${network.CHAIN_ID.toString(16)}`,
-                    chainName: network.NAME,
-                    nativeCurrency: network.NATIVE_CURRENCY,
-                    rpcUrls: [network.RPC_URL, ...network.FALLBACK_RPCS],
-                    blockExplorerUrls: [network.BLOCK_EXPLORER]
-                }],
-            });
+            // Use NetworkManager's addNetwork method
+            await window.networkManager.addNetwork();
             
-            console.log(`✅ Successfully added and switched to ${network.NAME}`);
             return true;
         } catch (addError) {
-            console.error(`❌ Failed to add ${network.NAME} to MetaMask:`, addError);
+            console.error(`❌ Failed to add ${networkKey} to MetaMask:`, addError);
+            
+            // Restore original network on error
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
+            
             return false;
+        } finally {
+            // Restore the config
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
         }
     }
 
     /**
      * Add network to MetaMask if it's not already added
+     * Delegates to NetworkManager.addNetwork()
      * @param {Object} network - The network configuration
      */
     async addNetworkToMetaMask(network) {
+        // Store the original network
+        const originalNetwork = window.CONFIG.SELECTED_NETWORK;
+        
         try {
-            console.log(`➕ Adding ${network.NAME} to MetaMask...`);
+            // Find the network key from the network object
+            const networkKey = Object.keys(window.CONFIG.NETWORKS).find(
+                key => window.CONFIG.NETWORKS[key] === network
+            );
             
-            await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                    chainId: `0x${network.CHAIN_ID.toString(16)}`,
-                    chainName: network.NAME,
-                    nativeCurrency: network.NATIVE_CURRENCY,
-                    rpcUrls: [network.RPC_URL, ...network.FALLBACK_RPCS],
-                    blockExplorerUrls: [network.BLOCK_EXPLORER]
-                }],
-            });
+            // Temporarily switch config to target network
+            if (networkKey) {
+                window.CONFIG.SELECTED_NETWORK = networkKey;
+            }
             
-            console.log(`✅ Successfully added ${network.NAME} to MetaMask`);
+            // Use NetworkManager's addNetwork method
+            await window.networkManager.addNetwork();
+            
             return true;
         } catch (addError) {
-            console.error(`❌ Failed to add ${network.NAME} to MetaMask:`, addError);
+            console.error(`❌ Failed to add network to MetaMask:`, addError);
+            
+            // Restore original network on error
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
+            
             return false;
+        } finally {
+            // Restore the config
+            window.CONFIG.SELECTED_NETWORK = originalNetwork;
         }
     }
 }
