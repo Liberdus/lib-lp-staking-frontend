@@ -320,6 +320,19 @@ class NetworkSelector {
             window.CONFIG.SELECTED_NETWORK = originalNetwork;
         }
     }
+
+    /**
+     * Add network to MetaMask and reload the page
+     * @param {string} networkKey - The network key to add
+     */
+    async addNetworkToMetaMaskAndReload(networkKey) {
+        try {
+            await this.addNetworkToMetaMaskAndSwitch(networkKey);
+            window.location.reload();
+        } catch (error) {
+            console.error(`Failed to add ${networkKey}:`, error);
+        }
+    }
 }
 
 // Create global instance

@@ -1443,14 +1443,6 @@ class HomePage {
             // Update network indicator to show disconnected state
             this.updateNetworkIndicator();
         });
-
-        // Update on network change
-        if (window.ethereum) {
-            // Removed chainChanged handler - system should only use dropdown selection
-            // window.ethereum.on('chainChanged', () => {
-            //     this.updateNetworkIndicator();
-            // });
-        }
     }
 
     /**
@@ -1475,7 +1467,7 @@ class HomePage {
     getPermissionButtonAction(networkName) {
         // For Polygon Mainnet, add network to MetaMask
         if (networkName === 'Polygon Mainnet') {
-            return 'addPolygonMainnetToMetaMask()';
+            return 'window.networkSelector.addNetworkToMetaMaskAndReload("POLYGON_MAINNET")';
         }
         // For other networks, use the standard permission request
         return `window.networkManager.requestPermissionWithUIUpdate('home')`;
@@ -1737,15 +1729,6 @@ class HomePage {
     }
 }
 
-// Global function for adding Polygon Mainnet to MetaMask
-async function addPolygonMainnetToMetaMask() {
-    try {
-        await window.networkSelector.addNetworkToMetaMaskAndSwitch('POLYGON_MAINNET');
-        window.location.reload();
-    } catch (error) {
-        console.error('Failed to add Polygon:', error);
-    }
-}
 
 // Initialize home page
 let homePage;
