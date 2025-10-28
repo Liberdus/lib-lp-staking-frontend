@@ -518,22 +518,29 @@ class ContractManager {
     getAllRPCUrls() {
         const rpcUrls = [];
 
-        // Primary RPC from CONFIG
-        if (window.CONFIG?.NETWORK?.RPC_URL) {
-            rpcUrls.push(window.CONFIG.NETWORK.RPC_URL);
+        // PRIORITY 1: Use current network's RPC URLs (updated by switchNetwork)
+        if (this.rpcUrls && this.rpcUrls.length > 0) {
+            rpcUrls.push(...this.rpcUrls);
+            this.log('📡 Using current network RPC URLs:', this.rpcUrls.length);
+        } else {
+            // FALLBACK: Use global CONFIG if no network-specific RPCs are set
+            // Primary RPC from CONFIG
+            if (window.CONFIG?.NETWORK?.RPC_URL) {
+                rpcUrls.push(window.CONFIG.NETWORK.RPC_URL);
+            }
+
+            // Fallback RPCs from CONFIG
+            if (window.CONFIG?.NETWORK?.FALLBACK_RPCS) {
+                rpcUrls.push(...window.CONFIG.NETWORK.FALLBACK_RPCS);
+            }
         }
 
-        // Fallback RPCs from CONFIG
-        if (window.CONFIG?.NETWORK?.FALLBACK_RPCS) {
-            rpcUrls.push(...window.CONFIG.NETWORK.FALLBACK_RPCS);
-        }
-
-        // Legacy RPC format
-        if (window.CONFIG?.RPC?.POLYGON_AMOY) {
+        // Legacy RPC format (only if no current network RPCs)
+        if (rpcUrls.length === 0 && window.CONFIG?.RPC?.POLYGON_AMOY) {
             rpcUrls.push(...window.CONFIG.RPC.POLYGON_AMOY);
         }
 
-        // Internal fallback RPCs
+        // Internal fallback RPCs (always add as additional fallbacks)
         if (this.config.fallbackRPCs) {
             rpcUrls.push(...this.config.fallbackRPCs);
         }
@@ -1140,6 +1147,12 @@ class ContractManager {
             if (network) {
                 this.rpcUrls = [network.RPC_URL, ...network.FALLBACK_RPCS];
                 this.log(`📡 Updated RPC URLs for ${network.NAME}:`, this.rpcUrls.length);
+                
+                // Reset RPC failover state for new network
+                this.currentRpcIndex = 0;
+                this.rpcHealthStatus.clear();
+                this.lastRpcSwitch = 0;
+                this.log('🔄 Reset RPC failover state for network switch');
             }
 
             // Check if the new network has valid contract addresses
