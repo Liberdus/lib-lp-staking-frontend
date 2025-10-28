@@ -16,8 +16,7 @@ window.CONFIG = {
                 'https://rpc.ankr.com/polygon_amoy',
                 'https://polygon-amoy-bor-rpc.publicnode.com',
                 'https://rpc-amoy.polygon.technology',
-                'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
-                'https://polygon-amoy.g.alchemy.com/v2/0abef17687cb430ca83c21ccc5bcbdd2'
+                'https://polygon-amoy.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC'
             ],
             BLOCK_EXPLORER: 'https://amoy.polygonscan.com',
             NATIVE_CURRENCY: {
