@@ -23,7 +23,7 @@ class NetworkIndicator {
             <span class="network-status-dot gray"></span>
             <div id="${selectorId}"></div>
         `;
-        indicator.className = `network-indicator-${context} loading`;
+        indicator.className = `network-indicator-home loading`;
 
         const isWalletConnected = window.walletManager && window.walletManager.isConnected();
         const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
@@ -39,7 +39,7 @@ class NetworkIndicator {
                         <span class="network-status-dot green"></span>
                         <div id="${selectorId}"></div>
                     `;
-                    indicator.className = `network-indicator-${context} has-permission`;
+                    indicator.className = `network-indicator-home has-permission`;
                 } else {
                     // Red indicator - missing permission
                     const buttonText = window.PermissionUtils?.getPermissionButtonText(expectedNetworkName) || `Grant ${expectedNetworkName} Permission`;
@@ -52,7 +52,7 @@ class NetworkIndicator {
                             ${buttonText}
                         </button>
                     `;
-                    indicator.className = `network-indicator-${context} missing-permission`;
+                    indicator.className = `network-indicator-home missing-permission`;
                 }
             } catch (error) {
                 console.error('Error checking network permission:', error);
@@ -75,7 +75,7 @@ class NetworkIndicator {
                 <span class="network-status-dot gray"></span>
                 <div id="${selectorId}"></div>
             `;
-            indicator.className = `network-indicator-${context} no-wallet`;
+            indicator.className = `network-indicator-home no-wallet`;
         }
 
         // Add network selector after DOM update
