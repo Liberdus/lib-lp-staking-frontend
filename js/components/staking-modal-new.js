@@ -671,8 +671,15 @@ class StakingModalNew {
             this.isApproved = false;
             this.updateStakeButton();
 
-            // Show error notification
-            if (window.notificationManager) {
+            // Use error handler for detailed error messages
+            if (window.errorHandler) {
+                const processedError = window.errorHandler.processError(error, { operation: 'approve' });
+                window.errorHandler.displayError(processedError, {
+                    context: { operation: 'approve' },
+                    showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
+                });
+            } else if (window.notificationManager) {
+                // Fallback to generic error message
                 const errorMsg = error.message || 'Failed to approve tokens';
                 window.notificationManager.show(`Approval failed: ${errorMsg}`, 'error');
             }
@@ -1171,7 +1178,8 @@ class StakingModalNew {
             );
 
             if (!result.success) {
-                throw new Error(result.error || 'Staking transaction failed');
+                console.log('❌ Staking failed, error already handled by ContractManager');
+                return;
             }
 
             if (window.notificationManager) {
@@ -1244,7 +1252,8 @@ class StakingModalNew {
             );
 
             if (!result.success) {
-                throw new Error(result.error || 'Unstaking transaction failed');
+                console.log('❌ Unstaking failed, error already handled by ContractManager');
+                return;
             }
 
             if (window.notificationManager) {
@@ -1316,7 +1325,8 @@ class StakingModalNew {
             );
 
             if (!result.success) {
-                throw new Error(result.error || 'Claim transaction failed');
+                console.log('❌ Claiming failed, error already handled by ContractManager');
+                return;
             }
 
             if (window.notificationManager) {
