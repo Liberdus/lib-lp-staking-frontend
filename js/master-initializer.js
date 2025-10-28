@@ -194,7 +194,7 @@ class MasterInitializer {
         } else if (window.errorHandler) {
             console.log('✅ Error Handler already initialized');
         } else {
-            console.warn('⚠️ ErrorHandler not available - some systems will use fallback error handling');
+            console.warn('⚠️ ErrorHandler not available - using fallback error handling');
         }
 
         // Initialize theme manager
@@ -905,8 +905,7 @@ class MasterInitializer {
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    // Prevent multiple initializations
-    if (window.masterInitializer && window.masterInitializer.isReady) {
+    if (window.masterInitializer?.isReady) {
         console.log('⚠️ System already initialized, skipping...');
         return;
     }

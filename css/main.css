@@ -587,7 +587,7 @@ a:hover {
 #admin-panel-link.admin-checking::after {
     content: '';
     position: absolute;
-    top: 50%;
+    top: calc(50% - 6px);
     right: 8px;
     width: 12px;
     height: 12px;
@@ -595,9 +595,4 @@ a:hover {
     border-top: 2px solid currentColor;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    transform: translateY(-50%);
-}
-
-@keyframes spin {
-    to { transform: translateY(-50%) rotate(360deg); }
 }

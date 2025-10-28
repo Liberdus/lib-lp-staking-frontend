@@ -169,15 +169,10 @@
                 this.stats.failedCalls++;
                 
                 // Handle specific error types more gracefully
-                if (error.message.includes('CORS') || error.message.includes('network')) {
-                    console.warn('⚠️ Network error in multicall, returning null for fallback');
-                } else if (error.message.includes('timeout')) {
-                    console.warn('⚠️ Multicall timeout, returning null for fallback');
-                } else if (error.message.includes('rate limit') || error.message.includes('429')) {
-                    console.warn('⚠️ Rate limited in multicall, returning null for fallback');
-                } else {
-                    console.warn('⚠️ Multicall failed, returning null for fallback:', error.message);
-                }
+                const errorType = error.message.includes('CORS') || error.message.includes('network') ? 'Network error' :
+                                error.message.includes('timeout') ? 'Timeout' :
+                                error.message.includes('rate limit') || error.message.includes('429') ? 'Rate limited' : 'Unknown error';
+                console.warn(`⚠️ Multicall ${errorType.toLowerCase()}, returning null for fallback`);
                 
                 return null;
             }

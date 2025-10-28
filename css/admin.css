@@ -340,10 +340,6 @@
     100% { transform: translateX(100%); }
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
 
 /* Demo Data Indicator */
 .demo-data-indicator {
@@ -1643,10 +1639,6 @@ table td:last-child {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
 
 /* React-Matching Styles for Exact Parity */
 /* Container maxWidth="lg" sx={{ py: 4 }} equivalent */
@@ -2382,10 +2374,6 @@ button[form="change-signer-form"] {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
 
 /* Weight Update Styles */
 .weight-pair-item {
@@ -2826,7 +2814,3 @@ button[form="change-signer-form"] {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
