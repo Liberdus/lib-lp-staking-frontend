@@ -1665,11 +1665,18 @@ class ContractManager {
                         // If it's already an object with properties
                         if (rawAction.actionType !== undefined) {
                             this.log(`✅ Action ${actionId} is object format`);
-                            // Create a new object instead of modifying the frozen one
-                            return {
-                                ...rawAction,
-                                expired: finalExpired
-                            };
+                            
+                            // If the object is frozen (immutable), create a new object to safely add/override properties
+                            if (Object.isFrozen(rawAction)) {
+                                return {
+                                    ...rawAction,
+                                    expired: finalExpired
+                                };
+                            } else {
+                                // If not frozen, we can safely modify the object directly
+                                rawAction.expired = finalExpired;
+                                return rawAction;
+                            }
                         }
 
                         // If it's a tuple array (correct ABI structure - 14 fields)
