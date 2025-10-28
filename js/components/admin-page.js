@@ -6722,7 +6722,7 @@ class AdminPage {
         } catch (error) {
             console.error('Failed to execute proposal:', error);
             if (window.notificationManager) {
-                window.notificationManager.error('Execution Failed', error.message);
+                window.notificationManager.error(error.message);
             }
         }
     }

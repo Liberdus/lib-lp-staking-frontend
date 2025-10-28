@@ -3700,7 +3700,7 @@ class ContractManager {
                 errorMessage = 'Already approved';
             } else if (error.technicalMessage && error.technicalMessage.includes('Already approved')) {
                 errorMessage = 'Already approved';
-            } else if (error.message && error.message.includes('user rejected')) {
+            } else if (error.code && error.code.includes('ACTION_REJECTED')) {
                 errorMessage = 'Transaction was cancelled by user';
             }
 
@@ -3884,31 +3884,30 @@ class ContractManager {
             // Enhanced error handling with specific messages
             let errorMessage = 'Failed to execute action';
 
-            if (error.message) {
-                // Check for specific error conditions
-                if (error.message.includes('already been executed')) {
-                    errorMessage = 'This proposal has already been executed';
-                } else if (error.message.includes('been rejected')) {
-                    errorMessage = 'This proposal has been rejected and cannot be executed';
-                } else if (error.message.includes('does not have enough approvals')) {
-                    errorMessage = error.message; // Use the detailed message
-                } else if (error.message.includes('does not exist')) {
-                    errorMessage = 'This proposal does not exist';
-                } else if (error.message.includes('user rejected') || error.code === 4001) {
-                    errorMessage = 'Transaction was cancelled by user';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = 'Insufficient funds for gas';
-                } else if (error.message.includes('nonce')) {
-                    errorMessage = 'Transaction nonce error. Please try again';
-                } else if (error.message.includes('transaction failed') || error.code === 'CALL_EXCEPTION') {
-                    // Transaction was mined but reverted
-                    errorMessage = 'Transaction failed on blockchain. The proposal may not meet execution requirements (check approvals, expiry, or if already executed)';
-                } else if (error.reason) {
-                    errorMessage = error.reason;
-                } else {
-                    errorMessage = error.message;
-                }
+            // Check for specific error conditions
+            if (error?.code?.includes('ACTION_REJECTED')) {
+                errorMessage = 'Transaction was cancelled by user';
+            } else if (error?.message?.includes('already been executed')) {
+                errorMessage = 'This proposal has already been executed';
+            } else if (error?.message?.includes('been rejected')) {
+                errorMessage = 'This proposal has been rejected and cannot be executed';
+            } else if (error?.message?.includes('does not have enough approvals')) {
+                errorMessage = error.message; // Use the detailed message
+            } else if (error?.message?.includes('does not exist')) {
+                errorMessage = 'This proposal does not exist';
+            } else if (error?.message?.includes('insufficient funds')) {
+                errorMessage = 'Insufficient funds for gas';
+            } else if (error?.message?.includes('nonce')) {
+                errorMessage = 'Transaction nonce error. Please try again';
+            } else if (error?.message?.includes('transaction failed') || error?.code === 'CALL_EXCEPTION') {
+                // Transaction was mined but reverted
+                errorMessage = 'Transaction failed on blockchain. The proposal may not meet execution requirements (check approvals, expiry, or if already executed)';
+            } else if (error?.reason) {
+                errorMessage = error?.reason;
+            } else {
+                errorMessage = error?.message;
             }
+
 
             throw new Error(errorMessage);
         }
