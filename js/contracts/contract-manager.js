@@ -3427,119 +3427,12 @@ class ContractManager {
             console.error(`[WITHDRAW REWARDS FIX] ❌ Transaction failed:`, error);
             this.logError('Failed to propose withdraw rewards:', error);
 
-            // Enhanced error handling
-            const errorMessage = error.message || error.technicalMessage || error.reason || '';
-            const errorCode = error.code;
-
-            console.log(`[WITHDRAW REWARDS FIX] 🔍 Error Analysis:`);
-            console.log(`[WITHDRAW REWARDS FIX]   Error message: ${errorMessage}`);
-            console.log(`[WITHDRAW REWARDS FIX]   Error code: ${errorCode}`);
-
-            // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true
-                };
-            }
-
-            if (errorMessage.includes('insufficient funds') || errorCode === 'INSUFFICIENT_FUNDS') {
-                return {
-                    success: false,
-                    error: 'Insufficient funds for gas fees. Please ensure you have enough MATIC.',
-                    insufficientFunds: true
-                };
-            }
-
-            // ERROR HANDLING FIX: Handle misleading ACTION_REJECTED errors
-            if (errorCode === 'ACTION_REJECTED' || errorMessage.includes('ACTION_REJECTED')) {
-                console.log(`[WITHDRAW REWARDS FIX] 🔍 ACTION_REJECTED detected - checking if transaction actually succeeded...`);
-
-                // Sometimes ACTION_REJECTED is thrown even when transaction succeeds
-                // This is a common issue with MetaMask and some RPC providers
-                if (error.transactionHash || error.hash) {
-                    console.log(`[WITHDRAW REWARDS FIX] 🔍 Transaction hash found: ${error.transactionHash || error.hash}`);
-                    console.log(`[WITHDRAW REWARDS FIX] ⚠️ ACTION_REJECTED but transaction may have succeeded`);
-
-                    return {
-                        success: true,
-                        transactionHash: error.transactionHash || error.hash,
-                        blockNumber: error.blockNumber || 'pending',
-                        gasUsed: error.gasUsed || 'unknown',
-                        message: 'Withdrawal proposal created successfully (despite ACTION_REJECTED error)',
-                        isDemo: false,
-                        actionRejectedButSucceeded: true
-                    };
-                }
-
-                return {
-                    success: false,
-                    error: 'Transaction was rejected. Please try again.',
-                    userRejected: true
-                };
-            }
-
-            // ERROR HANDLING FIX: Handle tx.wait is not a function errors
-            if (errorMessage.includes('tx.wait is not a function') || errorMessage.includes('wait is not a function')) {
-                console.log(`[WITHDRAW REWARDS FIX] 🔍 tx.wait error detected - transaction object malformed`);
-
-                // If we have a transaction hash, consider it successful
-                if (error.hash || error.transactionHash) {
-                    return {
-                        success: true,
-                        transactionHash: error.hash || error.transactionHash,
-                        blockNumber: 'pending',
-                        gasUsed: 'unknown',
-                        message: 'Withdrawal proposal submitted successfully (confirmation pending)',
-                        waitError: true
-                    };
-                }
-
-                return {
-                    success: false,
-                    error: 'Transaction object error. Please try again.',
-                    transactionObjectError: true
-                };
-            }
-
-            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE')) {
-                return {
-                    success: false,
-                    error: 'Access denied: You do not have admin privileges to create proposals',
-                    accessDenied: true
-                };
-            }
-
-            if (errorMessage.includes('Amount exceeds contract balance')) {
-                return {
-                    success: false,
-                    error: 'Withdrawal amount exceeds the contract balance. Please check available funds.',
-                    insufficientContractBalance: true
-                };
-            }
-
-            if (errorMessage.includes('Invalid recipient address')) {
-                return {
-                    success: false,
-                    error: 'Invalid recipient address. Please verify the address format.',
-                    invalidRecipient: true
-                };
-            }
-
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
-                return {
-                    success: false,
-                    error: 'Network error occurred. Please check your connection and try again.',
-                    networkError: true
-                };
-            }
+            
 
             // For any other error, provide detailed feedback
             return {
                 success: false,
-                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
-                unknownError: true,
+                error: error.userMessage?.title || 'Failed to propose withdraw rewards',
                 originalError: error
             };
         }
@@ -3689,20 +3582,7 @@ class ContractManager {
             this.logError('Failed to approve action:', error);
 
             // Extract user-friendly error message
-            let errorMessage = 'Failed to approve action';
-            if (error.code === -32603) {
-                errorMessage = 'Network communication error. Please check your connection and try again.';
-            } else if (error.reason && error.reason.includes('Already approved')) {
-                errorMessage = 'Already approved';
-            } else if (error.reason && error.reason.includes('Cannot reject after approving')) {
-                errorMessage = 'Cannot reject after approving';
-            } else if (error.message && error.message.includes('Already approved')) {
-                errorMessage = 'Already approved';
-            } else if (error.technicalMessage && error.technicalMessage.includes('Already approved')) {
-                errorMessage = 'Already approved';
-            } else if (error.code && error.code.includes('ACTION_REJECTED')) {
-                errorMessage = 'Transaction was cancelled by user';
-            }
+            let errorMessage = error.userMessage?.title || 'Failed to approve action';
 
             return {
                 success: false,
@@ -4060,18 +3940,7 @@ class ContractManager {
             this.logError('Failed to reject action:', error);
 
             // Extract user-friendly error message
-            let errorMessage = 'Failed to reject action';
-            if (error.reason && error.reason.includes('Cannot reject after approving')) {
-                errorMessage = 'Cannot reject after approving';
-            } else if (error.reason && error.reason.includes('Already rejected')) {
-                errorMessage = 'Already rejected';
-            } else if (error.message && error.message.includes('Cannot reject after approving')) {
-                errorMessage = 'Cannot reject after approving';
-            } else if (error.technicalMessage && error.technicalMessage.includes('Cannot reject after approving')) {
-                errorMessage = 'Cannot reject after approving';
-            } else if (error.code && error.code.includes('ACTION_REJECTED')) {
-                errorMessage = 'Transaction was cancelled by user';
-            }
+            let errorMessage = error.userMessage?.title || 'Failed to reject action';
 
             return {
                 success: false,
