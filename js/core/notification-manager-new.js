@@ -45,11 +45,9 @@ class NotificationManagerNew {
         if (showProgress && duration > 0 && !persistent) {
             const progressBar = notification.querySelector('.notification-progress');
             if (progressBar) {
-                progressBar.style.width = '100%';
-                progressBar.style.transitionDuration = `${duration}ms`;
-                requestAnimationFrame(() => {
-                    progressBar.style.width = '0%';
-                });
+                // Use CSS animation instead of transitions
+                progressBar.style.animationDuration = `${duration}ms`;
+                progressBar.classList.add('animating');
             }
         }
 

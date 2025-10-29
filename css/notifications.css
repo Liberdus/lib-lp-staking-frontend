@@ -147,8 +147,18 @@
     height: 2px;
     background: currentColor;
     opacity: 0.5;
-    transition: width linear;
+    width: 100%;
     border-radius: 0 0 12px 12px;
+}
+
+/* Progress bar animation */
+@keyframes progressBarAnimation {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
+.notification .notification-progress.animating {
+    animation: progressBarAnimation linear forwards;
 }
 
 /* ========================================
