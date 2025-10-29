@@ -1070,15 +1070,6 @@ button[type="submit"] .btn-text,
 }
 
 /* ========================================
-   SPECIFIC BUTTON OVERRIDES
-   ======================================== */
-
-/* Specific button ID overrides for admin modals */
-#remove-pair-btn {
-    min-width: 140px !important;
-}
-
-/* ========================================
    NETWORK INDICATOR
    ======================================== */
 .network-indicator {

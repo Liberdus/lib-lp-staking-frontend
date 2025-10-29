@@ -5218,9 +5218,9 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel" style="padding: 10px 24px; min-width: 100px;">
                             Cancel
                         </button>
-                        <button type="submit" form="remove-pair-form" class="btn btn-danger" id="remove-pair-btn"
+                        <button type="submit" form="remove-pair-form" class="btn btn-primary" id="remove-pair-btn"
                                 title="Please select a pair and confirm to enable"
-                                style="padding: 10px 24px; min-width: 220px; background: #dc3545; color: white; border: none; font-weight: 600; border-radius: 6px; transition: background 0.2s;">
+                                style="padding: 10px 24px; min-width: 220px;">
                             <span class="btn-text">Submit Removal Proposal</span>
                             <span class="btn-loading" style="display: none;">
                                 <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px;"></span>
@@ -5353,7 +5353,7 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="change-signer-form" class="btn btn-warning">
+                        <button type="submit" form="change-signer-form" class="btn btn-primary">
                             Create Signer Change Proposal
                         </button>
                     </div>
