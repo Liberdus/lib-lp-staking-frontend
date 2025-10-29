@@ -24,6 +24,7 @@
             // System initialization order (critical first) - Complete component list
             this.initializationOrder = [
                 { name: 'ErrorHandler', critical: true, fallback: true },
+                { name: 'NotificationManager', critical: true, fallback: true },
                 { name: 'ThemeManager', critical: false, fallback: true },
                 { name: 'StateManager', critical: true, fallback: true },
                 { name: 'ContractManager', critical: true, fallback: true },
@@ -339,6 +340,9 @@
                 case 'ErrorHandler':
                     global[instanceName] = this.createFallbackErrorHandler();
                     break;
+                case 'NotificationManager':
+                    global[instanceName] = this.createFallbackNotificationManager();
+                    break;
                 case 'StateManager':
                     global[instanceName] = this.createFallbackStateManager();
                     break;
@@ -409,6 +413,48 @@
             };
         }
         
+        /**
+         * Fallback NotificationManager with visual toasts
+         */
+        createFallbackNotificationManager() {
+            const showToast = (message, type, options = {}) => {
+                console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
+                
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; z-index: 10000;
+                    background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#007bff'};
+                    color: ${type === 'warning' ? '#000' : '#fff'};
+                    padding: 12px 20px; border-radius: 4px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 300px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    animation: slideInRight 0.3s ease-out;
+                `;
+                toast.textContent = message;
+                
+                const container = document.getElementById('notification-container') || document.body;
+                container.appendChild(toast);
+                
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.style.animation = 'slideOutRight 0.3s ease-in';
+                        setTimeout(() => {
+                            if (toast.parentNode) {
+                                toast.parentNode.removeChild(toast);
+                            }
+                        }, 300);
+                    }
+                }, options.duration || 5000);
+            };
+            
+            return {
+                show: showToast,
+                success: (message, options) => showToast(message, 'success', options),
+                error: (message, options) => showToast(message, 'error', options),
+                warning: (message, options) => showToast(message, 'warning', options),
+                info: (message, options) => showToast(message, 'info', options)
+            };
+        }
         
         /**
          * Fallback StateManager

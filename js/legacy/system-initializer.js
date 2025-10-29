@@ -26,6 +26,7 @@
                 
                 // Core systems (order matters!)
                 { path: 'js/core/error-handler.js', name: 'ErrorHandler', critical: true, instance: 'errorHandler' },
+                { path: 'js/core/notification-manager.js', name: 'NotificationManager', critical: true, instance: 'notificationManager' },
                 { path: 'js/core/theme-manager.js', name: 'ThemeManager', critical: false, instance: 'themeManager' },
                 { path: 'js/core/state-manager.js', name: 'StateManager', critical: true, instance: 'stateManager' },
                 { path: 'js/contracts/contract-manager.js', name: 'ContractManager', critical: true, instance: 'contractManager' },
