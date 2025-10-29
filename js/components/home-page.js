@@ -52,7 +52,7 @@ class HomePage {
         // Listen for contract manager ready event
         document.addEventListener('contractManagerReady', () => {
             console.log('🏠 HomePage: ContractManager is ready, loading data...');
-            this.loadData();
+            this.loadData().catch(() => {});
             // Auto-refresh disabled - manual refresh only
         });
 
@@ -131,7 +131,7 @@ class HomePage {
             this.cache.hourlyRewardRate = { value: null, timestamp: 0, ttl: this.cache.hourlyRewardRate.ttl };
             this.cache.totalWeight = { value: null, timestamp: 0, ttl: this.cache.totalWeight.ttl };
             this.cache.pairsInfo = { value: null, timestamp: 0, ttl: this.cache.pairsInfo.ttl };
-            await this.loadData();
+            await this.loadData().catch(() => {});
         }, 1000);
     }
 
@@ -141,7 +141,7 @@ class HomePage {
     async loadDataWhenReady() {
         if (window.contractManager && window.contractManager.isReady()) {
             console.log('🏠 HomePage: ContractManager already ready, loading data immediately...');
-            this.loadData();
+            await this.loadData().catch(() => {});
             this.checkAdminAccess();
             // Auto-refresh disabled - manual refresh only
         } else {
@@ -200,7 +200,9 @@ class HomePage {
     attachRetryHandler() {
         const retryBtn = document.getElementById('retry-load');
         if (retryBtn) {
-            retryBtn.onclick = () => this.loadData();
+            retryBtn.onclick = () => {
+                this.loadData().catch(() => {});
+            };
         }
     }
 
@@ -531,6 +533,7 @@ class HomePage {
             this.error = 'Unable to load staking data right now.';
             this.loading = false;
             this.render();
+            throw error;
         }
     }
 
@@ -544,6 +547,7 @@ class HomePage {
         this.hourlyRewardRate = 0;
         this.totalWeight = 0;
         this.pairsData = [];
+        this.pairs = [];
         
         // Update display
         this.updateHourlyRateDisplay(0);
@@ -1237,7 +1241,9 @@ class HomePage {
                     window.notificationManager.success(`Successfully claimed ${pair.userEarnings} LIB rewards!`);
 
                     // Refresh data after successful transaction
-                    setTimeout(() => this.refreshData(), 2000);
+                    setTimeout(() => {
+                        this.refreshData().catch(() => {});
+                    }, 2000);
                 } else {
                     throw new Error(result?.error || 'Transaction failed');
                 }
@@ -1274,6 +1280,7 @@ class HomePage {
             console.log('✅ Homepage data refreshed successfully');
         } catch (error) {
             console.error('❌ Failed to refresh homepage data:', error);
+            throw error;
         } finally {
             this.isRefreshing = false;
         }
