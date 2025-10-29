@@ -40,6 +40,7 @@ class SystemInitializerNew {
 
     async loadCoreComponents() {
         const components = [
+            'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
             'js/core/error-handler.js',
             'js/core/data-fetcher.js',
