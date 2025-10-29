@@ -6644,13 +6644,13 @@ class AdminPage {
                 } else if (errorMessage.includes('Cannot reject after approving')) {
                     this.showError('✋ You cannot reject a proposal you have already approved. Each signer can only vote once.');
                 } else {
-                    this.showError('❌ ' + errorMessage);
+                    this.showError(errorMessage);
                 }
             }
 
         } catch (error) {
             console.error('❌ Failed to approve proposal:', error);
-            this.showError('❌ Unexpected error occurred while approving proposal. Please try again.');
+            this.showError('Unexpected error occurred while approving proposal. Please try again.');
         }
     }
 
@@ -6679,13 +6679,13 @@ class AdminPage {
                 } else if (errorMessage.includes('Already rejected')) {
                     this.showError('✋ You have already rejected this proposal. Each signer can only vote once per proposal.');
                 } else {
-                    this.showError('❌ ' + errorMessage);
+                    this.showError(errorMessage);
                 }
             }
 
         } catch (error) {
             console.error('❌ Failed to reject proposal:', error);
-            this.showError('❌ Unexpected error occurred while rejecting proposal. Please try again.');
+            this.showError('Unexpected error occurred while rejecting proposal. Please try again.');
         }
     }
 
