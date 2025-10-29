@@ -593,8 +593,33 @@ class StakingModalNew {
     }
 
     /**
-     * Approve LP tokens for staking
+     * Extract pair name from currentPair for contract manager
+     * @returns {string} Pair name for contract manager
+     */
+    getPairName() {
+        if (!this.currentPair) throw new Error('No current pair available');
+
+        const address = this.currentPair.lpToken || this.currentPair.address;
+        const lpTokens = window.CONFIG?.CONTRACTS?.LP_TOKENS || {};
+        
+        // Find known pair name or use platform/address fallback
+        return Object.entries(lpTokens).find(([, pairAddress]) => 
+            pairAddress.toLowerCase() === address.toLowerCase()
+        )?.[0] || 
+        (this.currentPair.platform !== 'Unknown' ? this.currentPair.platform : 
+         `${address.slice(0, 6)}...${address.slice(-4)}`);
+    }
+
+    /**
+     * Approve LP tokens for staking using contract manager
+     * 
+     * This method delegates to the contract manager's approveLPToken method,
+     * which provides centralized error handling, retry logic, and notifications.
+     * The contract manager handles all error notifications through its error handler,
+     * so no custom error handling is needed in this method.
+     * 
      * @returns {Promise<boolean>} True if approval succeeded
+     * @throws {Error} When contract manager or wallet not ready
      */
     async approveTokens() {
         try {
@@ -605,91 +630,30 @@ class StakingModalNew {
             this.isApproving = true;
             this.updateStakeButton();
 
-            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+            const pairName = this.getPairName();
+            console.log(`🔐 Approving LP tokens:`, { pairName, amount: this.stakeAmount });
 
-            // Get staking contract address (try multiple config paths)
-            const stakingAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT ||
-                                   window.CONFIG?.CONTRACTS?.STAKING ||
-                                   '0xDB7100D6f037fc36A51c38E76c910626A2d755f4'; // Fallback
 
-            const amountWei = window.ethers.utils.parseEther(this.stakeAmount.toString());
-
-            console.log(`🔐 Approving LP tokens:`, {
-                lpToken: lpTokenAddress,
-                spender: stakingAddress,
-                amount: this.stakeAmount
-            });
-
-            // Create LP token contract instance with signer
-            const lpTokenABI = [
-                'function allowance(address owner, address spender) view returns (uint256)',
-                'function approve(address spender, uint256 amount) returns (bool)'
-            ];
-
-            const signer = window.contractManager.signer || window.walletManager.signer;
-            if (!signer) {
-                throw new Error('No signer available. Please connect your wallet.');
-            }
-
-            const lpTokenContract = new window.ethers.Contract(lpTokenAddress, lpTokenABI, signer);
-
-            // Show notification
-            if (window.notificationManager) {
-                window.notificationManager.info('Approving LP tokens...');
-            }
-
-            // Execute approval transaction
-            const approveTx = await lpTokenContract.approve(stakingAddress, amountWei);
-
+            // Execute approval and wait for confirmation
+            const approveTx = await window.contractManager.approveLPToken(pairName, this.stakeAmount);
             console.log(`✅ Approval transaction sent: ${approveTx.hash}`);
-            console.log(`🔗 PolygonScan: https://amoy.polygonscan.com/tx/${approveTx.hash}`);
-
-            // Wait for confirmation
             const receipt = await approveTx.wait();
 
             console.log(`✅ Approval confirmed in block ${receipt.blockNumber}`);
 
-            // Update state
+            // Update state and UI
             this.isApproved = true;
             this.needsApproval = false;
             this.isApproving = false;
-
-            // Show success notification
-            if (window.notificationManager) {
-                window.notificationManager.success('LP tokens approved! You can now stake.');
-            }
-
-            // Update button
             this.updateStakeButton();
 
             return true;
 
         } catch (error) {
             console.error('❌ Approval failed:', error);
-
             this.isApproving = false;
             this.isApproved = false;
             this.updateStakeButton();
-
-            // Show error notification
-            if (window.notificationManager) {
-                const errorMsg = error.message || 'Failed to approve tokens';
-                let userFriendlyMessage = 'Failed to approve tokens';
-                
-                // Extract user-friendly message from error
-                if (errorMsg.includes('user rejected') || errorMsg.includes('user denied')) {
-                    userFriendlyMessage = 'Transaction cancelled by user';
-                } else if (errorMsg.includes('insufficient funds')) {
-                    userFriendlyMessage = 'Insufficient funds for transaction';
-                } else if (errorMsg.includes('network')) {
-                    userFriendlyMessage = 'Network connection issue';
-                } else if (errorMsg.includes('gas')) {
-                    userFriendlyMessage = 'Gas estimation failed';
-                }
-                
-                window.notificationManager.error(`Approval failed: ${userFriendlyMessage}`);
-            }
-
             return false;
         }
     }
