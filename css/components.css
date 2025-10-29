@@ -583,8 +583,6 @@
     border-bottom: none;
 }
 
-/* Notification styles moved to css/notifications.css for unified styling */
-
 @keyframes slideInRight {
     from {
         transform: translateX(100%);
