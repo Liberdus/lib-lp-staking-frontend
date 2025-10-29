@@ -92,7 +92,6 @@ class MasterInitializer {
             'js/components/network-indicator-selector.js',
             'js/core/error-handler.js',        // Error handling system
             'js/core/unified-theme-manager.js', // Unified theme manager
-            'js/core/theme-manager-new.js',
             'js/core/notification-manager-new.js',
             'js/core/loading-manager.js',
             'js/core/accessibility-manager.js',
@@ -197,12 +196,6 @@ class MasterInitializer {
             console.warn('⚠️ ErrorHandler not available - using fallback error handling');
         }
 
-        // Initialize theme manager
-        if (window.ThemeManagerNew) {
-            window.themeManager = new window.ThemeManagerNew();
-            this.components.set('themeManager', window.themeManager);
-            console.log('✅ Theme Manager initialized');
-        }
 
         // Initialize notification manager
         if (window.NotificationManagerNew) {

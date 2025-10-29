@@ -25,7 +25,7 @@ class ThemeManager {
         this.currentTheme = 'light';
         this.isInitialized = false;
         this.transitionDuration = 300;
-        this.storageKey = 'lp-staking-theme';
+        this.storageKey = 'lp-staking-theme-v2';
         this.systemThemeQuery = null;
         
         // Theme definitions
