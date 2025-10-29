@@ -397,7 +397,6 @@ class HomePage {
                     if (!this.isWalletConnected()) {
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                'Wallet Not Connected',
                                 'Please connect your wallet to stake tokens'
                             );
                         }
@@ -409,7 +408,6 @@ class HomePage {
                         const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                `${networkName} Network Required`,
                                 `Please switch to ${networkName} network to make transactions`
                             );
                         }
@@ -475,10 +473,10 @@ class HomePage {
 
         try {
             await this.refreshData();
-            this.showNotification('success', 'Data refreshed successfully!');
+            window.notificationManager.success('Data refreshed successfully!');
         } catch (error) {
             console.error('❌ Manual refresh failed:', error);
-            this.showNotification('error', 'Failed to refresh data');
+            window.notificationManager.error('Failed to refresh data');
         } finally {
             // Reset button state
             if (refreshButton) {
@@ -1315,7 +1313,7 @@ class HomePage {
         }
 
         if (!this.isWalletConnected()) {
-            this.showNotification('error', 'Please connect your wallet first');
+            window.notificationManager.error('Please connect your wallet first');
             return;
         }
 
@@ -1327,7 +1325,7 @@ class HomePage {
                 button.innerHTML = '<span class="material-icons">hourglass_empty</span> Claiming...';
             }
 
-            this.showNotification('info', 'Claiming rewards...');
+            window.notificationManager.info('Claiming rewards...');
 
             // Call contract manager to claim rewards
             if (window.contractManager && window.contractManager.claimRewards) {
@@ -1336,7 +1334,7 @@ class HomePage {
 
                 if (result && result.success) {
                     console.log('✅ Rewards claimed successfully');
-                    this.showNotification('success', `Successfully claimed ${pair.userEarnings} LIB rewards!`);
+                    window.notificationManager.success(`Successfully claimed ${pair.userEarnings} LIB rewards!`);
 
                     // Refresh data after successful transaction
                     setTimeout(() => this.refreshData(), 2000);
@@ -1349,28 +1347,13 @@ class HomePage {
 
         } catch (error) {
             console.error('❌ Failed to claim rewards:', error);
-            this.showNotification('error', `Failed to claim rewards: ${error.message}`);
+            window.notificationManager.error(error);
         } finally {
             // Reset button state
             const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);
             if (button) {
                 button.disabled = false;
                 button.innerHTML = '<span class="material-icons">redeem</span> Claim';
-            }
-        }
-    }
-
-    showNotification(type, message) {
-        // Use existing notification system if available
-        if (window.notificationManager) {
-            window.notificationManager.show(message, type);
-        } else if (window.notification) {
-            window.notification.show(type, message);
-        } else {
-            // Fallback to console and alert
-            console.log(`${type.toUpperCase()}: ${message}`);
-            if (type === 'error') {
-                alert(`Error: ${message}`);
             }
         }
     }

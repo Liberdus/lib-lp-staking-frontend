@@ -2214,7 +2214,6 @@ class AdminPage {
             // Show error notification
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Refresh Failed',
                     'Could not load contract data. Please check your connection.'
                 );
             }
@@ -2485,12 +2484,10 @@ class AdminPage {
                     if (window.notificationManager) {
                         if (realProposals.length > 0) {
                             window.notificationManager.success(
-                                'Real Data Loaded',
                                 `Successfully loaded ${realProposals.length} proposals from blockchain`
                             );
                         } else {
                             window.notificationManager.info(
-                                'Real Data Connected',
                                 'Connected to blockchain - no proposals exist yet'
                             );
                         }
@@ -2519,7 +2516,6 @@ class AdminPage {
             // Show warning notification
             if (window.notificationManager) {
                 window.notificationManager.warning(
-                    'Using Demo Data',
                     `Could not load real proposals: ${errorMessage}`
                 );
             }
@@ -2609,7 +2605,6 @@ class AdminPage {
                 // Show success notification
                 if (window.notificationManager) {
                     window.notificationManager.success(
-                        'More Proposals Loaded',
                         `Loaded ${formattedBatch.length} additional proposals`
                     );
                 }
@@ -2641,7 +2636,6 @@ class AdminPage {
 
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Load More Failed',
                     `Could not load additional proposals: ${error.message}`
                 );
             }
@@ -2771,7 +2765,6 @@ class AdminPage {
             // Show success notification
             if (window.notificationManager) {
                 window.notificationManager.success(
-                    'New Proposal Added',
                     `Proposal #${newProposalId} added successfully`
                 );
             }
@@ -2870,7 +2863,6 @@ class AdminPage {
 
                 if (window.notificationManager) {
                     window.notificationManager.info(
-                        'Proposals Updated',
                         `${changedCount} proposal${changedCount > 1 ? 's' : ''} updated`
                     );
                 }
@@ -2894,7 +2886,7 @@ class AdminPage {
         try {
             // Show loading notification
             if (window.notificationManager) {
-                window.notificationManager.info('Loading Real Data', 'Checking network connectivity...');
+                window.notificationManager.info('Checking network connectivity...');
             }
 
             // Check if wallet is connected
@@ -2903,7 +2895,7 @@ class AdminPage {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.info('Loading Real Data', 'Network OK - loading proposals from blockchain...');
+                window.notificationManager.info('Network OK - loading proposals from blockchain...');
             }
 
             const contractManager = await this.ensureContractReady();
@@ -2930,7 +2922,6 @@ class AdminPage {
 
                 if (window.notificationManager) {
                     window.notificationManager.success(
-                        'Real Data Loaded',
                         `Successfully loaded ${realProposals.length} proposals from blockchain`
                     );
                 }
@@ -2946,7 +2937,6 @@ class AdminPage {
 
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Failed to Load Real Data',
                     `Could not load real proposals: ${error.message}`
                 );
             }
@@ -3262,7 +3252,6 @@ class AdminPage {
 
                 if (window.notificationManager) {
                     window.notificationManager.success(
-                        'All Proposals Loaded',
                         `Successfully loaded all ${allProposals.length} proposals from blockchain`
                     );
                 }
@@ -3272,7 +3261,6 @@ class AdminPage {
             console.error('❌ Failed to force load all proposals:', error);
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Load All Failed',
                     `Could not load all proposals: ${error.message}`
                 );
             }
@@ -3989,7 +3977,6 @@ class AdminPage {
             // Show user-friendly notification about using demo data
             if (window.notificationManager) {
                 window.notificationManager.warning(
-                    'Using Demo Data',
                     'Contract data unavailable. Displaying demo values for interface testing.'
                 );
             }
@@ -4079,7 +4066,7 @@ class AdminPage {
 
         // Show loading state
         if (window.notificationManager) {
-            window.notificationManager.info('Reconnecting', 'Attempting to reconnect to contracts...');
+            window.notificationManager.info('Attempting to reconnect to contracts...');
         }
 
         try {
@@ -4093,12 +4080,12 @@ class AdminPage {
             await this.loadMultiSignPanel();
 
             if (window.notificationManager) {
-                window.notificationManager.success('Connected', 'Successfully reconnected to contracts!');
+                window.notificationManager.success('Successfully reconnected to contracts!');
             }
         } catch (error) {
             console.error('❌ Failed to reconnect:', error);
             if (window.notificationManager) {
-                window.notificationManager.error('Connection Failed', 'Could not reconnect to contracts. Using demo data.');
+                window.notificationManager.error('Could not reconnect to contracts. Using demo data.');
             }
         }
     }
@@ -6052,7 +6039,6 @@ class AdminPage {
             // Show error notification
             if (window.notificationManager) {
                 window.notificationManager.error(
-                    'Loading Failed',
                     'Could not load LP pairs. Please refresh and try again.'
                 );
             }
@@ -6227,7 +6213,7 @@ class AdminPage {
 
         try {
             if (window.notificationManager) {
-                window.notificationManager.info('Creating proposal...', 'Submitting hourly rate change proposal');
+                window.notificationManager.info('Submitting hourly rate change proposal');
             }
 
             // Call contract method to create proposal
@@ -6490,7 +6476,7 @@ class AdminPage {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.info('Creating proposal...', 'Submitting signer change proposal');
+                window.notificationManager.info('Submitting signer change proposal');
             }
 
             const contractManager = await this.ensureContractReady();
@@ -6569,7 +6555,7 @@ class AdminPage {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.info('Creating proposal...', 'Submitting withdrawal proposal');
+                window.notificationManager.info('Submitting withdrawal proposal');
             }
 
             const contractManager = await this.ensureContractReady();
@@ -6638,7 +6624,7 @@ class AdminPage {
             console.log(`🗳️ Approving proposal: ${proposalId}`);
 
             if (window.notificationManager) {
-                window.notificationManager.info('Approving proposal...', `Submitting approval for proposal #${proposalId}`);
+                window.notificationManager.info(`Submitting approval for proposal #${proposalId}`);
             }
 
             // Use real contract for approval (like React version)
@@ -6658,13 +6644,13 @@ class AdminPage {
                 } else if (errorMessage.includes('Cannot reject after approving')) {
                     this.showError('✋ You cannot reject a proposal you have already approved. Each signer can only vote once.');
                 } else {
-                    this.showError('❌ ' + errorMessage);
+                    this.showError(errorMessage);
                 }
             }
 
         } catch (error) {
             console.error('❌ Failed to approve proposal:', error);
-            this.showError('❌ Unexpected error occurred while approving proposal. Please try again.');
+            this.showError('Unexpected error occurred while approving proposal. Please try again.');
         }
     }
 
@@ -6673,7 +6659,7 @@ class AdminPage {
             console.log(`🗳️ Rejecting proposal: ${proposalId}`);
 
             if (window.notificationManager) {
-                window.notificationManager.info('Rejecting proposal...', `Submitting rejection for proposal #${proposalId}`);
+                window.notificationManager.info(`Submitting rejection for proposal #${proposalId}`);
             }
 
             // Use real contract for rejection (like React version)
@@ -6693,20 +6679,20 @@ class AdminPage {
                 } else if (errorMessage.includes('Already rejected')) {
                     this.showError('✋ You have already rejected this proposal. Each signer can only vote once per proposal.');
                 } else {
-                    this.showError('❌ ' + errorMessage);
+                    this.showError(errorMessage);
                 }
             }
 
         } catch (error) {
             console.error('❌ Failed to reject proposal:', error);
-            this.showError('❌ Unexpected error occurred while rejecting proposal. Please try again.');
+            this.showError('Unexpected error occurred while rejecting proposal. Please try again.');
         }
     }
 
     async executeAction(proposalId) {
         try {
             if (window.notificationManager) {
-                window.notificationManager.info('Executing proposal...', `Executing proposal #${proposalId}`);
+                window.notificationManager.info(`Executing proposal #${proposalId}`);
             }
 
             const result = await window.contractManager.executeProposal(proposalId);
@@ -6722,7 +6708,7 @@ class AdminPage {
         } catch (error) {
             console.error('Failed to execute proposal:', error);
             if (window.notificationManager) {
-                window.notificationManager.error('Execution Failed', error.message);
+                window.notificationManager.error(error.message);
             }
         }
     }
@@ -6730,14 +6716,14 @@ class AdminPage {
     async cancelAction(proposalId) {
         try {
             if (window.notificationManager) {
-                window.notificationManager.info('Cancelling proposal...', `Cancelling proposal #${proposalId}`);
+                window.notificationManager.info(`Cancelling proposal #${proposalId}`);
             }
 
             const result = await window.contractManager.cancelProposal(proposalId);
 
             if (result.success) {
                 if (window.notificationManager) {
-                    window.notificationManager.success('Proposal Cancelled', `Successfully cancelled proposal #${proposalId}`);
+                    window.notificationManager.success(`Successfully cancelled proposal #${proposalId}`);
                 }
 
                 // PERFORMANCE OPTIMIZATION: Update single proposal instead of full refresh
@@ -6749,7 +6735,7 @@ class AdminPage {
         } catch (error) {
             console.error('Failed to cancel proposal:', error);
             if (window.notificationManager) {
-                window.notificationManager.error('Cancellation Failed', error.message);
+                window.notificationManager.error(error.message);
             }
         }
     }
@@ -6909,7 +6895,7 @@ class AdminPage {
         
         // Show loading indicator
         if (window.notificationManager) {
-            window.notificationManager.info('Navigating', 'Loading homepage...');
+            window.notificationManager.info('Loading homepage...');
         }
         
         // Always navigate directly to index.html to ensure correct destination
