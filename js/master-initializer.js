@@ -880,11 +880,6 @@ class MasterInitializer {
     async retryInitialization() {
         console.log('🔄 Retrying system initialization...');
 
-        // Clear any existing notifications
-        if (window.notificationManager && window.notificationManager.dismissAll) {
-            window.notificationManager.dismissAll();
-        }
-
         // Reset initialization state
         this.isReady = false;
         this.initializationPromise = null;
