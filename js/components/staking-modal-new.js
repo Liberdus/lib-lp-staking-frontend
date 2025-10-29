@@ -635,7 +635,7 @@ class StakingModalNew {
 
             // Show notification
             if (window.notificationManager) {
-                window.notificationManager.show('info', 'Approving LP tokens...');
+                window.notificationManager.info('Approving LP tokens...');
             }
 
             // Execute approval transaction
@@ -656,7 +656,7 @@ class StakingModalNew {
 
             // Show success notification
             if (window.notificationManager) {
-                window.notificationManager.show('success', 'LP tokens approved! You can now stake.');
+                window.notificationManager.success('LP tokens approved! You can now stake.');
             }
 
             // Update button
@@ -687,7 +687,7 @@ class StakingModalNew {
                     userFriendlyMessage = 'Gas estimation failed';
                 }
                 
-                window.notificationManager.show('error', `Approval failed: ${userFriendlyMessage}`);
+                window.notificationManager.error(`Approval failed: ${userFriendlyMessage}`);
             }
 
             return false;
@@ -1142,7 +1142,7 @@ class StakingModalNew {
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
-                    window.notificationManager.show('error', 'Contract manager not ready. Please connect your wallet first.');
+                    window.notificationManager.error('Contract manager not ready. Please connect your wallet first.');
                 }
                 return;
             }
@@ -1169,7 +1169,7 @@ class StakingModalNew {
 
             // STEP 2: Execute staking transaction
             if (window.notificationManager) {
-                window.notificationManager.show('info', 'Staking LP tokens...');
+                window.notificationManager.info('Staking LP tokens...');
             }
 
             // Use lpToken address from pair object
@@ -1188,7 +1188,7 @@ class StakingModalNew {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.show('success', 'LP tokens staked successfully!');
+                window.notificationManager.success('LP tokens staked successfully!');
             }
 
             console.log('✅ Staking transaction successful:', result.hash);
@@ -1215,7 +1215,7 @@ class StakingModalNew {
         } catch (error) {
             console.error('❌ Staking failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('error', `Staking failed: ${error.message}`);
+                window.notificationManager.error(`Staking failed: ${error.message}`);
             }
         } finally {
             // Always release the guard
@@ -1241,13 +1241,13 @@ class StakingModalNew {
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
-                    window.notificationManager.show('error', 'Contract manager not ready. Please connect your wallet first.');
+                    window.notificationManager.error('Contract manager not ready. Please connect your wallet first.');
                 }
                 return;
             }
 
             if (window.notificationManager) {
-                window.notificationManager.show('info', 'Unstaking LP tokens...');
+                window.notificationManager.info('Unstaking LP tokens...');
             }
 
             // Execute real unstaking transaction
@@ -1261,7 +1261,7 @@ class StakingModalNew {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.show('success', 'LP tokens unstaked successfully!');
+                window.notificationManager.success('LP tokens unstaked successfully!');
             }
 
             console.log('✅ Unstaking transaction successful:', result.hash);
@@ -1288,7 +1288,7 @@ class StakingModalNew {
         } catch (error) {
             console.error('❌ Unstaking failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('error', `Unstaking failed: ${error.message}`);
+                window.notificationManager.error(`Unstaking failed: ${error.message}`);
             }
         } finally {
             // Always release the guard
@@ -1314,13 +1314,13 @@ class StakingModalNew {
             // Check if contract manager is ready
             if (!window.contractManager || !window.contractManager.isReady()) {
                 if (window.notificationManager) {
-                    window.notificationManager.show('error', 'Contract manager not ready. Please connect your wallet first.');
+                    window.notificationManager.error('Contract manager not ready. Please connect your wallet first.');
                 }
                 return;
             }
 
             if (window.notificationManager) {
-                window.notificationManager.show('info', 'Claiming rewards...');
+                window.notificationManager.info('Claiming rewards...');
             }
 
             // Execute real claim transaction
@@ -1333,7 +1333,7 @@ class StakingModalNew {
             }
 
             if (window.notificationManager) {
-                window.notificationManager.show('success', 'Rewards claimed successfully!');
+                window.notificationManager.success('Rewards claimed successfully!');
             }
 
             console.log('✅ Claim transaction successful:', result.hash);
@@ -1360,7 +1360,7 @@ class StakingModalNew {
         } catch (error) {
             console.error('❌ Claim failed:', error);
             if (window.notificationManager) {
-                window.notificationManager.show('error', `Claim failed: ${error.message}`);
+                window.notificationManager.error(`Claim failed: ${error.message}`);
             }
         } finally {
             // Always release the guard
