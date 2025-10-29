@@ -418,37 +418,6 @@
             };
         }
         
-        /**
-         * CRITICAL FIX: Create fallback NotificationManager
-         */
-        createFallbackNotificationManager() {
-            return {
-                show: (message, type = 'info', options = {}) => {
-                    console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
-                    // Create simple toast fallback
-                    const toast = document.createElement('div');
-                    toast.style.cssText = `
-                        position: fixed; top: 20px; right: 20px; z-index: 10000;
-                        background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#007bff'};
-                        color: white; padding: 12px 20px; border-radius: 4px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 300px;
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    `;
-                    toast.textContent = message;
-                    document.body.appendChild(toast);
-
-                    setTimeout(() => {
-                        if (toast.parentNode) {
-                            toast.parentNode.removeChild(toast);
-                        }
-                    }, options.duration || 5000);
-                },
-                success: (message, options) => this.show(message, 'success', options),
-                error: (message, options) => this.show(message, 'error', options),
-                warning: (message, options) => this.show(message, 'warning', options),
-                info: (message, options) => this.show(message, 'info', options)
-            };
-        }
 
         /**
          * Retry initialization without page reload

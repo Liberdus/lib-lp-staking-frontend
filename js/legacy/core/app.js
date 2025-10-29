@@ -1019,21 +1019,6 @@ class App {
         };
     }
 
-    /**
-     * CRITICAL FIX: Create fallback NotificationManager
-     */
-    createFallbackNotificationManager() {
-        return {
-            show: (message, type = 'info', options = {}) => {
-                console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
-                this.showFallbackToast(message, type, options);
-            },
-            success: function(message, options) { this.show(message, 'success', options); },
-            error: function(message, options) { this.show(message, 'error', options); },
-            warning: function(message, options) { this.show(message, 'warning', options); },
-            info: function(message, options) { this.show(message, 'info', options); }
-        };
-    }
 
     /**
      * Show fallback toast notification

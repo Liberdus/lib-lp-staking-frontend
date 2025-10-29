@@ -132,7 +132,6 @@
             
             const initOrder = [
                 { name: 'ErrorHandler', critical: true },
-                { name: 'NotificationManager', critical: true },
                 { name: 'StateManager', critical: true },
                 { name: 'EventManager', critical: false },
                 { name: 'ComponentRegistry', critical: false },
@@ -196,9 +195,6 @@
                 case 'ErrorHandler':
                     global[instanceName] = this.createFallbackErrorHandler();
                     break;
-                case 'NotificationManager':
-                    global[instanceName] = this.createFallbackNotificationManager();
-                    break;
                 case 'StateManager':
                     global[instanceName] = this.createFallbackStateManager();
                     break;
@@ -223,21 +219,6 @@
             };
         }
         
-        /**
-         * Fallback NotificationManager
-         */
-        createFallbackNotificationManager() {
-            return {
-                show: (message, type = 'info', options = {}) => {
-                    console.log(`Fallback Notification [${type.toUpperCase()}]:`, message);
-                    this.showFallbackToast(message, type, options);
-                },
-                success: (message, options) => this.show(message, 'success', options),
-                error: (message, options) => this.show(message, 'error', options),
-                warning: (message, options) => this.show(message, 'warning', options),
-                info: (message, options) => this.show(message, 'info', options)
-            };
-        }
         
         /**
          * Show fallback toast notification
