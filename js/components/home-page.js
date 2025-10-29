@@ -178,6 +178,7 @@ class HomePage {
 
         // Update the hourly rate in the existing HTML header
         this.updateHourlyRateDisplay();
+        this.attachRetryHandler();
     }
 
     renderHomepage() {
@@ -193,6 +194,13 @@ class HomePage {
             const formattedRate = parseFloat(this.hourlyRewardRate || '0').toFixed(2);
             hourlyRateElement.textContent = formattedRate;
             console.log(`📊 Updated hourly rate display: ${formattedRate} LIB`);
+        }
+    }
+
+    attachRetryHandler() {
+        const retryBtn = document.getElementById('retry-load');
+        if (retryBtn) {
+            retryBtn.onclick = () => this.loadData();
         }
     }
 
@@ -256,7 +264,7 @@ class HomePage {
                 <span class="material-icons" style="font-size: 48px; margin-bottom: 16px;">error</span>
                 <h3>Failed to load staking data</h3>
                 <p>${this.error}</p>
-                <button class="btn btn-primary" onclick="homePage.loadData()" style="margin-top: 16px;">
+                <button class="btn btn-primary" id="retry-load" type="button" style="margin-top: 16px;">
                     <span class="material-icons">refresh</span>
                     Retry
                 </button>
@@ -511,12 +519,7 @@ class HomePage {
             await new Promise(resolve => setTimeout(resolve, 200));
 
             // Try to load real blockchain data first
-            try {
-                await this.loadBlockchainData();
-            } catch (blockchainError) {
-                console.warn('📊 Failed to load blockchain data, using fallback:', blockchainError.message);
-                this.loadFallbackData();
-            }
+            await this.loadBlockchainData();
 
             this.loading = false;
             this.render();
@@ -525,7 +528,7 @@ class HomePage {
 
         } catch (error) {
             console.error('❌ Failed to load staking data:', error);
-            this.error = `Failed to load blockchain data: ${error.message}`;
+            this.error = 'Unable to load staking data right now.';
             this.loading = false;
             this.render();
         }
@@ -835,109 +838,6 @@ class HomePage {
         } catch (error) {
             console.error('❌ Failed to calculate TVL and APR:', error);
         }
-    }
-
-    /**
-     * Load fallback data when blockchain data is not available
-     */
-    loadFallbackData() {
-        console.log('📊 Loading fallback data...');
-
-        if (window.CONFIG?.DEV?.MOCK_DATA) {
-                // Enhanced mock data with all features from milestones.md
-            this.pairs = [
-                {
-                    id: '1',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'USDC',
-                    name: 'LIB/USDC LP',
-                    platform: 'Uniswap V2',
-                    apr: '125.50',
-                    tvl: 1250000,
-                    userShares: this.isWalletConnected() ? '15.75' : '0.00',
-                    userEarnings: this.isWalletConnected() ? '2.45' : '0.00',
-                    totalStaked: '850000',
-                    rewardRate: '0.125',
-                    stakingEnabled: true
-                },
-                {
-                    id: '2',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'ETH',
-                    name: 'LIB/ETH LP',
-                    platform: 'Uniswap V2',
-                    apr: '98.75',
-                    tvl: 850000,
-                    userShares: this.isWalletConnected() ? '8.25' : '0.00',
-                    userEarnings: this.isWalletConnected() ? '1.12' : '0.00',
-                    totalStaked: '620000',
-                    rewardRate: '0.098',
-                    stakingEnabled: true
-                },
-                {
-                    id: '3',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'BTC',
-                    name: 'LIB/BTC LP',
-                    platform: 'Uniswap V2',
-                    apr: '87.25',
-                    tvl: 650000,
-                    userShares: this.isWalletConnected() ? '5.50' : '0.00',
-                    userEarnings: this.isWalletConnected() ? '0.87' : '0.00',
-                    totalStaked: '480000',
-                    rewardRate: '0.087',
-                    stakingEnabled: true
-                },
-                {
-                    id: '4',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'DAI',
-                    name: 'LIB/DAI LP',
-                    platform: 'Uniswap V2',
-                    apr: '76.80',
-                    tvl: 420000,
-                    userShares: this.isWalletConnected() ? '3.25' : '0.00',
-                    userEarnings: this.isWalletConnected() ? '0.54' : '0.00',
-                    totalStaked: '320000',
-                    rewardRate: '0.076',
-                    stakingEnabled: true
-                },
-                {
-                    id: '5',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'MATIC',
-                    name: 'LIB/MATIC LP',
-                    platform: 'Uniswap V2',
-                    apr: '65.40',
-                    tvl: 280000,
-                    userShares: this.isWalletConnected() ? '2.10' : '0.00',
-                    userEarnings: this.isWalletConnected() ? '0.32' : '0.00',
-                    totalStaked: '210000',
-                    rewardRate: '0.065',
-                    stakingEnabled: true
-                }
-            ];
-        } else {
-            // Use minimal fallback data when no mock data is configured
-            this.pairs = [
-                {
-                    id: '1',
-                    token0Symbol: 'LIB',
-                    token1Symbol: 'USDC',
-                    name: 'LIB/USDC LP',
-                    platform: 'Uniswap V2',
-                    apr: '0.00',
-                    tvl: 0,
-                    userShares: '0.00',
-                    userEarnings: '0.00',
-                    totalStaked: '0',
-                    rewardRate: '0',
-                    stakingEnabled: false
-                }
-            ];
-        }
-
-        console.log('📊 Fallback data loaded:', this.pairs.length, 'pairs');
     }
 
     /**
