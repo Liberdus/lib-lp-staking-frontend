@@ -5164,7 +5164,7 @@ class ContractManager {
                     console.error(`Transaction ${operationName} failed:`, error.message);
                     // Fallback notification with user-friendly message
                     if (window.notificationManager) {
-                        window.notificationManager.error(`Transaction Failed`, userMessage);
+                        window.notificationManager.error(userMessage);
                     }
                 }
 

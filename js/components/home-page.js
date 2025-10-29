@@ -397,7 +397,6 @@ class HomePage {
                     if (!this.isWalletConnected()) {
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                'Wallet Not Connected',
                                 'Please connect your wallet to stake tokens'
                             );
                         }
@@ -409,7 +408,6 @@ class HomePage {
                         const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
                         if (window.notificationManager) {
                             window.notificationManager.warning(
-                                `${networkName} Network Required`,
                                 `Please switch to ${networkName} network to make transactions`
                             );
                         }
