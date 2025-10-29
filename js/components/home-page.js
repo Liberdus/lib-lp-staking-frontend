@@ -473,10 +473,10 @@ class HomePage {
 
         try {
             await this.refreshData();
-            this.showNotification('success', 'Data refreshed successfully!');
+            window.notificationManager.success('Data refreshed successfully!');
         } catch (error) {
             console.error('❌ Manual refresh failed:', error);
-            this.showNotification('error', 'Failed to refresh data');
+            window.notificationManager.error('Failed to refresh data');
         } finally {
             // Reset button state
             if (refreshButton) {
@@ -1313,7 +1313,7 @@ class HomePage {
         }
 
         if (!this.isWalletConnected()) {
-            this.showNotification('error', 'Please connect your wallet first');
+            window.notificationManager.error('Please connect your wallet first');
             return;
         }
 
@@ -1334,7 +1334,7 @@ class HomePage {
 
                 if (result && result.success) {
                     console.log('✅ Rewards claimed successfully');
-                    this.showNotification('success', `Successfully claimed ${pair.userEarnings} LIB rewards!`);
+                    window.notificationManager.success(`Successfully claimed ${pair.userEarnings} LIB rewards!`);
 
                     // Refresh data after successful transaction
                     setTimeout(() => this.refreshData(), 2000);
@@ -1354,21 +1354,6 @@ class HomePage {
             if (button) {
                 button.disabled = false;
                 button.innerHTML = '<span class="material-icons">redeem</span> Claim';
-            }
-        }
-    }
-
-    showNotification(type, message) {
-        // Use existing notification system if available
-        if (window.notificationManager) {
-            window.notificationManager.show(message, type);
-        } else if (window.notification) {
-            window.notification.show(type, message);
-        } else {
-            // Fallback to console and alert
-            console.log(`${type.toUpperCase()}: ${message}`);
-            if (type === 'error') {
-                alert(`Error: ${message}`);
             }
         }
     }
