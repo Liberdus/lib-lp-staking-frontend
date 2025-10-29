@@ -523,8 +523,6 @@ class NetworkManager {
                 const message = `${networkName} network permission granted`;
                 if (context === 'admin') {
                     alert(`✅ ${message}! You can now use the admin panel.`);
-                } else if (window.homepageNotificationManager) {
-                    window.homepageNotificationManager.show('success', 'Permission Granted', message);
                 } else if (window.notificationManager) {
                     window.notificationManager.success(message);
                 }
@@ -538,8 +536,8 @@ class NetworkManager {
             
             if (context === 'admin') {
                 alert(errorMessage);
-            } else if (window.homepageNotificationManager) {
-                window.homepageNotificationManager.show('error', 'Permission Error', errorMessage);
+            } else if (window.notificationManager) {
+                window.notificationManager.error(errorMessage);
             }
             
             throw error;

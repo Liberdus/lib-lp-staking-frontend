@@ -847,12 +847,12 @@ class MasterInitializer {
     }
 
     handleInitializationError(error) {
-        // Use homepage notification manager if available (overlay toast)
-        if (window.homepageNotificationManager) {
-            window.homepageNotificationManager.error(
+        // Use standard notification manager
+        if (window.notificationManager) {
+            window.notificationManager.error(
                 'System Initialization Failed',
                 `${error.message || 'An unknown error occurred'}. Please refresh the page.`,
-                0 // Persistent error notification
+                { persistent: true }
             );
         } else {
             // Fallback to console and alert
@@ -881,8 +881,8 @@ class MasterInitializer {
         console.log('🔄 Retrying system initialization...');
 
         // Clear any existing notifications
-        if (window.homepageNotificationManager) {
-            window.homepageNotificationManager.dismissAll();
+        if (window.notificationManager && window.notificationManager.dismissAll) {
+            window.notificationManager.dismissAll();
         }
 
         // Reset initialization state

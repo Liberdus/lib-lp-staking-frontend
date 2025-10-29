@@ -195,39 +195,6 @@ body {
 }
 
 /* ========================================
-   NOTIFICATIONS - HOMEPAGE STYLE
-   ======================================== */
-.notification {
-    background: var(--background-paper) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--divider) !important;
-    box-shadow: var(--shadow-8) !important;
-}
-
-[data-theme="dark"] .notification {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98)) !important;
-    border: 1px solid rgba(71, 85, 105, 0.5) !important;
-}
-
-.notification-title {
-    color: var(--text-primary) !important;
-}
-
-.notification-message {
-    color: var(--text-secondary) !important;
-}
-
-.notification-close {
-    background: var(--action-hover) !important;
-    color: var(--text-secondary) !important;
-}
-
-.notification-close:hover {
-    background: var(--surface-hover) !important;
-    color: var(--text-primary) !important;
-}
-
-/* ========================================
    STATUS BADGES - HOMEPAGE COLORS
    ======================================== */
 .status-badge.executed,
@@ -1352,30 +1319,6 @@ button.btn span:not(.btn-loading),
     opacity: 0.5 !important;
     cursor: not-allowed !important;
     pointer-events: none !important;
-}
-
-
-/* ========================================
-   TOAST/NOTIFICATION POSITIONING FIX
-   ======================================== */
-/* Ensure toasts are ALWAYS above modals and never blurred */
-.notification-container,
-#notification-container {
-    position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    left: auto !important;
-    bottom: auto !important;
-    z-index: 1000000 !important; /* Way above everything */
-    pointer-events: none !important;
-    max-width: 420px !important;
-}
-
-.notification {
-    pointer-events: auto !important;
-    backdrop-filter: none !important; /* Remove blur effect */
-    -webkit-backdrop-filter: none !important;
-    filter: none !important; /* Ensure no filters applied */
 }
 
 /* Ensure modal backdrop doesn't affect toasts */
