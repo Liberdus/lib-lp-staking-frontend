@@ -598,6 +598,9 @@ class AdminPage {
         // Create admin layout
         this.createAdminLayout();
 
+        // Setup event listeners once layout elements exist
+        this.setupEventListeners();
+
         // Load contract statistics
         await this.loadContractStats();
 
@@ -606,9 +609,6 @@ class AdminPage {
 
         // Load info card (initializes layout and pulls live contract data)
         await this.loadInfoCard();
-
-        // Setup event listeners
-        this.setupEventListeners();
 
         // Setup network selector
         this.setupNetworkSelector();
@@ -670,6 +670,8 @@ class AdminPage {
         console.log('🎧 Setting up admin panel event listeners...');
 
         try {
+            this.setProposalButtonsEnabled(false);
+
             // Theme toggle event listener
             this.setupThemeToggle();
 
@@ -1574,6 +1576,9 @@ class AdminPage {
 
             </div>
         `;
+
+        // Prevent proposal actions until the underlying data is ready
+        this.setProposalButtonsEnabled(false);
         
         // Display version in header
         if (window.getCurrentVersion) {
@@ -1584,6 +1589,23 @@ class AdminPage {
                 }
             });
         }
+    }
+
+    /**
+     * Toggle the proposal buttons so they stay inactive until data is ready
+     */
+    setProposalButtonsEnabled(enabled) {
+        const proposalButtons = document.querySelectorAll('.proposal-btn');
+
+        proposalButtons.forEach(button => {
+            button.disabled = !enabled;
+            button.setAttribute('aria-disabled', (!enabled).toString());
+            if (enabled) {
+                button.removeAttribute('title');
+            } else if (!button.hasAttribute('title')) {
+                button.title = 'Unavailable while proposals load';
+            }
+        });
     }
 
     async loadMultiSignPanel() {
@@ -1676,6 +1698,9 @@ class AdminPage {
                 </div>
             `;
 
+            // Proposals are ready, enable actions now that data exists
+            this.setProposalButtonsEnabled(true);
+
             // Add event listener for hide-executed checkbox
             const hideExecutedCheckbox = document.getElementById('hide-executed');
             if (hideExecutedCheckbox) {
@@ -1744,6 +1769,9 @@ class AdminPage {
                 </div>
             `;
             }
+
+            // Keep proposal actions disabled until recovery
+            this.setProposalButtonsEnabled(false);
         }
     }
 
@@ -2187,6 +2215,7 @@ class AdminPage {
 
         // Show loading state
         this.showLoadingState();
+        this.setProposalButtonsEnabled(false);
 
         this.isRefreshing = true;
         console.log('🔄 Refreshing admin panel data...');
