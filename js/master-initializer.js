@@ -94,8 +94,7 @@ class MasterInitializer {
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/notification-manager-new.js',
             'js/core/loading-manager.js',
-            'js/core/accessibility-manager.js',
-            'js/core/animation-manager.js'
+            'js/core/accessibility-manager.js'
         ];
 
         // Only load dev/test utilities if in development mode
