@@ -278,11 +278,28 @@ class MasterInitializer {
                 window.networkManager.setupPermissionChangeListener();
             }
 
-            // Initialize with read-only provider for data fetching
+            // Initialize ContractManager: wallet mode if already connected, else read-only
             try {
-                console.log('🔄 Initializing ContractManager with read-only provider...');
-                await window.contractManager.initializeReadOnly();
-                console.log('✅ ContractManager initialized with read-only provider');
+                const isWalletConnected = !!(window.walletManager && typeof window.walletManager.isConnected === 'function' && window.walletManager.isConnected());
+                if (isWalletConnected && typeof window.ethereum !== 'undefined' && window.ethers) {
+                    console.log('🔄 Wallet detected as connected on load - initializing in wallet mode...');
+                    const provider = new window.ethers.providers.Web3Provider(window.ethereum);
+                    const signer = provider.getSigner();
+                    await window.contractManager.upgradeToWalletMode(provider, signer);
+                    // Notify listeners that ContractManager is ready
+                    document.dispatchEvent(new CustomEvent('contractManagerReady', {
+                        detail: { contractManager: window.contractManager }
+                    }));
+                    console.log('✅ ContractManager initialized in wallet mode');
+                } else {
+                    console.log('🔄 Initializing ContractManager with read-only provider...');
+                    await window.contractManager.initializeReadOnly();
+                    // Notify listeners that ContractManager is ready
+                    document.dispatchEvent(new CustomEvent('contractManagerReady', {
+                        detail: { contractManager: window.contractManager }
+                    }));
+                    console.log('✅ ContractManager initialized with read-only provider');
+                }
 
                 // Initialize cache integration with contract manager
                 if (window.cacheIntegration && window.unifiedCache) {
@@ -295,10 +312,7 @@ class MasterInitializer {
                     }
                 }
 
-                // Dispatch event for components waiting for contract manager
-                document.dispatchEvent(new CustomEvent('contractManagerReady', {
-                    detail: { contractManager: window.contractManager }
-                }));
+                // Note: contractManagerReady is dispatched above after initialization
             } catch (error) {
                 console.error('❌ Failed to initialize ContractManager with read-only provider:', error);
             }
@@ -767,13 +781,8 @@ class MasterInitializer {
             if (window.contractManager) {
                 // Downgrade to read-only mode: recreate provider and contracts
                 window.contractManager.signer = null;
-                
-                if (window.ethereum) {
-                    // Create fresh provider to clear cached account references
-                    window.contractManager.provider = new ethers.providers.Web3Provider(window.ethereum);
-                    // Reinitialize all contracts with fresh provider
-                    await window.contractManager.initializeContracts();
-                }
+            // Reinitialize ContractManager in read-only mode using configured RPCs
+            await window.contractManager.initializeReadOnly();
                 
                 console.log('✅ ContractManager downgraded to read-only mode');
             }
