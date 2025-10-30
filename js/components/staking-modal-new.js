@@ -638,8 +638,6 @@ class StakingModalNew {
             const approveTx = await window.contractManager.approveLPToken(pairName, this.stakeAmount);
             console.log(`✅ Approval transaction sent: ${approveTx.hash}`);
 
-            console.log(`✅ Approval confirmed in block ${receipt.blockNumber}`);
-
             // Update state and UI
             this.isApproved = true;
             this.needsApproval = false;
