@@ -3843,19 +3843,6 @@ class ContractManager {
         }
     }
 
-    /**
-     * Wrapper methods for admin panel compatibility - FIXED PARAMETER ORDER
-     */
-    async proposeWithdrawal(amount, toAddress, description) {
-        console.log(`[WRAPPER FIX] 🔄 proposeWithdrawal called with:`);
-        console.log(`[WRAPPER FIX]   amount: ${amount}`);
-        console.log(`[WRAPPER FIX]   toAddress: ${toAddress}`);
-        console.log(`[WRAPPER FIX]   description: ${description} (ignored - not used by contract)`);
-
-        // CRITICAL FIX: Correct parameter order - recipient first, then amount
-        return await this.proposeWithdrawRewards(toAddress, amount);
-    }
-
     async cancelProposal(proposalId) {
         // Note: The contract doesn't have a cancel function, so we reject instead
         return await this.rejectProposal(proposalId);
