@@ -157,7 +157,6 @@
             
             // JavaScript - Utils (only existing files)
             `${basePath}js/utils/admin-test.js`,
-            `${basePath}js/utils/cache-integration.js`,
             `${basePath}js/utils/event-manager.js`,
             `${basePath}js/utils/gas-estimator.js`,
             `${basePath}js/utils/helpers.js`,
@@ -168,7 +167,6 @@
             `${basePath}js/utils/rewards-calculator.js`,
             `${basePath}js/utils/rpc-test.js`,
             `${basePath}js/utils/ses-safe-handler.js`,
-            `${basePath}js/utils/unified-cache.js`,
             `${basePath}js/utils/version-check.js`,
             `${basePath}js/utils/multicall-service.js`,
             

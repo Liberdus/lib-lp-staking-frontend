@@ -86,8 +86,6 @@ class MasterInitializer {
 
     async loadCoreUtilities() {
         const coreScripts = [
-            'js/utils/unified-cache.js',        // Load cache system first
-            'js/utils/cache-integration.js',    // Then cache integration
             'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
             'js/components/network-indicator-selector.js',
             'js/core/error-handler.js',        // Error handling system
@@ -156,17 +154,6 @@ class MasterInitializer {
 
     async initializeComponents() {
         console.log('🔧 Initializing components...');
-
-        // Initialize unified cache system first (needed by other components)
-        if (window.unifiedCache) {
-            try {
-                window.unifiedCache.initialize();
-                this.components.set('unifiedCache', window.unifiedCache);
-                console.log('✅ Unified Cache initialized');
-            } catch (error) {
-                console.error('❌ Failed to initialize UnifiedCache:', error);
-            }
-        }
 
         // Initialize unified theme manager
         if (window.UnifiedThemeManager) {
@@ -299,17 +286,6 @@ class MasterInitializer {
                         detail: { contractManager: window.contractManager }
                     }));
                     console.log('✅ ContractManager initialized with read-only provider');
-                }
-
-                // Initialize cache integration with contract manager
-                if (window.cacheIntegration && window.unifiedCache) {
-                    try {
-                        window.cacheIntegration.initialize(window.unifiedCache, window.contractManager);
-                        this.components.set('cacheIntegration', window.cacheIntegration);
-                        console.log('✅ Cache Integration initialized with ContractManager');
-                    } catch (error) {
-                        console.error('❌ Failed to initialize CacheIntegration:', error);
-                    }
                 }
 
                 // Note: contractManagerReady is dispatched above after initialization
