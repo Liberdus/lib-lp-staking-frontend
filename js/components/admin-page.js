@@ -2509,19 +2509,6 @@ class AdminPage {
                     });
                     console.log(`🎯 Cached states for ${formattedProposals.length} proposals`);
 
-                    // Show success notification
-                    if (window.notificationManager) {
-                        if (realProposals.length > 0) {
-                            window.notificationManager.success(
-                                `Successfully loaded ${realProposals.length} proposals from blockchain`
-                            );
-                        } else {
-                            window.notificationManager.info(
-                                'Connected to blockchain - no proposals exist yet'
-                            );
-                        }
-                    }
-
                     return formattedProposals;
                 } else {
                     console.log('⚠️ Invalid response from getAllActions:', realProposals);
@@ -2949,12 +2936,6 @@ class AdminPage {
                 // Update the UI
                 await this.loadMultiSignPanel();
 
-                if (window.notificationManager) {
-                    window.notificationManager.success(
-                        `Successfully loaded ${realProposals.length} proposals from blockchain`
-                    );
-                }
-
                 return formattedProposals;
             } else {
                 throw new Error('No proposals returned from contract');
@@ -3278,12 +3259,6 @@ class AdminPage {
 
                 // Refresh the display
                 await this.loadMultiSignPanel();
-
-                if (window.notificationManager) {
-                    window.notificationManager.success(
-                        `Successfully loaded all ${allProposals.length} proposals from blockchain`
-                    );
-                }
             }
 
         } catch (error) {
