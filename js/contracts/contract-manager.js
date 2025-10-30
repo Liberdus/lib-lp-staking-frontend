@@ -339,22 +339,25 @@ class ContractManager {
     async upgradeToWalletMode(provider, signer) {
         try {
             this.log('🔄 Upgrading ContractManager to wallet mode...');
+            this.isInitializing = true;
 
-            // Update provider and signer
+            // Update provider and signer, then delegate to shared initialization path
             this.provider = provider;
             this.signer = signer;
 
-            // Re-initialize contract instances with signer
-            await this.initializeContracts();
+            await this._performInitialization(provider, signer);
 
-            // Initialize additional wallet-dependent components
+            // _performInitialization sets isInitialized and notifies callbacks
+            this.isInitializing = false;
+
+            // Update any wallet-dependent helpers
             if (this.gasEstimator) {
                 this.gasEstimator.updateProvider(provider);
             }
 
             this.log('✅ ContractManager upgraded to wallet mode successfully');
-
         } catch (error) {
+            this.isInitializing = false;
             this.logError('❌ Failed to upgrade to wallet mode:', error);
             throw error;
         }
