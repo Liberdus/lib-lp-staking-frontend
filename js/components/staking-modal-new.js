@@ -637,7 +637,6 @@ class StakingModalNew {
             // Execute approval and wait for confirmation
             const approveTx = await window.contractManager.approveLPToken(pairName, this.stakeAmount);
             console.log(`✅ Approval transaction sent: ${approveTx.hash}`);
-            const receipt = await approveTx.wait();
 
             console.log(`✅ Approval confirmed in block ${receipt.blockNumber}`);
 
