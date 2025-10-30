@@ -356,7 +356,6 @@ class ContractManager {
             }
 
             this.log('✅ ContractManager upgraded to wallet mode successfully');
-            return true;
         } catch (error) {
             this.isInitializing = false;
             this.logError('❌ Failed to upgrade to wallet mode:', error);
@@ -4456,7 +4455,6 @@ class ContractManager {
         this.log(`Executing transaction approveLPToken`);
 
         // Check if we're in fallback mode
-        //await this.ensureSigner();
         const lpContract = this.getLPTokenContract(pairName);
         if (!lpContract) {
             // Fallback mode - simulate transaction
