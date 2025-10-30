@@ -650,6 +650,7 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Approval failed:', error);
+            window.notificationManager?.error('Token approval failed. ' + error.message);
             this.isApproving = false;
             this.isApproved = false;
             this.updateStakeButton();
