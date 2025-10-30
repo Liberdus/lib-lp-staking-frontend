@@ -223,6 +223,49 @@
         }
 
         /**
+         * Get action counter with caching
+         */
+        async getActionCounter() {
+            const cm = this.ensureContractManager();
+            if (!cm) return null;
+
+            return await this.cache.getWithRefresh(
+                'actionCounter',
+                () => cm.getActionCounter()
+            );
+        }
+
+        // ============ PRICE DATA METHODS ============
+
+        /**
+         * Get token price with caching
+         */
+        async getTokenPrice(tokenSymbol) {
+            if (!global.priceFeeds) return null;
+
+            return await this.cache.getWithRefresh(
+                'tokenPrices',
+                () => global.priceFeeds.getTokenPrice(tokenSymbol),
+                { id: tokenSymbol }
+            );
+        }
+
+        /**
+         * Get LP token price with caching
+         */
+        async getLPTokenPrice(pairAddress) {
+            if (!global.priceFeeds) return null;
+
+            return await this.cache.getWithRefresh(
+                'lpPrices',
+                () => global.priceFeeds.getLPTokenPrice(pairAddress),
+                { pairAddress: pairAddress }
+            );
+        }
+
+        // ============ CACHE MANAGEMENT METHODS ============
+
+        /**
          * Invalidate user-specific cache after transactions
          */
         invalidateUserCache(userAddress) {
@@ -282,6 +325,4 @@
     console.log('✅ CacheIntegration module loaded');
 
 })(window);
-
-
 
