@@ -1294,11 +1294,6 @@ class ContractManager {
     getLPTokenContract(pairName) {
         const contract = this.lpTokenContracts.get(pairName);
         if (!contract) {
-            // In fallback mode, return null instead of throwing error
-            if (this.lpTokenContracts.size === 0) {
-                this.log(`No LP token contracts available - running in fallback mode for pair: ${pairName}`);
-                return null;
-            }
             throw new Error(`LP token contract not found for pair: ${pairName}`);
         }
         return contract;
@@ -4456,19 +4451,6 @@ class ContractManager {
 
         // Check if we're in fallback mode
         const lpContract = this.getLPTokenContract(pairName);
-        if (!lpContract) {
-            // Fallback mode - simulate transaction
-            this.log(`Fallback mode: Simulating approveLPToken for ${pairName}, amount: ${amount}`);
-            return {
-                hash: '0x' + Math.random().toString(16).substr(2, 64),
-                wait: async () => ({
-                    status: 1,
-                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-                    blockNumber: Math.floor(Math.random() * 1000000) + 1000000,
-                    gasUsed: ethers.BigNumber.from('21000')
-                })
-            };
-        }
 
         return await this.executeTransactionWithRetry(async () => {
             const stakingAddress = this.contractAddresses.get('STAKING');
