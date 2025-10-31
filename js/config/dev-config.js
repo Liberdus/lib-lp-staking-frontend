@@ -7,7 +7,6 @@ window.DEV_CONFIG = {
     // Admin Panel Settings
     ADMIN_DEVELOPMENT_MODE: false, // Disabled to test with real wallet
     BYPASS_ACCESS_CONTROL: false, // Enable wallet and role checks
-    MOCK_USER_ADDRESS: '0x1234567890123456789012345678901234567890',
 
     // Authorized Admin Addresses (for production mode)
     AUTHORIZED_ADMINS: [
@@ -19,7 +18,6 @@ window.DEV_CONFIG = {
     ],
     
     // Contract Settings
-    MOCK_CONTRACT_DATA: true,     // Use mock data when contracts unavailable
     SKIP_WALLET_CONNECTION: false, // Skip wallet connection requirements
     
     // Debug Settings
@@ -28,7 +26,6 @@ window.DEV_CONFIG = {
     
     // Network Settings
     ALLOW_ANY_NETWORK: true,      // Don't enforce specific network
-    MOCK_NETWORK_DATA: true,      // Use mock network data if needed
     
     // UI Settings
     SHOW_DEV_INDICATORS: true,    // Show development mode indicators
@@ -41,20 +38,7 @@ window.DEV_CONFIG = {
     // Feature Flags
     ENABLE_EXPERIMENTAL_FEATURES: true, // Enable experimental features
     SKIP_VALIDATION: false,       // Skip form validation (use carefully)
-    
-    // Mock Data
-    MOCK_STATS: {
-        activePairs: 5,
-        totalTVL: 125000,
-        totalStakers: 89,
-        totalRewards: 25000
-    },
-    
-    MOCK_PAIRS: [
-        { name: 'ETH/USDC', address: '0x1111111111111111111111111111111111111111' },
-        { name: 'WBTC/ETH', address: '0x2222222222222222222222222222222222222222' },
-        { name: 'USDC/USDT', address: '0x3333333333333333333333333333333333333333' }
-    ]
+
 };
 
 // Development utilities
@@ -114,7 +98,6 @@ window.DEV_UTILS = {
     resetToDevMode() {
         window.DEV_CONFIG.ADMIN_DEVELOPMENT_MODE = true;
         window.DEV_CONFIG.BYPASS_ACCESS_CONTROL = true;
-        window.DEV_CONFIG.MOCK_CONTRACT_DATA = true;
         window.DEV_CONFIG.VERBOSE_LOGGING = true;
         console.log('🚧 Development mode reset');
         location.reload();
