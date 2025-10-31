@@ -1504,9 +1504,9 @@ class AdminPage {
                                 Hide executed transactions
                             </label>
                             <div class="panel-stats">
-                                <span class="stat-chip">Total Proposals: ${proposals.length}</span>
-                                <span class="stat-chip">Showing: ${filteredProposals.length}</span>
-                                <span class="stat-chip">Required Approvals: ${this.contractStats.requiredApprovals || 2}</span>
+                                <span class="stat-chip" data-stat="total-proposals">Total Proposals: ${this.totalProposalCount}</span>
+                                <span class="stat-chip" data-stat="showing-proposals">Showing: ${filteredProposals.length}</span>
+                                <span class="stat-chip" data-stat="required-approvals">Required Approvals: ${this.contractStats?.requiredApprovals ?? 3}</span>
                             </div>
                         </div>
                     </div>
@@ -1531,6 +1531,12 @@ class AdminPage {
                     </div>
                 </div>
             `;
+
+            this.updateProposalStatsUI({
+                total: this.totalProposalCount,
+                showing: filteredProposals.length,
+                required: this.contractStats?.requiredApprovals ?? 3
+            });
 
             // Proposals are ready, enable actions now that data exists
             this.setProposalButtonsEnabled(true);
@@ -2295,6 +2301,19 @@ class AdminPage {
 
                 console.log(`📊 Added ${formattedBatch.length} proposals to cache, ${visibleBatch.length} visible`);
 
+                const allCachedProposals = this.proposalsCache
+                    ? Array.from(this.proposalsCache.values())
+                    : [];
+                const currentVisibleCount = hideExecuted
+                    ? allCachedProposals.filter(proposal => !proposal.executed).length
+                    : allCachedProposals.length;
+
+                this.updateProposalStatsUI({
+                    total: this.totalProposalCount,
+                    showing: currentVisibleCount,
+                    required: this.contractStats?.requiredApprovals ?? 2
+                });
+
                 // Update Load More button
                 this.updateLoadMoreButton();
 
@@ -2362,6 +2381,33 @@ class AdminPage {
             this.isLoadingMore = false;
             loadMoreContainer.outerHTML = this.renderLoadMoreButton([]);
         }
+    }
+
+    updateProposalStatsUI(stats = {}) {
+        const statsContainer = document.querySelector('.panel-stats');
+        if (!statsContainer) {
+            return;
+        }
+
+        const updateChip = (selector, label, value) => {
+            if (value === undefined || value === null) {
+                return;
+            }
+
+            const numericValue = Number(value);
+            if (!Number.isFinite(numericValue)) {
+                return;
+            }
+
+            const chip = statsContainer.querySelector(selector);
+            if (chip) {
+                chip.textContent = `${label}: ${numericValue}`;
+            }
+        };
+
+        updateChip('[data-stat="total-proposals"]', 'Total Proposals', stats.total);
+        updateChip('[data-stat="showing-proposals"]', 'Showing', stats.showing);
+        updateChip('[data-stat="required-approvals"]', 'Required Approvals', stats.required);
     }
 
     /**
@@ -3079,11 +3125,8 @@ class AdminPage {
         // Update the table
         proposalsTbody.innerHTML = this.renderProposalsRows(filteredProposals);
 
-        // Update stats
-        const showingChip = document.querySelector('.stat-chip:nth-child(2)');
-        if (showingChip) {
-            showingChip.textContent = `Showing: ${filteredProposals.length}`;
-        }
+        // Update stats to reflect filtered count
+        this.updateProposalStatsUI({ showing: filteredProposals.length });
     }
 
     renderProposalsRows(proposals) {
