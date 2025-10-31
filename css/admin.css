@@ -444,19 +444,17 @@
 [data-theme="light"] .pair-item-card:hover,
 [data-theme="light"] .signer-address:hover {
     background: rgba(0, 0, 0, 0.04);
-}
-
-[data-theme="light"] .pair-item-card:hover {
     border-color: rgba(0, 212, 255, 0.3);
 }
 
 [data-theme="light"] .pair-name-section .pair-name,
-[data-theme="light"] .section-header h6 {
-    color: #1a1a1a;
+[data-theme="light"] .section-header h6,
+[data-theme="light"] .pair-address,
+[data-theme="light"] .signer-address {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 [data-theme="light"] .pair-address {
-    color: rgba(0, 0, 0, 0.8);
     background: rgba(0, 0, 0, 0.05);
 }
 
@@ -471,10 +469,6 @@
 
 [data-theme="light"] .weight-percentage {
     color: rgba(0, 0, 0, 0.7);
-}
-
-[data-theme="light"] .signer-address {
-    color: rgba(0, 0, 0, 0.8);
 }
 
 [data-theme="light"] .contract-info-separator {
@@ -2008,7 +2002,8 @@ table td:last-child {
 
 /* Responsive: Stack on mobile */
 @media (max-width: 768px) {
-    .info-grid {
+    .info-grid,
+    .signers-list {
         grid-template-columns: 1fr;
     }
 }
@@ -2116,10 +2111,13 @@ table td:last-child {
     font-size: 10px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     line-height: 1.2;
     margin-bottom: 2px;
+}
+
+.weight-value,
+.weight-percentage {
+    line-height: 1.2;
 }
 
 .weight-value {
@@ -2127,7 +2125,6 @@ table td:last-child {
     font-weight: 700;
     color: #00d4ff;
     font-family: 'Courier New', monospace;
-    line-height: 1.2;
     margin-bottom: 6px;
 }
 
@@ -2135,7 +2132,6 @@ table td:last-child {
     font-size: 12px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.9);
-    line-height: 1.2;
 }
 
 .pair-details-section {
@@ -2152,22 +2148,31 @@ table td:last-child {
     margin-top: 4px;
 }
 
-.address-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.6);
+.address-label,
+.weight-label,
+.percentage-label {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-.pair-address {
+.address-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pair-address,
+.signer-address {
     font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
     font-size: 12px;
     color: rgba(255, 255, 255, 0.8);
+    word-break: break-all;
+}
+
+.pair-address {
     background: rgba(0, 0, 0, 0.2);
     padding: 4px 8px;
     border-radius: 4px;
-    word-break: break-all;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -2182,7 +2187,7 @@ table td:last-child {
 .weight-bar {
     height: 100%;
     background: linear-gradient(90deg, #00d4ff 0%, #00a8cc 100%);
-    border-radius: 2px;
+    border-radius: inherit;
     transition: width 0.3s ease;
 }
 
@@ -2205,13 +2210,6 @@ table td:last-child {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
-}
-
-/* Responsive: Stack signers on mobile */
-@media (max-width: 768px) {
-    .signers-list {
-        grid-template-columns: 1fr;
-    }
 }
 
 .signer-address {
