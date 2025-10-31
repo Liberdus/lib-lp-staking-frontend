@@ -3538,8 +3538,6 @@ class AdminPage {
                         Number(ethers.utils.formatEther(stats.hourlyRewardRate)) : defaults.HOURLY_REWARD_RATE;
                     this.contractStats.requiredApprovals = stats.requiredApprovals?.toNumber() || defaults.REQUIRED_APPROVALS;
                     this.contractStats.actionCounter = stats.actionCounter?.toNumber() || defaults.ACTION_COUNTER;
-                    this.contractStats.totalWeight = stats.totalWeight ? 
-                        Number(ethers.utils.formatEther(stats.totalWeight)) : defaults.TOTAL_WEIGHT;
                 } else {
                     // Fallback to individual calls with config defaults
                     const defaults = window.CONFIG?.DEFAULTS || {};
@@ -5488,22 +5486,6 @@ class AdminPage {
                 `0.0000 ${rewardTokenSymbol}/hour`
             );
 
-            // Get total weight - real data only
-            contractInfo.totalWeight = await this.safeContractCall(
-                async () => {
-                    const weight = await contractManager.getTotalWeight();
-                    if (weight && weight.toString) {
-                        const weightStr = weight.toString();
-                        const weightBigInt = BigInt(weightStr);
-                        const weightNum = Number(weightBigInt);
-                        return weightNum > Number.MAX_SAFE_INTEGER ?
-                            weightBigInt.toString() : weightNum.toLocaleString();
-                    }
-                    return '0';
-                },
-                '0'
-            );
-
             // Get pairs with full information - real data only
             contractInfo.pairs = await this.safeContractCall(
                 async () => {
@@ -5532,7 +5514,6 @@ class AdminPage {
             const errorInfo = {
                 rewardBalance: 'Error',
                 hourlyRate: 'Error',
-                totalWeight: 'Error',
                 pairs: [],
                 signers: []
             };
