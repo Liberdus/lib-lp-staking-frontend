@@ -1692,9 +1692,9 @@ class ContractManager {
                 return [];
             }
 
-            // Load recent 25 actions for better UX
+            // Load recent 50 actions for better UX
             const startIndex = actionCount;
-            const endIndex = Math.max(actionCount - 25, 1);
+            const endIndex = Math.max(actionCount - 50, 1);
             const actionIds = [];
             for (let i = startIndex; i >= endIndex; i--) {
                 actionIds.push(i);
