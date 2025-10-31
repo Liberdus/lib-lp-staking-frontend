@@ -18,17 +18,10 @@ class AdminPage {
         // SECURITY: Default to false (production mode) if DEV_CONFIG is not loaded
         this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? false;
 
-        // Professional Mock Data System
-        this.mockProposals = new Map();
-        this.mockProposalCounter = 1;
-        this.mockVotes = new Map();
-        this.mockApprovals = new Map();
-
         // PERFORMANCE OPTIMIZATION: Proposal state management
         this.proposalsCache = new Map(); // Cache proposals by ID for O(1) access
         this.lastProposalId = 0; // Track highest proposal ID for incremental loading
         this.pendingOptimisticUpdates = new Map(); // Track optimistic updates
-        this.isUsingRealData = false; // Track data source
 
         // PAGINATION OPTIMIZATION: Track loaded proposals for "Load More" functionality
         this.loadedProposalCount = 0; // Track how many proposals are currently loaded
@@ -40,172 +33,11 @@ class AdminPage {
         this.lastKnownProposalCount = 0; // Track last known total proposal count
         this.isSelectiveUpdateEnabled = true; // Enable selective update system
 
-        // Initialize mock system only in development mode
-        if (this.DEVELOPMENT_MODE) {
-            console.log('🚧 Development mode: Initializing mock system');
-            this.initializeMockSystem();
-        } else {
-            console.log('🚀 Production mode: Skipping mock system');
-        }
-
         // Initialize asynchronously (don't await in constructor)
         this.init().catch(error => {
             console.error('❌ AdminPage initialization failed:', error);
             this.showInitializationError(error);
         });
-    }
-
-    /**
-     * Initialize Professional Mock System
-     * Creates realistic proposal data that feels completely real
-     */
-    initializeMockSystem() {
-        console.log('🔧 Initializing professional mock system...');
-
-        // Initialize with some realistic existing proposals for demo
-        this.createMockProposal({
-            id: 48,
-            actionType: 'SET_HOURLY_REWARD_RATE',
-            title: 'Set Reward Rate',
-            description: 'Update hourly reward rate to boost staking incentives',
-            proposer: '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-            status: 'PENDING',
-            requiredApprovals: 3,
-            currentApprovals: 1,
-            details: {
-                newHourlyRewardRate: '100'
-            },
-            createdAt: Date.now() - 86400000, // 1 day ago
-            expiresAt: Date.now() + 518400000 // 6 days from now
-        });
-
-        this.createMockProposal({
-            id: 47,
-            actionType: 'SET_HOURLY_REWARD_RATE',
-            title: 'Set Reward Rate',
-            description: 'Update hourly reward rate for better rewards distribution',
-            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'PENDING',
-            requiredApprovals: 3,
-            currentApprovals: 1,
-            details: {
-                newHourlyRewardRate: '150'
-            },
-            createdAt: Date.now() - 172800000, // 2 days ago
-            expiresAt: Date.now() + 432000000 // 5 days from now
-        });
-
-        this.createMockProposal({
-            id: 46,
-            actionType: 'ADD_PAIR',
-            title: 'Add Pair',
-            description: 'Add LIB/ETH LP pair from Uniswap V3 (weight: 20)',
-            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'PENDING',
-            requiredApprovals: 3,
-            currentApprovals: 0,
-            details: {
-                pairToAdd: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
-                pairNameToAdd: 'LIB/ETH',
-                platformToAdd: 'Uniswap V3',
-                weightToAdd: 20
-            },
-            createdAt: Date.now() - 259200000, // 3 days ago
-            expiresAt: Date.now() + 345600000 // 4 days from now
-        });
-
-        this.createMockProposal({
-            id: 45,
-            actionType: 'ADD_PAIR',
-            title: 'Add Pair',
-            description: 'Add LIB/ETH LP pair from Uniswap V3 (weight: 20)',
-            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'PENDING',
-            requiredApprovals: 3,
-            currentApprovals: 0,
-            details: {
-                pairToAdd: '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640',
-                pairNameToAdd: 'LIB/ETH',
-                platformToAdd: 'Uniswap V3',
-                weightToAdd: 20
-            },
-            createdAt: Date.now() - 345600000, // 4 days ago
-            expiresAt: Date.now() + 259200000 // 3 days from now
-        });
-
-        this.createMockProposal({
-            id: 44,
-            actionType: 'SET_HOURLY_REWARD_RATE',
-            title: 'Set Reward Rate',
-            description: 'Governance proposal to update reward rate',
-            proposer: '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            status: 'PENDING',
-            requiredApprovals: 3,
-            currentApprovals: 0,
-            details: {
-                newHourlyRewardRate: '200'
-            },
-            createdAt: Date.now() - 432000000, // 5 days ago
-            expiresAt: Date.now() + 172800000 // 2 days from now
-        });
-
-        console.log('✅ Professional mock system initialized with realistic proposals');
-        console.log('🔧 Mock proposals created:', this.mockProposals.size);
-        console.log('🔧 Mock proposal IDs:', Array.from(this.mockProposals.keys()));
-    }
-
-    /**
-     * Create a mock proposal that looks completely real
-     */
-    createMockProposal(proposalData) {
-        const proposal = {
-            id: proposalData.id || this.mockProposalCounter++,
-            actionType: proposalData.actionType,
-            title: proposalData.title,
-            description: proposalData.description,
-            proposer: proposalData.proposer,
-            status: proposalData.status || 'PENDING',
-            requiredApprovals: proposalData.requiredApprovals || 3,
-            currentApprovals: proposalData.currentApprovals || 0,
-            details: proposalData.details,
-            createdAt: proposalData.createdAt || Date.now(),
-            expiresAt: proposalData.expiresAt || (Date.now() + 604800000), // 7 days
-            votes: [],
-            transactionHash: proposalData.transactionHash || ('0x' + Math.random().toString(16).substr(2, 64))
-        };
-
-        this.mockProposals.set(proposal.id, proposal);
-        this.mockVotes.set(proposal.id, new Map());
-        this.mockApprovals.set(proposal.id, new Set());
-
-        return proposal;
-    }
-
-    /**
-     * Add a vote to a mock proposal
-     */
-    addMockVote(proposalId, signerAddress, vote) {
-        if (!this.mockVotes.has(proposalId)) {
-            this.mockVotes.set(proposalId, new Map());
-        }
-
-        this.mockVotes.get(proposalId).set(signerAddress, {
-            vote: vote, // 'APPROVE' or 'REJECT'
-            timestamp: Date.now(),
-            transactionHash: '0x' + Math.random().toString(16).substr(2, 64)
-        });
-
-        // Update proposal approval count
-        const proposal = this.mockProposals.get(proposalId);
-        if (proposal && vote === 'APPROVE') {
-            this.mockApprovals.get(proposalId).add(signerAddress);
-            proposal.currentApprovals = this.mockApprovals.get(proposalId).size;
-
-            // Update status if enough approvals
-            if (proposal.currentApprovals >= proposal.requiredApprovals) {
-                proposal.status = 'APPROVED';
-            }
-        }
     }
 
     /**
@@ -238,12 +70,7 @@ class AdminPage {
             if (this.DEVELOPMENT_MODE) {
                 console.log('🚧 DEVELOPMENT MODE: Bypassing access control');
                 this.isAuthorized = true;
-                this.userAddress = window.DEV_CONFIG?.MOCK_USER_ADDRESS || '0x1234567890123456789012345678901234567890';
-
-                // Use mock contract stats if enabled
-                if (window.DEV_CONFIG?.MOCK_CONTRACT_DATA) {
-                    this.contractStats = window.DEV_CONFIG.MOCK_STATS || {};
-                }
+                this.userAddress = '0x1234567890123456789012345678901234567890';
 
                 await this.loadAdminInterface();
                 this.startAutoRefresh();
@@ -1670,9 +1497,6 @@ class AdminPage {
                                 <span class="stat-chip">Total Proposals: ${proposals.length}</span>
                                 <span class="stat-chip">Showing: ${filteredProposals.length}</span>
                                 <span class="stat-chip">Required Approvals: ${this.contractStats.requiredApprovals || 2}</span>
-                                <span class="stat-chip data-source-indicator" id="data-source-indicator">
-                                    ${this.isUsingRealData ? '🔗 Live Data' : '🎭 Demo Data'}
-                                </span>
                             </div>
                         </div>
                     </div>
@@ -1761,9 +1585,6 @@ class AdminPage {
                         </button>
                         <button class="btn btn-outline" onclick="adminPage.forceLoadRealProposals()">
                             🔗 Try Real Data
-                        </button>
-                        <button class="btn btn-outline" onclick="adminPage.loadMockProposals().then(proposals => adminPage.renderProposalsRows(proposals))">
-                            📋 Load Demo Data
                         </button>
                     </div>
                 </div>
@@ -1856,125 +1677,6 @@ class AdminPage {
                     </button>
                 </div>
             `;
-        }
-    }
-
-    /**
-     * Load professional mock proposals that look completely real
-     */
-    async loadMockProposals() {
-        console.log('📋 Loading enhanced mock proposals...');
-        console.log('🔧 DEBUG: Mock proposals map size:', this.mockProposals.size);
-        console.log('🔧 DEBUG: Mock proposals keys:', Array.from(this.mockProposals.keys()));
-
-        const mockProposals = this.getMockProposals();
-        console.log('🔧 DEBUG: getMockProposals returned:', mockProposals.length, 'proposals');
-
-        // Convert to the format expected by the UI with enhanced data
-        const formattedProposals = mockProposals.map(proposal => {
-            // Ensure actionType is always defined and valid
-            let actionType = proposal.actionType || 'UNKNOWN';
-            if (typeof actionType !== 'string') {
-                console.warn('⚠️ Invalid actionType for proposal:', proposal);
-                actionType = 'UNKNOWN';
-            }
-
-            const baseProposal = {
-                id: proposal.id || Math.floor(Math.random() * 1000),
-                actionType: actionType, // Ensure this is always a string
-                approvals: proposal.approvals || proposal.currentApprovals || 1,
-                requiredApprovals: proposal.requiredApprovals || 3,
-                executed: proposal.executed || proposal.status === 'EXECUTED',
-                rejected: proposal.rejected || proposal.status === 'REJECTED',
-                expired: proposal.expired || (proposal.expiresAt && proposal.expiresAt < Date.now()),
-                proposedTime: proposal.proposedTime || Math.floor((proposal.createdAt || Date.now()) / 1000),
-                approvedBy: proposal.approvedBy || Array.from(this.mockApprovals.get(proposal.id) || []),
-                title: proposal.title || `Proposal #${proposal.id}`,
-                description: proposal.description || 'Mock proposal for testing',
-                proposer: proposal.proposer || '0x1234567890123456789012345678901234567890',
-                transactionHash: proposal.transactionHash || '0x' + Math.random().toString(16).substr(2, 64),
-                votes: proposal.votes || []
-            };
-
-            // Add enhanced data based on proposal type for detailed display
-            switch (proposal.actionType) {
-                case 'ADD_PAIR':
-                    return {
-                        ...baseProposal,
-                        pairToAdd: proposal.details?.pairToAdd || '0x1234567890123456789012345678901234567890',
-                        pairNameToAdd: proposal.details?.pairNameToAdd || 'TEST/USDC',
-                        platformToAdd: proposal.details?.platformToAdd || 'Uniswap V3',
-                        weightToAdd: BigInt(proposal.details?.weightToAdd || 100)
-                    };
-                case 'UPDATE_RATE':
-                case 'SET_HOURLY_REWARD_RATE':
-                    return {
-                        ...baseProposal,
-                        newHourlyRewardRate: (() => {
-                            const rawRate = proposal.details?.newHourlyRewardRate ?? '100';
-                            const rateString = rawRate.toString();
-                            if (ethers?.utils?.parseEther) {
-                                return BigInt(ethers.utils.parseEther(rateString).toString());
-                            }
-                            return BigInt(Math.floor(parseFloat(rateString || '100') * 1e18));
-                        })()
-                    };
-                case 'REMOVE_PAIR':
-                    return {
-                        ...baseProposal,
-                        pairToRemove: proposal.details?.pairToRemove || '0x1234567890123456789012345678901234567890',
-                        pairNameToRemove: proposal.details?.pairNameToRemove || 'OLD/USDC'
-                    };
-                case 'WITHDRAW_REWARDS':
-                    return {
-                        ...baseProposal,
-                        recipient: proposal.details?.recipient || proposal.proposer || '0x1234567890123456789012345678901234567890',
-                        withdrawAmount: BigInt(proposal.details?.withdrawAmount || '500000000000000000000')
-                    };
-                case 'CHANGE_SIGNER':
-                    return {
-                        ...baseProposal,
-                        newSigner: proposal.details?.newSigner || '0x1234567890123456789012345678901234567890'
-                    };
-                default:
-                    return baseProposal;
-            }
-        });
-
-        console.log(`✅ Loaded ${formattedProposals.length} mock proposals`);
-        console.log('🔧 DEBUG: Formatted proposals:', formattedProposals.map(p => ({ id: p.id, actionType: p.actionType })));
-        return formattedProposals;
-    }
-
-    /**
-     * Format mock proposal details for display
-     */
-    formatMockProposalDetails(proposal) {
-        switch (proposal.type) {
-            case 'ADD_PAIR':
-                return {
-                    type: 'Add LP Pair',
-                    pairAddress: proposal.data.pairAddress,
-                    pairName: proposal.data.pairName,
-                    platform: proposal.data.platform,
-                    weight: proposal.data.weight
-                };
-            case 'UPDATE_RATE':
-                return {
-                    type: 'Update Reward Rate',
-                    newRate: proposal.data.newRate
-                };
-            case 'REMOVE_PAIR':
-                return {
-                    type: 'Remove LP Pair',
-                    pairAddress: proposal.data.pairAddress,
-                    reason: proposal.data.reason
-                };
-            default:
-                return {
-                    type: proposal.type,
-                    data: proposal.data
-                };
         }
     }
 
@@ -2348,52 +2050,6 @@ class AdminPage {
         };
     }
 
-    /**
-     * Mock approval system for realistic demo
-     */
-    mockApproveProposal(proposalId) {
-        console.log(`🔧 Mock approving proposal: ${proposalId}`);
-
-        const currentSigner = this.userAddress || '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61';
-
-        // Add vote to mock system
-        this.addMockVote(proposalId, currentSigner, 'APPROVE');
-
-        const proposal = this.mockProposals.get(proposalId);
-        if (proposal) {
-            console.log(`✅ Mock approval added. Current approvals: ${proposal.currentApprovals}/${proposal.requiredApprovals}`);
-        }
-
-        return {
-            success: true,
-            transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-            message: 'Mock approval successful'
-        };
-    }
-
-    /**
-     * Mock rejection system for realistic demo
-     */
-    mockRejectProposal(proposalId) {
-        console.log(`🔧 Mock rejecting proposal: ${proposalId}`);
-
-        const currentSigner = this.userAddress || '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61';
-
-        // Add vote to mock system
-        this.addMockVote(proposalId, currentSigner, 'REJECT');
-
-        const proposal = this.mockProposals.get(proposalId);
-        if (proposal) {
-            proposal.status = 'REJECTED';
-            console.log(`✅ Mock rejection added. Proposal status: ${proposal.status}`);
-        }
-
-        return {
-            success: true,
-            transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
-            message: 'Mock rejection successful'
-        };
-    }
 
     async loadProposals() {
         console.log('📋 Loading proposals...');
@@ -2430,9 +2086,6 @@ class AdminPage {
 
                 if (realProposals && Array.isArray(realProposals)) {
                     console.log(`✅ Loaded ${realProposals.length} real proposals from contract`);
-
-                    // Set flag to indicate we're using real data
-                    this.isUsingRealData = true;
 
                     // PERFORMANCE OPTIMIZATION: Initialize optimized state with proposals
                     const formattedProposals = this.formatRealProposals(realProposals);
@@ -2531,7 +2184,7 @@ class AdminPage {
                 throw new Error('Contract manager or getAllActions method not available');
             }
         } catch (error) {
-            console.warn('⚠️ Failed to load real proposals, falling back to mock data:', error.message);
+            console.warn('⚠️ Failed to load real proposals:', error.message);
             console.error('❌ Full error details:', error);
 
             // Check if it's a network-related error
@@ -2542,26 +2195,25 @@ class AdminPage {
                 errorMessage = 'Contract call failed - contract may not be deployed or accessible';
             }
 
-            // Show warning notification
+            // Show error notification
             if (window.notificationManager) {
-                window.notificationManager.warning(
-                    `Could not load real proposals: ${errorMessage}`
+                window.notificationManager.error(
+                    `Failed to load proposals: ${errorMessage}`
                 );
             }
         }
 
-        // Fallback to mock proposals if real ones can't be loaded
-        console.log('🎭 Using mock proposals as fallback');
-        this.isUsingRealData = false;
-        return await this.loadMockProposals();
+        // Return empty array if proposals can't be loaded
+        console.log('❌ Could not load proposals from contract');
+        return [];
     }
 
     /**
      * PERFORMANCE OPTIMIZATION: Load more proposals for pagination
      */
     async loadMoreProposals() {
-        if (this.isLoadingMore || !this.isUsingRealData) {
-            console.log('⚠️ Load more already in progress or not using real data');
+        if (this.isLoadingMore) {
+            console.log('⚠️ Load more already in progress');
             return;
         }
 
@@ -2942,7 +2594,6 @@ class AdminPage {
 
             if (realProposals && realProposals.length >= 0) {
                 console.log(`✅ Successfully loaded ${realProposals.length} real proposals`);
-                this.isUsingRealData = true;
 
                 const formattedProposals = this.formatRealProposals(realProposals);
 
@@ -2962,7 +2613,6 @@ class AdminPage {
 
         } catch (error) {
             console.error('❌ Failed to force load real proposals:', error);
-            this.isUsingRealData = false;
 
             if (window.notificationManager) {
                 window.notificationManager.error(
@@ -2970,7 +2620,7 @@ class AdminPage {
                 );
             }
 
-            // Fall back to mock data
+            // Fall back to empty state
             await this.loadMultiSignPanel();
         }
     }
@@ -3077,29 +2727,6 @@ class AdminPage {
         });
     }
 
-    getMockProposals() {
-        return [
-            {
-                id: 1,
-                actionType: 'SET_HOURLY_REWARD_RATE',
-                approvals: 1,
-                requiredApprovals: 2,
-                executed: false,
-                rejected: false,
-                details: { newHourlyRewardRate: '100' }
-            },
-            {
-                id: 2,
-                actionType: 'ADD_PAIR',
-                approvals: 2,
-                requiredApprovals: 2,
-                executed: true,
-                rejected: false,
-                details: { pairToAdd: '0x1234...5678' }
-            }
-        ];
-    }
-
     getActionTypeName(actionType) {
         const types = {
             0: 'Set Hourly Reward Rate',
@@ -3157,7 +2784,6 @@ class AdminPage {
         // this.loadedProposalCount is already set correctly
 
         console.log(`🔍 Load More Button Logic:`, {
-            isUsingRealData: this.isUsingRealData,
             totalProposalCount: this.totalProposalCount,
             loadedProposalCount: this.loadedProposalCount,
             proposalsLength: proposals ? proposals.length : 0,
@@ -3165,13 +2791,11 @@ class AdminPage {
         });
 
         // Show Load More button if:
-        // 1. We're using real data (not mock data)
-        // 2. Either we know there are more proposals OR we can't determine total count (show optimistically)
+        // 1. Either we know there are more proposals OR we can't determine total count (show optimistically)
         const hasMoreProposals = this.totalProposalCount > this.loadedProposalCount;
         const unknownTotal = this.totalProposalCount === 0 || this.totalProposalCount === undefined;
 
-        const shouldShowLoadMore = this.isUsingRealData &&
-                                  this.loadedProposalCount > 0 &&
+        const shouldShowLoadMore = this.loadedProposalCount > 0 &&
                                   (hasMoreProposals || unknownTotal);
 
         console.log(`🔍 Load More Decision:`, {
@@ -3213,7 +2837,6 @@ class AdminPage {
         console.log(`📊 Total proposals available: ${this.totalProposalCount}`);
         console.log(`📊 Currently loaded: ${this.loadedProposalCount}`);
         console.log(`📊 Cached proposals: ${this.proposalsCache.size}`);
-        console.log(`📊 Using real data: ${this.isUsingRealData}`);
         console.log(`📊 Is loading more: ${this.isLoadingMore}`);
 
         const hideExecutedCheckbox = document.getElementById('hide-executed');
@@ -3729,15 +3352,6 @@ class AdminPage {
                 );
                 if (pair && pair.name) {
                     return this.formatPairName(pair.name);
-                }
-            }
-
-            // Try to find in mock proposals data
-            for (const [, proposal] of this.mockProposals) {
-                if (proposal.data && proposal.data.pairAddress &&
-                    proposal.data.pairAddress.toLowerCase() === address.toLowerCase() &&
-                    proposal.data.pairName) {
-                    return this.formatPairName(proposal.data.pairName);
                 }
             }
 
@@ -4309,7 +3923,7 @@ class AdminPage {
     // Contract readiness check with graceful fallback
     async ensureContractReady() {
         if (!window.contractManager) {
-            console.log('⚠️ Contract manager not available - will use mock data');
+            console.log('⚠️ Contract manager not available');
             throw new Error('Contract manager not available');
         }
 
@@ -4325,7 +3939,7 @@ class AdminPage {
             try {
                 await this.waitForContractManager();
             } catch (error) {
-                console.log('⚠️ Contract manager failed to initialize - will use mock data');
+                console.log('⚠️ Contract manager failed to initialize');
                 throw new Error('Contract manager initialization failed');
             }
         }
@@ -6676,33 +6290,6 @@ class AdminPage {
 
         } catch (error) {
             console.error('Failed to execute proposal:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error(error.message);
-            }
-        }
-    }
-
-    async cancelAction(proposalId) {
-        try {
-            if (window.notificationManager) {
-                window.notificationManager.info(`Cancelling proposal #${proposalId}`);
-            }
-
-            const result = await window.contractManager.cancelProposal(proposalId);
-
-            if (result.success) {
-                if (window.notificationManager) {
-                    window.notificationManager.success(`Successfully cancelled proposal #${proposalId}`);
-                }
-
-                // PERFORMANCE OPTIMIZATION: Update single proposal instead of full refresh
-                await this.updateSingleProposal(proposalId);
-            } else {
-                throw new Error(result.error);
-            }
-
-        } catch (error) {
-            console.error('Failed to cancel proposal:', error);
             if (window.notificationManager) {
                 window.notificationManager.error(error.message);
             }
