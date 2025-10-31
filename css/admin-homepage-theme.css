@@ -45,6 +45,8 @@ body {
 }
 
 .info-card h3,
+.info-card .card-header h3,
+.info-card .card-header h5,
 .admin-grid-sidebar h3,
 .recent-activity h3 {
     color: var(--text-primary) !important;
@@ -159,6 +161,61 @@ body {
     background: #43a047 !important;
     transform: translateY(-1px) !important;
     box-shadow: var(--shadow-4) !important;
+}
+
+/* Card header button styling */
+.card-header .btn,
+.card-header .btn-sm {
+    background: var(--primary-main) !important;
+    color: white !important;
+    border: none !important;
+    padding: var(--spacing-1) var(--spacing-2) !important;
+    border-radius: var(--border-radius) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    min-height: 32px !important;
+}
+
+.card-header .btn:hover:not(:disabled),
+.card-header .btn-sm:hover:not(:disabled) {
+    background: var(--primary-hover) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-4) !important;
+}
+
+.card-header .btn:disabled,
+.card-header .btn-sm:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Refresh button - gradient style override for both locations */
+.panel-refresh .refresh-btn,
+.card-header .refresh-btn {
+    background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px !important;
+    font-size: 0.875rem !important;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3) !important;
+}
+
+.panel-refresh .refresh-btn:hover:not(:disabled),
+.card-header .refresh-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #00b8e6, #00d4ff) !important;
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.5) !important;
+}
+
+/* Card header styling - theme override */
+.card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: var(--spacing-2) !important;
+    border-bottom: 1px solid var(--divider) !important;
 }
 
 /* Special proposal button styling */

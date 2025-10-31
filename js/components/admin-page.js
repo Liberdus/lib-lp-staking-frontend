@@ -1600,8 +1600,8 @@ class AdminPage {
         return `
             <div class="info-card">
                 <div class="card-header">
-                    <h3>Contract Information</h3>
-                    <button class="btn btn-sm" onclick="adminPage.refreshContractInfo()">
+                    <h5>Contract Information</h5>
+                    <button class="btn btn-sm refresh-btn" type="button" onclick="adminPage.refreshContractInfo()">
                         🔄 Refresh
                     </button>
                 </div>
@@ -1609,28 +1609,36 @@ class AdminPage {
                 <div class="card-content">
                     <div class="info-grid">
                         <div class="info-item">
-                            <div class="info-label">💰 Reward Balance</div>
-                            <div class="info-value" data-info="reward-balance">Loading...</div>
+                            <div class="info-label-wrapper">
+                                <h6>Reward Token Balance</h6>
+                            </div>
+                            <h6 class="info-value" data-info="reward-balance">Loading...</h6>
                         </div>
                         <div class="info-item">
-                            <div class="info-label">⏰ Hourly Rate</div>
-                            <div class="info-value" data-info="hourly-rate">Loading...</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">⚖️ Total Weight</div>
-                            <div class="info-value" data-info="total-weight">Loading...</div>
+                            <div class="info-label-wrapper">
+                                <h6>Hourly Distribution Rate</h6>
+                            </div>
+                            <h6 class="info-value" data-info="hourly-rate">Loading...</h6>
                         </div>
                     </div>
 
+                    <hr class="contract-info-separator">
+
                     <div class="pairs-section">
-                        <h4>🔗 LP Pairs</h4>
+                        <div class="section-header">
+                            <h6>Eligible Pairs</h6>
+                        </div>
                         <div class="pairs-list" data-info="lp-pairs">
                             <div class="info-value">Loading pairs...</div>
                         </div>
                     </div>
 
+                    <hr class="contract-info-separator">
+
                     <div class="signers-section">
-                        <h4>👥 Current Signers</h4>
+                        <div class="section-header">
+                            <h6>Current Signers</h6>
+                        </div>
                         <div class="signers-list" data-info="signers">
                             <div class="info-value">Loading signers...</div>
                         </div>
@@ -3342,22 +3350,58 @@ class AdminPage {
             return '<div class="no-data">No pairs configured</div>';
         }
 
-        return pairs.map(pair => {
-            const displayName = pair && pair.name
-                ? this.formatPairName(pair.name)
-                : (pair && pair.address ? this.getPairNameByAddress(pair.address) : null) || 'Unknown Pair';
-            const displayAddress = pair && pair.address
-                ? this.formatAddress(pair.address)
-                : 'Unknown';
-            const displayWeight = (pair && typeof pair.weight !== 'undefined' && pair.weight !== null)
-                ? this.formatWeight(pair.weight)
-                : '0';
+        // Calculate total weight and parse pair weights
+        const parseWeight = (weight) => {
+            if (!weight || (typeof weight === 'object' && weight === null)) return null;
+            try {
+                const num = typeof weight === 'string' ? parseFloat(weight) : Number(weight);
+                return !isNaN(num) ? num : null;
+            } catch {
+                return null;
+            }
+        };
+
+        const pairData = pairs.map(pair => {
+            const weight = parseWeight(pair?.weight);
+            return {
+                name: pair?.name ? this.formatPairName(pair.name) 
+                    : (pair?.address ? this.getPairNameByAddress(pair.address) : null) || 'Unknown Pair',
+                address: pair?.address || 'Unknown',
+                weight: weight,
+                displayWeight: weight !== null ? weight.toString() : this.formatWeight(pair?.weight) || '0'
+            };
+        });
+
+        const totalWeight = pairData.reduce((sum, p) => sum + (p.weight || 0), 0);
+
+        return pairData.map(pair => {
+            const percentageValue = totalWeight > 0 && pair.weight !== null 
+                ? (pair.weight / totalWeight) * 100 
+                : 0;
+            const percentage = Math.round(percentageValue);
 
             return `
-                <div class="pair-item">
-                    <div class="pair-name">${displayName}</div>
-                    <div class="pair-address">${displayAddress}</div>
-                    <div class="pair-weight">Weight: ${displayWeight}</div>
+                <div class="pair-item-card">
+                    <div class="pair-header-section">
+                        <div class="pair-name-section">
+                            <h6 class="pair-name">${pair.name}</h6>
+                            <div class="pair-address-wrapper">
+                                <span class="address-label">Address:</span>
+                                <code class="pair-address">${pair.address}</code>
+                            </div>
+                        </div>
+                        <div class="pair-weight-badge">
+                            <div class="weight-label">Weight</div>
+                            <span class="weight-value">${pair.displayWeight}</span>
+                            <div class="percentage-label">Share</div>
+                            <span class="weight-percentage">${percentage}%</span>
+                        </div>
+                    </div>
+                    <div class="pair-details-section">
+                        <div class="weight-bar-container">
+                            <div class="weight-bar" style="width: ${percentageValue}%"></div>
+                        </div>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -3369,9 +3413,7 @@ class AdminPage {
         }
 
         return signers.map(signer => `
-            <div class="signer-item">
-                <div class="signer-address">${this.formatAddress(signer)}</div>
-            </div>
+            <p class="signer-address">${signer}</p>
         `).join('');
     }
 
@@ -5516,12 +5558,6 @@ class AdminPage {
         const hourlyRateEl = document.querySelector('[data-info="hourly-rate"]');
         if (hourlyRateEl) {
             hourlyRateEl.textContent = info.hourlyRate || 'N/A';
-        }
-
-        // Update total weight
-        const totalWeightEl = document.querySelector('[data-info="total-weight"]');
-        if (totalWeightEl) {
-            totalWeightEl.textContent = info.totalWeight || 'N/A';
         }
 
         // Update LP pairs with real contract data
