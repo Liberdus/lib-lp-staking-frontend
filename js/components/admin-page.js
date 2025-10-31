@@ -3363,12 +3363,23 @@ class AdminPage {
 
         const pairData = pairs.map(pair => {
             const weight = parseWeight(pair?.weight);
+            let displayWeight;
+            if (weight !== null) {
+                displayWeight = window.Formatter?.formatSmallNumberWithSubscript(weight) || weight.toString();
+            } else {
+                const formatted = this.formatWeight(pair?.weight) || '0';
+                const parsed = parseFloat(formatted);
+                displayWeight = !isNaN(parsed) && window.Formatter?.formatSmallNumberWithSubscript
+                    ? window.Formatter.formatSmallNumberWithSubscript(parsed)
+                    : formatted;
+            }
+            
             return {
                 name: pair?.name ? this.formatPairName(pair.name) 
                     : (pair?.address ? this.getPairNameByAddress(pair.address) : null) || 'Unknown Pair',
                 address: pair?.address || 'Unknown',
                 weight: weight,
-                displayWeight: weight !== null ? weight.toString() : this.formatWeight(pair?.weight) || '0'
+                displayWeight: displayWeight
             };
         });
 

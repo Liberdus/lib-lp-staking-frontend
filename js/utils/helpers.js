@@ -147,6 +147,32 @@ window.ErrorHandler = {
  */
 window.Formatter = {
     /**
+     * Format very small numbers with subscript notation (e.g., 5e-17 → 0.0₁₆5)
+     */
+    formatSmallNumberWithSubscript(value) {
+        if (!value || value === '0' || value === 0 || value === '0.0') return '0';
+        
+        const num = typeof value === 'number' ? value : parseFloat(value);
+        if (isNaN(num) || num === 0) return '0';
+        
+        if (num >= 0.01) {
+            return num < 1 ? num.toFixed(6).replace(/\.?0+$/, '') : num.toString();
+        }
+        
+        // Use subscript notation for very small numbers
+        const str = Math.abs(num).toFixed(20);
+        const match = str.match(/^0\.0+(?=([1-9]))/);
+        
+        if (match) {
+            const zeros = match[0].substring(3).length;
+            const significant = str.substring(match[0].length).replace(/0+$/, '');
+            return `0.0<sub>${zeros}</sub>${significant}`;
+        }
+        
+        return num.toString();
+    },
+
+    /**
      * Format token amount for display
      */
     formatTokenAmount(amount, decimals = 18, displayDecimals = 4) {
@@ -157,7 +183,10 @@ window.Formatter = {
             const num = parseFloat(formatted);
             
             if (num === 0) return '0';
-            if (num < 0.0001) return '< 0.0001';
+            // Use subscript notation for very small numbers (< 0.01)
+            if (num < 0.01) {
+                return this.formatSmallNumberWithSubscript(num);
+            }
             
             return num.toLocaleString('en-US', {
                 minimumFractionDigits: 0,
