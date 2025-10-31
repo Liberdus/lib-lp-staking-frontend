@@ -6,31 +6,63 @@
  */
 window.Formatter = {
     /**
-     * Format very small numbers with subscript notation (e.g., 5e-17 → 0.0₁₆5)
+     * Format numbers with subscript notation for small decimal parts (e.g., 5e-17 → 0.0₁₆5, 10.0000000005 → 10.0₈5)
      * @param {number|string} value - The number to format
-     * @returns {string} Formatted string with subscript notation for values < 0.01
+     * @returns {string} Formatted string with subscript notation for very small decimal parts
      */
     formatSmallNumberWithSubscript(value) {
         if (!value || value === '0' || value === 0 || value === '0.0') return '0';
         
-        const num = typeof value === 'number' ? value : parseFloat(value);
-        if (isNaN(num) || num === 0) return '0';
+        // Convert to string representation to preserve precision
+        let str;
+        let num;
         
-        if (num >= 0.01) {
-            return num < 1 ? num.toFixed(6).replace(/\.?0+$/, '') : num.toString();
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            num = parseFloat(trimmed);
+            if (isNaN(num)) return '0';
+            
+            // Preserve original string precision
+            if (trimmed.includes('e') || trimmed.includes('E')) {
+                str = num.toFixed(20);
+            } else {
+                str = trimmed.includes('.') ? trimmed : trimmed + '.0';
+            }
+        } else {
+            num = typeof value === 'number' ? value : parseFloat(value);
+            if (isNaN(num) || num === 0) return '0';
+            str = Math.abs(num).toFixed(20);
         }
         
-        // Use subscript notation for very small numbers
-        const str = Math.abs(num).toFixed(20);
-        const match = str.match(/^0\.0+(?=([1-9]))/);
+        const isNegative = num < 0;
+        const prefix = isNegative ? '-' : '';
         
-        if (match) {
-            const zeros = match[0].substring(3).length;
-            const significant = str.substring(match[0].length).replace(/0+$/, '');
-            return `0.0<sub>${zeros}</sub>${significant}`;
+        // Split into integer and decimal parts
+        const parts = str.split('.');
+        if (parts.length !== 2) return num.toString();
+        
+        const integerPart = parts[0];
+        let decimalPart = parts[1].replace(/0+$/, ''); // Remove trailing zeros
+        
+        // If no decimal part, return as integer
+        if (decimalPart.length === 0) return num.toString();
+        
+        // Check for leading zeros in decimal part (3+ zeros triggers subscript)
+        // This works for both < 1 (0.0000000005) and >= 1 (10.0000000005)
+        const leadingZerosMatch = decimalPart.match(/^(0+)([1-9])/);
+        if (leadingZerosMatch && leadingZerosMatch[1].length >= 3) {
+            const zeros = leadingZerosMatch[1].length;
+            const significant = decimalPart.substring(leadingZerosMatch[1].length);
+            const formatStr = integerPart === '0' 
+                ? `0.0<sub>${zeros}</sub>${significant}`
+                : `${integerPart}.0<sub>${zeros}</sub>${significant}`;
+            return prefix + formatStr;
         }
         
-        return num.toString();
+        // Regular decimal formatting (less than 3 leading zeros)
+        // Limit to 6 decimal places for readability
+        const limited = parseFloat(`${integerPart}.${decimalPart}`).toFixed(6).replace(/\.?0+$/, '');
+        return prefix + limited;
     },
 };
 

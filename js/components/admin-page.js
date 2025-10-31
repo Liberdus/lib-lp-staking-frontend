@@ -3373,11 +3373,7 @@ class AdminPage {
             if (weight !== null) {
                 displayWeight = window.Formatter?.formatSmallNumberWithSubscript(weight) || weight.toString();
             } else {
-                const formatted = this.formatWeight(pair?.weight) || '0';
-                const parsed = parseFloat(formatted);
-                displayWeight = !isNaN(parsed) && window.Formatter?.formatSmallNumberWithSubscript
-                    ? window.Formatter.formatSmallNumberWithSubscript(parsed)
-                    : formatted;
+                displayWeight = this.formatWeightForDisplay(pair?.weight) || '0';
             }
             
             return {
@@ -4076,9 +4072,9 @@ class AdminPage {
 
             case 'add-pair':
             case 'add_pair':
-                // Format weight properly using formatWeight helper
+                // Format weight for display without rounding
                 const weight = proposal.weightToAdd
-                    ? this.formatWeight(proposal.weightToAdd, 'allocation weight')
+                    ? this.formatWeightForDisplay(proposal.weightToAdd)
                     : 'Not specified';
 
                 // Show full address for LP token
@@ -4175,8 +4171,8 @@ class AdminPage {
                     const pairCards = proposal.pairs.map((pairAddress, index) => {
                         const pairName = this.getPairNameByAddress(pairAddress);
                         const rawWeight = proposal.weights[index];
-                        // Format weight properly using formatWeight helper
-                        const weight = rawWeight ? this.formatWeight(rawWeight, 'weight') : 'Not specified';
+                        // Format weight for display without rounding
+                        const weight = rawWeight ? this.formatWeightForDisplay(rawWeight) : 'Not specified';
                         return `
                             <div class="parameter-card">
                                 <div class="parameter-icon">⚖️</div>
@@ -4349,13 +4345,13 @@ class AdminPage {
 
                     // Format weights if key contains "weight"
                     if (key.toLowerCase().includes('weight') && !Array.isArray(value)) {
-                        displayValue = this.formatWeight(value, key);
+                        displayValue = this.formatWeightForDisplay(value);
                     }
                     // Format arrays (like pairs or weights arrays)
                     else if (Array.isArray(value)) {
                         if (key.toLowerCase() === 'weights') {
                             // Format weight arrays
-                            displayValue = value.map(w => this.formatWeight(w, 'weight')).join(', ');
+                            displayValue = value.map(w => this.formatWeightForDisplay(w)).join(', ');
                         } else if (key.toLowerCase() === 'pairs') {
                             // Format pair addresses
                             displayValue = value.map(addr => {
@@ -5506,15 +5502,10 @@ class AdminPage {
             contractInfo.totalWeight = await this.safeContractCall(
                 async () => {
                     const totalWeight = await contractManager.getTotalWeight();
-                    const formattedWeight = this.formatWeight(totalWeight);
-                    // Apply the same formatting as used in pairs list (formatSmallNumberWithSubscript if available)
-                    const parsedWeight = parseFloat(formattedWeight);
-                    if (!isNaN(parsedWeight) && window.Formatter?.formatSmallNumberWithSubscript) {
-                        return window.Formatter.formatSmallNumberWithSubscript(parsedWeight);
-                    }
-                    return formattedWeight;
+                    // consistent formatting without rounding
+                    return this.formatWeightForDisplay(totalWeight);
                 },
-                '0.000'
+                '0'
             );
 
             // Get pairs with full information - real data only
@@ -5573,10 +5564,10 @@ class AdminPage {
             hourlyRateEl.textContent = info.hourlyRate || 'N/A';
         }
 
-        // Update total weight
+        // Update total weight (use innerHTML to render subscript HTML)
         const totalWeightEl = document.querySelector('[data-info="total-weight"]');
         if (totalWeightEl) {
-            totalWeightEl.textContent = info.totalWeight || 'N/A';
+            totalWeightEl.innerHTML = info.totalWeight || 'N/A';
         }
 
         // Update LP pairs with real contract data
@@ -5714,7 +5705,7 @@ class AdminPage {
                                 <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
                                     <div style="display: flex; flex-direction: column; min-width: 100px;">
                                         <span style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Current</span>
-                                        <span style="font-size: 20px; font-weight: 600; color: var(--primary-main);">${this.formatWeight(pair.weight)}</span>
+                                        <span style="font-size: 20px; font-weight: 600; color: var(--primary-main);">${this.formatWeightForDisplay(pair.weight)}</span>
                                     </div>
                                     <div style="display: flex; flex-direction: column; flex: 1; min-width: 180px;">
                                         <label for="weight-${index}" style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">New Weight</label>
@@ -5725,7 +5716,7 @@ class AdminPage {
                                        min="1" max="10000"
                                                style="padding: 10px 12px; border: 1px solid var(--divider); border-radius: 6px; background: var(--background-default); color: var(--text-primary); font-size: 16px; font-weight: 500; width: 100%; box-sizing: border-box;"
                                        data-pair="${pair.address}"
-                                       data-current="${this.formatWeight(pair.weight)}">
+                                       data-current="${this.formatWeightForDisplay(pair.weight)}">
                                     </div>
                                 </div>
                             </div>
@@ -6406,78 +6397,39 @@ class AdminPage {
     }
 
     /**
-     * Format weight values (BigNumber to decimal) - ENHANCED VERSION
+     * Format weight for display without rounding, using formatSmallNumberWithSubscript if available
      */
-    formatWeight(weight, label = "weight") {
-        console.log(`[FORMAT DEBUG] Formatting ${label}:`, {
-            value: weight,
-            type: typeof weight,
-            isBigNumber: weight && weight._isBigNumber,
-            toString: weight ? weight.toString() : 'null',
-            length: typeof weight === 'string' ? weight.length : 'N/A'
-        });
-
-        if (!weight) return '0.000';
+    formatWeightForDisplay(weight) {
+        if (!weight && weight !== 0) return '0';
 
         try {
-            // Handle BigNumber values (like 10000000000000000000)
+            let weightString;
+            
+            // Handle BigNumber values - preserve precision by using string representation
             if (typeof weight === 'object' && weight._isBigNumber) {
-                const formatted = ethers.utils.formatUnits(weight, 18);
-                const result = parseFloat(formatted).toFixed(3);
-                console.log(`[FORMAT DEBUG] BigNumber ${label} formatted:`, result);
-                return result;
+                weightString = ethers.utils.formatEther(weight);
             }
-
-            // ENHANCED: Handle string values that look like wei (more aggressive detection)
-            if (typeof weight === 'string') {
-                // Check if it's a large number string (wei format)
+            // Handle string values that look like wei
+            else if (typeof weight === 'string') {
                 const weightStr = weight.trim();
-
-                // If it's a very large number (> 1000000000000000000), treat as wei
-                if (/^\d+$/.test(weightStr) && weightStr.length >= 18) {
-                    const formatted = ethers.utils.formatUnits(weightStr, 18);
-                    const result = parseFloat(formatted).toFixed(3);
-                    console.log(`[FORMAT DEBUG] Large wei string ${label} formatted: ${weightStr} -> ${result}`, 'success');
-                    return result;
-                }
-
-                // If it's exactly "10000000000000000000" (10 ether in wei), format it
-                if (weightStr === '10000000000000000000') {
-                    const result = '10.000';
-                    console.log(`[FORMAT DEBUG] Standard wei ${label} formatted: ${weightStr} -> ${result}`, 'success');
-                    return result;
-                }
-
-                // Handle other large wei values
-                if (weightStr.length > 15 && /^\d+$/.test(weightStr)) {
-                    const formatted = ethers.utils.formatUnits(weightStr, 18);
-                    const result = parseFloat(formatted).toFixed(3);
-                    console.log(`[FORMAT DEBUG] Wei string ${label} formatted: ${weightStr} -> ${result}`, 'success');
-                    return result;
-                }
-
-                // Handle regular string numbers (small values)
-                const num = parseFloat(weightStr);
-                if (!isNaN(num)) {
-                    const result = num.toFixed(3);
-                    console.log(`[FORMAT DEBUG] String number ${label} formatted:`, result);
-                    return result;
-                }
+                weightString = (/^\d+$/.test(weightStr) && weightStr.length >= 18)
+                    ? ethers.utils.formatUnits(weightStr, 18)
+                    : weightStr;
+            }
+            // Handle numbers and other types
+            else {
+                weightString = weight.toString();
             }
 
-            // Handle regular numbers
-            if (typeof weight === 'number') {
-                const result = weight.toFixed(3);
-                console.log(`[FORMAT DEBUG] Number ${label} formatted:`, result);
-                return result;
-            }
+            // Validate and format
+            if (isNaN(parseFloat(weightString))) return '0';
 
-            console.warn(`[FORMAT DEBUG] Unhandled ${label} type, returning as string:`, weight);
-            return weight.toString();
+            // Apply formatSmallNumberWithSubscript if available
+            // Pass the string representation to preserve precision for very small decimals
+            return window.Formatter?.formatSmallNumberWithSubscript(weightString) || weightString;
         } catch (error) {
-            console.error(`[FORMAT ERROR] BigNumber formatting failed for ${label}:`, error);
-            console.error(`[FORMAT ERROR] Input was:`, weight);
-            return "0.000";
+            console.error('[FORMAT ERROR] Weight formatting failed:', error);
+            return '0';
         }
     }
 
