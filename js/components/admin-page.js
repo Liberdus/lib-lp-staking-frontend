@@ -33,6 +33,9 @@ class AdminPage {
         this.lastKnownProposalCount = 0; // Track last known total proposal count
         this.isSelectiveUpdateEnabled = true; // Enable selective update system
 
+        // UI state: remember proposal filter preference across refreshes
+        this.hideExecutedPreference = true;
+
         // Initialize asynchronously (don't await in constructor)
         this.init().catch(error => {
             console.error('❌ AdminPage initialization failed:', error);
@@ -1472,8 +1475,15 @@ class AdminPage {
             this.loadedProposalCount = proposals.length;
             console.log(`📊 Set loadedProposalCount to ${this.loadedProposalCount}`);
 
-            // Filter proposals based on hide-executed checkbox (default: hide executed)
-            const filteredProposals = proposals.filter(proposal => !proposal.executed);
+            // Filter proposals based on stored hide-executed preference (default: hide executed)
+            const hideExecuted = this.hideExecutedPreference !== undefined
+                ? this.hideExecutedPreference
+                : true;
+
+            const filteredProposals = hideExecuted
+                ? proposals.filter(proposal => !proposal.executed)
+                : proposals;
+
             console.log(`📊 Filtered proposals: ${filteredProposals.length} (hidden ${proposals.length - filteredProposals.length} executed)`);
             console.log(`📊 First 5 filtered proposals:`, filteredProposals.slice(0, 5).map(p => ({ id: p.id, executed: p.executed, actionType: p.actionType })));
 
@@ -1490,7 +1500,7 @@ class AdminPage {
                         </div>
                         <div class="panel-controls">
                             <label class="checkbox-label">
-                                <input type="checkbox" id="hide-executed" checked>
+                                <input type="checkbox" id="hide-executed" ${hideExecuted ? 'checked' : ''}>
                                 Hide executed transactions
                             </label>
                             <div class="panel-stats">
@@ -1528,7 +1538,9 @@ class AdminPage {
             // Add event listener for hide-executed checkbox
             const hideExecutedCheckbox = document.getElementById('hide-executed');
             if (hideExecutedCheckbox) {
+                hideExecutedCheckbox.checked = hideExecuted;
                 hideExecutedCheckbox.addEventListener('change', () => {
+                    this.hideExecutedPreference = hideExecutedCheckbox.checked;
                     this.toggleExecutedProposals();
                 });
             }
@@ -2247,7 +2259,9 @@ class AdminPage {
 
                 // Check if we should show these proposals based on filter
                 const hideExecutedCheckbox = document.getElementById('hide-executed');
-                const hideExecuted = hideExecutedCheckbox ? hideExecutedCheckbox.checked : true;
+                const hideExecuted = hideExecutedCheckbox
+                    ? hideExecutedCheckbox.checked
+                    : (this.hideExecutedPreference !== undefined ? this.hideExecutedPreference : true);
 
                 const visibleBatch = hideExecuted
                     ? formattedBatch.filter(proposal => !proposal.executed)
@@ -2821,7 +2835,9 @@ class AdminPage {
         console.log(`📊 Is loading more: ${this.isLoadingMore}`);
 
         const hideExecutedCheckbox = document.getElementById('hide-executed');
-        const hideExecuted = hideExecutedCheckbox ? hideExecutedCheckbox.checked : 'unknown';
+        const hideExecuted = hideExecutedCheckbox
+            ? hideExecutedCheckbox.checked
+            : (this.hideExecutedPreference !== undefined ? this.hideExecutedPreference : 'unknown');
         console.log(`📊 Hide executed: ${hideExecuted}`);
 
         const proposalsTbody = document.getElementById('proposals-tbody');
@@ -3027,6 +3043,7 @@ class AdminPage {
         }
 
         const hideExecuted = hideExecutedCheckbox.checked;
+        this.hideExecutedPreference = hideExecuted;
         console.log(`🔄 Toggling executed proposals visibility: ${hideExecuted ? 'hide' : 'show'}`);
 
         // Get all current proposals from cache or reload
