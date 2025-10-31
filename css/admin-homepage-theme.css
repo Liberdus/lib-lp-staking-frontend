@@ -488,6 +488,15 @@ textarea::placeholder {
 }
 
 /* ========================================
+   AUTOFILL STYLING - CONTROL CHROME AUTOFILL BACKGROUND
+   Minimal fix: -webkit-box-shadow with large inset value overrides Chrome's yellow
+   ======================================== */
+/* Dark mode autofill - darker background with white text */
+[data-theme="dark"] input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #2d3748 inset !important;
+}
+
+/* ========================================
    CHECKBOX & RADIO - HOMEPAGE STYLE
    ======================================== */
 .checkbox-container input[type="checkbox"]:checked + .checkmark {
