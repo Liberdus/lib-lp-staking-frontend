@@ -1620,6 +1620,12 @@ class AdminPage {
                             </div>
                             <h6 class="info-value" data-info="hourly-rate">Loading...</h6>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label-wrapper">
+                                <h6>Total Weight</h6>
+                            </div>
+                            <h6 class="info-value" data-info="total-weight">Loading...</h6>
+                        </div>
                     </div>
 
                     <hr class="contract-info-separator">
@@ -5497,6 +5503,20 @@ class AdminPage {
                 `0.0000 ${rewardTokenSymbol}/hour`
             );
 
+            contractInfo.totalWeight = await this.safeContractCall(
+                async () => {
+                    const totalWeight = await contractManager.getTotalWeight();
+                    const formattedWeight = this.formatWeight(totalWeight);
+                    // Apply the same formatting as used in pairs list (formatSmallNumberWithSubscript if available)
+                    const parsedWeight = parseFloat(formattedWeight);
+                    if (!isNaN(parsedWeight) && window.Formatter?.formatSmallNumberWithSubscript) {
+                        return window.Formatter.formatSmallNumberWithSubscript(parsedWeight);
+                    }
+                    return formattedWeight;
+                },
+                '0.000'
+            );
+
             // Get pairs with full information - real data only
             contractInfo.pairs = await this.safeContractCall(
                 async () => {
@@ -5525,6 +5545,7 @@ class AdminPage {
             const errorInfo = {
                 rewardBalance: 'Error',
                 hourlyRate: 'Error',
+                totalWeight: 'Error',
                 pairs: [],
                 signers: []
             };
@@ -5550,6 +5571,12 @@ class AdminPage {
         const hourlyRateEl = document.querySelector('[data-info="hourly-rate"]');
         if (hourlyRateEl) {
             hourlyRateEl.textContent = info.hourlyRate || 'N/A';
+        }
+
+        // Update total weight
+        const totalWeightEl = document.querySelector('[data-info="total-weight"]');
+        if (totalWeightEl) {
+            totalWeightEl.textContent = info.totalWeight || 'N/A';
         }
 
         // Update LP pairs with real contract data
