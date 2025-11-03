@@ -447,18 +447,18 @@ class StakingModalNew {
         // Update pair info
         this.updatePairInfo();
 
-        // Load user balances if contract manager is ready
-        await this.loadUserBalances();
-
-        // Switch to specified tab
-        this.switchTab(tab);
-
         // Show modal
         const modal = document.getElementById('staking-modal-new');
         if (modal) {
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('open'), 10);
         }
+
+        // Load user balances if contract manager is ready
+        await this.loadUserBalances();
+
+        // Switch to specified tab
+        this.switchTab(tab);
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
