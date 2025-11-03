@@ -183,8 +183,6 @@ window.CONFIG = {
             'Balancer': 'https://app.balancer.fi/#/polygon/pool/{address}',
             'PancakeSwap': 'https://pancakeswap.finance/pools/{address}'
         },
-        // Fallback URL if platform not found or unknown
-        FALLBACK_URL: 'https://app.uniswap.org/explore/pools'
     },
 
     // Development Configuration
