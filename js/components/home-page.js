@@ -979,7 +979,6 @@ class HomePage {
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </a>
-                    <span style="font-size: 11px; color: var(--text-secondary); font-family: monospace;">${pairName}</span>
                 </div>
             `;
         }
