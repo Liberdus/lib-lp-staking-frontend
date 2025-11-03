@@ -2579,7 +2579,7 @@ class AdminPage {
                 case 'rejected':
                     return rejected;
                 case 'expired':
-                    return expired;
+                    return expired && !executed && !rejected;
                 case 'all':
                     return true;
                 case 'pending':
