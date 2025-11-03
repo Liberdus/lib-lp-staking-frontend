@@ -1830,7 +1830,7 @@ class AdminPage {
             <tr class="proposal-row ${statusClass}">
                 <td>
                     <button class="expand-btn" onclick="adminPage.toggleProposal('${proposal.id}')" title="View Details">
-                        <span class="expand-icon">▶</span>
+                        <span class="expand-icon">▼</span>
                     </button>
                 </td>
                 <td>
@@ -3179,7 +3179,7 @@ class AdminPage {
                 <tr class="proposal-row ${statusClass}">
                     <td>
                         <button class="expand-btn" onclick="adminPage.toggleProposal('${proposal.id}')" title="View Details">
-                            <span class="expand-icon">▶</span>
+                            <span class="expand-icon">▼</span>
                         </button>
                     </td>
                     <td>
@@ -3911,10 +3911,6 @@ class AdminPage {
         if (detailsRow) {
             const isVisible = detailsRow.style.display !== 'none';
             detailsRow.style.display = isVisible ? 'none' : 'table-row';
-
-            if (expandIcon) {
-                expandIcon.textContent = isVisible ? '▶' : '▼';
-            }
 
             // Add/remove expanded class for additional styling
             const proposalRow = expandBtn?.closest('.proposal-row');
