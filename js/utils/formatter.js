@@ -87,14 +87,13 @@ window.Formatter = {
      * @returns {string} HTML string with clickable link to the platform, or plain text if platform not configured
      */
     formatPairName(pairName, lpTokenAddress = '', platform = '') {
-        if (!pairName) return pairName;
+        if (!pairName) return `<span class="pair-name-link-text">Not provided</span>`;
 
         const platformsConfig = window.CONFIG?.PLATFORMS;
         const baseUrl = platform && platformsConfig?.BASE_URLS?.[platform];
         
         // Only return a link if we have a valid platform URL configured
         if (!baseUrl) {
-            /* lets have a window. error pop up show up */
             window.notificationManager.error(`Platform ${platform} not configured for pair ${pairName}`);
             return `<span class="pair-name-link-text">${pairName}</span>`;
         }
