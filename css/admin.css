@@ -1252,36 +1252,6 @@ table td:last-child {
 
 /* Expand button styling */
 .expand-btn {
-    background: rgba(0, 212, 255, 0.1);
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    color: #00d4ff;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    padding: 0;
-}
-
-.expand-btn:hover {
-    background: rgba(0, 212, 255, 0.2);
-    transform: scale(1.1);
-}
-
-.expand-icon {
-    font-size: 0.75rem;
-    transition: transform 0.3s ease;
-    display: inline-block;
-}
-
-.proposal-row.expanded .expand-icon {
-    transform: rotate(90deg);
-}
-
-.expand-btn {
     background: none;
     border: none;
     color: #00d4ff;
