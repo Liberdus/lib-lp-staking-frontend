@@ -916,6 +916,8 @@
 .expand-icon {
     transition: transform 0.2s ease;
     font-size: 0.8em;
+    display: inline-block;
+    transform-origin: center center;
 }
 
 .proposal-row.expanded .expand-icon {
