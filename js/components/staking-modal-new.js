@@ -808,7 +808,7 @@ class StakingModalNew {
 
         pairInfoElement.innerHTML = `
             <span class="material-icons" style="font-size: 16px;">swap_horiz</span>
-            ${this.currentPair.token0Symbol}/${this.currentPair.token1Symbol}
+            ${this.currentPair.name || 'Unknown Pair'}
             <span class="chip chip-primary" style="margin-left: 8px;">${this.currentPair.platform}</span>
         `;
     }
