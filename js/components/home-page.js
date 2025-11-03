@@ -316,9 +316,20 @@ class HomePage {
                     </thead>
                     <tbody>
                         ${[...this.pairs].sort((a, b) => {
-                            const weightA = parseFloat(a.weight || '0');
-                            const weightB = parseFloat(b.weight || '0');
-                            return weightB - weightA; // Descending order (highest first)
+                            const parseValue = (value) => {
+                                const num = parseFloat(value ?? '0');
+                                return Number.isFinite(num) ? num : 0;
+                            };
+
+                            const aprA = parseValue(a.apr);
+                            const aprB = parseValue(b.apr);
+                            if (aprB !== aprA) {
+                                return aprB - aprA;
+                            }
+
+                            const tvlA = parseValue(a.tvl ?? a.totalStaked);
+                            const tvlB = parseValue(b.tvl ?? b.totalStaked);
+                            return tvlB - tvlA;
                         }).map(pair => this.renderPairRow(pair)).join('')}
                     </tbody>
                 </table>
