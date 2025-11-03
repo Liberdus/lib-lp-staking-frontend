@@ -1247,7 +1247,7 @@ table td:last-child {
 }
 
 .proposal-row.expanded .expand-icon {
-    transform: rotate(90deg);
+    transform: rotate(180deg);
 }
 
 .expand-btn {
