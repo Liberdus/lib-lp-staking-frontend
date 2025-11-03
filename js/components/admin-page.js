@@ -839,17 +839,6 @@ class AdminPage {
                 return;
             }
 
-            // Add Another Pair button in Update Weights modal
-            if (e.target.id === 'add-weight-pair') {
-                e.preventDefault();
-                console.log('🔘 Add Another Pair button clicked - opening Add Pair modal');
-                this.closeModal(); // Close current modal
-                setTimeout(() => {
-                    this.showAddPairModal(); // Open Add Pair modal
-                }, 100);
-                return;
-            }
-
             // Action buttons in modals (for backward compatibility)
             if (e.target.classList.contains('btn') && e.target.closest('.modal-content')) {
                 const buttonText = e.target.textContent.trim();
@@ -4727,9 +4716,6 @@ class AdminPage {
                                         <p style="margin-top: 16px; color: var(--text-secondary);">Loading pairs...</p>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-outline btn-sm" id="add-weight-pair" style="margin-top: 10px; padding: 8px 16px; border: 1px dashed var(--primary-main); background: transparent; color: var(--primary-main);">
-                                    + Add Another Pair
-                                </button>
                             </div>
 
                             <div class="proposal-info" style="background: rgba(33, 150, 243, 0.05); border: 1px solid rgba(33, 150, 243, 0.2); border-radius: 8px; padding: 16px; margin-top: 24px;">
@@ -5064,68 +5050,6 @@ class AdminPage {
             }
         } catch (error) {
             console.error('❌ Failed to refresh contract info:', error);
-        }
-    }
-
-    // Add another pair row in Update Weights modal
-    addAnotherPairRow() {
-        console.log('🔧 Adding another pair row...');
-
-        const container = document.getElementById('weight-pairs-container');
-        if (!container) {
-            console.error('❌ Weight pairs container not found');
-            return;
-        }
-
-        // Count existing pair rows
-        const existingRows = container.querySelectorAll('.pair-weight-row').length;
-        const newRowIndex = existingRows;
-
-        // Create new pair row HTML
-        const newRowHTML = `
-            <div class="pair-weight-row" data-index="${newRowIndex}">
-                <div class="pair-weight-item">
-                    <label for="pair-select-${newRowIndex}">Pair ${newRowIndex + 1}</label>
-                    <select id="pair-select-${newRowIndex}" class="form-input" required>
-                        <option value="">Select pair...</option>
-                        <option value="LPLIBETH">LIB/ETH</option>
-                        <option value="LPLIBUSDC">LIB/USDC</option>
-                        <option value="LPLIBUSDT">LIB/USDT</option>
-                    </select>
-                </div>
-                <div class="pair-weight-item">
-                    <label for="weight-${newRowIndex}">New Weight</label>
-                    <input type="number" id="weight-${newRowIndex}" class="form-input"
-                           min="1" max="10000" step="1" required placeholder="Enter weight">
-                </div>
-                <div class="pair-weight-item">
-                    <button type="button" class="btn btn-danger btn-sm remove-pair-row"
-                            data-index="${newRowIndex}" style="margin-top: 25px;">
-                        Remove
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Add the new row before the "Add Another Pair" button
-        const addButton = document.getElementById('add-weight-pair');
-        if (addButton) {
-            addButton.insertAdjacentHTML('beforebegin', newRowHTML);
-            console.log(`✅ Added pair row ${newRowIndex + 1}`);
-
-            // Add event listener for the remove button
-            const removeBtn = container.querySelector(`[data-index="${newRowIndex}"] .remove-pair-row`);
-            if (removeBtn) {
-                removeBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const rowIndex = e.target.dataset.index;
-                    const rowToRemove = container.querySelector(`[data-index="${rowIndex}"]`);
-                    if (rowToRemove) {
-                        rowToRemove.remove();
-                        console.log(`✅ Removed pair row ${parseInt(rowIndex) + 1}`);
-                    }
-                });
-            }
         }
     }
 
