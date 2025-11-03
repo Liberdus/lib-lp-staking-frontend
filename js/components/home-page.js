@@ -345,7 +345,7 @@ class HomePage {
                     ${window.Formatter?.formatPairName(pair.name, pair.address, pair.platform) || pair.name}
                 </td>
                 <td>
-                    <span class="chip chip-primary">${pair.platform || 'Uniswap V2'}</span>
+                    <span class="chip chip-primary">${pair.platform || 'Unknown'}</span>
                 </td>
                 <td>
                     <span style="color: var(--success-main); font-weight: bold;">${pair.apr || '0.00'}%</span>

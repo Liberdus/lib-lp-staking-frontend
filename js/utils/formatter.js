@@ -66,6 +66,19 @@ window.Formatter = {
     },
 
     /**
+     * Build platform URL by replacing address placeholder in base URL template
+     * @param {string} baseUrl - The base URL template with {address} placeholder
+     * @param {string} address - The LP token address to insert (optional)
+     * @returns {string} The URL with address replaced, or placeholder removed if no address
+     */
+    buildPlatformUrl(baseUrl, address = '') {
+        if (!baseUrl) return '';
+        return address 
+            ? baseUrl.replace('{address}', address)
+            : baseUrl.replace(/\{address\}/g, '');
+    },
+
+    /**
      * Format pair name for display with platform-specific link
      * Uses the platform from contract data to link to the correct DEX
      * @param {string} pairName - The pair name from the contract
@@ -90,9 +103,7 @@ window.Formatter = {
         
         if (baseUrl) {
             // Use platform-specific URL
-            platformUrl = lpTokenAddress 
-                ? baseUrl.replace('{address}', lpTokenAddress)
-                : baseUrl.replace(/\{address\}/g, '');
+            platformUrl = this.buildPlatformUrl(baseUrl, lpTokenAddress);
             platformTitle = `View pool on ${platform}`;
         } else if (lpTokenAddress) {
             // Fallback to Uniswap if no platform but we have address
