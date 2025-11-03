@@ -335,7 +335,7 @@ class HomePage {
         return `
             <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
                 <td>
-                    ${this.formatPairName(pair.name, pair.address)}
+                    ${window.Formatter?.formatPairName(pair.name, pair.address) || pair.name}
                 </td>
                 <td>
                     <span class="chip chip-primary">${pair.platform || 'Uniswap V2'}</span>
@@ -845,33 +845,6 @@ class HomePage {
     }
 
 
-    /**
-     * Format pair name for display with Uniswap link
-     * Simply displays the raw pair name from the contract as a clickable link
-     */
-    formatPairName(pairName, lpTokenAddress = '') {
-        if (!pairName) return pairName;
-
-        const uniswapUrl = lpTokenAddress ? 
-            `https://app.uniswap.org/explore/pools/polygon/${lpTokenAddress}` : 
-            `https://app.uniswap.org/explore/pools`;
-        
-        return `
-            <a href="${uniswapUrl}" target="_blank" rel="noopener noreferrer" 
-               class="pair-name-link"
-               style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer; transition: all 0.2s ease; padding: 4px 0;"
-               onmouseover="this.style.opacity='0.8'"
-               onmouseout="this.style.opacity='1'"
-               title="View pool on Uniswap">
-                <span style="font-weight: 700; color: var(--primary-main); font-size: 14px;">${pairName}</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-main)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; transition: all 0.2s ease; min-width: 20px;">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-            </a>
-        `;
-    }
 
 
     /**

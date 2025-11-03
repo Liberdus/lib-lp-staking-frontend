@@ -3408,7 +3408,7 @@ class AdminPage {
                 <div class="pair-item-card">
                     <div class="pair-header-section">
                         <div class="pair-name-section">
-                            <h6 class="pair-name">${pair.name}</h6>
+                            <h6 class="pair-name">${window.Formatter?.formatPairName(pair.name, pair.address) || pair.name}</h6>
                             <div class="pair-address-wrapper">
                                 <span class="address-label">Address:</span>
                                 <code class="pair-address">${pair.address}</code>
