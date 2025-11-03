@@ -84,7 +84,7 @@ window.Formatter = {
      * @param {string} pairName - The pair name from the contract
      * @param {string} lpTokenAddress - The LP token address for the platform link
      * @param {string} platform - The platform name from the contract (e.g., "Uniswap V3", "SushiSwap")
-     * @returns {string} HTML string with clickable link to the platform (falls back to Uniswap if platform not configured)
+     * @returns {string} HTML string with clickable link to the platform, or plain text if platform not configured
      */
     formatPairName(pairName, lpTokenAddress = '', platform = '') {
         if (!pairName) return pairName;
@@ -92,21 +92,16 @@ window.Formatter = {
         const platformsConfig = window.CONFIG?.PLATFORMS;
         const baseUrl = platform && platformsConfig?.BASE_URLS?.[platform];
         
-        // Build platform URL
-        let platformUrl;
-        let platformTitle = 'View pool';
-        
-        if (baseUrl) {
-            // Use platform-specific URL
-            platformUrl = this.buildPlatformUrl(baseUrl, lpTokenAddress);
-            platformTitle = `View pool on ${platform}`;
-        } else if (lpTokenAddress) {
-            // Fallback to Uniswap if no platform configured but we have address
-            platformUrl = `https://app.uniswap.org/explore/pools/polygon/${lpTokenAddress}`;
-        } else {
-            // No URL available
-            platformUrl = platformsConfig?.FALLBACK_URL || 'https://app.uniswap.org/explore/pools';
+        // Only return a link if we have a valid platform URL configured
+        if (!baseUrl) {
+            /* lets have a window. error pop up show up */
+            window.notificationManager.error(`Platform ${platform} not configured for pair ${pairName}`);
+            return `<span class="pair-name-link-text">${pairName}</span>`;
         }
+
+        // Build platform URL with address
+        const platformUrl = this.buildPlatformUrl(baseUrl, lpTokenAddress);
+        const platformTitle = `View pool on ${platform}`;
 
         return `
             <a href="${platformUrl}" target="_blank" rel="noopener noreferrer" 
