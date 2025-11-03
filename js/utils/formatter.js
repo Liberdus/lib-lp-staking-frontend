@@ -84,7 +84,7 @@ window.Formatter = {
      * @param {string} pairName - The pair name from the contract
      * @param {string} lpTokenAddress - The LP token address for the platform link
      * @param {string} platform - The platform name from the contract (e.g., "Uniswap V3", "SushiSwap")
-     * @returns {string} HTML string with clickable link to the platform, or plain text if no link available
+     * @returns {string} HTML string with clickable link to the platform (falls back to Uniswap if platform not configured)
      */
     formatPairName(pairName, lpTokenAddress = '', platform = '') {
         if (!pairName) return pairName;
@@ -92,11 +92,6 @@ window.Formatter = {
         const platformsConfig = window.CONFIG?.PLATFORMS;
         const baseUrl = platform && platformsConfig?.BASE_URLS?.[platform];
         
-        // If platform is "Other" or has no URL, return plain text
-        if (!baseUrl && platform) {
-            return `<span class="pair-name-link-text">${pairName}</span>`;
-        }
-
         // Build platform URL
         let platformUrl;
         let platformTitle = 'View pool';
@@ -106,7 +101,7 @@ window.Formatter = {
             platformUrl = this.buildPlatformUrl(baseUrl, lpTokenAddress);
             platformTitle = `View pool on ${platform}`;
         } else if (lpTokenAddress) {
-            // Fallback to Uniswap if no platform but we have address
+            // Fallback to Uniswap if no platform configured but we have address
             platformUrl = `https://app.uniswap.org/explore/pools/polygon/${lpTokenAddress}`;
         } else {
             // No URL available
