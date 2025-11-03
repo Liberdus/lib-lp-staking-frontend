@@ -225,6 +225,10 @@ class HomePage {
                                 APR
                             </th>
                             <th>
+                                <span class="material-icons">fitness_center</span>
+                                Weight
+                            </th>
+                            <th>
                                 <span class="material-icons">account_balance</span>
                                 TVL
                             </th>
@@ -236,10 +240,6 @@ class HomePage {
                                 <span class="material-icons">monetization_on</span>
                                 Your Earnings
                             </th>
-                            <th>
-                                <span class="material-icons">settings</span>
-                                Actions
-                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -248,8 +248,8 @@ class HomePage {
                                 <td><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 60px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 100px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
+                                <td><div class="skeleton" style="height: 20px; width: 100px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
                             </tr>
@@ -307,10 +307,6 @@ class HomePage {
                             <th>
                                 <span class="material-icons">monetization_on</span>
                                 Your Earnings
-                            </th>
-                            <th>
-                                <span class="material-icons">settings</span>
-                                Actions
                             </th>
                         </tr>
                     </thead>
@@ -373,22 +369,6 @@ class HomePage {
                         ${userEarnings} LIB
                     </button>
                 </td>
-                <td>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary btn-stake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || !pair.stakingEnabled ? 'disabled' : ''}>
-                            <span class="material-icons">add</span>
-                            Stake
-                        </button>
-                        <button class="btn btn-secondary btn-unstake" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || parseFloat(userShares) === 0 ? 'disabled' : ''}>
-                            <span class="material-icons">remove</span>
-                            Unstake
-                        </button>
-                        <button class="btn btn-text btn-claim" data-pair-id="${pair.id}" data-pair-address="${pair.address}" ${!canTransact || parseFloat(userEarnings) === 0 ? 'disabled' : ''}>
-                            <span class="material-icons">redeem</span>
-                            Claim
-                        </button>
-                    </div>
-                </td>
             </tr>
         `;
     }
@@ -449,26 +429,6 @@ class HomePage {
                 this.openStakingModal(pairId, 'claim');
             }
 
-            // Handle Stake button click
-            if (e.target.closest('.btn-stake')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-stake').dataset.pairId;
-                this.openStakingModal(pairId, 'stake');
-            }
-
-            // Handle Unstake button click
-            if (e.target.closest('.btn-unstake')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-unstake').dataset.pairId;
-                this.openStakingModal(pairId, 'unstake');
-            }
-
-            // Handle Claim button click
-            if (e.target.closest('.btn-claim')) {
-                e.stopPropagation();
-                const pairId = e.target.closest('.btn-claim').dataset.pairId;
-                this.claimRewards(pairId);
-            }
         });
     }
 
@@ -1208,63 +1168,6 @@ class HomePage {
             window.stakingModal.open(pair, tab);
         } else {
             console.warn('Staking modal not available');
-        }
-    }
-
-    async claimRewards(pairId) {
-        console.log(`🎁 Claiming rewards for pair ${pairId}`);
-
-        const pair = this.pairs.find(p => p.id === pairId);
-        if (!pair) {
-            console.error('Pair not found:', pairId);
-            return;
-        }
-
-        if (!this.isWalletConnected()) {
-            window.notificationManager.error('Please connect your wallet first');
-            return;
-        }
-
-        try {
-            // Show loading state
-            const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = '<span class="material-icons">hourglass_empty</span> Claiming...';
-            }
-
-            window.notificationManager.info('Claiming rewards...');
-
-            // Call contract manager to claim rewards
-            if (window.contractManager && window.contractManager.claimRewards) {
-                console.log(`🎁 Claiming rewards for LP token: ${pair.address}`);
-                const result = await window.contractManager.claimRewards(pair.address);
-
-                if (result && result.success) {
-                    console.log('✅ Rewards claimed successfully');
-                    window.notificationManager.success(`Successfully claimed ${pair.userEarnings} LIB rewards!`);
-
-                    // Refresh data after successful transaction
-                    setTimeout(() => {
-                        this.refreshData().catch(() => {});
-                    }, 2000);
-                } else {
-                    throw new Error(result?.error || 'Transaction failed');
-                }
-            } else {
-                throw new Error('Contract manager not available');
-            }
-
-        } catch (error) {
-            console.error('❌ Failed to claim rewards:', error);
-            window.notificationManager.error(error);
-        } finally {
-            // Reset button state
-            const button = document.querySelector(`.btn-claim[data-pair-id="${pairId}"]`);
-            if (button) {
-                button.disabled = false;
-                button.innerHTML = '<span class="material-icons">redeem</span> Claim';
-            }
         }
     }
 
