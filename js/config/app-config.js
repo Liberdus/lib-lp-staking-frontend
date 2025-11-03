@@ -163,6 +163,32 @@ window.CONFIG = {
         REWARD_PRECISION: 18 // Token precision for rewards
     },
 
+    // Platform Configuration
+    PLATFORMS: {
+        // Available platforms for dropdown (matches contract values)
+        OPTIONS: [
+            'Uniswap V3',
+            'Uniswap V2',
+            'SushiSwap',
+            'Curve Finance',
+            'Balancer',
+            'PancakeSwap',
+            'Other'
+        ],
+        // Base URLs for each platform (chain will be inserted where {chain} appears, address where {address} appears)
+        BASE_URLS: {
+            'Uniswap V3': 'https://app.uniswap.org/explore/pools/polygon/{address}',
+            'Uniswap V2': 'https://app.uniswap.org/explore/pools/polygon/{address}',
+            'SushiSwap': 'https://www.sushi.com/analytics/pools/polygon/{address}',
+            'Curve Finance': 'https://curve.fi/polygon/pools/{address}',
+            'Balancer': 'https://app.balancer.fi/#/polygon/pool/{address}',
+            'PancakeSwap': 'https://pancakeswap.finance/pools/{address}',
+            'Other': null // No link for "Other"
+        },
+        // Fallback URL if platform not found or unknown
+        FALLBACK_URL: 'https://app.uniswap.org/explore/pools'
+    },
+
     // Development Configuration
     DEV: {
         DEBUG: false,

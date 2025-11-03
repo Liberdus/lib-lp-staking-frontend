@@ -3380,6 +3380,7 @@ class AdminPage {
             return {
                 name: pair?.name || (pair?.address ? this.getPairNameByAddress(pair.address) : null) || 'Unknown Pair',
                 address: pair?.address || 'Unknown',
+                platform: pair?.platform || '',
                 weight: weight,
                 displayWeight: displayWeight
             };
@@ -3397,7 +3398,7 @@ class AdminPage {
                 <div class="pair-item-card">
                     <div class="pair-header-section">
                         <div class="pair-name-section">
-                            <h6 class="pair-name">${window.Formatter?.formatPairName(pair.name, pair.address) || pair.name}</h6>
+                            <h6 class="pair-name">${window.Formatter?.formatPairName(pair.name, pair.address, pair.platform) || pair.name}</h6>
                             <div class="pair-address-wrapper">
                                 <span class="address-label">Address:</span>
                                 <code class="pair-address">${pair.address}</code>
@@ -4616,13 +4617,9 @@ class AdminPage {
                                 <label for="pair-platform">Platform *</label>
                                 <select id="pair-platform" class="form-input" required>
                                     <option value="">Select platform...</option>
-                                    <option value="Uniswap V3">Uniswap V3</option>
-                                    <option value="Uniswap V2">Uniswap V2</option>
-                                    <option value="SushiSwap">SushiSwap</option>
-                                    <option value="Curve Finance">Curve Finance</option>
-                                    <option value="Balancer">Balancer</option>
-                                    <option value="PancakeSwap">PancakeSwap</option>
-                                    <option value="Other">Other</option>
+                                    ${(window.CONFIG?.PLATFORMS?.OPTIONS || []).map(platform => 
+                                        `<option value="${platform}">${platform}</option>`
+                                    ).join('')}
                                 </select>
                                 <small class="form-help">Select the DEX platform where this pair trades</small>
                                 <div class="field-error" id="pair-platform-error"></div>
