@@ -3810,13 +3810,6 @@ class ContractManager {
                     }
                 }
 
-                // Method 3: If still no pairs, extract from approved "Add Pair" proposals
-                if (!pairs || pairs.length === 0) {
-                    this.log('🔍 No pairs from contract methods, checking approved proposals...');
-                    pairs = await this.getPairsFromApprovedProposals();
-                    this.log('✅ Got pairs from approved proposals:', pairs.length);
-                }
-
                 const pairsInfo = [];
 
                 // Transform the contract data to the expected format
@@ -3851,45 +3844,6 @@ class ContractManager {
                 return [];
             }
         }, 'getAllPairsInfo');
-    }
-
-    /**
-     * Get pairs from approved "Add Pair" proposals
-     */
-    async getPairsFromApprovedProposals() {
-        try {
-            const actionCounter = await this.getActionCounter();
-            const pairs = [];
-
-            // Check recent proposals for approved "Add Pair" actions
-            for (let i = actionCounter; i > Math.max(actionCounter - 50, 0); i--) {
-                try {
-                    const action = await this.getActions(i);
-                    if (action && action.actionType === 2 && action.executed && !action.rejected) { // ActionType 2 = Add Pair
-                        pairs.push({
-                            address: action.pairToAdd,
-                            pairToAdd: action.pairToAdd,
-                            pairNameToAdd: action.pairNameToAdd,
-                            platformToAdd: action.platformToAdd,
-                            weightToAdd: action.weightToAdd,
-                            name: action.pairNameToAdd,
-                            platform: action.platformToAdd,
-                            weight: action.weightToAdd,
-                            isActive: true
-                        });
-                        this.log(`✅ Found approved pair from proposal ${i}: ${action.pairNameToAdd}`);
-                    }
-                } catch (error) {
-                    // Skip failed actions
-                    continue;
-                }
-            }
-
-            return pairs;
-        } catch (error) {
-            this.logError('Failed to get pairs from proposals:', error);
-            return [];
-        }
     }
 
     /**
