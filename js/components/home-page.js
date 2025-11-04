@@ -234,11 +234,11 @@ class HomePage {
                             </th>
                             <th>
                                 <span class="material-icons">pie_chart</span>
-                                Your Shares
+                                My Share
                             </th>
                             <th>
                                 <span class="material-icons">monetization_on</span>
-                                Your Earnings
+                                My Reward
                             </th>
                         </tr>
                     </thead>
@@ -302,11 +302,11 @@ class HomePage {
                             </th>
                             <th>
                                 <span class="material-icons">pie_chart</span>
-                                Your Shares
+                                My Share
                             </th>
                             <th>
                                 <span class="material-icons">monetization_on</span>
-                                Your Earnings
+                                My Reward
                             </th>
                         </tr>
                     </thead>
