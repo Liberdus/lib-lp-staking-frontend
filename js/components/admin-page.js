@@ -2254,17 +2254,17 @@ class AdminPage {
                 throw new Error('Contract manager not available for pagination');
             }
 
-            // Load next batch (20 more proposals for better UX)
-            console.log(`📋 Loading next batch: skip=${this.loadedProposalCount}, limit=20`);
+            // Load next batch (10 more proposals)
+            console.log(`📋 Loading next batch: skip=${this.loadedProposalCount}, limit=10`);
             let nextBatch;
 
             try {
-                nextBatch = await contractManager.getAllActionsWithPagination(this.loadedProposalCount, 20);
+                nextBatch = await contractManager.getAllActionsWithPagination(this.loadedProposalCount, 10);
             } catch (paginationError) {
                 console.warn('⚠️ Pagination failed, trying alternative method:', paginationError.message);
 
                 // Fallback: Load older proposals by ID
-                nextBatch = await this.loadOlderProposalsByID(contractManager, 20);
+                nextBatch = await this.loadOlderProposalsByID(contractManager, 10);
             }
 
             if (nextBatch && nextBatch.length > 0) {
@@ -3032,7 +3032,7 @@ class AdminPage {
     /**
      * Load older proposals by ID (fallback method for pagination)
      */
-    async loadOlderProposalsByID(contractManager, limit = 20) {
+    async loadOlderProposalsByID(contractManager, limit = 10) {
         console.log(`📋 Loading older proposals by ID (fallback method)...`);
 
         try {

@@ -1692,9 +1692,9 @@ class ContractManager {
                 return [];
             }
 
-            // Load recent 50 actions for better UX
+            // Load recent 10 actions initially
             const startIndex = actionCount;
-            const endIndex = Math.max(actionCount - 50, 1);
+            const endIndex = Math.max(actionCount - 10, 1);
             const actionIds = [];
             for (let i = startIndex; i >= endIndex; i--) {
                 actionIds.push(i);
@@ -1839,10 +1839,10 @@ class ContractManager {
             return [];
         }
 
-        // PERFORMANCE OPTIMIZATION: Load 25 most recent proposals initially for better UX
+        // PERFORMANCE OPTIMIZATION: Load 10 most recent proposals initially for better UX
         // This ensures Load More button appears and users see more proposals
         const startIndex = actionCount;
-        const endIndex = Math.max(actionCount - 25, 1); // Load 25 instead of 15 for better pagination
+        const endIndex = Math.max(actionCount - 10, 1); // Load 10 proposals initially
         const actionIds = [];
         for (let i = startIndex; i >= endIndex; i--) {
             actionIds.push(i);
