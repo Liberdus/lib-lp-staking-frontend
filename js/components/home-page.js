@@ -364,6 +364,7 @@ class HomePage {
                             data-pair-address="${pair.address}"
                             data-tab="0"
                             ${!canTransact ? 'disabled' : ''}
+                            title="Stake or Unstake"
                             style="min-width: 100px;">
                         <span class="material-icons" style="font-size: 16px;">share</span>
                         ${userShares}%
@@ -375,6 +376,7 @@ class HomePage {
                             data-pair-address="${pair.address}"
                             data-tab="2"
                             ${!canTransact ? 'disabled' : ''}
+                            title="Claim reward"
                             style="min-width: 120px;">
                         <span class="material-icons" style="font-size: 16px;">redeem</span>
                         ${userEarnings} LIB
