@@ -290,24 +290,36 @@ class AdminPage {
                     // Try to call hasRole function
                     const hasAdminRole = await window.contractManager.hasAdminRole(this.userAddress);
 
-                    this.isAuthorized = hasAdminRole;
-                    console.log(`🔐 Contract role check: ${hasAdminRole ? 'AUTHORIZED' : 'DENIED'}`);
+                    if (hasAdminRole) {
+                        this.isAuthorized = true;
+                        console.log('🔐 Contract role check: AUTHORIZED (ADMIN_ROLE)');
+                        return;
+                    }
 
-                    if (this.isAuthorized) return;
-
-                } catch (roleError) {
-                    console.warn('⚠️ Role check failed, checking contract owner as fallback:', roleError.message);
-
-                    // Fallback: check if user is contract owner
-                    try {
-                        const owner = await window.contractManager.stakingContract.owner();
-                        this.isAuthorized = owner.toLowerCase() === this.userAddress.toLowerCase();
-                        console.log(`🔐 Owner check: ${this.isAuthorized ? 'AUTHORIZED' : 'DENIED'}`);
+                    if (typeof window.contractManager.hasOwnerApproverRole === 'function') {
+                        const hasOwnerRole = await window.contractManager.hasOwnerApproverRole(this.userAddress);
+                        this.isAuthorized = hasOwnerRole;
+                        console.log(`🔐 Owner approver role check: ${hasOwnerRole ? 'AUTHORIZED' : 'DENIED'}`);
 
                         if (this.isAuthorized) return;
+                    } else {
+                        this.isAuthorized = false;
+                    }
 
-                    } catch (ownerError) {
-                        console.warn('⚠️ Owner check also failed:', ownerError.message);
+                } catch (roleError) {
+                    console.warn('⚠️ Role check failed, checking owner approver role as fallback:', roleError.message);
+
+                    if (typeof window.contractManager?.hasOwnerApproverRole === 'function') {
+                        try {
+                            const hasOwnerRole = await window.contractManager.hasOwnerApproverRole(this.userAddress);
+                            this.isAuthorized = hasOwnerRole;
+                            console.log(`🔐 Owner approver role fallback: ${hasOwnerRole ? 'AUTHORIZED' : 'DENIED'}`);
+
+                            if (this.isAuthorized) return;
+
+                        } catch (ownerRoleError) {
+                            console.warn('⚠️ Owner approver fallback failed:', ownerRoleError.message);
+                        }
                     }
                 }
             } else {
@@ -377,7 +389,7 @@ class AdminPage {
                     
                     <div class="access-details">
                         <p><strong>Your Address:</strong> ${this.userAddress}</p>
-                        <p><strong>Required Role:</strong> ADMIN_ROLE or Contract Owner</p>
+                        <p><strong>Required Role:</strong> ADMIN_ROLE or OWNER_APPROVER_ROLE</p>
                     </div>
                 </div>
             </div>

@@ -25,7 +25,7 @@ window.CONFIG = {
                 decimals: 18
             },
             CONTRACTS: {
-                STAKING_CONTRACT: '0xDB7100D6f037fc36A51c38E76c910626A2d755f4',
+                STAKING_CONTRACT: '0x03Cdb88D55e9D0e01ED00b09495E9cb26b4dc715',
                 REWARD_TOKEN: '0x6e2b7ABA70e8262Fb534aF5e14E786981760b829',
                 LP_TOKENS: {
                     LPLIBETH: '0xf33CDD487d091d26B2955588791dD81c8940a3F3',
