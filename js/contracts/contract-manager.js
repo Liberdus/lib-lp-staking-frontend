@@ -2081,9 +2081,29 @@ class ContractManager {
                 return await this.stakingContract.hasRole(ADMIN_ROLE, userAddress);
             }, 'hasAdminRole');
         } catch (error) {
-            // Graceful error handling for admin role checks
             console.warn(`⚠️ Admin role check failed gracefully: ${error.message}`);
             console.warn('This is expected when contracts are not deployed or user lacks admin permissions');
+        }
+        return false;
+    }
+
+    async hasOwnerApproverRole(address = null) {
+        if (!this.stakingContract) {
+            this.log('⚠️ Staking contract not initialized - owner role check skipped');
+            return false;
+        }
+
+        try {
+            return await this.executeWithRetry(async () => {
+                const userAddress = address || (this.signer ? await this.signer.getAddress() : null);
+                if (!userAddress) {
+                    throw new Error('No address provided and no signer available');
+                }
+                const OWNER_ROLE = await this.stakingContract.OWNER_APPROVER_ROLE();
+                return await this.stakingContract.hasRole(OWNER_ROLE, userAddress);
+            }, 'hasOwnerApproverRole');
+        } catch (error) {
+            console.warn(`⚠️ Owner approver role check failed gracefully: ${error.message}`);
             return false;
         }
     }
