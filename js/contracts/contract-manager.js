@@ -2093,11 +2093,6 @@ class ContractManager {
             return false;
         }
 
-        if (typeof this.stakingContract.OWNER_APPROVER_ROLE !== 'function') {
-            this.log('⚠️ OWNER_APPROVER_ROLE not available on staking contract');
-            return false;
-        }
-
         try {
             return await this.executeWithRetry(async () => {
                 const userAddress = address || (this.signer ? await this.signer.getAddress() : null);
