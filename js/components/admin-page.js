@@ -3303,7 +3303,7 @@ class AdminPage {
                 case 'REMOVE_PAIR':
                     if (proposal.pairToRemove) {
                         // Try to get pair name from existing pairs or show address
-                        const pairName = this.getPairNameByAddress(proposal.pairToRemove);
+                        const pairName = proposal.pairNameToAdd;
                         if (pairName) {
                             return `Remove ${pairName} LP pair`;
                         } else {
@@ -4164,23 +4164,20 @@ class AdminPage {
 
             case 'remove-pair':
             case 'remove_pair':
-                const pairName = proposal.pairToRemove ? this.getPairNameByAddress(proposal.pairToRemove) : null;
-                const removePairAddress = proposal.pairToRemove || 'Not specified';
-
                 let removePairHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
                             <div class="parameter-icon">🏷️</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">Pair to Remove</div>
-                                <div class="parameter-value">${pairName || (proposal.pairToRemove ? this.formatAddress(proposal.pairToRemove) : 'Not specified')}</div>
+                                <div class="parameter-value">${proposal?.pairNameToAdd}</div>
                             </div>
                         </div>
                         <div class="parameter-card">
                             <div class="parameter-icon">📍</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">LP Token Address</div>
-                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${removePairAddress}</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${proposal?.pairToRemove}</div>
                             </div>
                         </div>`;
 
