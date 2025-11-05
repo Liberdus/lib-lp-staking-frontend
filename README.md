@@ -95,8 +95,6 @@ lp-staking-vanilla/
 │   └── wallet/            # Wallet management
 ├── libs/                   # Third-party libraries
 │   └── ethers.umd.min.js  # Ethers.js library
-└── config/                 # Configuration files
-    └── constants.js        # Application constants
 ```
 
 ## ⚙️ Configuration
