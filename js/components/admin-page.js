@@ -4249,14 +4249,22 @@ class AdminPage {
 
             case 'change-signer':
             case 'change_signer':
-                const newSignerAddress = proposal.newSigner || 'Not specified';
+                const newSignerAddress = proposal.pairToRemove || 'Not specified';
+                const signerToRemove = proposal.pairToAdd || 'Not specified';
 
                 let changeSignerHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
+                            <div class="parameter-icon">👋</div>
+                            <div class="parameter-content">
+                                <div class="parameter-label">Signer To Remove</div>
+                                <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${signerToRemove}</div>
+                            </div>
+                        </div>
+                        <div class="parameter-card">
                             <div class="parameter-icon">🔑</div>
                             <div class="parameter-content">
-                                <div class="parameter-label">New Signer Address</div>
+                                <div class="parameter-label">Signer To Add</div>
                                 <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${newSignerAddress}</div>
                             </div>
                         </div>`;
