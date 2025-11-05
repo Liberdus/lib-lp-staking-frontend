@@ -4255,14 +4255,14 @@ class AdminPage {
                 let changeSignerHTML = `
                     <div class="parameters-container">
                         <div class="parameter-card">
-                            <div class="parameter-icon">👋</div>
+                            <div class="parameter-icon">➖</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">Signer To Remove</div>
                                 <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${signerToRemove}</div>
                             </div>
                         </div>
                         <div class="parameter-card">
-                            <div class="parameter-icon">🔑</div>
+                            <div class="parameter-icon">➕</div>
                             <div class="parameter-content">
                                 <div class="parameter-label">Signer To Add</div>
                                 <div class="parameter-value address-display" style="font-family: monospace; font-size: 0.85em; word-break: break-all;">${newSignerAddress}</div>
