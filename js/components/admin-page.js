@@ -3291,7 +3291,7 @@ class AdminPage {
                             const weight = typeof proposal.weightToAdd === 'bigint'
                                 ? proposal.weightToAdd.toString()
                                 : proposal.weightToAdd;
-                            summary += ` (weight: ${weight})`;
+                            summary += ` (weight: ${this.formatWeightForDisplay(weight)})`;
                         }
                     } else if (proposal.pairToAdd) {
                         summary = `Add LP pair ${this.formatAddress(proposal.pairToAdd)}`;
@@ -3318,7 +3318,7 @@ class AdminPage {
                         if (pairCount === 1) {
                             const pairName = this.getPairNameByAddress(proposal.pairs[0]);
                             const weight = proposal.weights[0];
-                            return `Update ${pairName || this.formatAddress(proposal.pairs[0])} weight to ${weight}`;
+                            return `Update ${pairName || this.formatAddress(proposal.pairs[0])} weight to ${this.formatWeightForDisplay(weight)}`;
                         } else {
                             return `Update weights for ${pairCount} LP pairs`;
                         }
