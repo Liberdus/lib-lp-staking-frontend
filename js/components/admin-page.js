@@ -3388,7 +3388,7 @@ class AdminPage {
         }
     }
 
-    renderPairsList(pairs) {
+    renderPairsList(pairs, totalWeight) {
         if (!pairs || pairs.length === 0) {
             return '<div class="no-data">No pairs configured</div>';
         }
@@ -3421,8 +3421,11 @@ class AdminPage {
                 displayWeight: displayWeight
             };
         });
-
-        const totalWeight = pairData.reduce((sum, p) => sum + (p.weight || 0), 0);
+        
+        // if totalWeight not provided, calculate it
+        if (totalWeight === undefined || totalWeight === null) {
+            totalWeight = pairData.reduce((sum, p) => sum + (p.weight || 0), 0);
+        }
 
         return pairData.map(pair => {
             const percentageValue = totalWeight > 0 && pair.weight !== null 
@@ -5553,7 +5556,7 @@ class AdminPage {
                     const weightB = parseFloat(b.weight || '0');
                     return weightB - weightA; // Descending order (highest first)
                 });
-                pairsContainer.innerHTML = this.renderPairsList(sortedPairs);
+                pairsContainer.innerHTML = this.renderPairsList(sortedPairs, info.totalWeight);
             } else {
                 pairsContainer.innerHTML = '<div class="no-data">No LP pairs configured</div>';
             }
