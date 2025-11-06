@@ -750,6 +750,22 @@ class HomePage {
 
             // Load TVL data with multicall (1 RPC call instead of N calls)
             const tvlMap = await window.contractManager.getTVLForAllPairs(this.pairs);
+            const rewardTokenAddress = (window.contractManager?.contractAddresses instanceof Map)
+                ? window.contractManager.contractAddresses.get('REWARD_TOKEN')
+                : null;
+            const rewardTokenPricePromise = (async () => {
+                if (!rewardTokenAddress) {
+                    console.warn('⚠️ Reward token address unavailable; defaulting price to 0');
+                    return 0;
+                }
+
+                try {
+                    return await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                } catch (error) {
+                    console.warn('⚠️ Failed to fetch reward token price:', error);
+                    return 0;
+                }
+            })();
 
             const calculations = this.pairs.map(async (pair, index) => {
                 try {
@@ -757,8 +773,7 @@ class HomePage {
 
                     // React Line 52-53: Fetch token prices
                     const lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pair.address);
-                    const rewardTokenAddress = window.CONFIG?.CONTRACTS?.REWARD_TOKEN;
-                    const rewardTokenPrice = await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                    const rewardTokenPrice = await rewardTokenPricePromise;
 
                     console.log(`  💵 LP token price: $${lpTokenPrice}`);
                     console.log(`  💵 Reward token price: $${rewardTokenPrice}`);
