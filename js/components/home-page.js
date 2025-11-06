@@ -383,8 +383,8 @@ class HomePage {
                     <span style="color: var(--success-main); font-weight: bold;">${pair.apr || '0.00'}%</span>
                 </td>
                 <td>
-                    <span class="chip chip-secondary">
-                        ${window.Formatter?.formatSmallNumberWithSubscript(parseFloat(pair.weight || '0')) || '0'} (${pair.weightPercentage || '0.00'}%)
+                    <span style="font-weight: 600;">
+                        ${pair.weightPercentage || '0.00'}%
                     </span>
                 </td>
                 <td>
