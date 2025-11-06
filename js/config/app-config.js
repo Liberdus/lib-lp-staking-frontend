@@ -103,6 +103,7 @@ window.CONFIG = {
         NAME: 'Liberdus LP Staking',
         VERSION: '1.0.0',
         DESCRIPTION: 'Stake LP tokens and earn LIB rewards',
+        SITE_URL: 'https://liberdus.com/farmtest2', // Base URL for Open Graph and canonical links
         REFRESH_INTERVAL: 30000, // 30 seconds
         NOTIFICATION_DURATION: 5000, // 5 seconds
         ANIMATION_DURATION: 300, // 300ms
