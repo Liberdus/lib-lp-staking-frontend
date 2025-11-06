@@ -344,19 +344,6 @@
         }
 
         /**
-         * Get reward token price
-         */
-        async getRewardTokenPrice(options = {}) {
-            try {
-                // Assuming reward token is LIB token
-                return await this.getTokenPrice('LIB', options);
-            } catch (error) {
-                console.error('Failed to get reward token price:', error);
-                return null;
-            }
-        }
-
-        /**
          * Fetch price from CoinGecko API
          */
         async fetchPriceFromCoinGecko(coinGeckoId) {
@@ -550,43 +537,11 @@
         }
 
         /**
-         * Get all cached prices
-         */
-        getAllCachedPrices() {
-            const prices = {};
-
-            for (const [key, entry] of this.priceCache.entries()) {
-                prices[key] = {
-                    price: entry.price,
-                    timestamp: entry.timestamp,
-                    source: entry.source,
-                    age: Date.now() - entry.timestamp
-                };
-            }
-
-            return prices;
-        }
-
-        /**
          * Clear price cache
          */
         clearCache() {
             this.priceCache.clear();
             console.log('PriceFeeds: Cache cleared');
-        }
-
-        /**
-         * Get system statistics
-         */
-        getStats() {
-            return {
-                cacheSize: this.priceCache.size,
-                isInitialized: this.isInitialized,
-                autoUpdateEnabled: !!this.updateInterval,
-                activeRequests: this.activeRequests,
-                queuedRequests: this.requestQueue.length,
-                lastRequestTime: this.lastRequestTime
-            };
         }
 
         /**
@@ -596,22 +551,6 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        /**
-         * Cleanup resources
-         */
-        destroy() {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
-            }
-
-            this.clearCache();
-            this.requestQueue = [];
-            this.activeRequests = 0;
-            this.isInitialized = false;
-
-            console.log('PriceFeeds: Resources cleaned up');
-        }
     }
 
     // Export to global scope
