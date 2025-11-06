@@ -1103,7 +1103,7 @@ class AdminPage {
     async handleContractReady() {
         console.log('📋 Handling contract ready');
 
-        // Refresh contract data (refreshData already calls loadContractStats internally)
+        // Refresh contract data
         await this.refreshData();
     }
 
