@@ -3406,7 +3406,7 @@ class AdminPage {
         const pairData = pairs.map(pair => {
             const weight = parseWeight(pair?.weight);
             let displayWeight;
-            if (weight !== null) {
+            if (weight != null) {
                 displayWeight = window.Formatter?.formatSmallNumberWithSubscript(weight) || weight.toString();
             } else {
                 displayWeight = this.formatWeightForDisplay(pair?.weight) || '0';
@@ -3427,7 +3427,7 @@ class AdminPage {
         }
 
         return pairData.map(pair => {
-            const percentageValue = totalWeight > 0 && pair.weight !== null 
+            const percentageValue = totalWeight > 0 && pair.weight != null 
                 ? (pair.weight / totalWeight) * 100 
                 : 0;
             const percentage = Math.round(percentageValue);
@@ -3506,7 +3506,7 @@ class AdminPage {
                         </div>
                         <div class="card-content">
                             <div class="stat-value" id="total-tvl">
-                                ${this.contractStats.totalTVL !== null 
+                                ${this.contractStats.totalTVL != null 
                                     ? `$${this.formatNumber(this.contractStats.totalTVL)}` 
                                     : 'N/A'}
                             </div>
@@ -3520,7 +3520,7 @@ class AdminPage {
                         </div>
                         <div class="card-content">
                             <div class="stat-value" id="total-stakers">
-                                ${this.contractStats.totalStakers !== null 
+                                ${this.contractStats.totalStakers != null 
                                     ? this.contractStats.totalStakers 
                                     : 'N/A'}
                             </div>
@@ -3534,7 +3534,7 @@ class AdminPage {
                         </div>
                         <div class="card-content">
                             <div class="stat-value" id="total-rewards">
-                                ${this.contractStats.totalRewards !== null 
+                                ${this.contractStats.totalRewards != null 
                                     ? this.formatNumber(this.contractStats.totalRewards) 
                                     : 'N/A'}
                             </div>
@@ -3704,13 +3704,13 @@ class AdminPage {
         // Update stat values
         const elements = {
             'active-pairs-count': this.contractStats.activePairs ?? 0,
-            'total-tvl': this.contractStats.totalTVL !== null 
+            'total-tvl': this.contractStats.totalTVL != null 
                 ? `$${this.formatNumber(this.contractStats.totalTVL)}` 
                 : 'N/A',
-            'total-stakers': this.contractStats.totalStakers !== null 
+            'total-stakers': this.contractStats.totalStakers != null 
                 ? this.contractStats.totalStakers 
                 : 'N/A',
-            'total-rewards': this.contractStats.totalRewards !== null 
+            'total-rewards': this.contractStats.totalRewards != null 
                 ? this.formatNumber(this.contractStats.totalRewards) 
                 : 'N/A'
         };
@@ -4549,7 +4549,7 @@ class AdminPage {
                                 <label for="new-rate">New Hourly Rate (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
-                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRewardRate !== null && this.contractStats?.hourlyRewardRate !== undefined ? `${this.contractStats.hourlyRewardRate} ${this.contractStats?.rewardTokenSymbol || 'USDC'}/hour` : 'N/A'}</small>
+                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRewardRate != null ? `${this.contractStats.hourlyRewardRate} ${this.contractStats?.rewardTokenSymbol || 'USDC'}/hour` : 'N/A'}</small>
                             </div>
 
                             <div class="proposal-info">
