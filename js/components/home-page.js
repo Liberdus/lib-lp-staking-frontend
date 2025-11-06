@@ -247,7 +247,7 @@ class HomePage {
                         </tr>
                     </thead>
                     <tbody>
-                        ${Array(5).fill(0).map(() => `
+                        ${Array(3).fill(0).map(() => `
                             <tr>
                                 <td><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
                                 <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
