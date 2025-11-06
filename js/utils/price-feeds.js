@@ -166,9 +166,6 @@
             // Method 2: Use DEX API
             this.lpTokenMethods.set('dex', this.calculatePriceFromDEX.bind(this));
             
-            // Method 3: Fallback to mock prices
-            this.lpTokenMethods.set('fallback', this.getFallbackPrice.bind(this));
-            
             console.log('🔧 LP token price calculation methods configured');
         }
 
@@ -176,17 +173,18 @@
          * Preload common token prices
          */
         async preloadCommonPrices() {
-            // Use fallback prices immediately to avoid API spam
+            // Attempt to fetch prices for common tokens
             const commonTokens = ['USDT', 'WETH', 'MATIC', 'USDC'];
             
-            console.log('📥 Initializing common token prices with fallback values...');
+            console.log('📥 Initializing common token prices...');
             
             for (const token of commonTokens) {
                 try {
-                    // Use fallback directly instead of calling API
-                    await this.getFallbackTokenPrice(token);
+                    // Try to get token price (may return null if unavailable)
+                    await this.getTokenPrice(token);
                 } catch (error) {
-                    // Silently fail - fallback will be used
+                    // Silently fail - price will be null if unavailable
+                    console.warn(`Failed to preload common token price for ${token}:`, error);
                 }
             }
             
@@ -197,12 +195,12 @@
          * Fetch token price by address from DexScreener (React implementation)
          * This matches the React site's fetchTokenPrice() function exactly
          * @param {string} address - Token contract address
-         * @returns {Promise<number>} - Token price in USD
+         * @returns {Promise<number|null>} - Token price in USD, or null if unavailable
          */
         async fetchTokenPrice(address) {
             if (!address) {
                 console.warn('⚠️ No address provided to fetchTokenPrice');
-                return 0;
+                return null;
             }
 
             try {
@@ -239,14 +237,14 @@
                         timestamp: Date.now(),
                         source: 'dexscreener'
                     });
+                    return price;
                 } else {
                     console.warn(`⚠️ No price data found for ${address}`);
+                    return null;
                 }
-
-                return price;
             } catch (error) {
                 console.error(`❌ Failed to fetch token price for ${address}:`, error);
-                return 0;
+                return null;
             }
         }
 
@@ -284,8 +282,8 @@
                 return price;
 
             } catch (error) {
-                // Silently use fallback - don't spam console
-                return await this.getFallbackTokenPrice(tokenSymbol);
+                // Return null when price data is unavailable
+                return null;
             }
         }
 
@@ -304,14 +302,14 @@
                 console.log(`💰 Calculating LP token price for ${pairName}...`);
                 
                 // Try different calculation methods in order
-                const methods = ['reserves', 'dex', 'fallback'];
+                const methods = ['reserves', 'dex'];
                 
                 for (const method of methods) {
                     try {
                         const calculator = this.lpTokenMethods.get(method);
                         const price = await calculator(pairName);
                         
-                        if (price > 0) {
+                        if (price != null && price > 0) {
                             // Cache the result
                             this.priceCache.set(cacheKey, {
                                 price: price,
@@ -333,7 +331,7 @@
                 
             } catch (error) {
                 console.error(`❌ Failed to get LP token price for ${pairName}:`, error);
-                return 1.0; // Fallback price
+                return null;
             }
         }
 
@@ -346,7 +344,7 @@
                 return await this.getTokenPrice('LIB', options);
             } catch (error) {
                 console.error('Failed to get reward token price:', error);
-                return 0.50; // Fallback price
+                return null;
             }
         }
 
@@ -397,46 +395,6 @@
                 console.error(`DEX price calculation failed for ${pairName}:`, error);
                 return null;
             }
-        }
-
-        /**
-         * Get fallback price for LP tokens (Method 3)
-         */
-        getFallbackPrice(pairName) {
-            const fallbackPrices = {
-                'LIB-USDT': 1.25,
-                'LIB-WETH': 2.50,
-                'LIB-MATIC': 0.85,
-                'LIB-USDC': 1.20
-            };
-            
-            return fallbackPrices[pairName] || 1.0;
-        }
-
-        /**
-         * Get fallback token price
-         */
-        async getFallbackTokenPrice(tokenSymbol) {
-            const fallbackPrices = {
-                'LIB': 0.50,
-                'USDT': 1.00,
-                'USDC': 1.00,
-                'WETH': 2500.00,
-                'MATIC': 0.80
-            };
-
-            const price = fallbackPrices[tokenSymbol.toUpperCase()] || 1.0;
-
-            // Cache fallback price
-            const cacheKey = `price_${tokenSymbol.toLowerCase()}`;
-            this.priceCache.set(cacheKey, {
-                price: price,
-                timestamp: Date.now(),
-                source: 'fallback'
-            });
-
-            // Only log once per token (check if it's already in cache)
-            return price;
         }
 
         /**

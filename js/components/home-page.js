@@ -790,15 +790,15 @@ class HomePage {
                 : null;
             const rewardTokenPricePromise = (async () => {
                 if (!rewardTokenAddress) {
-                    console.warn('⚠️ Reward token address unavailable; defaulting price to 0');
-                    return 0;
+                    console.warn('⚠️ Reward token address unavailable; price will be null');
+                    return null;
                 }
 
                 try {
                     return await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
                 } catch (error) {
                     console.warn('⚠️ Failed to fetch reward token price:', error);
-                    return 0;
+                    return null;
                 }
             })();
 
@@ -810,8 +810,8 @@ class HomePage {
                     const lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pair.address);
                     const rewardTokenPrice = await rewardTokenPricePromise;
 
-                    console.log(`  💵 LP token price: $${lpTokenPrice}`);
-                    console.log(`  💵 Reward token price: $${rewardTokenPrice}`);
+                    console.log(`  💵 LP token price: ${lpTokenPrice != null ? `$${lpTokenPrice}` : 'N/A'}`);
+                    console.log(`  💵 Reward token price: ${rewardTokenPrice != null ? `$${rewardTokenPrice}` : 'N/A'}`);
 
                     // Get TVL from multicall result (optimized)
                     const tvlWei = tvlMap.get(pair.address) || ethers.BigNumber.from(0);
