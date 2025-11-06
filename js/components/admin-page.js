@@ -3572,9 +3572,9 @@ class AdminPage {
             this.contractStats = {
                 activePairs: 0,
                 totalPairs: 0,
-                totalTVL: null,      // Not available without price feeds
-                totalStakers: null,  // Not available without event parsing
-                totalRewards: null,  // Not available without additional data
+                totalTVL: null,
+                totalStakers: null,
+                totalRewards: null,
                 rewardBalance: null,
                 rewardToken: null,
                 rewardTokenSymbol: '',
@@ -3701,7 +3701,7 @@ class AdminPage {
             return;
         }
 
-        // Update stat values - show N/A for null, actual values for available data
+        // Update stat values
         const elements = {
             'active-pairs-count': this.contractStats.activePairs ?? 0,
             'total-tvl': this.contractStats.totalTVL !== null 
@@ -5381,7 +5381,7 @@ class AdminPage {
                     const rateValue = Number(ethers.utils.formatEther(rate));
                     return `${rateValue.toFixed(4)} ${rewardTokenSymbol}/hour`;
                 },
-                null  // Return null on error to display "N/A" instead of "0.0000"
+                null
             );
 
             contractInfo.totalWeight = await this.safeContractCall(
@@ -5390,7 +5390,7 @@ class AdminPage {
                     // consistent formatting without rounding
                     return this.formatWeightForDisplay(totalWeight);
                 },
-                null  // Return null on error to display "N/A" instead of "0"
+                null
             );
 
             // Get pairs with full information - real data only
