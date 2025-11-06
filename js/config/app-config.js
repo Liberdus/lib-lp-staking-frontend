@@ -33,11 +33,8 @@ window.CONFIG = {
             NAME: 'Polygon Mainnet',
             RPC_URL: 'https://rpc.ankr.com/polygon',
             FALLBACK_RPCS: [
-                'https://polygon-mainnet.public.blastapi.io',
                 'https://polygon-rpc.com',
-                'https://polygon-mainnet.chainstacklabs.com',
-                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
-                'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'
+                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC'
             ],
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
