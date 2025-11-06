@@ -146,7 +146,6 @@
             `${basePath}js/core/accessibility-manager.js`,
             `${basePath}js/core/animation-manager.js`,
             `${basePath}js/core/error-handler.js`,
-            `${basePath}js/core/loading-manager.js`,
             `${basePath}js/core/notification-manager-new.js`,
             `${basePath}js/core/unified-theme-manager.js`,
             
