@@ -34,7 +34,6 @@
     <meta property="og:title" content="LP Staking - Admin Panel">
     <meta property="og:description" content="Administrative interface for LP Staking Protocol">
     <meta property="og:type" content="website">
-    <meta property="og:url" id="og-url" content="">
     
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -76,12 +75,6 @@
     <!-- Configuration (load first) -->
     <script src="../js/config/app-config.js"></script>
     <!-- <script src="../js/config/dev-config.js"></script> -->
-    <script>
-        // Set Open Graph URL from config
-        if (window.CONFIG?.APP?.SITE_URL) {
-            document.getElementById('og-url').content = window.CONFIG.APP.SITE_URL.replace(/\/$/, '') + '/admin';
-        }
-    </script>
 
     <!-- Core Libraries with fallbacks -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" onerror="loadEthersFallback()"></script>
