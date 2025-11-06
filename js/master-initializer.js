@@ -326,7 +326,10 @@ class MasterInitializer {
                     window.rewardsCalculator = new window.RewardsCalculator();
 
                     console.log('🔄 Initializing RewardsCalculator...');
-                    const initResult = await window.rewardsCalculator.initialize(window.contractManager, window.priceFeeds);
+                    const initResult = await window.rewardsCalculator.initialize({
+                        contractManager: window.contractManager,
+                        priceFeeds: window.priceFeeds
+                    });
 
                     this.components.set('rewardsCalculator', window.rewardsCalculator);
                     console.log('✅ Rewards Calculator initialized successfully:', {

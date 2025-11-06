@@ -846,21 +846,18 @@ class HomePage {
             // Get additional data if available
             let tvl = 0;
             let totalStaked = 0;
-            let apr = 0;
             let rewardRate = 0;
+            let apr = parseFloat(pairInfo.apr || '0');
+            if (!Number.isFinite(apr)) {
+                apr = 0;
+            }
 
             try {
                 // Try to get pool info if available
                 const poolInfo = await window.contractManager.getPoolInfo(pairInfo.address);
                 totalStaked = parseFloat(poolInfo.totalStaked || '0');
                 rewardRate = parseFloat(poolInfo.rewardRate || '0');
-
-                // Calculate TVL and APR if rewards calculator is available
-                if (window.rewardsCalculator) {
-                    const aprData = await window.rewardsCalculator.calculateAPR(pairName);
-                    apr = aprData.apr || 0;
-                    tvl = aprData.tvl || totalStaked;
-                }
+                tvl = totalStaked;
             } catch (dataError) {
                 console.log(`Could not get additional data for ${pairName}:`, dataError.message);
             }
@@ -931,7 +928,7 @@ class HomePage {
                 userShares: userSharesPercentage,
                 userEarnings: userEarnings,
                 totalStaked: totalStaked.toString(),
-                rewardRate: rewardRate.toFixed(3),
+                rewardRate: Number.isFinite(rewardRate) ? rewardRate.toFixed(3) : '0.000',
                 stakingEnabled: pairInfo.isActive,
                 address: pairInfo.address
             };
