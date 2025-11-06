@@ -785,6 +785,22 @@ class HomePage {
 
             // Load TVL data with multicall (1 RPC call instead of N calls)
             const tvlMap = await window.contractManager.getTVLForAllPairs(this.pairs);
+            const rewardTokenAddress = (window.contractManager?.contractAddresses instanceof Map)
+                ? window.contractManager.contractAddresses.get('REWARD_TOKEN')
+                : null;
+            const rewardTokenPricePromise = (async () => {
+                if (!rewardTokenAddress) {
+                    console.warn('⚠️ Reward token address unavailable; defaulting price to 0');
+                    return 0;
+                }
+
+                try {
+                    return await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                } catch (error) {
+                    console.warn('⚠️ Failed to fetch reward token price:', error);
+                    return 0;
+                }
+            })();
 
             const calculations = this.pairs.map(async (pair, index) => {
                 try {
@@ -792,8 +808,7 @@ class HomePage {
 
                     // React Line 52-53: Fetch token prices
                     const lpTokenPrice = await window.priceFeeds.fetchTokenPrice(pair.address);
-                    const rewardTokenAddress = window.CONFIG?.CONTRACTS?.REWARD_TOKEN;
-                    const rewardTokenPrice = await window.priceFeeds.fetchTokenPrice(rewardTokenAddress);
+                    const rewardTokenPrice = await rewardTokenPricePromise;
 
                     console.log(`  💵 LP token price: $${lpTokenPrice}`);
                     console.log(`  💵 Reward token price: $${rewardTokenPrice}`);
@@ -851,117 +866,6 @@ class HomePage {
             console.error('❌ Failed to calculate TVL and APR:', error);
         }
     }
-
-
-
-
-    /**
-     * Build real pair data from contract information
-     */
-    async buildRealPairData(pairInfo, index) {
-        try {
-            // Use the raw pair name from contract, or address if name is missing
-            const pairName = pairInfo.name || (pairInfo.address ? `${pairInfo.address.slice(0, 6)}...${pairInfo.address.slice(-4)}` : '');
-
-            // Get additional data if available
-            let tvl = 0;
-            let totalStaked = 0;
-            let apr = 0;
-            let rewardRate = 0;
-
-            try {
-                // Try to get pool info if available
-                const poolInfo = await window.contractManager.getPoolInfo(pairInfo.address);
-                totalStaked = parseFloat(poolInfo.totalStaked || '0');
-                rewardRate = parseFloat(poolInfo.rewardRate || '0');
-
-                // Calculate TVL and APR if rewards calculator is available
-                if (window.rewardsCalculator) {
-                    const aprData = await window.rewardsCalculator.calculateAPR(pairName);
-                    apr = aprData.apr || 0;
-                    tvl = aprData.tvl || totalStaked;
-                }
-            } catch (dataError) {
-                console.log(`Could not get additional data for ${pairName}:`, dataError.message);
-            }
-
-            // Get user-specific data if wallet is connected AND on correct network
-            let userSharesPercentage = '0.00';
-            let userEarnings = '0.00';
-
-            // Check if we're on configured network before querying user data
-            const isOnCorrectNetwork = this.isWalletConnected() && 
-                                        window.walletManager?.currentAccount && 
-                                        (window.networkManager?.isOnRequiredNetwork() || false);
-
-            if (isOnCorrectNetwork) {
-                try {
-                    const userStake = await window.contractManager.getUserStake(
-                        window.walletManager.currentAccount,
-                        pairInfo.address
-                    );
-                    const pendingRewards = await window.contractManager.getPendingRewards(
-                        window.walletManager.currentAccount,
-                        pairInfo.address
-                    );
-
-                    // Calculate pool share percentage: (userStake * 100) / TVL
-                    // userStake is in ether format, tvl is also in ether format
-                    const userStakeAmount = parseFloat(userStake || '0');
-                    if (userStakeAmount > 0 && tvl > 0) {
-                        const sharePercentage = (userStakeAmount * 100) / tvl;
-                        userSharesPercentage = sharePercentage.toFixed(2);
-                        console.log(`📊 Pool share calculation: ${userStakeAmount} LP / ${tvl} TVL * 100 = ${sharePercentage}%`);
-                    } else {
-                        userSharesPercentage = '0.00';
-                    }
-
-                    // Format pendingRewards - convert from wei to ether if needed
-                    if (pendingRewards && pendingRewards !== '0') {
-                        try {
-                            // Check if it's a BigNumber or large number (in wei)
-                            const rewardsStr = pendingRewards.toString();
-                            if (rewardsStr.length > 10) {
-                                // Likely in wei, convert to ether
-                                userEarnings = parseFloat(window.ethers.formatEther(pendingRewards)).toFixed(6);
-                            } else {
-                                // Already in ether format
-                                userEarnings = parseFloat(pendingRewards).toFixed(6);
-                            }
-                        } catch (formatError) {
-                            console.log(`Error formatting rewards for ${pairName}:`, formatError.message);
-                            userEarnings = parseFloat(pendingRewards || '0').toFixed(6);
-                        }
-                    } else {
-                        userEarnings = '0.000000';
-                    }
-
-                    console.log(`📊 User data for ${pairName}: SharePercentage=${userSharesPercentage}%, Earnings=${userEarnings} LIB`);
-                } catch (userError) {
-                    console.log(`Could not get user data for ${pairName}:`, userError.message);
-                }
-            }
-
-            return {
-                id: index.toString(),
-                name: pairName,
-                platform: pairInfo.platform || '',
-                apr: apr.toFixed(2),
-                tvl: tvl,
-                userShares: userSharesPercentage,
-                userEarnings: userEarnings,
-                totalStaked: totalStaked.toString(),
-                rewardRate: rewardRate.toFixed(3),
-                stakingEnabled: pairInfo.isActive,
-                address: pairInfo.address
-            };
-        } catch (error) {
-            console.error('Failed to build real pair data:', error);
-            return null;
-        }
-    }
-
-
 
     openStakingModal(pairId, tab = 'stake') {
         const pair = this.pairs.find(p => p.id === pairId);
