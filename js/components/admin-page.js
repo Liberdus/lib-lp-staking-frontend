@@ -4587,7 +4587,7 @@ class AdminPage {
                                 <label for="new-rate">New Hourly Rate (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
                                 <input type="number" id="new-rate" class="form-input" step="0.01" min="0" required
                                        placeholder="Enter new hourly rate">
-                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRewardRate || 'Loading...'} ${this.contractStats?.rewardTokenSymbol || 'USDC'}/hour</small>
+                                <small class="form-help">Current rate: ${this.contractStats?.hourlyRewardRate ?? 'Loading...'} ${this.contractStats?.rewardTokenSymbol || 'USDC'}/hour</small>
                             </div>
 
                             <div class="proposal-info">
