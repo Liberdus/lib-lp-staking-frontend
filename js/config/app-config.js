@@ -25,13 +25,7 @@ window.CONFIG = {
                 decimals: 18
             },
             CONTRACTS: {
-                STAKING_CONTRACT: '0x5e4216c952190BEA7abC4Fc64e990AfbF4F9885a',
-                REWARD_TOKEN: '0x6e2b7ABA70e8262Fb534aF5e14E786981760b829',
-                LP_TOKENS: {
-                    LPLIBETH: '0xf33CDD487d091d26B2955588791dD81c8940a3F3',
-                    LPLIBUSDC: '0x104f51469aE06A3Cda5a23901e4e069A5D71F6d3',
-                    LPLIBUSDT: '0x87D394F688a51584cB59dA49A95E59080D251Cf0'
-                }
+                STAKING_CONTRACT: '0x5e4216c952190BEA7abC4Fc64e990AfbF4F9885a'
             }
         },
         POLYGON_MAINNET: {
@@ -48,9 +42,7 @@ window.CONFIG = {
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
             CONTRACTS: {
-                STAKING_CONTRACT: '0xef15eB728CEF704f40269319BBA495d4131Beb71',
-                REWARD_TOKEN: '0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
-                LP_TOKENS: {}
+                STAKING_CONTRACT: '0xef15eB728CEF704f40269319BBA495d4131Beb71'
             }
         }
     },
