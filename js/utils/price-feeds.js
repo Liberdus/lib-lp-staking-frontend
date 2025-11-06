@@ -209,7 +209,11 @@
                 // Check cache first
                 if (this.isCacheValid(cacheKey)) {
                     const cached = this.priceCache.get(cacheKey);
-                    console.log(`💰 Using cached price for ${address}: $${cached.price}`);
+                    if (cached.price != null) {
+                        console.log(`💰 Using cached price for ${address}: $${cached.price}`);
+                    } else {
+                        console.log(`💰 Cached price unavailable for ${address}`);
+                    }
                     return cached.price;
                 }
 
@@ -249,7 +253,11 @@
         }
 
         /**
-         * Get token price from CoinGecko or fallback sources
+         * Get token price from CoinGecko API
+         * @param {string} tokenSymbol - Token symbol (e.g., 'LIB', 'USDT')
+         * @param {Object} options - Optional configuration
+         * @param {boolean} options.forceRefresh - Force refresh from API, bypass cache
+         * @returns {Promise<number|null>} Token price in USD, or null if unavailable
          */
         async getTokenPrice(tokenSymbol, options = {}) {
             try {
