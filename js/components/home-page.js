@@ -810,10 +810,6 @@ class HomePage {
                         libToken = token0;
                     } else if (rewardTokenAddressLower && token1Addr === rewardTokenAddressLower) {
                         libToken = token1;
-                    } else if (token0?.symbol?.toUpperCase() === 'LIB') {
-                        libToken = token0;
-                    } else if (token1?.symbol?.toUpperCase() === 'LIB') {
-                        libToken = token1;
                     }
 
                     if (!libToken) {
@@ -858,6 +854,7 @@ class HomePage {
 
                 } catch (error) {
                     console.error(`❌ Failed to calculate TVL/APR for ${pair.name}:`, error);
+                    window.notificationManager?.error(`Failed to calculate TVL/APR for ${pair.name}`);
                     // Keep default values (0)
                 }
             });

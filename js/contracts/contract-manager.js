@@ -1473,92 +1473,149 @@ class ContractManager {
                 throw new Error('Staking contract address not available');
             }
 
-            let provider = this.provider;
-            if (!provider && this.signer?.provider) {
-                provider = this.signer.provider;
-            }
+            const provider = this.provider || this.signer?.provider;
             if (!provider) {
-                provider = await this.getWorkingProvider();
-            }
-            if (!provider) {
-                throw new Error('No provider available for LP stake breakdown');
+                throw new Error('Provider not initialized');
             }
 
-            const pairAbi = [
-                "function token0() view returns (address)",
-                "function token1() view returns (address)",
-                "function getReserves() view returns (uint112,uint112,uint32)",
-                "function totalSupply() view returns (uint256)",
-                "function balanceOf(address owner) view returns (uint256)",
-                "function decimals() view returns (uint8)"
+            const pairContract = new ethers.Contract(
+                lpTokenAddress,
+                [
+                    'function token0() view returns (address)',
+                    'function token1() view returns (address)',
+                    'function getReserves() view returns (uint112,uint112,uint32)',
+                    'function totalSupply() view returns (uint256)',
+                    'function balanceOf(address owner) view returns (uint256)',
+                    'function decimals() view returns (uint8)'
+                ],
+                provider
+            );
+
+            const multicall = this.multicallService;
+            if (!multicall || typeof multicall.isReady !== 'function' || !multicall.isReady()) {
+                throw new Error('Multicall service not ready');
+            }
+
+            const pairCalls = [
+                multicall.createCall(pairContract, 'token0'),
+                multicall.createCall(pairContract, 'token1'),
+                multicall.createCall(pairContract, 'getReserves'),
+                multicall.createCall(pairContract, 'totalSupply'),
+                multicall.createCall(pairContract, 'balanceOf', [stakingAddress]),
+                multicall.createCall(pairContract, 'decimals')
             ];
+
+            const pairResults = await multicall.batchCall(pairCalls, { requireSuccess: true, maxRetries: 0 });
+            if (!pairResults || pairResults.length !== pairCalls.length) {
+                throw new Error('Multicall pair query failed');
+            }
+
+            const decodePair = (index, method) => {
+                const entry = pairResults[index];
+                if (!entry || entry.success !== true) {
+                    throw new Error(`Multicall failed for pair.${method}`);
+                }
+                const decoded = multicall.decodeResult(pairContract, method, entry.returnData);
+                if (decoded === null || decoded === undefined) {
+                    throw new Error(`Unable to decode pair.${method}`);
+                }
+                return decoded;
+            };
+
+            const token0Address = decodePair(0, 'token0');
+            const token1Address = decodePair(1, 'token1');
+            const reserves = decodePair(2, 'getReserves');
+            const totalSupplyRaw = decodePair(3, 'totalSupply');
+            const stakedBalanceRaw = decodePair(4, 'balanceOf');
+            const lpDecimalsRaw = decodePair(5, 'decimals');
+
+            const reserve0 = ethers.BigNumber.from(reserves[0]);
+            const reserve1 = ethers.BigNumber.from(reserves[1]);
+            const reserveTimestampRaw = Number(reserves[2]);
+            if (!Number.isFinite(reserveTimestampRaw)) {
+                throw new Error('Invalid reserve timestamp');
+            }
+            const blockTimestampLast = Math.trunc(reserveTimestampRaw);
+
+            const totalSupply = ethers.BigNumber.from(totalSupplyRaw);
+            const stakedBalance = ethers.BigNumber.from(stakedBalanceRaw);
+
+            if (stakedBalance.gt(totalSupply)) {
+                throw new Error('Staked balance exceeds total supply');
+            }
+
             const metadataAbi = [
-                "function decimals() view returns (uint8)",
-                "function symbol() view returns (string)"
+                'function decimals() view returns (uint8)',
+                'function symbol() view returns (string)'
             ];
-
-            const pairContract = new ethers.Contract(lpTokenAddress, pairAbi, provider);
-
-            const [token0Address, token1Address, reservesTuple, totalSupplyRaw, stakedBalanceRaw, lpDecimalsRaw] = await Promise.all([
-                pairContract.token0(),
-                pairContract.token1(),
-                pairContract.getReserves(),
-                pairContract.totalSupply(),
-                pairContract.balanceOf(stakingAddress),
-                pairContract.decimals().catch(() => 18)
-            ]);
-
-            const reserve0 = ethers.BigNumber.from(reservesTuple?.[0] ?? reservesTuple?.reserve0 ?? 0);
-            const reserve1 = ethers.BigNumber.from(reservesTuple?.[1] ?? reservesTuple?.reserve1 ?? 0);
-            const blockTimestampLast = Number(reservesTuple?.[2] ?? reservesTuple?.blockTimestampLast ?? 0);
-
-            const totalSupply = ethers.BigNumber.from(totalSupplyRaw ?? 0);
-            const stakedBalance = ethers.BigNumber.from(stakedBalanceRaw ?? 0);
 
             const token0Contract = new ethers.Contract(token0Address, metadataAbi, provider);
             const token1Contract = new ethers.Contract(token1Address, metadataAbi, provider);
 
-            const [token0DecimalsRaw, token0SymbolRaw, token1DecimalsRaw, token1SymbolRaw] = await Promise.all([
-                token0Contract.decimals().catch(() => 18),
-                token0Contract.symbol().catch(() => null),
-                token1Contract.decimals().catch(() => 18),
-                token1Contract.symbol().catch(() => null)
-            ]);
+            const tokenMetadataCalls = [
+                multicall.createCall(token0Contract, 'decimals'),
+                multicall.createCall(token0Contract, 'symbol'),
+                multicall.createCall(token1Contract, 'decimals'),
+                multicall.createCall(token1Contract, 'symbol')
+            ];
 
-            const parseDecimals = (value, fallback = 18) => {
-                if (typeof value === 'number' && Number.isFinite(value)) {
-                    return value;
+            const tokenMetadataResults = await multicall.batchCall(tokenMetadataCalls, { requireSuccess: true, maxRetries: 0 });
+            if (!tokenMetadataResults || tokenMetadataResults.length !== tokenMetadataCalls.length) {
+                throw new Error('Multicall token metadata query failed');
+            }
+
+            const decodeToken = (contract, method, index) => {
+                const entry = tokenMetadataResults[index];
+                if (!entry || entry.success !== true) {
+                    throw new Error(`Multicall failed for ${contract.address}.${method}`);
                 }
-                if (value && typeof value.toString === 'function') {
-                    const parsed = parseInt(value.toString(), 10);
-                    if (!Number.isNaN(parsed)) {
-                        return parsed;
-                    }
+                const decoded = multicall.decodeResult(contract, method, entry.returnData);
+                if (decoded === null || decoded === undefined) {
+                    throw new Error(`Unable to decode ${contract.address}.${method}`);
                 }
-                return fallback;
+                return decoded;
             };
 
-            const parseSymbol = (raw, fallback) => {
-                if (typeof raw === 'string' && raw.trim().length > 0) {
-                    return raw.trim();
-                }
-                try {
-                    return window.ethers?.utils?.parseBytes32String ? ethers.utils.parseBytes32String(raw) : fallback;
-                } catch (_) {
-                    return fallback;
-                }
-            };
+            const token0DecimalsRaw = decodeToken(token0Contract, 'decimals', 0);
+            const token0SymbolRaw = decodeToken(token0Contract, 'symbol', 1);
+            const token1DecimalsRaw = decodeToken(token1Contract, 'decimals', 2);
+            const token1SymbolRaw = decodeToken(token1Contract, 'symbol', 3);
 
-            const lpDecimals = parseDecimals(lpDecimalsRaw, 18);
-            const token0Decimals = parseDecimals(token0DecimalsRaw, 18);
-            const token1Decimals = parseDecimals(token1DecimalsRaw, 18);
+            const lpDecimalsNum = Number(lpDecimalsRaw);
+            const token0DecimalsNum = Number(token0DecimalsRaw);
+            const token1DecimalsNum = Number(token1DecimalsRaw);
 
-            const token0Symbol = parseSymbol(token0SymbolRaw, 'TOKEN0');
-            const token1Symbol = parseSymbol(token1SymbolRaw, 'TOKEN1');
+            if (!Number.isFinite(lpDecimalsNum)) {
+                throw new Error('Invalid LP decimals');
+            }
+            if (!Number.isFinite(token0DecimalsNum)) {
+                throw new Error('Invalid token0 decimals');
+            }
+            if (!Number.isFinite(token1DecimalsNum)) {
+                throw new Error('Invalid token1 decimals');
+            }
 
-            const token0Staked = totalSupply.isZero() ? ethers.constants.Zero : stakedBalance.mul(reserve0).div(totalSupply);
-            const token1Staked = totalSupply.isZero() ? ethers.constants.Zero : stakedBalance.mul(reserve1).div(totalSupply);
-            const outstandingLP = totalSupply.gt(stakedBalance) ? totalSupply.sub(stakedBalance) : ethers.constants.Zero;
+            const lpDecimals = Math.trunc(lpDecimalsNum);
+            const token0Decimals = Math.trunc(token0DecimalsNum);
+            const token1Decimals = Math.trunc(token1DecimalsNum);
+
+            if (typeof token0SymbolRaw !== 'string' || !token0SymbolRaw.trim()) {
+                throw new Error('Invalid token0 symbol');
+            }
+            if (typeof token1SymbolRaw !== 'string' || !token1SymbolRaw.trim()) {
+                throw new Error('Invalid token1 symbol');
+            }
+
+            const token0Symbol = token0SymbolRaw.trim();
+            const token1Symbol = token1SymbolRaw.trim();
+
+            if (totalSupply.isZero()) {
+                throw new Error('LP total supply is zero');
+            }
+
+            const token0Staked = stakedBalance.mul(reserve0).div(totalSupply);
+            const token1Staked = stakedBalance.mul(reserve1).div(totalSupply);
+            const outstandingBalance = totalSupply.sub(stakedBalance);
 
             return {
                 lpTokenAddress,
@@ -1575,8 +1632,8 @@ class ContractManager {
                         formatted: ethers.utils.formatUnits(stakedBalance, lpDecimals)
                     },
                     outstandingBalance: {
-                        raw: outstandingLP.toString(),
-                        formatted: ethers.utils.formatUnits(outstandingLP, lpDecimals)
+                        raw: outstandingBalance.toString(),
+                        formatted: ethers.utils.formatUnits(outstandingBalance, lpDecimals)
                     }
                 },
                 token0: {
