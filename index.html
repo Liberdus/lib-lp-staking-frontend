@@ -275,9 +275,14 @@
             border: none;
             color: var(--primary-main);
             cursor: pointer;
-            padding: var(--spacing-1);
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 50%;
-            transition: all 0.2s;
+            transition: background 0.2s, transform 0.2s;
+            transform-origin: center;
         }
         
         .refresh-button:hover {
