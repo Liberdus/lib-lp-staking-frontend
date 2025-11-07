@@ -1006,6 +1006,47 @@ class ContractManager {
     }
 
     /**
+     * Resolve an LP token identifier (name or address) to a contract address
+     * @param {string} pairIdentifier - Address, normalized key, or human-readable name
+     * @returns {string|null} Resolved contract address or null when not found
+     */
+    resolveLPTokenAddress(pairIdentifier) {
+        if (!pairIdentifier || typeof pairIdentifier !== 'string') {
+            return null;
+        }
+
+        if (this.isValidContractAddress(pairIdentifier)) {
+            return pairIdentifier;
+        }
+
+        // Direct map lookup when identifier already matches stored key
+        if (pairIdentifier.startsWith('LP_')) {
+            const direct = this.contractAddresses.get(pairIdentifier);
+            if (direct && this.isValidContractAddress(direct)) {
+                return direct;
+            }
+            pairIdentifier = pairIdentifier.replace(/^LP_/, '');
+        }
+
+        const normalizedKey = this.normalizePairKey(pairIdentifier);
+        if (!normalizedKey) {
+            return null;
+        }
+
+        const addressFromMap = this.contractAddresses.get(`LP_${normalizedKey}`);
+        if (addressFromMap && this.isValidContractAddress(addressFromMap)) {
+            return addressFromMap;
+        }
+
+        const lpContract = this.lpTokenContracts.get(normalizedKey);
+        if (lpContract?.address && this.isValidContractAddress(lpContract.address)) {
+            return lpContract.address;
+        }
+
+        return null;
+    }
+
+    /**
      * Initialize LP token contracts dynamically
      */
     async initializeLPTokenContracts() {
@@ -1414,6 +1455,158 @@ class ContractManager {
             const balance = await lpTokenContract.balanceOf(stakingContractAddress);
             return balance;
         }, 'getTVL');
+    }
+
+    /**
+     * Get LP stake composition using Uniswap V2 pair reserves
+     * Returns LP totals plus underlying token amounts held by the staking contract
+     */
+    async getLPStakeBreakdown(pairIdentifier) {
+        return await this.executeWithRetry(async () => {
+            const lpTokenAddress = this.resolveLPTokenAddress(pairIdentifier);
+            if (!lpTokenAddress) {
+                throw new Error(`Unable to resolve LP token for identifier: ${pairIdentifier}`);
+            }
+
+            const stakingAddress = this.contractAddresses.get('STAKING') || window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            if (!stakingAddress || !this.isValidContractAddress(stakingAddress)) {
+                throw new Error('Staking contract address not available');
+            }
+
+            let provider = this.provider;
+            if (!provider && this.signer?.provider) {
+                provider = this.signer.provider;
+            }
+            if (!provider) {
+                provider = await this.getWorkingProvider();
+            }
+            if (!provider) {
+                throw new Error('No provider available for LP stake breakdown');
+            }
+
+            const pairAbi = [
+                "function token0() view returns (address)",
+                "function token1() view returns (address)",
+                "function getReserves() view returns (uint112,uint112,uint32)",
+                "function totalSupply() view returns (uint256)",
+                "function balanceOf(address owner) view returns (uint256)",
+                "function decimals() view returns (uint8)"
+            ];
+            const metadataAbi = [
+                "function decimals() view returns (uint8)",
+                "function symbol() view returns (string)"
+            ];
+
+            const pairContract = new ethers.Contract(lpTokenAddress, pairAbi, provider);
+
+            const [token0Address, token1Address, reservesTuple, totalSupplyRaw, stakedBalanceRaw, lpDecimalsRaw] = await Promise.all([
+                pairContract.token0(),
+                pairContract.token1(),
+                pairContract.getReserves(),
+                pairContract.totalSupply(),
+                pairContract.balanceOf(stakingAddress),
+                pairContract.decimals().catch(() => 18)
+            ]);
+
+            const reserve0 = ethers.BigNumber.from(reservesTuple?.[0] ?? reservesTuple?.reserve0 ?? 0);
+            const reserve1 = ethers.BigNumber.from(reservesTuple?.[1] ?? reservesTuple?.reserve1 ?? 0);
+            const blockTimestampLast = Number(reservesTuple?.[2] ?? reservesTuple?.blockTimestampLast ?? 0);
+
+            const totalSupply = ethers.BigNumber.from(totalSupplyRaw ?? 0);
+            const stakedBalance = ethers.BigNumber.from(stakedBalanceRaw ?? 0);
+
+            const token0Contract = new ethers.Contract(token0Address, metadataAbi, provider);
+            const token1Contract = new ethers.Contract(token1Address, metadataAbi, provider);
+
+            const [token0DecimalsRaw, token0SymbolRaw, token1DecimalsRaw, token1SymbolRaw] = await Promise.all([
+                token0Contract.decimals().catch(() => 18),
+                token0Contract.symbol().catch(() => null),
+                token1Contract.decimals().catch(() => 18),
+                token1Contract.symbol().catch(() => null)
+            ]);
+
+            const parseDecimals = (value, fallback = 18) => {
+                if (typeof value === 'number' && Number.isFinite(value)) {
+                    return value;
+                }
+                if (value && typeof value.toString === 'function') {
+                    const parsed = parseInt(value.toString(), 10);
+                    if (!Number.isNaN(parsed)) {
+                        return parsed;
+                    }
+                }
+                return fallback;
+            };
+
+            const parseSymbol = (raw, fallback) => {
+                if (typeof raw === 'string' && raw.trim().length > 0) {
+                    return raw.trim();
+                }
+                try {
+                    return window.ethers?.utils?.parseBytes32String ? ethers.utils.parseBytes32String(raw) : fallback;
+                } catch (_) {
+                    return fallback;
+                }
+            };
+
+            const lpDecimals = parseDecimals(lpDecimalsRaw, 18);
+            const token0Decimals = parseDecimals(token0DecimalsRaw, 18);
+            const token1Decimals = parseDecimals(token1DecimalsRaw, 18);
+
+            const token0Symbol = parseSymbol(token0SymbolRaw, 'TOKEN0');
+            const token1Symbol = parseSymbol(token1SymbolRaw, 'TOKEN1');
+
+            const token0Staked = totalSupply.isZero() ? ethers.constants.Zero : stakedBalance.mul(reserve0).div(totalSupply);
+            const token1Staked = totalSupply.isZero() ? ethers.constants.Zero : stakedBalance.mul(reserve1).div(totalSupply);
+            const outstandingLP = totalSupply.gt(stakedBalance) ? totalSupply.sub(stakedBalance) : ethers.constants.Zero;
+
+            return {
+                lpTokenAddress,
+                stakingContractAddress: stakingAddress,
+                blockTimestampLast,
+                lpToken: {
+                    decimals: lpDecimals,
+                    totalSupply: {
+                        raw: totalSupply.toString(),
+                        formatted: ethers.utils.formatUnits(totalSupply, lpDecimals)
+                    },
+                    stakedBalance: {
+                        raw: stakedBalance.toString(),
+                        formatted: ethers.utils.formatUnits(stakedBalance, lpDecimals)
+                    },
+                    outstandingBalance: {
+                        raw: outstandingLP.toString(),
+                        formatted: ethers.utils.formatUnits(outstandingLP, lpDecimals)
+                    }
+                },
+                token0: {
+                    address: token0Address,
+                    symbol: token0Symbol,
+                    decimals: token0Decimals,
+                    reserve: {
+                        raw: reserve0.toString(),
+                        formatted: ethers.utils.formatUnits(reserve0, token0Decimals)
+                    },
+                    staked: {
+                        raw: token0Staked.toString(),
+                        formatted: ethers.utils.formatUnits(token0Staked, token0Decimals)
+                    }
+                },
+                token1: {
+                    address: token1Address,
+                    symbol: token1Symbol,
+                    decimals: token1Decimals,
+                    reserve: {
+                        raw: reserve1.toString(),
+                        formatted: ethers.utils.formatUnits(reserve1, token1Decimals)
+                    },
+                    staked: {
+                        raw: token1Staked.toString(),
+                        formatted: ethers.utils.formatUnits(token1Staked, token1Decimals)
+                    }
+                }
+            };
+        }, 'getLPStakeBreakdown');
     }
 
     /**
