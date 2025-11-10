@@ -522,7 +522,7 @@ class MasterInitializer {
         isLoading = false,
         disabled = false
     } = {}) {
-        if (!button || typeof text !== 'string') return;
+        if (!button || !text) return;
 
         const label = ariaLabel || text;
         const buttonTitle = title ?? label;
