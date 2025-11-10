@@ -16,25 +16,126 @@ class StakingModalNew {
 
         // Approval state
         this.needsApproval = false;
-        this.isApproving = false;
         this.isApproved = false;
         this.currentAllowance = '0';
 
         // Transaction progress state
-        this.isStaking = false;
-        this.isUnstaking = false;
-        this.isClaiming = false;
+        this.actionPhases = {
+            approve: 'idle',
+            stake: 'idle',
+            unstake: 'idle',
+            claim: 'idle'
+        };
+        this.pendingOperations = {
+            approve: false,
+            stake: false,
+            unstake: false,
+            claim: false
+        };
 
         // Execution guards
         this.isExecutingStake = false;
         this.isExecutingUnstake = false;
         this.isExecutingClaim = false;
 
+        this.transactionPhaseHandler = this.handleTransactionPhase.bind(this);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('transaction-phase', this.transactionPhaseHandler);
+        }
+
         // Set global reference immediately
         window.stakingModal = this;
         window.stakingModalNew = this;
 
         this.init();
+    }
+
+    mapOperationToAction(operationName) {
+        switch (operationName) {
+            case 'approveLPToken':
+                return 'approve';
+            case 'stake':
+                return 'stake';
+            case 'unstake':
+                return 'unstake';
+            case 'claimRewards':
+                return 'claim';
+            default:
+                return null;
+        }
+    }
+
+    getPhaseLabel(phase) {
+        if (phase === 'userApproval') {
+            return ' User Approval...';
+        }
+        if (phase === 'processing') {
+            return ' Processing Transaction...';
+        }
+        return '';
+    }
+
+    setActionPhase(action, phase) {
+        if (!this.actionPhases || !Object.prototype.hasOwnProperty.call(this.actionPhases, action)) {
+            return;
+        }
+
+        if (this.actionPhases[action] === phase) {
+            return;
+        }
+
+        this.actionPhases[action] = phase;
+
+        if (action === 'approve' || action === 'stake') {
+            this.updateStakeButton();
+        }
+
+        if (action === 'unstake') {
+            this.updateUnstakeButton();
+        }
+
+        if (action === 'claim') {
+            this.updateClaimButton();
+        }
+    }
+
+    handleTransactionPhase(event) {
+        const detail = event?.detail;
+        if (!detail) return;
+
+        const action = this.mapOperationToAction(detail.operationName);
+        if (!action || !this.pendingOperations[action]) return;
+
+        switch (detail.phase) {
+            case 'user_approval':
+                this.setActionPhase(action, 'userApproval');
+                break;
+            case 'processing':
+                this.setActionPhase(action, 'processing');
+                break;
+            case 'confirmed':
+            case 'failed':
+            case 'timeout':
+            case 'settled':
+                this.pendingOperations[action] = false;
+                this.setActionPhase(action, 'idle');
+                break;
+            default:
+                break;
+        }
+    }
+
+    resetActionStates(triggerUpdate = true) {
+        if (!this.actionPhases || !this.pendingOperations) return;
+
+        Object.keys(this.actionPhases).forEach(action => {
+            this.actionPhases[action] = 'idle';
+            this.pendingOperations[action] = false;
+        });
+
+        if (triggerUpdate) {
+            this.updateButtonStates();
+        }
     }
 
     init() {
@@ -441,13 +542,10 @@ class StakingModalNew {
         // Reset approval state
         this.isApproved = false;
         this.needsApproval = false;
-        this.isApproving = false;
         this.currentAllowance = '0';
 
         // Reset transaction progress state
-        this.isStaking = false;
-        this.isUnstaking = false;
-        this.isClaiming = false;
+        this.resetActionStates(false);
 
         // Reset execution guards
         this.isExecutingStake = false;
@@ -653,8 +751,8 @@ class StakingModalNew {
                 throw new Error('Contract manager or wallet not ready');
             }
 
-            this.isApproving = true;
-            this.updateStakeButton();
+            this.pendingOperations.approve = true;
+            this.setActionPhase('approve', 'userApproval');
 
             const pairName = this.getPairName();
             console.log(`🔐 Approving LP tokens:`, { pairName, amount: this.stakeAmount });
@@ -664,21 +762,24 @@ class StakingModalNew {
             const approveTx = await window.contractManager.approveLPToken(pairName, this.stakeAmount);
             console.log(`✅ Approval transaction sent: ${approveTx.hash}`);
 
+            if (this.actionPhases.approve === 'userApproval') {
+                this.setActionPhase('approve', 'processing');
+            }
+
             // Update state and UI
             this.isApproved = true;
             this.needsApproval = false;
-            this.isApproving = false;
-            this.updateStakeButton();
 
             return true;
 
         } catch (error) {
             console.error('❌ Approval failed:', error);
             window.notificationManager?.error('Token approval failed. ' + error.message);
-            this.isApproving = false;
             this.isApproved = false;
-            this.updateStakeButton();
             return false;
+        } finally {
+            this.pendingOperations.approve = false;
+            this.setActionPhase('approve', 'idle');
         }
     }
 
@@ -696,18 +797,17 @@ class StakingModalNew {
         const weight = parseFloat(this.currentPair?.weight || '0') || 0;
         const hasAmount = amount > 0;
         const hasValidWeight = weight > 0;
+        const approvalPhase = this.actionPhases?.approve || 'idle';
+        const stakePhase = this.actionPhases?.stake || 'idle';
+        const activePhase = approvalPhase !== 'idle' ? approvalPhase : stakePhase;
 
-        if (this.isApproving) {
+        if (activePhase !== 'idle') {
             stakeButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
-            if (buttonText) buttonText.textContent = ' Approving...';
-            return;
-        }
-
-        if (this.isStaking) {
-            stakeButton.disabled = true;
-            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
-            if (buttonText) buttonText.textContent = ' Staking...';
+            if (buttonText) {
+                const phaseLabel = this.getPhaseLabel(activePhase) || ' Processing Transaction...';
+                buttonText.textContent = phaseLabel;
+            }
             return;
         }
 
@@ -729,11 +829,15 @@ class StakingModalNew {
         const buttonText = unstakeButton.childNodes[unstakeButton.childNodes.length - 1];
         const amount = parseFloat(this.unstakeAmount) || 0;
         const hasAmount = amount > 0;
+        const unstakePhase = this.actionPhases?.unstake || 'idle';
 
-        if (this.isUnstaking) {
+        if (unstakePhase !== 'idle') {
             unstakeButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
-            if (buttonText) buttonText.textContent = ' Unstaking...';
+            if (buttonText) {
+                const phaseLabel = this.getPhaseLabel(unstakePhase) || ' Processing Transaction...';
+                buttonText.textContent = phaseLabel;
+            }
             return;
         }
 
@@ -755,11 +859,15 @@ class StakingModalNew {
         const buttonText = claimButton.childNodes[claimButton.childNodes.length - 1];
         const rewards = parseFloat(this.pendingRewards) || 0;
         const hasRewards = rewards > 0;
+        const claimPhase = this.actionPhases?.claim || 'idle';
 
-        if (this.isClaiming) {
+        if (claimPhase !== 'idle') {
             claimButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
-            if (buttonText) buttonText.textContent = ' Claiming...';
+            if (buttonText) {
+                const phaseLabel = this.getPhaseLabel(claimPhase) || ' Processing Transaction...';
+                buttonText.textContent = phaseLabel;
+            }
             return;
         }
 
@@ -878,10 +986,7 @@ class StakingModalNew {
         this.unstakeAmount = '';
         this.isApproved = false;
         this.needsApproval = false;
-        this.isApproving = false;
-        this.isStaking = false;
-        this.isUnstaking = false;
-        this.isClaiming = false;
+        this.resetActionStates(false);
         
         // Clear DOM inputs and sliders for both stake and unstake
         ['stake', 'unstake'].forEach(type => {
@@ -1231,8 +1336,8 @@ class StakingModalNew {
             // Use lpToken address from pair object
             const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
 
-            this.isStaking = true;
-            this.updateStakeButton();
+            this.pendingOperations.stake = true;
+            this.setActionPhase('stake', 'userApproval');
             console.log('📤 Sending stake transaction...');
 
             // Execute real staking transaction
@@ -1240,6 +1345,10 @@ class StakingModalNew {
                 lpTokenAddress,
                 this.stakeAmount
             );
+
+            if (this.actionPhases.stake === 'userApproval') {
+                this.setActionPhase('stake', 'processing');
+            }
 
             if (!result.success) {
                 throw new Error(result.error || 'Staking transaction failed');
@@ -1277,7 +1386,8 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
-            this.isStaking = false;
+            this.pendingOperations.stake = false;
+            this.setActionPhase('stake', 'idle');
             this.isExecutingStake = false;
             this.updateStakeButton();
             console.log('🔓 Stake execution finished, guard released');
@@ -1312,12 +1422,16 @@ class StakingModalNew {
             }
 
             // Execute real unstaking transaction
-            this.isUnstaking = true;
-            this.updateUnstakeButton();
+            this.pendingOperations.unstake = true;
+            this.setActionPhase('unstake', 'userApproval');
             const result = await window.contractManager.unstake(
                 this.currentPair.address,
                 this.unstakeAmount
             );
+
+            if (this.actionPhases.unstake === 'userApproval') {
+                this.setActionPhase('unstake', 'processing');
+            }
 
             if (!result.success) {
                 throw new Error(result.error || 'Unstaking transaction failed');
@@ -1355,7 +1469,8 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
-            this.isUnstaking = false;
+            this.pendingOperations.unstake = false;
+            this.setActionPhase('unstake', 'idle');
             this.isExecutingUnstake = false;
             this.updateUnstakeButton();
             console.log('🔓 Unstake execution finished, guard released');
@@ -1390,11 +1505,15 @@ class StakingModalNew {
             }
 
             // Execute real claim transaction
-            this.isClaiming = true;
-            this.updateClaimButton();
+            this.pendingOperations.claim = true;
+            this.setActionPhase('claim', 'userApproval');
             const result = await window.contractManager.claimRewards(
                 this.currentPair.address
             );
+
+            if (this.actionPhases.claim === 'userApproval') {
+                this.setActionPhase('claim', 'processing');
+            }
 
             if (!result.success) {
                 throw new Error(result.error || 'Claim transaction failed');
@@ -1432,7 +1551,8 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
-            this.isClaiming = false;
+            this.pendingOperations.claim = false;
+            this.setActionPhase('claim', 'idle');
             this.isExecutingClaim = false;
             this.updateClaimButton();
             console.log('🔓 Claim execution finished, guard released');
