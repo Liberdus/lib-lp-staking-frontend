@@ -20,6 +20,11 @@ class StakingModalNew {
         this.isApproved = false;
         this.currentAllowance = '0';
 
+        // Transaction progress state
+        this.isStaking = false;
+        this.isUnstaking = false;
+        this.isClaiming = false;
+
         // Execution guards
         this.isExecutingStake = false;
         this.isExecutingUnstake = false;
@@ -439,6 +444,11 @@ class StakingModalNew {
         this.isApproving = false;
         this.currentAllowance = '0';
 
+        // Reset transaction progress state
+        this.isStaking = false;
+        this.isUnstaking = false;
+        this.isClaiming = false;
+
         // Reset execution guards
         this.isExecutingStake = false;
         this.isExecutingUnstake = false;
@@ -676,25 +686,88 @@ class StakingModalNew {
      * Update stake button text and state based on approval status
      */
     updateStakeButton() {
-        const stakeButton = document.querySelector('.modal-body button.btn-primary');
+        const stakeButton = document.querySelector('.modal-actions .btn-primary[onclick*="safeModalExecuteStake"]');
         if (!stakeButton) return;
 
         const buttonIcon = stakeButton.querySelector('.material-icons');
         const buttonText = stakeButton.childNodes[stakeButton.childNodes.length - 1];
 
+        const amount = parseFloat(this.stakeAmount) || 0;
+        const weight = parseFloat(this.currentPair?.weight || '0') || 0;
+        const hasAmount = amount > 0;
+        const hasValidWeight = weight > 0;
+
         if (this.isApproving) {
             stakeButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
             if (buttonText) buttonText.textContent = ' Approving...';
-        } else if (this.isApproved) {
-            stakeButton.disabled = false;
-            if (buttonIcon) buttonIcon.textContent = 'add';
-            if (buttonText) buttonText.textContent = ' Stake LP Tokens';
-        } else {
-            stakeButton.disabled = !this.stakeAmount || parseFloat(this.stakeAmount) === 0;
-            if (buttonIcon) buttonIcon.textContent = 'add';
-            if (buttonText) buttonText.textContent = ' Stake LP Tokens';
+            return;
         }
+
+        if (this.isStaking) {
+            stakeButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) buttonText.textContent = ' Staking...';
+            return;
+        }
+
+        const shouldDisable = this.isExecutingStake || !hasAmount || !hasValidWeight;
+        stakeButton.disabled = shouldDisable;
+
+        if (buttonIcon) buttonIcon.textContent = 'add';
+        if (buttonText) buttonText.textContent = ' Stake LP Tokens';
+    }
+
+    /**
+     * Update unstake button text and state during transaction flow
+     */
+    updateUnstakeButton() {
+        const unstakeButton = document.querySelector('.modal-actions .btn-primary[onclick*="safeModalExecuteUnstake"]');
+        if (!unstakeButton) return;
+
+        const buttonIcon = unstakeButton.querySelector('.material-icons');
+        const buttonText = unstakeButton.childNodes[unstakeButton.childNodes.length - 1];
+        const amount = parseFloat(this.unstakeAmount) || 0;
+        const hasAmount = amount > 0;
+
+        if (this.isUnstaking) {
+            unstakeButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) buttonText.textContent = ' Unstaking...';
+            return;
+        }
+
+        const shouldDisable = this.isExecutingUnstake || !hasAmount;
+        unstakeButton.disabled = shouldDisable;
+
+        if (buttonIcon) buttonIcon.textContent = 'remove';
+        if (buttonText) buttonText.textContent = ' Unstake LP Tokens';
+    }
+
+    /**
+     * Update claim button text and state during transaction flow
+     */
+    updateClaimButton() {
+        const claimButton = document.querySelector('.modal-actions .btn-primary[onclick*="safeModalExecuteClaim"]');
+        if (!claimButton) return;
+
+        const buttonIcon = claimButton.querySelector('.material-icons');
+        const buttonText = claimButton.childNodes[claimButton.childNodes.length - 1];
+        const rewards = parseFloat(this.pendingRewards) || 0;
+        const hasRewards = rewards > 0;
+
+        if (this.isClaiming) {
+            claimButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) buttonText.textContent = ' Claiming...';
+            return;
+        }
+
+        const shouldDisable = this.isExecutingClaim || !hasRewards;
+        claimButton.disabled = shouldDisable;
+
+        if (buttonIcon) buttonIcon.textContent = 'redeem';
+        if (buttonText) buttonText.textContent = ' Claim Rewards';
     }
 
     /**
@@ -806,6 +879,9 @@ class StakingModalNew {
         this.isApproved = false;
         this.needsApproval = false;
         this.isApproving = false;
+        this.isStaking = false;
+        this.isUnstaking = false;
+        this.isClaiming = false;
         
         // Clear DOM inputs and sliders for both stake and unstake
         ['stake', 'unstake'].forEach(type => {
@@ -816,6 +892,7 @@ class StakingModalNew {
         });
         
         console.log('🧹 Input values cleared');
+        this.updateButtonStates();
     }
 
     updatePairInfo() {
@@ -885,28 +962,9 @@ class StakingModalNew {
     }
 
     updateButtonStates() {
-        // Update stake button
-        const stakeBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Stake"]');
-        if (stakeBtn && this.currentTab === 'stake') {
-            const amount = parseFloat(this.stakeAmount);
-            // Check if weight is 0 to disable staking
-            const weight = parseFloat(this.currentPair?.weight || '0');
-            stakeBtn.disabled = !amount || amount === 0 || !weight || weight === 0;
-        }
-
-        // Update unstake button
-        const unstakeBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Unstake"]');
-        if (unstakeBtn && this.currentTab === 'unstake') {
-            const amount = parseFloat(this.unstakeAmount);
-            unstakeBtn.disabled = !amount || amount === 0;
-        }
-
-        // Update claim button
-        const claimBtn = document.querySelector('.modal-actions .btn-primary[onclick*="Claim"]');
-        if (claimBtn && this.currentTab === 'claim') {
-            const rewards = parseFloat(this.pendingRewards);
-            claimBtn.disabled = !rewards || rewards === 0;
-        }
+        this.updateStakeButton();
+        this.updateUnstakeButton();
+        this.updateClaimButton();
     }
 
     renderStakeTab() {
@@ -1134,6 +1192,7 @@ class StakingModalNew {
         try {
             // Set execution guard
             this.isExecutingStake = true;
+            this.updateStakeButton();
             console.log('🔒 Stake execution started, guard enabled');
 
             // Check if contract manager is ready
@@ -1172,6 +1231,8 @@ class StakingModalNew {
             // Use lpToken address from pair object
             const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
 
+            this.isStaking = true;
+            this.updateStakeButton();
             console.log('📤 Sending stake transaction...');
 
             // Execute real staking transaction
@@ -1216,7 +1277,9 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
+            this.isStaking = false;
             this.isExecutingStake = false;
+            this.updateStakeButton();
             console.log('🔓 Stake execution finished, guard released');
         }
     }
@@ -1233,6 +1296,7 @@ class StakingModalNew {
         try {
             // Set execution guard
             this.isExecutingUnstake = true;
+            this.updateUnstakeButton();
             console.log('🔒 Unstake execution started, guard enabled');
 
             // Check if contract manager is ready
@@ -1248,6 +1312,8 @@ class StakingModalNew {
             }
 
             // Execute real unstaking transaction
+            this.isUnstaking = true;
+            this.updateUnstakeButton();
             const result = await window.contractManager.unstake(
                 this.currentPair.address,
                 this.unstakeAmount
@@ -1289,7 +1355,9 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
+            this.isUnstaking = false;
             this.isExecutingUnstake = false;
+            this.updateUnstakeButton();
             console.log('🔓 Unstake execution finished, guard released');
         }
     }
@@ -1306,6 +1374,7 @@ class StakingModalNew {
         try {
             // Set execution guard
             this.isExecutingClaim = true;
+            this.updateClaimButton();
             console.log('🔒 Claim execution started, guard enabled');
 
             // Check if contract manager is ready
@@ -1321,6 +1390,8 @@ class StakingModalNew {
             }
 
             // Execute real claim transaction
+            this.isClaiming = true;
+            this.updateClaimButton();
             const result = await window.contractManager.claimRewards(
                 this.currentPair.address
             );
@@ -1361,7 +1432,9 @@ class StakingModalNew {
             }
         } finally {
             // Always release the guard
+            this.isClaiming = false;
             this.isExecutingClaim = false;
+            this.updateClaimButton();
             console.log('🔓 Claim execution finished, guard released');
         }
     }
