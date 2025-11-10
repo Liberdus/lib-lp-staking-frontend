@@ -98,11 +98,10 @@ class MasterInitializer {
             'js/contracts/contract-manager.js'
         ];
 
-        // Only load price feeds and rewards calculator on homepage
+        // Only load rewards calculator on homepage
         if (!this.isAdminPage) {
-            walletScripts.push('js/utils/price-feeds.js');
             walletScripts.push('js/utils/rewards-calculator.js');
-            console.log('📊 Loading homepage-specific utilities (price feeds, rewards calculator)');
+            console.log('📊 Loading homepage-specific utilities (rewards calculator)');
         } else {
             console.log('⏭️ Skipping homepage utilities (admin mode)');
         }
@@ -276,57 +275,22 @@ class MasterInitializer {
             }
         }
 
-        // Initialize price feeds system (homepage only)
-        if (!this.isAdminPage) {
-            console.log('🔍 Checking PriceFeeds availability:', {
-                PriceFeedsClass: !!window.PriceFeeds,
-                priceFeedsInstance: !!window.priceFeeds
-            });
-
-            if (window.PriceFeeds && !window.priceFeeds) {
-                try {
-                    console.log('🔄 Creating PriceFeeds instance...');
-                    window.priceFeeds = new window.PriceFeeds();
-
-                    console.log('🔄 Initializing PriceFeeds...');
-                    const initResult = await window.priceFeeds.initialize();
-
-                    this.components.set('priceFeeds', window.priceFeeds);
-                    console.log('✅ Price Feeds initialized successfully:', {
-                        isInitialized: window.priceFeeds.isInitialized,
-                        initResult: initResult
-                    });
-                } catch (error) {
-                    console.error('❌ Failed to initialize PriceFeeds:', error);
-                    console.error('   Error stack:', error.stack);
-                }
-            } else if (window.priceFeeds) {
-                console.log('ℹ️ PriceFeeds instance already exists');
-            } else {
-                console.error('❌ PriceFeeds class not found!');
-            }
-        } else {
-            console.log('⏭️ Skipping PriceFeeds initialization (admin mode)');
-        }
-
         // Initialize rewards calculator (homepage only)
         if (!this.isAdminPage) {
             console.log('🔍 Checking RewardsCalculator availability:', {
                 RewardsCalculatorClass: !!window.RewardsCalculator,
                 rewardsCalculatorInstance: !!window.rewardsCalculator,
-                contractManager: !!window.contractManager,
-                priceFeeds: !!window.priceFeeds
+                contractManager: !!window.contractManager
             });
 
-            if (window.RewardsCalculator && !window.rewardsCalculator && window.contractManager && window.priceFeeds) {
+            if (window.RewardsCalculator && !window.rewardsCalculator && window.contractManager) {
                 try {
                     console.log('🔄 Creating RewardsCalculator instance...');
                     window.rewardsCalculator = new window.RewardsCalculator();
 
                     console.log('🔄 Initializing RewardsCalculator...');
                     const initResult = await window.rewardsCalculator.initialize({
-                        contractManager: window.contractManager,
-                        priceFeeds: window.priceFeeds
+                        contractManager: window.contractManager
                     });
 
                     this.components.set('rewardsCalculator', window.rewardsCalculator);

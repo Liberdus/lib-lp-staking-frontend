@@ -17,42 +17,33 @@
     class RewardsCalculator {
         constructor() {
             this.contractManager = null;
-            this.priceFeeds = null;
             this.isInitialized = false;
         }
 
-        async initialize(contractManagerOrOptions, priceFeeds) {
-            const { contractManager, priceFeeds: normalizedFeeds } = this.normalizeInitArgs(
-                contractManagerOrOptions,
-                priceFeeds
-            );
+        async initialize(contractManagerOrOptions) {
+            const { contractManager } = this.normalizeInitArgs(contractManagerOrOptions);
 
             this.contractManager = contractManager || null;
-            this.priceFeeds = normalizedFeeds || null;
             this.isInitialized = true;
 
             return {
-                hasContractManager: !!this.contractManager,
-                hasPriceFeeds: !!this.priceFeeds
+                hasContractManager: !!this.contractManager
             };
         }
 
-        normalizeInitArgs(contractManagerOrOptions, priceFeeds) {
+        normalizeInitArgs(contractManagerOrOptions) {
             if (contractManagerOrOptions && typeof contractManagerOrOptions === 'object' && !Array.isArray(contractManagerOrOptions)) {
-                const hasOptionsShape = Object.prototype.hasOwnProperty.call(contractManagerOrOptions, 'contractManager') ||
-                    Object.prototype.hasOwnProperty.call(contractManagerOrOptions, 'priceFeeds');
+                const hasOptionsShape = Object.prototype.hasOwnProperty.call(contractManagerOrOptions, 'contractManager');
 
                 if (hasOptionsShape) {
                     return {
-                        contractManager: contractManagerOrOptions.contractManager,
-                        priceFeeds: contractManagerOrOptions.priceFeeds
+                        contractManager: contractManagerOrOptions.contractManager
                     };
                 }
             }
 
             return {
-                contractManager: contractManagerOrOptions,
-                priceFeeds
+                contractManager: contractManagerOrOptions
             };
         }
 
