@@ -440,54 +440,68 @@ class MasterInitializer {
                     } else {
                         console.warn('Wallet popup not available');
                     }
-                } else {
-                    // Connect wallet with enhanced protection against circuit breaker
-                    try {
-                        // Prevent rapid connection attempts
-                        if (window.walletManager.isConnecting) {
-                            console.log('Connection already in progress, please wait...');
-                            if (window.notificationManager) {
-                                window.notificationManager.info('Please wait for the current connection attempt to complete');
-                            }
-                            return;
-                        }
+                    return;
+                }
 
-                        // Check if MetaMask is available
-                        if (!window.ethereum) {
-                            console.error('MetaMask not available');
-                            if (window.notificationManager) {
-                                window.notificationManager.error('Please install MetaMask browser extension to connect your wallet');
-                            }
-                            return;
-                        }
-
-                        // Show connecting notification
-                        if (window.notificationManager) {
-                            window.notificationManager.info('Please approve the connection in MetaMask');
-                        }
-
-                        // Use safe MetaMask connection with circuit breaker protection
-                        await window.walletManager.connectMetaMask();
-
-                    } catch (error) {
-                        console.error('Failed to connect wallet:', error);
-
-                        // Show user-friendly error message
-                        if (window.notificationManager) {
-                            let errorMessage = error.message;
-
-                            // Customize error messages for better UX
-                            if (error.message.includes('circuit breaker')) {
-                                errorMessage = 'MetaMask is temporarily busy. Please wait a moment and try again.';
-                            } else if (error.message.includes('already processing')) {
-                                errorMessage = 'MetaMask is processing another request. Please wait and try again.';
-                            } else if (error.message.includes('cancelled')) {
-                                errorMessage = 'Connection was cancelled. Click connect to try again.';
-                            }
-
-                            window.notificationManager.error(errorMessage);
-                        }
+                // Prevent rapid connection attempts
+                if (window.walletManager.isConnecting) {
+                    console.log('Connection already in progress, please wait...');
+                    this.renderConnectButton(newConnectBtn, {
+                        text: 'Checking wallet status...',
+                        isLoading: true,
+                        disabled: true
+                    });
+                    if (window.notificationManager) {
+                        window.notificationManager.info('Please wait for the current connection attempt to complete');
                     }
+                    return;
+                }
+
+                // Check if MetaMask is available
+                if (!window.ethereum) {
+                    console.error('MetaMask not available');
+                    if (window.notificationManager) {
+                        window.notificationManager.error('Please install MetaMask browser extension to connect your wallet');
+                    }
+                    this.updateConnectButtonStatus();
+                    return;
+                }
+
+                this.renderConnectButton(newConnectBtn, {
+                    text: 'Checking wallet status...',
+                    isLoading: true,
+                    disabled: true
+                });
+
+                try {
+                    // Show connecting notification
+                    if (window.notificationManager) {
+                        window.notificationManager.info('Please approve the connection in MetaMask');
+                    }
+
+                    // Use safe MetaMask connection with circuit breaker protection
+                    await window.walletManager.connectMetaMask();
+
+                } catch (error) {
+                    console.error('Failed to connect wallet:', error);
+
+                    // Show user-friendly error message
+                    if (window.notificationManager) {
+                        let errorMessage = error.message;
+
+                        // Customize error messages for better UX
+                        if (error.message.includes('circuit breaker')) {
+                            errorMessage = 'MetaMask is temporarily busy. Please wait a moment and try again.';
+                        } else if (error.message.includes('already processing')) {
+                            errorMessage = 'MetaMask is processing another request. Please wait and try again.';
+                        } else if (error.message.includes('cancelled')) {
+                            errorMessage = 'Connection was cancelled. Click connect to try again.';
+                        }
+
+                        window.notificationManager.error(errorMessage);
+                    }
+                } finally {
+                    this.updateConnectButtonStatus();
                 }
             });
 
@@ -498,6 +512,32 @@ class MasterInitializer {
                 this.updateConnectButtonStatus();
             }, 1000); // Wait 1 second for wallet manager to be fully ready
         }
+    }
+
+    renderConnectButton(button, {
+        text,
+        ariaLabel,
+        title,
+        connected = false,
+        isLoading = false,
+        disabled = false
+    } = {}) {
+        if (!button || typeof text !== 'string') return;
+
+        const label = ariaLabel || text;
+        const buttonTitle = title ?? label;
+        const resolvedTextClass = connected ? 'wallet-address-text' : 'wallet-status-text';
+
+        button.classList.toggle('connected', connected);
+        button.classList.toggle('is-loading', isLoading);
+        button.disabled = !!disabled;
+        button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+
+        button.setAttribute('aria-label', label);
+        button.title = buttonTitle || '';
+
+        const iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"></path></svg>';
+        button.innerHTML = `${iconHtml}<span class="${resolvedTextClass}">${text}</span>`;
     }
 
     setupWalletStatusMonitoring() {
@@ -528,11 +568,20 @@ class MasterInitializer {
         if (!connectBtn) return;
 
         try {
-            // Check if wallet is connected
             const isConnected = window.walletManager &&
                               (window.walletManager.isWalletConnected ?
                                window.walletManager.isWalletConnected() :
                                window.walletManager.isConnected ? window.walletManager.isConnected() : false);
+
+
+            if (window.walletManager.isConnecting) {
+                this.renderConnectButton(connectBtn, {
+                    text: 'Waiting for user confirmation...',
+                    isLoading: true,
+                    disabled: true
+                });
+                return;
+            }
 
             if (isConnected && window.walletManager.address) {
                 // Format address for display (first 6 + last 4 characters)
@@ -540,25 +589,19 @@ class MasterInitializer {
                 const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
                 // Update button text and style
-                connectBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                    </svg>
-                    <span class="wallet-address-text">${shortAddress}</span>
-                `;
-                connectBtn.classList.add('connected');
-                connectBtn.title = `Connected: ${address}`;
+                this.renderConnectButton(connectBtn, {
+                    text: shortAddress,
+                    ariaLabel: `Connected: ${address}`,
+                    title: `Connected: ${address}`,
+                    connected: true
+                });
 
             } else {
                 // Update button for disconnected state
-                connectBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                    </svg>
-                    <span class="wallet-status-text">Connect Wallet</span>
-                `;
-                connectBtn.classList.remove('connected');
-                connectBtn.title = 'Connect your wallet';
+                this.renderConnectButton(connectBtn, {
+                    text: 'Connect Wallet',
+                    title: 'Connect your wallet'
+                });
             }
 
         } catch (error) {
