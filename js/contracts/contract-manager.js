@@ -4655,6 +4655,46 @@ class ContractManager {
     }
 
     /**
+     * Notify listeners about transaction phase changes
+     */
+    notifyTransactionPhase(operationName, phase) {
+        try {
+            if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+                return;
+            }
+
+            const detail = {
+                operationName,
+                phase,
+                timestamp: Date.now()
+            };
+
+            const eventName = 'transaction-phase';
+            // Modern browsers support CustomEvent constructor
+            if (typeof CustomEvent === 'function') {
+                window.dispatchEvent(new CustomEvent(eventName, { detail }));
+                return;
+            }
+
+            // Fall back to legacy initCustomEvent when CustomEvent constructor is unavailable
+            if (typeof document !== 'undefined' && typeof document.createEvent === 'function') {
+                const legacyEvent = document.createEvent('CustomEvent');
+                const legacyInit = /** @type {any} */ (legacyEvent).initCustomEvent;
+                if (typeof legacyInit === 'function') {
+                    // Signature marked deprecated but required for older browsers; safe via dynamic call
+                    legacyInit.call(legacyEvent, eventName, false, false, detail);
+                } else {
+                    // Last resort: manually attach detail when initCustomEvent is missing entirely
+                    legacyEvent.detail = detail;
+                }
+                window.dispatchEvent(legacyEvent);
+            }
+        } catch (error) {
+            this.log(`⚠️ Failed to dispatch transaction phase event for ${operationName}: ${error.message}`);
+        }
+    }
+
+    /**
      * Monitor transaction with timeout and detailed logging
      */
     async monitorTransactionWithTimeout(tx, operationName, timeoutMs = 60000) {
@@ -4764,7 +4804,9 @@ class ContractManager {
                 this.log(`🚀 Fallback: Executing ${operationName} (attempt ${attempt}/${retries + 1})`);
 
                 // Execute the operation
+                this.notifyTransactionPhase(operationName, 'user_approval');
                 const tx = await operation();
+                this.notifyTransactionPhase(operationName, 'processing');
 
                 // Log transaction hash immediately
                 this.log(`✅ Transaction submitted: ${tx.hash}`);
@@ -4772,12 +4814,14 @@ class ContractManager {
 
                 // Monitor with timeout
                 const result = await this.monitorTransactionWithTimeout(tx, operationName, 60000);
+                this.notifyTransactionPhase(operationName, 'confirmed');
 
                 this.log(`🎉 Fallback: ${operationName} completed successfully`);
                 return result;
 
             } catch (error) {
                 lastError = error;
+                this.notifyTransactionPhase(operationName, 'failed');
                 this.log(`❌ Fallback: ${operationName} attempt ${attempt} failed: ${error.message}`);
 
                 if (attempt <= retries) {
@@ -4808,7 +4852,9 @@ class ContractManager {
                 this.log(`🚀 Starting transaction ${operationName}`);
 
                 // Execute the operation (this sends the transaction)
+                this.notifyTransactionPhase(operationName, 'user_approval');
                 const tx = await operation();
+                this.notifyTransactionPhase(operationName, 'processing');
 
                 // CRITICAL: Log transaction hash immediately after MetaMask confirmation
                 this.log(`✅ Transaction submitted to blockchain: ${tx.hash}`);
@@ -4817,6 +4863,7 @@ class ContractManager {
 
                 // Add transaction monitoring with timeout
                 const result = await this.monitorTransactionWithTimeout(tx, operationName, 60000); // 60 second timeout
+                this.notifyTransactionPhase(operationName, 'confirmed');
 
                 this.log(`🎉 Transaction ${operationName} completed successfully in block ${result.blockNumber}`);
 
@@ -4839,6 +4886,7 @@ class ContractManager {
                 return result;
             } catch (error) {
                 this.log(`❌ Transaction ${operationName} failed:`, error.message);
+                this.notifyTransactionPhase(operationName, 'failed');
 
                 // Enhanced error handling with specific error types
                 let userMessage = `Transaction ${operationName} failed`;
