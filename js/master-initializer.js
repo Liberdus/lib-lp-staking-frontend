@@ -529,7 +529,6 @@ class MasterInitializer {
         const resolvedTextClass = connected ? 'wallet-address-text' : 'wallet-status-text';
 
         button.classList.toggle('connected', connected);
-        button.classList.toggle('is-loading', isLoading);
         button.disabled = !!disabled;
         button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
 
