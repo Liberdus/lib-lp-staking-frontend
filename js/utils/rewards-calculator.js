@@ -61,7 +61,7 @@
          *
          * @param {number} hourlyRate - Total LIB distributed per hour across all pools.
          * @param {number} tvlLpTokens - Total LP tokens staked in this pool (formatted, not wei).
-         * @param {number|Object} libPerLp - LIB tokens backing one LP token, or legacy options object with libPerLp/poolWeight/totalWeight.
+         * @param {number|Object} libPerLp - LIB-equivalent value backing one LP token, or legacy options object with libPerLp/poolWeight/totalWeight.
          * @param {number} [poolWeight=1] - Pool-specific weight used for reward distribution.
          * @param {number} [totalWeight=1] - Sum of all pool weights.
          * @returns {number} APR percentage (e.g., 150 equals 150%).

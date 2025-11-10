@@ -817,18 +817,32 @@ class HomePage {
                         return;
                     }
 
-                    const libDecimals = Number(libToken.decimals) || 18;
-                    const libStaked = Number(ethers.utils.formatUnits(libToken?.staked?.raw || '0', libDecimals)) || 0;
-                    const libPerLp = tvlInTokens > 0 ? libStaked / tvlInTokens : 0;
-                    if (libPerLp <= 0) {
-                        console.warn(`⚠️ Invalid LIB per LP for ${pair.name}, skipping APR calculation`);
+                    const libStaked = Number(libToken?.staked?.formatted) || 0;
+                    const libReserve = Number(libToken?.reserve?.formatted) || 0;
+
+                    const otherToken = libToken === token0 ? token1 : token0;
+                    const otherStaked = Number(otherToken?.staked?.formatted) || 0;
+                    const otherReserve = Number(otherToken?.reserve?.formatted) || 0;
+
+                    // Convert the counter token stake to a LIB-equivalent amount using the reserve ratio
+                    let otherTokenLibEquivalent = 0;
+                    if (otherStaked > 0 && otherReserve > 0 && libReserve > 0) {
+                        const otherToLibRate = libReserve / otherReserve;
+                        otherTokenLibEquivalent = otherStaked * otherToLibRate;
+                    }
+
+                    const totalStakeValueInLib = libStaked + otherTokenLibEquivalent;
+                    const stakeValuePerLpInLib = tvlInTokens > 0 ? totalStakeValueInLib / tvlInTokens : 0;
+
+                    if (stakeValuePerLpInLib <= 0) {
+                        console.warn(`⚠️ Invalid LIB-equivalent value per LP for ${pair.name}, skipping APR calculation`);
                         return;
                     }
 
                     const apr = window.rewardsCalculator.calcAPR(
                         hourlyRate,
                         tvlInTokens,
-                        libPerLp,
+                        stakeValuePerLpInLib,
                         poolWeight,
                         totalWeight
                     );
@@ -836,7 +850,9 @@ class HomePage {
                     const tvl = tvlInTokens;
 
                     console.log(`  📊 TVL (LP tokens): ${tvlInTokens}`);
-                    console.log(`  💧 LIB per LP token: ${libPerLp}`);
+                    console.log(`  💧 LIB-equivalent value per LP token: ${stakeValuePerLpInLib}`);
+                    console.log(`  💠 LIB tokens in stake: ${libStaked}`);
+                    console.log(`  🔁 Counter-token LIB equivalent: ${otherTokenLibEquivalent}`);
                     console.log(`  📈 Calculated APR: ${apr.toFixed(1)}%`);
 
                     // Update pair data to match React structure
@@ -846,8 +862,11 @@ class HomePage {
                     this.pairs[index].tvl = tvl;  // Token count, not USD
                     this.pairs[index].apr = apr.toFixed(1);  // React uses .toFixed(1)
                     this.pairs[index].totalStaked = tvlInTokens.toFixed(6);
-                    this.pairs[index].libPerLp = libPerLp;
+                    this.pairs[index].libPerLp = stakeValuePerLpInLib;
                     this.pairs[index].libTokensStaked = libStaked;
+                    this.pairs[index].counterTokenStaked = otherStaked;
+                    this.pairs[index].counterTokenLibEquivalent = otherTokenLibEquivalent;
+                    this.pairs[index].totalStakeValueInLib = totalStakeValueInLib;
 
                     console.log(`  After: tvl=${this.pairs[index].tvl}, apr=${this.pairs[index].apr}`);
                     console.log(`✅ ${pair.name}: TVL=${tvl.toFixed(2)} LP, APR=${apr.toFixed(1)}%`);
