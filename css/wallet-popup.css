@@ -49,8 +49,8 @@
 
 /* Wallet Address */
 .wallet-address {
-    margin-top: var(--spacing-1);
-    margin-bottom: var(--spacing-2);
+    margin-top: var(--spacing-2);
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -88,21 +88,11 @@
     font-size: 18px;
 }
 
-/* Wallet Balance */
-.wallet-balance {
-    margin-bottom: var(--spacing-2);
-}
-
-.balance-amount {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
 /* Action Buttons */
 .wallet-actions {
     display: flex;
     justify-content: center;
+    margin-top: var(--spacing-2);
 }
 
 .disconnect-button {

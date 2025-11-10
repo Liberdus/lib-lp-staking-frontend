@@ -131,7 +131,6 @@ class WalletPopup {
 
     createPopupHTML(walletData) {
         const shortAddress = this.formatAddress(walletData.address);
-        const balance = this.getWalletBalance();
 
         return `
             <div class="wallet-popup">
@@ -140,11 +139,6 @@ class WalletPopup {
                     <button class="wallet-popup-close" title="Close">
                         <span class="material-icons">close</span>
                     </button>
-
-                    <!-- Wallet Balance -->
-                    <div class="wallet-balance">
-                        <span class="balance-amount">${balance}</span>
-                    </div>
 
                     <!-- Wallet Address -->
                     <div class="wallet-address">
@@ -321,32 +315,6 @@ class WalletPopup {
         this.popupElement.style.transform = 'translateY(-10px) scale(0.95)';
         
         setTimeout(callback, 150);
-    }
-
-    getWalletBalance() {
-        try {
-            // Try to get balance from wallet manager or state manager
-            if (window.walletManager && window.walletManager.getBalance) {
-                const balance = window.walletManager.getBalance();
-                if (balance) {
-                    return `${parseFloat(balance).toFixed(2)} POL`;
-                }
-            }
-
-            // Try to get from state manager
-            if (window.stateManager && window.stateManager.getState) {
-                const state = window.stateManager.getState('wallet.balance');
-                if (state) {
-                    return `${parseFloat(state).toFixed(2)} POL`;
-                }
-            }
-
-            // Default fallback
-            return '4.86 POL';
-        } catch (error) {
-            console.warn('Error getting wallet balance:', error);
-            return '4.86 POL';
-        }
     }
 
     formatAddress(address) {
