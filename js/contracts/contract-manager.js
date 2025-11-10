@@ -4875,22 +4875,6 @@ class ContractManager {
 
                 this.log(`🎉 Transaction ${operationName} completed successfully in block ${result.blockNumber}`);
 
-                // Display success notification
-                if (window.stateManager) {
-                    const notifications = window.stateManager.get('ui.notifications') || [];
-                    window.stateManager.set('ui.notifications', [
-                        ...notifications,
-                        {
-                            id: `tx_${Date.now()}`,
-                            type: 'success',
-                            title: 'Transaction Successful',
-                            message: `${operationName} completed successfully`,
-                            timestamp: Date.now(),
-                            metadata: { transactionHash: result.transactionHash }
-                        }
-                    ]);
-                }
-
                 return result;
             } catch (error) {
                 this.log(`❌ Transaction ${operationName} failed:`, error.message);
@@ -4944,22 +4928,6 @@ class ContractManager {
                     if (window.notificationManager) {
                         window.notificationManager.error(userMessage);
                     }
-                }
-
-                // Display user-friendly error notification
-                if (window.stateManager) {
-                    const notifications = window.stateManager.get('ui.notifications') || [];
-                    window.stateManager.set('ui.notifications', [
-                        ...notifications,
-                        {
-                            id: `error_${Date.now()}`,
-                            type: 'error',
-                            title: 'Transaction Failed',
-                            message: userMessage,
-                            timestamp: Date.now(),
-                            metadata: { errorType, operationName, transactionHash: error.transactionHash || null }
-                        }
-                    ]);
                 }
 
                 // Try fallback provider for network errors and RPC errors
