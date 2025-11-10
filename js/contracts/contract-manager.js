@@ -4257,27 +4257,35 @@ class ContractManager {
     async approveLPToken(pairName, amount) {
         this.log(`Executing transaction approveLPToken`);
 
-        // Get LP token contract
-        const lpContract = this.getLPTokenContract(pairName);
+        try {
+            // Get LP token contract
+            const lpContract = this.getLPTokenContract(pairName);
 
-        return await this.executeTransactionWithRetry(async () => {
-            const stakingAddress = this.contractAddresses.get('STAKING');
-            const amountWei = typeof amount === 'bigint' ? amount : ethers.utils.parseEther(amount.toString());
+            return await this.executeTransactionWithRetry(async () => {
+                const stakingAddress = this.contractAddresses.get('STAKING');
+                const amountWei = typeof amount === 'bigint' ? amount : ethers.utils.parseEther(amount.toString());
 
-            // Enhanced gas estimation
-            const gasLimit = await this.estimateGasWithBuffer(lpContract, 'approve', [stakingAddress, amountWei]);
-            const gasPrice = await this.getGasPrice();
+                // Enhanced gas estimation
+                const gasLimit = await this.estimateGasWithBuffer(lpContract, 'approve', [stakingAddress, amountWei]);
+                const gasPrice = await this.getGasPrice();
 
-            // Execute transaction with optimized gas settings
-            const tx = await lpContract.approve(stakingAddress, amountWei, {
-                gasLimit,
-                gasPrice
-            });
+                // Execute transaction with optimized gas settings
+                const tx = await lpContract.approve(stakingAddress, amountWei, {
+                    gasLimit,
+                    gasPrice
+                });
 
-            this.log('Approve transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
+                this.log('Approve transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
-            return tx;
-        }, 'approveLPToken');
+                return tx;
+            }, 'approveLPToken');
+        } catch (error) {
+            this.logError('❌ Failed to approve LP token:', error);
+            return {
+                success: false,
+                error: error.userMessage?.title || 'Failed to approve LP token'
+            };
+        }
     }
 
     /**
