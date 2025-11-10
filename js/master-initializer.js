@@ -474,11 +474,6 @@ class MasterInitializer {
                 });
 
                 try {
-                    // Show connecting notification
-                    if (window.notificationManager) {
-                        window.notificationManager.info('Please approve the connection in MetaMask');
-                    }
-
                     // Use safe MetaMask connection with circuit breaker protection
                     await window.walletManager.connectMetaMask();
 
