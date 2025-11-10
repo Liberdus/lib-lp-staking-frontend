@@ -305,7 +305,7 @@
     top: 50%;
     left: 12px;
     right: 12px;
-    height: 0.875rem;
+    height: 1em;
     transform: translateY(-50%);
     border-radius: 999px;
     background: linear-gradient(
