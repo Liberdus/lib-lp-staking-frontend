@@ -47,52 +47,14 @@
     font-size: 18px;
 }
 
-/* Wallet Avatar */
-.wallet-avatar {
-    margin-bottom: var(--spacing-2);
-}
-
-.avatar-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    margin: 0 auto;
-    position: relative;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.avatar-gradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.avatar-icon {
-    position: relative;
-    z-index: 1;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
-
-.avatar-icon .material-icons {
-    font-size: 28px;
-    line-height: 1;
-}
-
 /* Wallet Address */
 .wallet-address {
-    margin-bottom: var(--spacing-1);
+    margin-top: var(--spacing-1);
+    margin-bottom: var(--spacing-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
 }
 
 .address-text {
@@ -103,9 +65,32 @@
     letter-spacing: 0.5px;
 }
 
+.copy-icon-button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--border-radius);
+    transition: all 0.2s ease;
+    min-width: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-icon-button:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+}
+
+.copy-icon-button .material-icons {
+    font-size: 18px;
+}
+
 /* Wallet Balance */
 .wallet-balance {
-    margin-bottom: var(--spacing-3);
+    margin-bottom: var(--spacing-2);
 }
 
 .balance-amount {
@@ -116,22 +101,21 @@
 
 /* Action Buttons */
 .wallet-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--spacing-2);
+    display: flex;
+    justify-content: center;
 }
 
-.action-button {
-    flex: 1;
-    background: var(--surface-hover);
-    color: var(--text-primary);
+.disconnect-button {
+    min-width: 120px;
+    padding: calc(var(--spacing-2) - 4px) var(--spacing-3);
+    background: color-mix(in srgb, var(--error-main) 8%, transparent);
+    color: var(--error-main);
     border: 1px solid var(--divider);
-    padding: var(--spacing-2);
     border-radius: var(--border-radius);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -139,24 +123,14 @@
     font-family: inherit;
 }
 
-.action-button:hover {
-    background: var(--action-hover);
-    border-color: var(--divider);
+.disconnect-button:hover {
+    border-color: var(--error-main);
+    background: color-mix(in srgb, var(--error-main) 18%, transparent);
     transform: translateY(-1px);
 }
 
-.action-button .material-icons {
+.disconnect-button .material-icons {
     font-size: 16px;
-}
-
-.copy-button:hover {
-    border-color: var(--primary-main);
-    background: color-mix(in srgb, var(--primary-main) 15%, transparent);
-}
-
-.disconnect-button:hover {
-    border-color: var(--error-main);
-    background: color-mix(in srgb, var(--error-main) 12%, transparent);
 }
 
 /* Mobile Responsive */
@@ -220,12 +194,12 @@
 }
 
 /* Success State for Copy */
-.copy-button.success {
-    border-color: var(--success-main);
+.copy-icon-button.success {
+    color: var(--success-main);
     background: color-mix(in srgb, var(--success-main) 15%, transparent);
 }
 
-.copy-button.success .material-icons {
+.copy-icon-button.success .material-icons {
     animation: checkmark 0.3s ease;
 }
 

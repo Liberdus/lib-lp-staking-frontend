@@ -141,32 +141,21 @@ class WalletPopup {
                         <span class="material-icons">close</span>
                     </button>
 
-                    <!-- Wallet Avatar -->
-                    <div class="wallet-avatar">
-                        <div class="avatar-circle">
-                            <div class="avatar-gradient"></div>
-                            <div class="avatar-icon">
-                                <span class="material-icons">account_balance_wallet</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Wallet Address -->
-                    <div class="wallet-address">
-                        <span class="address-text">${shortAddress}</span>
-                    </div>
-
                     <!-- Wallet Balance -->
                     <div class="wallet-balance">
                         <span class="balance-amount">${balance}</span>
                     </div>
 
+                    <!-- Wallet Address -->
+                    <div class="wallet-address">
+                        <span class="address-text">${shortAddress}</span>
+                        <button class="copy-icon-button" data-address="${walletData.address}" title="Copy address">
+                            <span class="material-icons">content_copy</span>
+                        </button>
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="wallet-actions">
-                        <button class="action-button copy-button" data-address="${walletData.address}">
-                            <span class="material-icons">content_copy</span>
-                            <span>Copy Address</span>
-                        </button>
                         <button class="action-button disconnect-button">
                             <span class="material-icons">logout</span>
                             <span>Disconnect</span>
@@ -214,10 +203,10 @@ class WalletPopup {
         });
 
         // Copy button
-        const copyButton = this.popupElement.querySelector('.copy-button');
+        const copyButton = this.popupElement.querySelector('.copy-icon-button');
         copyButton?.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.copyAddress(e.target.closest('.copy-button').dataset.address);
+            this.copyAddress(e.currentTarget.dataset.address);
         });
 
         // Disconnect button
@@ -270,19 +259,21 @@ class WalletPopup {
     }
 
     showCopyFeedback() {
-        const copyButton = this.popupElement?.querySelector('.copy-button');
-        if (copyButton) {
-            const icon = copyButton.querySelector('.material-icons');
-            const originalText = icon.textContent;
-            
-            icon.textContent = 'check';
-            copyButton.style.color = 'var(--success-main)';
-            
-            setTimeout(() => {
-                icon.textContent = originalText;
-                copyButton.style.color = '';
-            }, 1500);
-        }
+        const copyButton = this.popupElement?.querySelector('.copy-icon-button');
+        if (!copyButton) return;
+
+        const icon = copyButton.querySelector('.material-icons');
+        if (!icon) return;
+
+        const originalText = icon.textContent;
+
+        icon.textContent = 'check';
+        copyButton.classList.add('success');
+
+        setTimeout(() => {
+            icon.textContent = originalText;
+            copyButton.classList.remove('success');
+        }, 1500);
     }
 
     async disconnectWallet() {
