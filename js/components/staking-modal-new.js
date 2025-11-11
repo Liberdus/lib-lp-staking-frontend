@@ -355,6 +355,16 @@ class StakingModalNew {
                 transition: border-color 0.2s;
             }
 
+            .form-input::-webkit-outer-spin-button,
+            .form-input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+
+            .form-input[type="number"] {
+                -moz-appearance: textfield;
+            }
+
             .form-input:focus {
                 outline: none;
                 border-color: var(--primary-main);
@@ -512,7 +522,11 @@ class StakingModalNew {
         // Input changes
         document.addEventListener('input', (e) => {
             if (e.target.id === 'stake-amount-input') {
-                this.stakeAmount = e.target.value;
+                const sanitizedValue = this.applyDecimalLimit(e.target.value, this.userBalanceDecimals);
+                if (sanitizedValue !== e.target.value) {
+                    e.target.value = sanitizedValue;
+                }
+                this.stakeAmount = sanitizedValue;
                 this.updateSlider('stake');
 
                 // Reset approval state when amount changes
@@ -521,7 +535,11 @@ class StakingModalNew {
             }
 
             if (e.target.id === 'unstake-amount-input') {
-                this.unstakeAmount = e.target.value;
+                const sanitizedValue = this.applyDecimalLimit(e.target.value, this.userStakedDecimals);
+                if (sanitizedValue !== e.target.value) {
+                    e.target.value = sanitizedValue;
+                }
+                this.unstakeAmount = sanitizedValue;
                 this.updateSlider('unstake');
             }
 
@@ -532,10 +550,47 @@ class StakingModalNew {
 
         // Keyboard events
         document.addEventListener('keydown', (e) => {
+            if ((e.target.id === 'stake-amount-input' || e.target.id === 'unstake-amount-input') && ['-', '+', 'e', 'E'].includes(e.key)) {
+                e.preventDefault();
+                return;
+            }
+
             if (e.key === 'Escape' && this.isOpen) {
                 this.close();
             }
         });
+    }
+
+    applyDecimalLimit(value, maxDecimals) {
+        if (typeof value !== 'string' || !value) {
+            return value;
+        }
+
+        const decimalsAllowed = Number.isInteger(maxDecimals) && maxDecimals >= 0 ? maxDecimals : 18;
+        let sanitized = value.replace(/^[+-]/, '').replace(/[^0-9.]/g, '');
+
+        if (!sanitized) {
+            return '';
+        }
+
+        const firstSeparator = sanitized.indexOf('.');
+
+        if (firstSeparator === -1) {
+            return sanitized;
+        }
+
+        const integerPart = sanitized.slice(0, firstSeparator) || '0';
+        let decimalPart = sanitized.slice(firstSeparator + 1).replace(/\./g, '');
+
+        if (decimalPart.length > decimalsAllowed) {
+            decimalPart = decimalPart.slice(0, decimalsAllowed);
+        }
+
+        if (decimalsAllowed === 0) {
+            return integerPart;
+        }
+
+        return decimalPart ? `${integerPart}.${decimalPart}` : `${integerPart}.`;
     }
 
     async open(pair, tab = 'stake') {
@@ -947,10 +1002,7 @@ class StakingModalNew {
 
                 // Get balance
                 const balance = await lpTokenContract.balanceOf(userAddress);
-                const decimalsValue = await lpTokenContract.decimals();
-                const decimals = typeof decimalsValue === 'number'
-                    ? decimalsValue
-                    : decimalsValue.toNumber();
+                const decimals = await lpTokenContract.decimals();
 
                 // Format balance with ethers v5/v6 compatibility
                 this.userBalance = this.formatTokenAmount(balance, decimals);
@@ -1090,14 +1142,22 @@ class StakingModalNew {
 
         if (stakeInput) {
             stakeInput.addEventListener('input', () => {
-                this.stakeAmount = stakeInput.value;
+                const sanitizedValue = this.applyDecimalLimit(stakeInput.value, this.userBalanceDecimals);
+                if (sanitizedValue !== stakeInput.value) {
+                    stakeInput.value = sanitizedValue;
+                }
+                this.stakeAmount = sanitizedValue;
                 this.updateButtonStates();
             });
         }
 
         if (unstakeInput) {
             unstakeInput.addEventListener('input', () => {
-                this.unstakeAmount = unstakeInput.value;
+                const sanitizedValue = this.applyDecimalLimit(unstakeInput.value, this.userStakedDecimals);
+                if (sanitizedValue !== unstakeInput.value) {
+                    unstakeInput.value = sanitizedValue;
+                }
+                this.unstakeAmount = sanitizedValue;
                 this.updateButtonStates();
             });
         }
@@ -1128,7 +1188,7 @@ class StakingModalNew {
                     placeholder="0.00"
                     value="${this.stakeAmount}"
                     min="0"
-                    step="0.001"
+                    inputmode="decimal"
                 >
                 <div class="slider-container">
                     <input
@@ -1180,7 +1240,7 @@ class StakingModalNew {
                     placeholder="0.00"
                     value="${this.unstakeAmount}"
                     min="0"
-                    step="0.001"
+                    inputmode="decimal"
                 >
                 <div class="slider-container">
                     <input
