@@ -603,6 +603,10 @@ class StakingModalNew {
         this.needsApproval = false;
         this.currentAllowance = '0';
 
+        // Reset form inputs
+        this.stakeAmount = '';
+        this.unstakeAmount = '';
+
         // Reset transaction progress state
         this.resetActionStates(false);
 
@@ -614,6 +618,13 @@ class StakingModalNew {
         // Update pair info
         this.updatePairInfo();
 
+        // Clear previous tab content and highlight requested tab while data loads
+        const tabContent = document.getElementById('tab-content');
+        if (tabContent) {
+            tabContent.innerHTML = '';
+        }
+        this.setActiveTabButton(tab);
+
         // Show modal
         const modal = document.getElementById('staking-modal-new');
         if (modal) {
@@ -624,11 +635,8 @@ class StakingModalNew {
         // Load user balances if contract manager is ready
         await this.loadUserBalances();
 
-        // Switch to specified tab
+        // Render the requested tab once data is ready
         this.switchTab(tab);
-
-        // Update button states after everything is loaded (to check weight)
-        this.updateButtonStates();
 
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
@@ -1103,13 +1111,17 @@ class StakingModalNew {
         `;
     }
 
+    setActiveTabButton(tab) {
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+    }
+
     switchTab(tab) {
         this.currentTab = tab;
 
         // Update tab buttons
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tab);
-        });
+        this.setActiveTabButton(tab);
 
         // Render tab content
         this.renderTabContent();
