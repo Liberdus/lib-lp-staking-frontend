@@ -13,6 +13,10 @@ class StakingModalNew {
         this.userBalance = '0.00';
         this.userStaked = '0.00';
         this.pendingRewards = '0.00';
+        this.userBalanceRaw = window.ethers?.BigNumber.from(0);
+        this.userBalanceDecimals = 18; // Updated once token metadata loads
+        this.userStakedRaw = window.ethers?.BigNumber.from(0);
+        this.userStakedDecimals = 18; // Staking contract uses 18 decimals
 
         // Approval state
         this.needsApproval = false;
@@ -801,6 +805,9 @@ class StakingModalNew {
         const weight = parseFloat(this.currentPair?.weight || '0') || 0;
         const hasAmount = amount > 0;
         const hasValidWeight = weight > 0;
+        const balanceRaw = this.userBalanceRaw || window.ethers.BigNumber.from(0);
+        const stakeUnits = window.ethers.utils.parseUnits(this.stakeAmount || '0', this.userBalanceDecimals);
+        const hasSufficientBalance = balanceRaw.gte(stakeUnits);
         const approvalPhase = this.actionPhases?.approve || 'idle';
         const stakePhase = this.actionPhases?.stake || 'idle';
         const activePhase = approvalPhase !== 'idle' ? approvalPhase : stakePhase;
@@ -815,8 +822,11 @@ class StakingModalNew {
             return;
         }
 
-        const shouldDisable = this.isExecutingStake || !hasAmount || !hasValidWeight;
+        const shouldDisable = this.isExecutingStake || !hasAmount || !hasValidWeight || !hasSufficientBalance;
         stakeButton.disabled = shouldDisable;
+        stakeButton.title = (!hasSufficientBalance && hasAmount)
+            ? 'Insufficient LP token balance'
+            : 'Stake LP Tokens';
 
         if (buttonIcon) buttonIcon.textContent = 'add';
         if (buttonText) buttonText.textContent = ' Stake LP Tokens';
@@ -833,6 +843,9 @@ class StakingModalNew {
         const buttonText = unstakeButton.childNodes[unstakeButton.childNodes.length - 1];
         const amount = parseFloat(this.unstakeAmount) || 0;
         const hasAmount = amount > 0;
+        const stakedRaw = this.userStakedRaw || window.ethers.BigNumber.from(0);
+        const unstakeUnits = window.ethers.utils.parseUnits(this.unstakeAmount || '0', this.userStakedDecimals);
+        const hasSufficientStaked = stakedRaw.gte(unstakeUnits);
         const unstakePhase = this.actionPhases?.unstake || 'idle';
 
         if (unstakePhase !== 'idle') {
@@ -845,8 +858,11 @@ class StakingModalNew {
             return;
         }
 
-        const shouldDisable = this.isExecutingUnstake || !hasAmount;
+        const shouldDisable = this.isExecutingUnstake || !hasAmount || !hasSufficientStaked;
         unstakeButton.disabled = shouldDisable;
+        unstakeButton.title = (!hasSufficientStaked && hasAmount)
+            ? 'Insufficient staked balance'
+            : 'Unstake LP Tokens';
 
         if (buttonIcon) buttonIcon.textContent = 'remove';
         if (buttonText) buttonText.textContent = ' Unstake LP Tokens';
@@ -893,6 +909,9 @@ class StakingModalNew {
                 this.userBalance = '0.00';
                 this.userStaked = '0.00';
                 this.pendingRewards = '0.00';
+                this.userBalanceRaw = window.ethers.BigNumber.from(0);
+                this.userStakedRaw = window.ethers.BigNumber.from(0);
+                this.updateButtonStates();
                 return;
             }
 
@@ -901,6 +920,9 @@ class StakingModalNew {
                 this.userBalance = '0.00';
                 this.userStaked = '0.00';
                 this.pendingRewards = '0.00';
+                this.userBalanceRaw = window.ethers.BigNumber.from(0);
+                this.userStakedRaw = window.ethers.BigNumber.from(0);
+                this.updateButtonStates();
                 return;
             }
 
@@ -925,15 +947,21 @@ class StakingModalNew {
 
                 // Get balance
                 const balance = await lpTokenContract.balanceOf(userAddress);
-                const decimals = await lpTokenContract.decimals();
+                const decimalsValue = await lpTokenContract.decimals();
+                const decimals = typeof decimalsValue === 'number'
+                    ? decimalsValue
+                    : decimalsValue.toNumber();
 
                 // Format balance with ethers v5/v6 compatibility
                 this.userBalance = this.formatTokenAmount(balance, decimals);
+                this.userBalanceRaw = window.ethers.BigNumber.from(balance);
+                this.userBalanceDecimals = decimals;
 
                 console.log(`✅ LP Token balance: ${this.userBalance}`);
             } catch (balanceError) {
                 console.error('❌ Failed to get LP token balance:', balanceError);
                 this.userBalance = '0.00';
+                this.userBalanceRaw = window.ethers.BigNumber.from(0);
             }
 
             // Get user stake info
@@ -943,6 +971,8 @@ class StakingModalNew {
                     // Format with ethers v5/v6 compatibility
                     this.userStaked = this.formatTokenAmount(stakeInfo.amount || '0', 18);
                     this.pendingRewards = this.formatTokenAmount(stakeInfo.rewards || '0', 18);
+                    this.userStakedRaw = window.ethers.utils.parseUnits((stakeInfo.amount || '0').toString(), 18);
+                    this.userStakedDecimals = 18;
                 }
 
                 console.log(`✅ Staked: ${this.userStaked}, Rewards: ${this.pendingRewards}`);
@@ -950,6 +980,7 @@ class StakingModalNew {
                 console.error('❌ Failed to get stake info:', stakeError);
                 this.userStaked = '0.00';
                 this.pendingRewards = '0.00';
+                this.userStakedRaw = window.ethers.BigNumber.from(0);
             }
 
             console.log('✅ User balances loaded:', {
@@ -958,12 +989,17 @@ class StakingModalNew {
                 rewards: this.pendingRewards
             });
 
+            this.updateButtonStates();
+
         } catch (error) {
             console.error('❌ Failed to load user balances:', error);
             // Use fallback values
             this.userBalance = '0.00';
             this.userStaked = '0.00';
             this.pendingRewards = '0.00';
+            this.userBalanceRaw = window.ethers.BigNumber.from(0);
+            this.userStakedRaw = window.ethers.BigNumber.from(0);
+            this.updateButtonStates();
         }
     }
 
