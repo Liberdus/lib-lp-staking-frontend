@@ -175,7 +175,6 @@ window.CONFIG = {
     // Development Configuration
     DEV: {
         DEBUG: false,
-        CONSOLE_LOGS: true,
         PERFORMANCE_MONITORING: false
     },
 

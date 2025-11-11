@@ -50,9 +50,6 @@ class MasterInitializer {
     async loadConfiguration() {
         console.log('⚙️ Loading application configuration...');
 
-        // Load production logger first
-        await this.loadScript('js/utils/production-logger.js');
-
         // Load SES-safe handler
         await this.loadScript('js/utils/ses-safe-handler.js');
 
