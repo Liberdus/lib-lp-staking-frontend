@@ -618,12 +618,8 @@ class StakingModalNew {
         // Update pair info
         this.updatePairInfo();
 
-        // Clear previous tab content and highlight requested tab while data loads
-        const tabContent = document.getElementById('tab-content');
-        if (tabContent) {
-            tabContent.innerHTML = '';
-        }
-        this.setActiveTabButton(tab);
+        // Render requested tab immediately with any previously cached data
+        this.switchTab(tab);
 
         // Show modal
         const modal = document.getElementById('staking-modal-new');
@@ -635,7 +631,7 @@ class StakingModalNew {
         // Load user balances if contract manager is ready
         await this.loadUserBalances();
 
-        // Render the requested tab once data is ready
+        // Re-render the tab to reflect fresh data
         this.switchTab(tab);
 
         // Prevent body scroll
@@ -1111,17 +1107,13 @@ class StakingModalNew {
         `;
     }
 
-    setActiveTabButton(tab) {
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tab);
-        });
-    }
-
     switchTab(tab) {
         this.currentTab = tab;
 
         // Update tab buttons
-        this.setActiveTabButton(tab);
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
 
         // Render tab content
         this.renderTabContent();
