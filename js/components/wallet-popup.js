@@ -586,26 +586,6 @@ class WalletPopup {
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
     }
 
-    getWalletIcon(walletType) {
-        const icons = {
-            metamask: '🦊',
-            walletconnect: '📱',
-            coinbase: '🔵',
-            default: '👛'
-        };
-        return icons[walletType] || icons.default;
-    }
-
-    getWalletName(walletType) {
-        const names = {
-            metamask: 'MetaMask',
-            walletconnect: 'WalletConnect',
-            coinbase: 'Coinbase Wallet',
-            default: 'Wallet'
-        };
-        return names[walletType] || names.default;
-    }
-
 }
 
 // Initialize wallet popup

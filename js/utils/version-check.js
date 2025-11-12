@@ -165,7 +165,6 @@
             `${basePath}js/wallet/metamask-connector.js`,
             `${basePath}js/wallet/network-manager.js`,
             `${basePath}js/wallet/wallet-manager.js`,
-            `${basePath}js/wallet/walletconnect-connector.js`,
             
             // Libraries
             `${basePath}libs/ethers.umd.min.js`,
