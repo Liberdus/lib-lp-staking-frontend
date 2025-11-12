@@ -235,13 +235,13 @@ class HomePage {
                     <tbody>
                         ${Array(3).fill(0).map(() => `
                             <tr>
-                                <td><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 60px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 100px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
-                                <td><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-120"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-80"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-60"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-80"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-100"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-80"></div></td>
+                                <td><div class="skeleton skeleton-line skeleton-width-120"></div></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -252,11 +252,11 @@ class HomePage {
 
     renderError() {
         return `
-            <div class="error-container" style="text-align: center; padding: 48px; color: var(--error-main);">
-                <span class="material-icons" style="font-size: 48px; margin-bottom: 16px;">error</span>
+            <div class="data-error">
+                <span class="material-icons data-error__icon">error</span>
                 <h3>Failed to load staking data</h3>
-                <p>${this.error}</p>
-                <button class="btn btn-primary" id="retry-load" type="button" style="margin-top: 16px;">
+                <p class="data-error__message">${this.error}</p>
+                <button class="btn btn-primary btn-small data-error__action" id="retry-load" type="button">
                     <span class="material-icons">refresh</span>
                     Retry
                 </button>
@@ -271,19 +271,21 @@ class HomePage {
             // Show "no data" row when there are no pairs
             tbodyContent = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 48px 24px; color: var(--text-secondary);">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-                            <span class="material-icons" style="font-size: 48px; color: var(--text-secondary); opacity: 0.5;">inbox</span>
-                            <div>
-                                <p style="font-size: 16px; font-weight: 500; margin: 0 0 8px 0; color: var(--text-primary);">No Staking Pairs Available</p>
-                                <p style="font-size: 14px; margin: 0; color: var(--text-secondary);">
-                                    There are currently no staking pairs configured in the contract. Please check back later.
-                                </p>
+                    <td colspan="7">
+                        <div class="table-empty">
+                            <div class="table-empty__content">
+                                <span class="material-icons table-empty__icon">inbox</span>
+                                <div>
+                                    <p class="table-empty__title">No Staking Pairs Available</p>
+                                    <p class="table-empty__description">
+                                        There are currently no staking pairs configured in the contract. Please check back later.
+                                    </p>
+                                </div>
+                                <button class="btn btn-primary btn-small" id="retry-load" type="button">
+                                    <span class="material-icons">refresh</span>
+                                    Refresh Data
+                                </button>
                             </div>
-                            <button class="btn btn-primary" id="retry-load" type="button" style="margin-top: 8px;">
-                                <span class="material-icons">refresh</span>
-                                Refresh Data
-                            </button>
                         </div>
                     </td>
                 </tr>
@@ -358,23 +360,21 @@ class HomePage {
         const userEarnings = pair.userEarnings || '0.00';
         
         return `
-            <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
+            <tr class="pair-row" data-pair-id="${pair.id}">
                 <td>
                     ${window.Formatter?.formatPairName(pair.name, pair.address, pair.platform) || pair.name}
                 </td>
                 <td>
-                    ${pair.platform ? `<span style="font-weight: 600; font-size: smaller;">${pair.platform}</span>` : '<span>-</span>'}
+                    ${pair.platform ? `<span class="platform-label">${pair.platform}</span>` : '<span>-</span>'}
                 </td>
                 <td>
-                    <span style="color: var(--success-main); font-weight: bold;">${pair.apr || '0.00'}%</span>
+                    <span class="apr-value">${pair.apr || '0.00'}%</span>
                 </td>
                 <td>
-                    <span style="font-weight: 600;">
-                        ${pair.weightPercentage || '0.00'}%
-                    </span>
+                    <span class="weight-value">${pair.weightPercentage || '0.00'}%</span>
                 </td>
                 <td>
-                    <span style="font-weight: 600;">${this.formatNumber(pair.tvl || 0)}</span>
+                    <span class="tvl-value">${this.formatNumber(pair.tvl || 0)}</span>
                 </td>
                 <td>
                     <button class="btn btn-primary btn-small btn-share"
@@ -382,9 +382,8 @@ class HomePage {
                             data-pair-address="${pair.address}"
                             data-tab="0"
                             ${!canTransact ? 'disabled' : ''}
-                            title="Stake or Unstake"
-                            style="min-width: 100px;">
-                        <span class="material-icons" style="font-size: 16px;">share</span>
+                            title="Stake or Unstake">
+                        <span class="material-icons">share</span>
                         ${userShares}%
                     </button>
                 </td>
@@ -394,9 +393,8 @@ class HomePage {
                             data-pair-address="${pair.address}"
                             data-tab="2"
                             ${!canTransact ? 'disabled' : ''}
-                            title="Claim reward"
-                            style="min-width: 120px;">
-                        <span class="material-icons" style="font-size: 16px;">redeem</span>
+                            title="Claim reward">
+                        <span class="material-icons">redeem</span>
                         ${userEarnings} LIB
                     </button>
                 </td>
@@ -1117,8 +1115,9 @@ class HomePage {
     showAdminButton() {
         const adminButton = document.getElementById('admin-panel-link');
         if (adminButton) {
-            adminButton.style.display = 'flex';
+            adminButton.classList.remove('nav-button--hidden');
             adminButton.classList.remove('admin-checking');
+            adminButton.style.removeProperty('display');
             window.masterInitializer?.updateAdminPanelLink('admin');
             this.isAdmin = true;
         }
@@ -1130,8 +1129,9 @@ class HomePage {
     hideAdminButton() {
         const adminButton = document.getElementById('admin-panel-link');
         if (adminButton) {
-            adminButton.style.display = 'none';
+            adminButton.classList.add('nav-button--hidden');
             adminButton.classList.remove('admin-checking');
+            adminButton.style.removeProperty('display');
             window.masterInitializer?.updateAdminPanelLink('admin');
             this.isAdmin = false;
         }
@@ -1143,8 +1143,9 @@ class HomePage {
     showAdminButtonChecking() {
         const adminButton = document.getElementById('admin-panel-link');
         if (adminButton) {
-            adminButton.style.display = 'flex';
+            adminButton.classList.remove('nav-button--hidden');
             adminButton.classList.add('admin-checking');
+            adminButton.style.removeProperty('display');
             window.masterInitializer?.updateAdminPanelLink('admin');
             this.isAdmin = false; // Not confirmed yet
         }

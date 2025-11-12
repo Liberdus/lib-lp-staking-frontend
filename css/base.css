@@ -106,6 +106,24 @@ a:hover {
     transform: none;
 }
 
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--primary-main);
+    color: #ffffff;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 10000;
+    font-weight: 500;
+    transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
 /* Forms */
 .form-group {
     margin-bottom: 1rem;
@@ -213,4 +231,55 @@ a:hover {
     h1 { font-size: 2rem; }
     h2 { font-size: 1.75rem; }
     h3 { font-size: 1.5rem; }
+}
+
+@media (max-width: 320px) {
+    .btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .btn:hover {
+        transform: none;
+    }
+}
+
+@media (prefers-contrast: high) {
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+@media print {
+    .header,
+    .footer,
+    .modal,
+    .notification-container,
+    .btn,
+    .theme-toggle {
+        display: none !important;
+    }
+
+    .main-content {
+        padding: 0;
+        margin: 0;
+    }
 }

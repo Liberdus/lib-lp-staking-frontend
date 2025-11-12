@@ -173,6 +173,63 @@
     font-weight: var(--liberdus-font-medium);
 }
 
+@media (max-width: 768px) {
+    .nav-section {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-toolbar {
+        padding: var(--spacing-1) 0;
+    }
+
+    .nav-section {
+        gap: var(--spacing-1);
+    }
+
+    .nav-button {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .nav-button .material-icons {
+        font-size: 18px;
+    }
+
+    .connect-wallet-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 140px;
+    }
+}
+
+@media (max-width: 320px) {
+    .container-xl,
+    .container-lg {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .connect-wallet-btn {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .nav-button,
+    .connect-wallet-btn {
+        min-height: 44px;
+    }
+
+    .nav-button:hover,
+    .connect-wallet-btn:hover {
+        transform: none;
+    }
+}
+
 /* Theme Toggle Button */
 .theme-toggle-btn {
   width: 36px;

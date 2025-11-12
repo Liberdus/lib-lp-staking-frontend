@@ -17,6 +17,7 @@
             this.currentTheme = 'light';
             this.listeners = [];
             this.isInitialized = false;
+            this.hasDispatchedReady = false;
         }
 
         /**
@@ -25,6 +26,7 @@
         initialize() {
             if (this.isInitialized) {
                 console.log('✅ UnifiedThemeManager already initialized');
+                this.emitReady();
                 return;
             }
 
@@ -62,6 +64,8 @@
 
             this.isInitialized = true;
             console.log(`✅ UnifiedThemeManager initialized with theme: ${this.currentTheme}`);
+
+            this.emitReady();
         }
 
         /**
@@ -251,6 +255,18 @@
                     console.error('❌ Error in theme listener:', error);
                 }
             });
+        }
+
+        /**
+         * Emit a global ready event once
+         */
+        emitReady() {
+            if (this.hasDispatchedReady) return;
+            this.hasDispatchedReady = true;
+            const event = new CustomEvent('themeManagerReady', {
+                detail: { manager: this }
+            });
+            document.dispatchEvent(event);
         }
 
         /**

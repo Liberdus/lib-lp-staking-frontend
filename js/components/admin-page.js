@@ -380,10 +380,7 @@ class AdminPage {
                         <h3>🌐 Alternative: Switch Network</h3>
                         <p>Or try switching to a network where you have admin permissions:</p>
                         <div class="network-selector-container">
-                            <select id="unauthorized-network-select" class="network-select">
-                                <option value="AMOY" ${window.CONFIG?.SELECTED_NETWORK === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
-                                <option value="POLYGON_MAINNET" ${window.CONFIG?.SELECTED_NETWORK === 'POLYGON_MAINNET' ? 'selected' : ''}>Polygon Mainnet</option>
-                            </select>
+                            <div id="unauthorized-network-selector"></div>
                         </div>
                     </div>
                     
@@ -403,30 +400,29 @@ class AdminPage {
      * Set up network selector for unauthorized access screen
      */
     setupUnauthorizedNetworkSelector() {
-        const networkSelect = document.getElementById('unauthorized-network-select');
-        if (!networkSelect) {
-            console.warn('⚠️ Unauthorized network selector not found');
+        const containerId = 'unauthorized-network-selector';
+        const selectorContainer = document.getElementById(containerId);
+
+        if (!selectorContainer) {
+            console.warn('⚠️ Unauthorized network selector container not found');
             return;
         }
 
-        networkSelect.addEventListener('change', async (event) => {
-            const selectedNetwork = event.target.value;
-            console.log(`🔄 Unauthorized access: Switching to ${selectedNetwork} network...`);
-            
-            try {
-                // Use the existing network selector functionality
-                if (window.networkSelector) {
-                    await window.networkSelector.handleNetworkChange(selectedNetwork, 'admin');
-                    console.log(`✅ Network switched to ${selectedNetwork} from unauthorized access screen`);
-                } else {
-                    console.error('❌ Network selector not available');
-                }
-            } catch (error) {
-                console.error('❌ Error switching network from unauthorized access:', error);
-            }
-        });
+        selectorContainer.innerHTML = '';
 
-        console.log('✅ Unauthorized network selector set up');
+        if (!window.networkSelector) {
+            console.error('❌ Network selector not available');
+            return;
+        }
+
+        window.networkSelector.createSelector(containerId, 'admin');
+
+        setTimeout(() => {
+            const select = selectorContainer.querySelector('.network-select');
+            if (select && window.CONFIG?.SELECTED_NETWORK) {
+                select.value = window.CONFIG.SELECTED_NETWORK;
+            }
+        }, 0);
     }
 
 
@@ -570,21 +566,33 @@ class AdminPage {
      * Setup theme toggle button with enhanced admin panel support
      */
     setupThemeToggle() {
-        if (window.unifiedThemeManager) {
-            window.unifiedThemeManager.setupToggleButton('theme-toggle');
+        const initializeToggle = () => {
+            if (window.unifiedThemeManager && window.unifiedThemeManager.isInitialized) {
+                window.unifiedThemeManager.setupToggleButton('theme-toggle');
 
-            // Force apply theme to all admin elements immediately
-            this.applyThemeToAllElements();
-
-            // Listen for theme changes and reapply
-            document.addEventListener('themeChanged', () => {
-                console.log('🎨 Theme changed, reapplying to admin panel...');
+                // Force apply theme to all admin elements immediately
                 this.applyThemeToAllElements();
-            });
 
-            console.log('✅ Theme toggle button setup complete with admin panel support');
-        } else {
-            console.warn('⚠️ UnifiedThemeManager not available');
+                // Listen for theme changes and reapply
+                document.addEventListener('themeChanged', () => {
+                    console.log('🎨 Theme changed, reapplying to admin panel...');
+                    this.applyThemeToAllElements();
+                });
+
+                console.log('✅ Theme toggle button setup complete with admin panel support');
+                return true;
+            }
+            return false;
+        };
+
+        if (!initializeToggle()) {
+            console.warn('⚠️ UnifiedThemeManager not available yet, waiting for readiness event');
+            const handler = () => {
+                if (initializeToggle()) {
+                    document.removeEventListener('themeManagerReady', handler);
+                }
+            };
+            document.addEventListener('themeManagerReady', handler);
         }
     }
 
@@ -4333,125 +4341,46 @@ class AdminPage {
     applyModalVisibilityFixes(modalContainer) {
         console.log('🔧 DEBUG: Applying universal modal visibility fixes');
 
-        // Container fixes
-        modalContainer.style.display = 'flex';
-        modalContainer.style.zIndex = '999999';
-        modalContainer.style.position = 'fixed';
-        modalContainer.style.top = '0';
-        modalContainer.style.left = '0';
-        modalContainer.style.width = '100%';
-        modalContainer.style.height = '100%';
-        modalContainer.style.pointerEvents = 'auto';
-        modalContainer.style.opacity = '1';
-        modalContainer.style.visibility = 'visible';
-
-        // Content fixes
         const modalOverlay = modalContainer.querySelector('.modal-overlay');
         const modalContent = modalContainer.querySelector('.modal-content');
+        const cancelButtons = modalContainer.querySelectorAll('.modal-cancel');
+        const closeButton = modalContainer.querySelector('.modal-close');
 
-        if (modalContent) {
-            modalContent.style.background = 'white';
-            modalContent.style.zIndex = '1000000';
-            modalContent.style.opacity = '1';
-            modalContent.style.visibility = 'visible';
-            modalContent.style.display = 'block';
-            modalContent.style.pointerEvents = 'auto';
-            modalContent.style.padding = '0'; // Let CSS handle padding
-            modalContent.style.borderRadius = '8px';
-            modalContent.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-            modalContent.style.maxHeight = '90vh';
-            modalContent.style.overflowY = 'auto';
-
-            // Force modal footer visibility
-            const modalFooter = modalContent.querySelector('.modal-footer');
-            if (modalFooter) {
-                modalFooter.style.display = 'flex';
-                modalFooter.style.justifyContent = 'flex-end';
-                modalFooter.style.gap = '10px';
-                modalFooter.style.padding = '20px';
-                modalFooter.style.borderTop = '1px solid #e0e0e0';
-                modalFooter.style.background = 'white';
-                modalFooter.style.position = 'sticky';
-                modalFooter.style.bottom = '0';
-                modalFooter.style.zIndex = '1000001';
-                modalFooter.style.opacity = '1';
-                modalFooter.style.visibility = 'visible';
-                modalFooter.style.minHeight = '60px';
-
-                // Force all buttons in footer to be visible
-                const buttons = modalFooter.querySelectorAll('button');
-                buttons.forEach((btn, index) => {
-                    btn.style.display = 'inline-block';
-                    btn.style.opacity = '1';
-                    btn.style.visibility = 'visible';
-                    btn.style.pointerEvents = 'auto';
-                    btn.style.minHeight = '40px';
-                    btn.style.padding = '10px 20px';
-                    btn.style.margin = '0 5px';
-                    btn.style.borderRadius = '4px';
-                    btn.style.cursor = 'pointer';
-                    btn.style.fontSize = '14px';
-                    btn.style.zIndex = '1000002';
-
-                    if (btn.classList.contains('btn-primary')) {
-                        btn.style.background = '#007bff';
-                        btn.style.color = 'white';
-                        btn.style.border = '1px solid #007bff';
-                    } else if (btn.classList.contains('btn-secondary')) {
-                        btn.style.background = '#6c757d';
-                        btn.style.color = 'white';
-                        btn.style.border = '1px solid #6c757d';
-                    }
-
-                    // Add explicit click handler for cancel buttons
-                    if (btn.classList.contains('modal-cancel') ||
-                        btn.classList.contains('btn-secondary') ||
-                        btn.textContent.trim() === 'Cancel') {
-                        btn.onclick = (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🔘 Cancel button clicked via explicit handler');
-                            this.closeModal();
-                        };
-                        console.log(`🔧 DEBUG: Added click handler to cancel button ${index + 1}`);
-                    }
-
-                    console.log(`🔧 DEBUG: Button ${index + 1} forced visible:`, btn.textContent.trim());
-                });
-
-                console.log('🔧 DEBUG: Modal footer visibility forced with', buttons.length, 'buttons');
-            }
-        }
-
-        // Also add click handler to modal close button (X)
-        const closeButton = modalContent?.querySelector('.modal-close');
-        if (closeButton) {
-            closeButton.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔘 Close button (X) clicked via explicit handler');
-                this.closeModal();
-            };
-            console.log('🔧 DEBUG: Added click handler to close button (X)');
-        }
+        modalContainer.classList.add('modal-container');
+        modalContainer.classList.add('modal-container--open');
+        modalContainer.style.removeProperty('display');
 
         if (modalOverlay) {
-            modalOverlay.style.zIndex = '999999';
-            modalOverlay.style.opacity = '1';
-            modalOverlay.style.visibility = 'visible';
-            modalOverlay.style.display = 'flex';
-            modalOverlay.style.pointerEvents = 'auto';
-            modalOverlay.style.background = 'rgba(0, 0, 0, 0.8)';
-
-            // Add click handler to overlay (close on click outside)
-            modalOverlay.onclick = (e) => {
-                if (e.target === modalOverlay) {
+            modalOverlay.classList.add('modal-overlay--visible');
+            modalOverlay.onclick = (event) => {
+                if (event.target === modalOverlay) {
                     console.log('🔘 Modal overlay clicked - closing modal');
                     this.closeModal();
                 }
             };
-            console.log('🔧 DEBUG: Added click handler to modal overlay');
         }
+
+        if (modalContent) {
+            modalContent.classList.add('modal-content--visible');
+        }
+
+        cancelButtons.forEach((button) => {
+            button.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeModal();
+            };
+        });
+
+        if (closeButton) {
+            closeButton.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeModal();
+            };
+        }
+
+        document.body.classList.add('modal-open');
 
         console.log('✅ Universal modal visibility fixes applied');
     }
@@ -4590,7 +4519,7 @@ class AdminPage {
                         </button>
                         <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn">
                             <span class="btn-text">Create Proposal</span>
-                            <span class="btn-loading" style="display: none;">
+                            <span class="btn-loading">
                                 <span class="spinner"></span> Creating...
                             </span>
                         </button>
@@ -4666,15 +4595,14 @@ class AdminPage {
                         </form>
                     </div>
 
-                    <div class="modal-footer" style="display: flex; gap: 12px; justify-content: flex-end; padding: 20px 24px; border-top: 1px solid var(--divider);">
-                        <button type="button" class="btn btn-secondary modal-cancel" style="padding: 10px 24px; min-width: 100px;">
+                    <div class="modal-footer modal-footer--sticky">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="update-weights-form" class="btn btn-primary" id="update-weights-btn"
-                                style="padding: 10px 24px; min-width: 180px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <button type="submit" form="update-weights-form" class="btn btn-primary" id="update-weights-btn">
                             <span class="btn-text">Create Proposal</span>
-                            <span class="btn-loading" style="display: none;">
-                                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;"></span>
+                            <span class="btn-loading">
+                                <span class="spinner"></span>
                                 Creating...
                             </span>
                         </button>
@@ -4754,16 +4682,15 @@ class AdminPage {
                         </form>
                     </div>
 
-                    <div class="modal-footer" style="display: flex; gap: 12px; justify-content: flex-end; padding: 20px 24px; border-top: 1px solid var(--divider);">
-                        <button type="button" class="btn btn-secondary modal-cancel" style="padding: 10px 24px; min-width: 100px;">
+                    <div class="modal-footer modal-footer--sticky">
+                        <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
                         <button type="submit" form="remove-pair-form" class="btn btn-primary" id="remove-pair-btn"
-                                title="Please select a pair and confirm to enable"
-                                style="padding: 10px 24px; min-width: 220px;">
+                                title="Please select a pair and confirm to enable">
                             <span class="btn-text">Submit Removal Proposal</span>
-                            <span class="btn-loading" style="display: none;">
-                                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px;"></span>
+                            <span class="btn-loading">
+                                <span class="spinner"></span>
                                 Creating...
                             </span>
                         </button>
@@ -4967,9 +4894,12 @@ class AdminPage {
     closeModal() {
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) {
+            modalContainer.classList.remove('modal-container--open');
             modalContainer.style.display = 'none';
             modalContainer.innerHTML = '';
         }
+
+        document.body.classList.remove('modal-open');
     }
 
     // Missing function that's called from HTML

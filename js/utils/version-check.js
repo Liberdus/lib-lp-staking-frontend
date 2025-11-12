@@ -143,7 +143,6 @@
             `${basePath}js/contracts/contract-manager.js`,
             
             // JavaScript - Core (only existing files)
-            `${basePath}js/core/animation-manager.js`,
             `${basePath}js/core/error-handler.js`,
             `${basePath}js/core/notification-manager-new.js`,
             `${basePath}js/core/unified-theme-manager.js`,
@@ -171,19 +170,17 @@
             `${basePath}libs/ethers.umd.min.js`,
             
             // CSS - All stylesheets (only existing files)
-            `${basePath}css/admin-homepage-theme.css`,
-            `${basePath}css/admin-theme.css`,
-            `${basePath}css/admin.css`,
+            `${basePath}css/admin/admin-homepage-theme.css`,
+            `${basePath}css/admin/admin.css`,
             `${basePath}css/base.css`,
-            `${basePath}css/component-library.css`,
             `${basePath}css/components.css`,
-            `${basePath}css/day10-enhancements.css`,
-            `${basePath}css/in-development.css`,
+            `${basePath}css/shared-header.css`,
+            `${basePath}css/notifications.css`,
+            `${basePath}css/home-page/home-page.css`,
             `${basePath}css/main.css`,
             `${basePath}css/network-indicator-selector.css`,
-            `${basePath}css/responsive.css`,
             `${basePath}css/theme-toggle.css`,
-            `${basePath}css/variables.css`,
+            `${basePath}css/tokens.css`,
             `${basePath}css/wallet-popup.css`
         ];
     }

@@ -622,6 +622,12 @@ class StakingModalNew {
         this.switchTab(tab);
 
         // Show modal
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            modalContainer.classList.add('modal-container--open');
+            modalContainer.style.display = 'flex';
+        }
+
         const modal = document.getElementById('staking-modal-new');
         if (modal) {
             modal.style.display = 'flex';
@@ -1067,6 +1073,12 @@ class StakingModalNew {
                 modal.style.display = 'none';
                 this.isOpen = false;
             }, 300);
+        }
+
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            modalContainer.classList.remove('modal-container--open');
+            modalContainer.style.display = 'none';
         }
 
         // Restore body scroll

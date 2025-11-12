@@ -17,6 +17,17 @@
     pointer-events: none;
 }
 
+@media (max-width: 320px) {
+    .notification-container,
+    #notification-container {
+        top: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+        bottom: auto !important;
+        max-width: none;
+    }
+}
+
 /* Notification Card */
 .notification {
     background: rgba(30, 41, 59, 0.95);
@@ -159,6 +170,12 @@
 
 .notification .notification-progress.animating {
     animation: progressBarAnimation linear forwards;
+}
+
+@media (prefers-contrast: high) {
+    .notification {
+        border: 2px solid currentColor;
+    }
 }
 
 /* ========================================

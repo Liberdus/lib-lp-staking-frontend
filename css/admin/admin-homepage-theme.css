@@ -6,29 +6,6 @@
  */
 
 /* ========================================
-   ADMIN PANEL MAIN LAYOUT - HOMEPAGE COLORS
-   ======================================== */
-.admin-panel,
-body.admin-page {
-    background: var(--background-default) !important;
-    color: var(--text-primary) !important;
-    transition: background-color 0.3s ease, color 0.3s ease !important;
-}
-
-.admin-content {
-    background: var(--background-default) !important;
-    color: var(--text-primary) !important;
-    transition: background-color 0.3s ease, color 0.3s ease !important;
-}
-
-/* Ensure body element also gets theme */
-body {
-    background: var(--background-default) !important;
-    color: var(--text-primary) !important;
-    transition: background-color 0.3s ease, color 0.3s ease !important;
-}
-
-/* ========================================
    CARDS & CONTAINERS - HOMEPAGE STYLE
    ======================================== */
 .admin-grid-main,
@@ -407,7 +384,7 @@ input[type="number"],
 input[type="email"],
 input[type="password"],
 textarea,
-select,
+select:not(.network-select),
 .form-input,
 input.form-input,
 textarea.form-input {
@@ -427,7 +404,7 @@ textarea.form-input {
 [data-theme="dark"] input[type="email"],
 [data-theme="dark"] input[type="password"],
 [data-theme="dark"] textarea,
-[data-theme="dark"] select,
+[data-theme="dark"] select:not(.network-select),
 [data-theme="dark"] .form-input,
 [data-theme="dark"] input.form-input,
 [data-theme="dark"] textarea.form-input {
@@ -444,7 +421,7 @@ textarea.form-input {
 [data-theme="light"] input[type="email"],
 [data-theme="light"] input[type="password"],
 [data-theme="light"] textarea,
-[data-theme="light"] select,
+[data-theme="light"] select:not(.network-select),
 [data-theme="light"] .form-input,
 [data-theme="light"] input.form-input,
 [data-theme="light"] textarea.form-input {
@@ -474,7 +451,7 @@ textarea::placeholder {
 
 input:focus,
 textarea:focus,
-select:focus,
+select:not(.network-select):focus,
 .form-input:focus {
     border-color: var(--primary-main) !important;
     outline: none !important;
@@ -659,35 +636,9 @@ textarea::placeholder {
 }
 
 /* ========================================
-   DARK MODE SPECIFIC OVERRIDES
-   ======================================== */
-[data-theme="dark"] .admin-panel {
-    background: var(--background-default) !important;
-}
-
-[data-theme="dark"] .admin-grid-main,
-[data-theme="dark"] .admin-grid-sidebar,
-[data-theme="dark"] .info-card,
-[data-theme="dark"] .table-container {
-    background: var(--background-paper) !important;
-}
-
-[data-theme="dark"] .modal-content {
-    background: var(--background-paper) !important;
-}
-
-[data-theme="dark"] input,
-[data-theme="dark"] textarea,
-[data-theme="dark"] select {
-    background: var(--background-paper) !important;
-    color: var(--text-primary) !important;
-    border-color: var(--divider) !important;
-}
-
-/* ========================================
    ENHANCED DROPDOWN STYLES - MODERN UI - CLEAN SINGLE ARROW
    ======================================== */
-select,
+select:not(.network-select),
 .form-input select,
 #remove-pair-select,
 select.form-input,
@@ -712,18 +663,18 @@ select.form-input,
     position: relative !important;
 }
 
-select:hover,
+select:not(.network-select):hover,
 .form-input select:hover,
 #remove-pair-select:hover {
     border-color: var(--primary-main) !important;
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1) !important;
+    box-shadow: none !important;
 }
 
-select:focus,
+select:not(.network-select):focus,
 .form-input select:focus,
 #remove-pair-select:focus {
     border-color: var(--primary-main) !important;
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15) !important;
+    box-shadow: none !important;
     outline: none !important;
 }
 
@@ -744,7 +695,7 @@ select::after {
     position: relative !important;
 }
 
-select option,
+select:not(.network-select) option,
 .form-input select option,
 #remove-pair-select option {
     padding: 12px 16px !important;
@@ -753,13 +704,13 @@ select option,
     color: var(--text-primary) !important;
 }
 
-select option:hover,
+select:not(.network-select) option:hover,
 .form-input select option:hover,
 #remove-pair-select option:hover {
     background: var(--surface-hover) !important;
 }
 
-select option:disabled,
+select:not(.network-select) option:disabled,
 .form-input select option:disabled,
 #remove-pair-select option:disabled {
     color: var(--text-disabled) !important;
@@ -767,7 +718,7 @@ select option:disabled,
 }
 
 /* Dark mode option colors */
-[data-theme="dark"] select option,
+[data-theme="dark"] select:not(.network-select) option,
 [data-theme="dark"] .form-input select option,
 [data-theme="dark"] #remove-pair-select option {
     background: #1e1e1e !important;
@@ -775,7 +726,8 @@ select option:disabled,
 }
 
 /* Light mode option colors */
-[data-theme="light"] select option,
+/* Light mode option colors */
+[data-theme="light"] select:not(.network-select) option,
 [data-theme="light"] .form-input select option,
 [data-theme="light"] #remove-pair-select option {
     background: #ffffff !important;
@@ -783,7 +735,7 @@ select option:disabled,
 }
 
 /* Dark mode dropdown colors - NO BACKGROUND IMAGE */
-[data-theme="dark"] select,
+[data-theme="dark"] select:not(.network-select),
 [data-theme="dark"] .form-input select,
 [data-theme="dark"] #remove-pair-select,
 [data-theme="dark"] select.form-input,
@@ -796,7 +748,7 @@ select option:disabled,
 }
 
 /* Light mode dropdown colors - NO BACKGROUND IMAGE */
-[data-theme="light"] select,
+[data-theme="light"] select:not(.network-select),
 [data-theme="light"] .form-input select,
 [data-theme="light"] #remove-pair-select,
 [data-theme="light"] select.form-input,
@@ -1198,12 +1150,3 @@ button[type="submit"] .btn-text,
 .modal-content {
     z-index: 999999 !important; /* Below toasts */
 }
-
-/* ========================================
-   THEME TRANSITION SMOOTHNESS
-   ======================================== */
-/* Exclude theme toggle button from wildcard transition to allow its own animations */
-*:not(.spinner):not(.loading-skeleton):not(.theme-toggle):not(.theme-toggle *) {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
-}
-
