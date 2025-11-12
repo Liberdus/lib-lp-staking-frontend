@@ -139,7 +139,6 @@ window.CONFIG = {
 
     // Wallet Configuration
     WALLET: {
-        SUPPORTED_WALLETS: ['MetaMask', 'Coinbase Wallet'],
         AUTO_CONNECT: true,
         CONNECTION_TIMEOUT: 30000 // 30 seconds
     },
