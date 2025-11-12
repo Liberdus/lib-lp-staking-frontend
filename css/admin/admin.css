@@ -76,12 +76,22 @@
 }
 
 /* Initial overlays / loading states */
-.admin-loading,
-#error-boundary {
+.admin-loading {
     position: fixed;
     inset: 0;
     z-index: 2000;
     display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #ffffff;
+}
+
+#error-boundary {
+    position: fixed;
+    inset: 0;
+    z-index: 9999; /* Very high z-index to ensure it's on top */
+    display: none; /* Hidden by default, shown by JavaScript when error occurs */
     justify-content: center;
     align-items: center;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -141,10 +151,6 @@
     color: rgba(255, 255, 255, 0.7);
     max-width: 500px;
     line-height: 1.6;
-}
-
-#error-boundary {
-    z-index: 9999;
 }
 
 /* Theme alignment with shared tokens */

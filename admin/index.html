@@ -12,19 +12,17 @@
     <link rel="stylesheet" href="../css/fonts.css">
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/tokens.css">
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components.css">
     <link rel="stylesheet" href="../css/shared-header.css">
     <link rel="stylesheet" href="../css/wallet-popup.css">
     <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/admin-theme.css">
     <link rel="stylesheet" href="../css/theme-toggle.css">
     <link rel="stylesheet" href="../css/notifications.css">
-    <link rel="stylesheet" href="../css/admin.css">
-    <link rel="stylesheet" href="../css/day10-enhancements.css">
+    <link rel="stylesheet" href="../css/admin/admin.css">
     <link rel="stylesheet" href="../css/network-indicator-selector.css">
-    <link rel="stylesheet" href="../css/admin-homepage-theme.css">
+    <link rel="stylesheet" href="../css/admin/admin-homepage-theme.css">
     
     <!-- Meta Tags -->
     <meta name="description" content="LP Staking Admin Panel - Manage liquidity provider staking contracts">
@@ -58,7 +56,7 @@
                         <span>Home</span>
                     </a>
 
-                    <div id="network-indicator-home" class="network-indicator-home" style="display:none;">
+                    <div id="network-indicator-home" class="network-indicator-home">
                         <!-- Populated by JavaScript -->
                     </div>
 
@@ -96,11 +94,11 @@
     </main>
 
     <!-- Modal Container (ADDED) -->
-    <div id="modal-container" style="display: none;"></div>
+    <div id="modal-container"></div>
     <div id="notification-container" class="notification-container"></div>
 
     <!-- Error Boundary -->
-    <div id="error-boundary" style="display: none;">
+    <div id="error-boundary">
         <div class="error-container">
             <h2>❌ System Error</h2>
             <p id="error-message">An unexpected error occurred.</p>
@@ -439,84 +437,5 @@
         });
     </script>
 
-    <style>
-        /* Loading styles for initial state */
-        .admin-loading {
-            position: fixed;
-            inset: 0;
-            z-index: 2000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #ffffff;
-        }
-
-        .loading-container {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #00d4ff;
-            animation: spin 1s ease-in-out infinite;
-            margin: 0 auto 20px;
-        }
-
-        .loading-container h2 {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .loading-container p {
-            margin: 0;
-            color: #a0a0a0;
-            font-size: 16px;
-        }
-
-        .error-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #ffffff;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .error-container h2 {
-            margin: 0 0 15px 0;
-            color: #ff6b6b;
-            font-size: 24px;
-        }
-
-        .error-container p {
-            margin: 0 0 25px 0;
-            color: #a0a0a0;
-            max-width: 500px;
-            line-height: 1.6;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        #error-boundary {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 9999;
-        }
-    </style>
 </body>
 </html>
