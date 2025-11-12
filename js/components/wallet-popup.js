@@ -589,7 +589,6 @@ class WalletPopup {
     getWalletIcon(walletType) {
         const icons = {
             metamask: '🦊',
-            walletconnect: '📱',
             coinbase: '🔵',
             default: '👛'
         };
@@ -599,7 +598,6 @@ class WalletPopup {
     getWalletName(walletType) {
         const names = {
             metamask: 'MetaMask',
-            walletconnect: 'WalletConnect',
             coinbase: 'Coinbase Wallet',
             default: 'Wallet'
         };

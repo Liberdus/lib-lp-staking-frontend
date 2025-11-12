@@ -436,20 +436,16 @@ class NetworkManager {
     /**
      * Request permission to use the configured network
      * This adds the network to MetaMask and ensures we can interact with it
-     * @param {string} walletType - Type of wallet ('metamask', 'walletconnect')
+     * @param {string} walletType - Type of wallet ('metamask')
      * @returns {Promise<boolean>} True if permission granted
      */
     async requestNetworkPermission(walletType = 'metamask') {
         try {
             if (walletType === 'metamask') {
                 return await this._requestMetaMaskPermission();
-            } else if (walletType === 'walletconnect') {
-                // WalletConnect handles network permissions during connection
-                console.log('WalletConnect permissions managed during connection');
-                return true;
-            } else {
-                throw new Error(`Unsupported wallet type: ${walletType}`);
             }
+
+            throw new Error(`Unsupported wallet type: ${walletType}`);
         } catch (error) {
             const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
             console.error(`Failed to request ${networkName} permission:`, error);

@@ -9,7 +9,7 @@ A professional, production-ready vanilla JavaScript implementation of a decentra
 - **Real-time TVL & APR** - Live calculation of Total Value Locked and Annual Percentage Rate
 - **Reward Claims** - Claim accumulated rewards at any time
 - **Multi-pair Support** - Support for multiple LP token pairs
-- **Wallet Integration** - MetaMask and WalletConnect support
+- **Wallet Integration** - MetaMask support
 
 ### Admin Features
 - **Multi-signature Governance** - Secure multi-sig proposal system
