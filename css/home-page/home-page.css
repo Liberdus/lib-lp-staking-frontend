@@ -38,7 +38,7 @@ body.homepage {
 
 #content-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 908px;
     margin: 0 auto;
 }
 
@@ -180,7 +180,6 @@ body.homepage {
 .btn-share .material-icons,
 .btn-earnings .material-icons {
     font-size: 16px;
-    color: var(--success-main, #4caf50);
 }
 
 .chip {
