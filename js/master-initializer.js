@@ -125,6 +125,30 @@ class MasterInitializer {
         }
     }
 
+    /**
+     * Normalize the admin navigation link state across pages.
+     * @param {'home'|'admin'} target
+     */
+    updateAdminPanelLink(target) {
+        const adminLink = document.getElementById('admin-panel-link');
+        if (!adminLink) {
+            return;
+        }
+
+        const icon = adminLink.querySelector('.material-icons');
+        const label = adminLink.querySelector('span:last-child');
+
+        if (target === 'home') {
+            adminLink.href = '../';
+            if (icon) icon.textContent = 'home';
+            if (label) label.textContent = 'Home';
+        } else {
+            adminLink.href = 'admin/';
+            if (icon) icon.textContent = 'admin_panel_settings';
+            if (label) label.textContent = 'Admin Panel';
+        }
+    }
+
     async loadUIComponents() {
         // Skip homepage UI components on admin page
         if (this.isAdminPage) {
@@ -340,19 +364,18 @@ class MasterInitializer {
                 this.components.set('stakingModal', window.stakingModal);
                 console.log('✅ Staking Modal initialized');
             }
-
-            // Initialize wallet popup
-            if (window.WalletPopup && !window.walletPopup) {
-                try {
-                    window.walletPopup = new window.WalletPopup();
-                    this.components.set('walletPopup', window.walletPopup);
-                    console.log('✅ Wallet Popup initialized');
-                } catch (error) {
-                    console.error('❌ Failed to initialize WalletPopup:', error);
-                }
-            }
         } else {
             console.log('⏭️ Skipping homepage UI components initialization (admin mode)');
+        }
+
+        if (window.WalletPopup && !window.walletPopup) {
+            try {
+                window.walletPopup = new window.WalletPopup();
+                this.components.set('walletPopup', window.walletPopup);
+                console.log('✅ Wallet Popup initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize WalletPopup:', error);
+            }
         }
 
         // Ensure wallet connection is properly set up
@@ -780,6 +803,23 @@ class MasterInitializer {
 
     async loadCSS(href) {
         if (this.loadedScripts.has(href)) {
+            return Promise.resolve();
+        }
+
+        // Skip if stylesheet already injected or linked statically.
+        const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((link) => {
+            const linkHref = link.getAttribute('href');
+            if (!linkHref) return false;
+            try {
+                const normalized = new URL(linkHref, window.location.href).pathname;
+                return normalized.endsWith(href);
+            } catch {
+                return false;
+            }
+        });
+        if (existingLink) {
+            this.loadedScripts.add(href);
+            console.log(`ℹ️ CSS already present: ${href}`);
             return Promise.resolve();
         }
 
