@@ -24,14 +24,196 @@ class WalletManager {
 
         // Connection state management
         this.connectionPromise = null; // Track ongoing connection attempts
+        this.pendingPreferredProvider = null;
+
+        // Injected provider discovery (EIP-6963 compliant)
+        this.injectedProviders = new Map();
+        this.activeInjectedProvider = null;
+        this._handleProviderAnnouncement = this.handleInjectedProviderAnnouncement.bind(this);
+
+        this.initializeInjectedProviderDiscovery();
 
         this.init();
     }
 
+    initializeInjectedProviderDiscovery() {
+        if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+            return;
+        }
+
+        try {
+            window.addEventListener('eip6963:announceProvider', this._handleProviderAnnouncement);
+            window.dispatchEvent(new CustomEvent('eip6963:requestProvider'));
+        } catch (error) {
+            console.warn('⚠️ Failed to request EIP-6963 providers:', error);
+        }
+
+        // Fallback to window.ethereum if no providers announce themselves
+        setTimeout(() => {
+            if (!this.injectedProviders.size && typeof window.ethereum !== 'undefined') {
+                const candidates = Array.isArray(window.ethereum.providers) && window.ethereum.providers.length
+                    ? window.ethereum.providers
+                    : [window.ethereum];
+
+                candidates.forEach((candidate, index) => {
+                    if (!candidate) {
+                        return;
+                    }
+
+                    const rdns = candidate.isMetaMask ? 'io.metamask' :
+                        candidate.isCoinbaseWallet ? 'com.coinbase.wallet' :
+                        candidate.isBraveWallet ? 'com.brave.wallet' :
+                        'injected';
+
+                    const infoOverride = {
+                        uuid: `fallback-${rdns}-${index}`,
+                        name: candidate.isMetaMask ? 'MetaMask' : (candidate.name || `Injected Wallet ${index + 1}`),
+                        icon: candidate.isMetaMask ? 'https://metamask.io/images/favicon-32x32.png' : '',
+                        rdns
+                    };
+
+                    this.registerFallbackInjectedProvider(candidate, infoOverride);
+                });
+            }
+
+            window.detectedInjectedProviders = this.getInjectedProviders();
+            window.isMetaMaskAvailable = this.isInjectedProviderAvailable('io.metamask');
+        }, 0);
+    }
+
+    handleInjectedProviderAnnouncement(event) {
+        const detail = event?.detail;
+        if (!detail || !detail.provider || !detail.info?.uuid) {
+            return;
+        }
+
+        const providerDetail = {
+            info: detail.info,
+            provider: detail.provider
+        };
+
+        this.injectedProviders.set(detail.info.uuid, providerDetail);
+
+        if (!this.activeInjectedProvider || detail.info.rdns === 'io.metamask') {
+            this.activeInjectedProvider = providerDetail;
+        }
+
+        window.detectedInjectedProviders = this.getInjectedProviders();
+
+        if (detail.info.rdns === 'io.metamask') {
+            window.isMetaMaskAvailable = true;
+        }
+
+        // Ensure wallet event listeners are attached to the preferred provider
+        this.setupEventListeners(providerDetail);
+    }
+
+    registerFallbackInjectedProvider(provider, infoOverride) {
+        if (!provider) {
+            return;
+        }
+
+        const inferredRdns = provider.isMetaMask ? 'io.metamask' :
+            provider.isCoinbaseWallet ? 'com.coinbase.wallet' :
+            provider.isBraveWallet ? 'com.brave.wallet' :
+            'injected';
+
+        const info = infoOverride || {
+            uuid: `fallback-${inferredRdns}`,
+            name: provider.isMetaMask ? 'MetaMask' : (provider.name || 'Injected Wallet'),
+            icon: provider.isMetaMask ? 'https://metamask.io/images/favicon-32x32.png' : '',
+            rdns: inferredRdns
+        };
+
+        const providerDetail = { info, provider };
+        this.injectedProviders.set(info.uuid, providerDetail);
+
+        if (!this.activeInjectedProvider || inferredRdns === 'io.metamask') {
+            this.activeInjectedProvider = providerDetail;
+        }
+    }
+
+    getInjectedProviders() {
+        return Array.from(this.injectedProviders.values());
+    }
+
+    getInjectedProviderByUuid(uuid) {
+        if (!uuid) {
+            return null;
+        }
+
+        return this.injectedProviders.get(uuid) || null;
+    }
+
+    hasInjectedProviders() {
+        return this.injectedProviders.size > 0;
+    }
+
+    isInjectedProviderAvailable(rdns = null) {
+        if (!this.hasInjectedProviders()) {
+            return false;
+        }
+
+        if (!rdns) {
+            return true;
+        }
+
+        return this.getInjectedProviders().some((detail) => detail.info?.rdns === rdns);
+    }
+
+    getPreferredInjectedProvider(preferredRdns = 'io.metamask') {
+        if (!this.hasInjectedProviders()) {
+            return null;
+        }
+
+        const providers = this.getInjectedProviders();
+        const exactMatch = providers.find((detail) => detail.info?.rdns === preferredRdns);
+        if (exactMatch) {
+            return exactMatch;
+        }
+
+        return providers[0];
+    }
+
+    getActiveInjectedProvider() {
+        return this.activeInjectedProvider || this.getPreferredInjectedProvider();
+    }
+
+    setActiveInjectedProvider(providerDetail) {
+        if (providerDetail && providerDetail.provider) {
+            this.activeInjectedProvider = providerDetail;
+        }
+    }
+
+    resolveWalletType(providerDetail, provider) {
+        const rdns = providerDetail?.info?.rdns || providerDetail?.rdns;
+        if (rdns === 'io.metamask') return 'metamask';
+        if (rdns === 'com.coinbase.wallet') return 'coinbase';
+        if (rdns === 'com.brave.wallet') return 'brave';
+
+        if (provider?.isMetaMask) return 'metamask';
+        if (provider?.isCoinbaseWallet) return 'coinbase';
+        if (provider?.isBraveWallet) return 'brave';
+
+        return 'injected';
+    }
+
+    getProviderName(providerDetail, provider) {
+        if (providerDetail?.info?.name) {
+            return providerDetail.info.name;
+        }
+
+        if (provider?.isMetaMask) return 'MetaMask';
+        if (provider?.isCoinbaseWallet) return 'Coinbase Wallet';
+        if (provider?.isBraveWallet) return 'Brave Wallet';
+
+        return 'Injected Wallet';
+    }
+
     /**
-     * Rate-limited MetaMask request wrapper to prevent circuit breaker errors
+     * Rate-limited request wrapper to prevent circuit breaker errors
      */
-    async safeMetaMaskRequest(method, params = [], retryCount = 0) {
+    async safeProviderRequest(provider, method, params = [], retryCount = 0) {
         const maxRetries = 3;
         const baseDelay = 1000; // 1 second base delay
 
@@ -40,27 +222,31 @@ class WalletManager {
         const minDelay = this.requestCooldown * (retryCount + 1);
         if (now - this.lastRequestTime < minDelay) {
             const waitTime = minDelay - (now - this.lastRequestTime);
-            console.log(`Rate limiting MetaMask request: waiting ${waitTime}ms (attempt ${retryCount + 1})`);
+            console.log(`Rate limiting wallet provider request: waiting ${waitTime}ms (attempt ${retryCount + 1})`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
         this.lastRequestTime = Date.now();
 
         try {
-            console.log(`Making MetaMask request: ${method} (attempt ${retryCount + 1})`);
-            return await window.ethereum.request({ method, params });
+            if (!provider || typeof provider.request !== 'function') {
+                throw new Error('No injected wallet provider available');
+            }
+
+            console.log(`Making provider request: ${method} (attempt ${retryCount + 1})`);
+            return await provider.request({ method, params });
         } catch (error) {
-            console.error(`MetaMask request failed (attempt ${retryCount + 1}):`, error);
+            console.error(`Provider request failed (attempt ${retryCount + 1}):`, error);
 
             // Handle circuit breaker errors specifically
             if (error.code === -32603 && error.message.includes('circuit breaker')) {
                 if (retryCount < maxRetries) {
                     const backoffDelay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-                    console.warn(`MetaMask circuit breaker triggered, retrying in ${backoffDelay}ms...`);
+                    console.warn(`Wallet provider circuit breaker triggered, retrying in ${backoffDelay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, backoffDelay));
-                    return this.safeMetaMaskRequest(method, params, retryCount + 1);
+                    return this.safeProviderRequest(provider, method, params, retryCount + 1);
                 } else {
-                    throw new Error('MetaMask is temporarily overloaded. Please wait a few minutes and refresh the page.');
+                    throw new Error('Wallet provider is temporarily overloaded. Please wait a few minutes and refresh the page.');
                 }
             }
 
@@ -101,7 +287,7 @@ class WalletManager {
         try {
             this.log(`Connecting wallet (preferred: ${preferredType})...`);
 
-            if (preferredType === 'metamask' || (preferredType === 'auto' && window.ethereum)) {
+            if (preferredType === 'metamask' || (preferredType === 'auto' && this.isInjectedProviderAvailable())) {
                 return await this.connectMetaMask();
             } else if (preferredType === 'walletconnect' || preferredType === 'auto') {
                 return await this.connectWalletConnect();
@@ -117,11 +303,19 @@ class WalletManager {
     /**
      * CRITICAL FIX: Connect to MetaMask wallet with circuit breaker protection
      */
-    async connectMetaMask() {
+    async connectMetaMask(preferredUuid = null) {
         // Return existing connection promise if one is in progress
         if (this.connectionPromise) {
             console.log('Connection already in progress, returning existing promise...');
             return this.connectionPromise;
+        }
+
+        if (preferredUuid) {
+            const preferredProviderDetail = this.getInjectedProviderByUuid(preferredUuid);
+            if (preferredProviderDetail) {
+                this.pendingPreferredProvider = preferredProviderDetail;
+                this.setActiveInjectedProvider(preferredProviderDetail);
+            }
         }
 
         // Create new connection promise
@@ -133,6 +327,7 @@ class WalletManager {
         } finally {
             // Clear the connection promise when done (success or failure)
             this.connectionPromise = null;
+            this.pendingPreferredProvider = null;
         }
     }
 
@@ -153,9 +348,13 @@ class WalletManager {
             }
         }
 
+        const preferredProviderDetail = this.pendingPreferredProvider || this.getPreferredInjectedProvider();
+        const injectedProvider = preferredProviderDetail?.provider;
+        const providerName = this.getProviderName(preferredProviderDetail, injectedProvider);
+
         // Check if already connected
         if (this.isConnected()) {
-            console.log('MetaMask already connected:', this.address);
+            console.log(`${providerName} already connected:`, this.address);
             return {
                 success: true,
                 address: this.address,
@@ -164,11 +363,13 @@ class WalletManager {
             };
         }
 
-        // Check MetaMask availability
-        if (!window.ethereum) {
+        // Check injected provider availability
+        if (!injectedProvider) {
             this.connectionAttempts++;
-            throw new Error('MetaMask not installed. Please install MetaMask browser extension.');
+            throw new Error('No injected wallet provider detected. Please install MetaMask or another compatible wallet.');
         }
+
+        this.setActiveInjectedProvider(preferredProviderDetail);
 
         // Set connection state with timeout protection
         this.isConnecting = true;
@@ -176,13 +377,13 @@ class WalletManager {
 
         const connectionTimeout = setTimeout(() => {
             if (this.isConnecting) {
-                console.error('MetaMask connection timeout');
+                console.error('Injected wallet connection timeout');
                 this.isConnecting = false;
             }
         }, 30000); // 30 second timeout (reduced from 60)
 
         try {
-            this.log('Connecting to MetaMask...');
+            this.log(`Connecting to ${providerName}...`);
 
             // Check if ethers is available
             if (typeof window.ethers === 'undefined') {
@@ -190,17 +391,17 @@ class WalletManager {
             }
 
             // Request account access with rate limiting
-            const accounts = await this.safeMetaMaskRequest('eth_requestAccounts');
+            const accounts = await this.safeProviderRequest(injectedProvider, 'eth_requestAccounts');
 
             if (!accounts || accounts.length === 0) {
-                throw new Error('No accounts found. Please unlock MetaMask.');
+                throw new Error('No accounts found. Please unlock your wallet.');
             }
 
             // Create provider and signer
-            this.provider = new ethers.providers.Web3Provider(window.ethereum);
+            this.provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
             this.signer = this.provider.getSigner();
             this.address = accounts[0];
-            this.walletType = 'metamask';
+            this.walletType = this.resolveWalletType(preferredProviderDetail, injectedProvider);
 
             // Get network information
             const network = await this.provider.getNetwork();
@@ -219,13 +420,13 @@ class WalletManager {
             // Show success notification if NotificationManager is available
             if (window.notificationManager && typeof window.notificationManager.success === 'function') {
                 window.notificationManager.success(
-                    'Wallet Connected Successfully!',
+                    `${providerName} Connected Successfully!`,
                     `Address: ${this.address.slice(0, 6)}...${this.address.slice(-4)}`,
                     { duration: 3000 }
                 );
             }
 
-            this.log('MetaMask connected successfully:', this.address);
+            this.log(`${providerName} connected successfully:`, this.address);
 
             // Reset connection attempts on success
             this.connectionAttempts = 0;
@@ -238,14 +439,14 @@ class WalletManager {
             };
 
         } catch (error) {
-            this.logError('MetaMask connection failed:', error);
+            this.logError(`${providerName} connection failed:`, error);
 
             // Show user-friendly error message
             if (window.notificationManager) {
                 if (error.code === 4001) {
                     window.notificationManager.warning('You cancelled the connection request');
                 } else if (error.code === -32002) {
-                    window.notificationManager.warning('MetaMask is already processing a request. Please wait.');
+                    window.notificationManager.warning('Wallet provider is already processing a request. Please wait.');
                 } else {
                     window.notificationManager.error(error.message || 'An error occurred while connecting');
                 }
@@ -410,6 +611,8 @@ class WalletManager {
             // Notify listeners
             this.notifyListeners('disconnected', {});
 
+            this.cleanupProviderEventListeners();
+
             this.log('Wallet disconnected successfully');
 
         } catch (error) {
@@ -498,37 +701,43 @@ class WalletManager {
             if (!connectionInfo) return false;
 
             const { walletType, address } = JSON.parse(connectionInfo);
-            
-            if (walletType === 'metamask' && window.ethereum) {
-                // Check if MetaMask is still connected (use eth_accounts to avoid popup)
-                try {
-                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts && accounts.length > 0 && accounts[0].toLowerCase() === address.toLowerCase()) {
-                        console.log('✅ Previous MetaMask connection found, restoring...');
-                        
-                        // Restore connection without triggering new request
-                        this.provider = new ethers.providers.Web3Provider(window.ethereum);
-                        this.signer = this.provider.getSigner();
-                        this.address = accounts[0];
-                        this.walletType = 'metamask';
-                        
-                        // Get network information
-                        const network = await this.provider.getNetwork();
-                        this.chainId = network.chainId;
-                        
-                        // Notify listeners about restored connection
-                        this.notifyListeners('connected', {
-                            address: this.address,
-                            chainId: this.chainId,
-                            walletType: this.walletType,
-                            restored: true
-                        });
-                        
-                        console.log('✅ MetaMask connection restored successfully:', this.address);
-                    return true;
+
+            if (walletType !== 'walletconnect') {
+                const preferredRdns = walletType === 'metamask' ? 'io.metamask' : undefined;
+                const providerDetail = preferredRdns
+                    ? this.getPreferredInjectedProvider(preferredRdns)
+                    : this.getPreferredInjectedProvider();
+                const injectedProvider = providerDetail?.provider;
+
+                if (injectedProvider) {
+                    try {
+                        const accounts = await injectedProvider.request({ method: 'eth_accounts' });
+                        if (accounts && accounts.length > 0 && accounts[0].toLowerCase() === address.toLowerCase()) {
+                            const providerName = this.getProviderName(providerDetail, injectedProvider);
+                            console.log(`✅ Previous ${providerName} connection found, restoring...`);
+
+                            this.provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
+                            this.signer = this.provider.getSigner();
+                            this.address = accounts[0];
+                            this.walletType = this.resolveWalletType(providerDetail, injectedProvider);
+                            this.setActiveInjectedProvider(providerDetail);
+
+                            const network = await this.provider.getNetwork();
+                            this.chainId = network.chainId;
+
+                            this.notifyListeners('connected', {
+                                address: this.address,
+                                chainId: this.chainId,
+                                walletType: this.walletType,
+                                restored: true
+                            });
+
+                            console.log(`✅ ${providerName} connection restored successfully:`, this.address);
+                            return true;
+                        }
+                    } catch (error) {
+                        console.warn('Could not check previous connection:', error);
                     }
-                } catch (error) {
-                    console.warn('Could not check previous connection:', error);
                 }
             }
 
@@ -584,27 +793,48 @@ class WalletManager {
         }
     }
 
+    cleanupProviderEventListeners() {
+        this.eventListeners.forEach(({ target, event, handler }) => {
+            if (!target) {
+                return;
+            }
+
+            if (typeof target.removeListener === 'function') {
+                target.removeListener(event, handler);
+            } else if (typeof target.removeEventListener === 'function') {
+                target.removeEventListener(event, handler);
+            }
+        });
+
+        this.eventListeners = [];
+    }
+
     /**
      * Set up event listeners for wallet changes
      */
-    setupEventListeners() {
-        if (window.ethereum) {
-            // MetaMask event listeners
-            const accountsChangedHandler = (accounts) => this.handleAccountsChanged(accounts);
-            const chainChangedHandler = (chainId) => this.handleChainChanged(chainId);
-            const disconnectHandler = () => this.handleDisconnect();
+    setupEventListeners(providerDetail = null) {
+        const detail = providerDetail || this.getActiveInjectedProvider();
+        const provider = detail?.provider;
 
-            window.ethereum.on('accountsChanged', accountsChangedHandler);
-            window.ethereum.on('chainChanged', chainChangedHandler);
-            window.ethereum.on('disconnect', disconnectHandler);
-
-            // Store references for cleanup
-            this.eventListeners.push(
-                { target: window.ethereum, event: 'accountsChanged', handler: accountsChangedHandler },
-                { target: window.ethereum, event: 'chainChanged', handler: chainChangedHandler },
-                { target: window.ethereum, event: 'disconnect', handler: disconnectHandler }
-            );
+        if (!provider || typeof provider.on !== 'function') {
+            return;
         }
+
+        this.cleanupProviderEventListeners();
+
+        const accountsChangedHandler = (accounts) => this.handleAccountsChanged(accounts);
+        const chainChangedHandler = (chainId) => this.handleChainChanged(chainId);
+        const disconnectHandler = () => this.handleDisconnect();
+
+        provider.on('accountsChanged', accountsChangedHandler);
+        provider.on('chainChanged', chainChangedHandler);
+        provider.on('disconnect', disconnectHandler);
+
+        this.eventListeners.push(
+            { target: provider, event: 'accountsChanged', handler: accountsChangedHandler },
+            { target: provider, event: 'chainChanged', handler: chainChangedHandler },
+            { target: provider, event: 'disconnect', handler: disconnectHandler }
+        );
     }
 
     /**
@@ -630,18 +860,21 @@ class WalletManager {
             this.address = accounts[0];
             
             // Re-initialize provider/signer if reconnecting after disconnect
-            if (wasDisconnected && window.ethereum) {
+            if (wasDisconnected) {
                 this.log('Re-initializing provider and signer after reconnection');
                 try {
-                    this.provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const providerDetail = this.getActiveInjectedProvider();
+                    const injectedProvider = providerDetail?.provider;
+
+                    if (!injectedProvider) {
+                        throw new Error('No injected provider available during reconnection');
+                    }
+
+                    this.provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
                     this.signer = this.provider.getSigner();
                     this.chainId = (await this.provider.getNetwork()).chainId;
-                    
-                    // Detect wallet type: prioritize specific wallet flags, fallback to metamask/injected
-                    this.walletType = window.ethereum.isTrust ? 'trust' : 
-                                     window.ethereum.isCoinbaseWallet ? 'coinbase' :
-                                     window.ethereum.isBraveWallet ? 'brave' :
-                                     window.ethereum.isMetaMask ? 'metamask' : 'injected';
+                    this.walletType = this.resolveWalletType(providerDetail, injectedProvider);
+                    this.setActiveInjectedProvider(providerDetail);
                 } catch (error) {
                     this.logError('Failed to re-initialize provider/signer:', error);
                 }
@@ -736,10 +969,10 @@ class WalletManager {
      * Cleanup event listeners
      */
     cleanup() {
-        this.eventListeners.forEach(({ target, event, handler }) => {
-            target.removeListener(event, handler);
-        });
-        this.eventListeners = [];
+        this.cleanupProviderEventListeners();
+        if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+            window.removeEventListener('eip6963:announceProvider', this._handleProviderAnnouncement);
+        }
         this.listeners.clear();
     }
 

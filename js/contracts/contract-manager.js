@@ -3055,43 +3055,51 @@ class ContractManager {
      */
     async ensureSigner() {
         try {
-            // First ensure MetaMask is connected
-            if (typeof window.ethereum === 'undefined') {
-                throw new Error('MetaMask not installed');
+            const walletManager = window.walletManager;
+            if (!walletManager) {
+                throw new Error('Wallet manager not available');
             }
 
-            // Check if accounts are connected
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length === 0) {
-                console.log('🔐 No connected accounts, requesting MetaMask connection...');
-                try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                } catch (connectionError) {
-                    if (connectionError.code === 4001) {
-                        throw new Error('User rejected MetaMask connection');
-                    }
-                    throw new Error('Failed to connect to MetaMask: ' + connectionError.message);
+            if (!walletManager.isConnected?.()) {
+                console.log('🔐 Wallet not connected, attempting connection via wallet manager...');
+                await walletManager.connectMetaMask();
+            }
+
+            let web3Provider = walletManager.getProvider?.();
+            let signer = walletManager.getSigner?.();
+
+            if (!web3Provider || !signer) {
+                const providerDetail = walletManager.getActiveInjectedProvider?.() || walletManager.getPreferredInjectedProvider?.();
+                const injectedProvider = providerDetail?.provider;
+
+                if (!injectedProvider || typeof window.ethers === 'undefined') {
+                    throw new Error('No injected wallet provider available for signer initialization');
                 }
+
+                console.log('🔧 Creating Web3Provider for injected wallet transactions...');
+                web3Provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
+                signer = web3Provider.getSigner();
+
+                if (!walletManager.getProvider?.()) {
+                    walletManager.provider = web3Provider;
+                }
+                if (!walletManager.getSigner?.()) {
+                    walletManager.signer = signer;
+                }
+                walletManager.setActiveInjectedProvider?.(providerDetail);
             }
 
-            // Always create a fresh Web3Provider for transactions (CRITICAL FIX)
-            console.log('🔧 Creating Web3Provider for MetaMask transactions...');
+            this.signer = signer;
+            this.transactionProvider = web3Provider;
 
-            // Create Web3Provider directly from MetaMask
-            const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-
-            // Ensure we're on the correct network (using centralized config)
             const network = await web3Provider.getNetwork();
             const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
-            
-            // Check permissions for the selected network regardless of current network
             const selectedNetwork = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
             const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
-            
+
             if (selectedNetwork === expectedChainId) {
                 console.log(`🌐 ${networkName} selected in UI, checking permissions...`);
-                
-                // Check if we have permission for the selected network
+
                 const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
                 if (!hasPermission) {
                     console.log(`🔐 Requesting ${networkName} permission...`);
@@ -3100,40 +3108,37 @@ class ContractManager {
                         if (!permissionGranted) {
                             throw new Error(`${networkName} permission required for transactions`);
                         }
-                    } catch (error) {
-                        // Handle network switching errors gracefully
-                        if (error.message.includes('User rejected') || error.message.includes('denied')) {
+                    } catch (permissionError) {
+                        if (permissionError.message.includes('User rejected') || permissionError.message.includes('denied')) {
                             throw new Error(`User rejected ${networkName} permission request`);
                         }
-                        throw new Error(`${networkName} permission required for transactions: ${error.message}`);
+                        throw new Error(`${networkName} permission required for transactions: ${permissionError.message}`);
                     }
                 }
             } else if (network.chainId !== expectedChainId) {
-                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in MetaMask`);
+                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in your wallet`);
             }
 
-            // Get signer from Web3Provider
-            this.signer = web3Provider.getSigner();
-            // Keep the original provider for read operations, but use Web3Provider for transactions
-            this.transactionProvider = web3Provider;
+            console.log('✅ Web3Provider and signer ready for transactions');
 
-            console.log('✅ Web3Provider and signer created for transactions');
-
-            // Verify signer is connected
             try {
                 const address = await this.signer.getAddress();
                 console.log('✅ Signer verified, address:', address);
-            } catch (error) {
-                console.error('❌ Signer verification failed:', error);
+            } catch (verificationError) {
+                console.error('❌ Signer verification failed:', verificationError);
 
-                // If verification fails, try to recreate signer
-                if (window.ethereum) {
-                    console.log('🔧 Recreating signer...');
-                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+                const providerDetail = walletManager.getActiveInjectedProvider?.() || walletManager.getPreferredInjectedProvider?.();
+                const injectedProvider = providerDetail?.provider;
+
+                if (injectedProvider && typeof window.ethers !== 'undefined') {
+                    console.log('🔧 Recreating signer from injected provider...');
+                    const provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
                     this.signer = provider.getSigner();
-                    this.provider = provider;
+                    this.transactionProvider = provider;
+                    walletManager.provider = provider;
+                    walletManager.signer = this.signer;
+                    walletManager.setActiveInjectedProvider?.(providerDetail);
 
-                    // Try verification again
                     const address = await this.signer.getAddress();
                     console.log('✅ Signer recreated and verified, address:', address);
                 } else {
@@ -3144,9 +3149,8 @@ class ContractManager {
         } catch (error) {
             console.error('❌ ensureSigner failed:', error);
 
-            // If it's a user rejection, throw specific error
             if (error.code === 4001) {
-                throw new Error('User rejected MetaMask connection');
+                throw new Error('User rejected wallet connection');
             }
 
             throw new Error('Signer not properly connected: ' + error.message);
@@ -5060,12 +5064,25 @@ class ContractManager {
             // Update provider and signer
             this.provider = fallbackProvider;
 
-            // Get signer if wallet is connected
-            if (window.ethereum) {
+            const walletManager = window.walletManager;
+            if (walletManager?.isConnected?.()) {
                 try {
-                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-                    this.signer = provider.getSigner();
-                    this.log('✅ Signer obtained from MetaMask during provider switch');
+                    const existingSigner = walletManager.getSigner?.();
+                    if (existingSigner) {
+                        this.signer = existingSigner;
+                        this.log('✅ Signer obtained from wallet manager during provider switch');
+                    } else {
+                        const providerDetail = walletManager.getActiveInjectedProvider?.() || walletManager.getPreferredInjectedProvider?.();
+                        const injectedProvider = providerDetail?.provider;
+                        if (injectedProvider && typeof window.ethers !== 'undefined') {
+                            const provider = new ethers.providers.Web3Provider(injectedProvider, 'any');
+                            this.signer = provider.getSigner();
+                            walletManager.provider = provider;
+                            walletManager.signer = this.signer;
+                            walletManager.setActiveInjectedProvider?.(providerDetail);
+                            this.log('✅ Signer recreated from injected provider during provider switch');
+                        }
+                    }
                 } catch (error) {
                     this.log('⚠️ Could not get signer during provider switch:', error.message);
                 }
@@ -5353,14 +5370,14 @@ class ContractManager {
      */
     async getCurrentSigner() {
         try {
-            // First check if MetaMask is available and has connected accounts
-            if (typeof window.ethereum === 'undefined') {
-                console.log('[ContractManager] MetaMask not available');
+            const walletManager = window.walletManager;
+            if (!walletManager || !walletManager.isConnected?.()) {
+                console.log('[ContractManager] Wallet not connected');
                 return null;
             }
 
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length === 0) {
+            const connectedAddress = walletManager.getAddress?.();
+            if (!connectedAddress) {
                 console.log('[ContractManager] No connected accounts');
                 return null;
             }
@@ -5399,6 +5416,23 @@ class ContractManager {
      */
     async getCurrentSignerForPermissions() {
         try {
+            const walletManager = window.walletManager;
+            if (walletManager) {
+                const cachedAddress = walletManager.getAddress?.();
+                if (cachedAddress) {
+                    return cachedAddress;
+                }
+
+                const providerDetail = walletManager.getActiveInjectedProvider?.() || walletManager.getPreferredInjectedProvider?.();
+                const injectedProvider = providerDetail?.provider;
+                if (injectedProvider?.request) {
+                    const accounts = await injectedProvider.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        return accounts[0];
+                    }
+                }
+            }
+
             if (typeof window.ethereum === 'undefined') return null;
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             return accounts.length > 0 ? accounts[0] : null;

@@ -6,6 +6,7 @@ class MasterInitializer {
         this.components = new Map();
         this.initializationPromise = null;
         this.isReady = false;
+        this.walletProviderSelector = null;
 
         // Detect which page we're on to conditionally load components
         this.isAdminPage = window.location.pathname.includes('admin');
@@ -86,6 +87,7 @@ class MasterInitializer {
             'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
             'js/utils/formatter.js',            // Formatter utilities (needed before UI components)
             'js/components/network-indicator-selector.js',
+            'js/components/wallet-provider-selector.js',
             'js/core/error-handler.js',        // Error handling system
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/notification-manager-new.js'
@@ -287,16 +289,25 @@ class MasterInitializer {
             // Initialize ContractManager: wallet mode if already connected, else read-only
             try {
                 const isWalletConnected = !!(window.walletManager && typeof window.walletManager.isConnected === 'function' && window.walletManager.isConnected());
-                if (isWalletConnected && typeof window.ethereum !== 'undefined' && window.ethers) {
-                    console.log('🔄 Wallet detected as connected on load - initializing in wallet mode...');
-                    const provider = new window.ethers.providers.Web3Provider(window.ethereum);
-                    const signer = provider.getSigner();
-                    await window.contractManager.upgradeToWalletMode(provider, signer);
-                    // Notify listeners that ContractManager is ready
-                    document.dispatchEvent(new CustomEvent('contractManagerReady', {
-                        detail: { contractManager: window.contractManager }
-                    }));
-                    console.log('✅ ContractManager initialized in wallet mode');
+                if (isWalletConnected && window.ethers) {
+                    const walletProvider = window.walletManager?.getProvider?.();
+                    const walletSigner = window.walletManager?.getSigner?.();
+
+                    if (walletProvider && walletSigner) {
+                        console.log('🔄 Wallet detected as connected on load - initializing in wallet mode...');
+                        await window.contractManager.upgradeToWalletMode(walletProvider, walletSigner);
+                        document.dispatchEvent(new CustomEvent('contractManagerReady', {
+                            detail: { contractManager: window.contractManager }
+                        }));
+                        console.log('✅ ContractManager initialized in wallet mode');
+                    } else {
+                        console.warn('⚠️ Wallet reported as connected but no provider/signer available - falling back to read-only mode');
+                        await window.contractManager.initializeReadOnly();
+                        document.dispatchEvent(new CustomEvent('contractManagerReady', {
+                            detail: { contractManager: window.contractManager }
+                        }));
+                        console.log('✅ ContractManager initialized with read-only provider');
+                    }
                 } else {
                     console.log('🔄 Initializing ContractManager with read-only provider...');
                     await window.contractManager.initializeReadOnly();
@@ -385,29 +396,72 @@ class MasterInitializer {
         this.setupWalletStatusMonitoring();
     }
 
+    getWalletProviderSelectorInstance() {
+        if (this.walletProviderSelector) {
+            return this.walletProviderSelector;
+        }
+
+        if (window.walletProviderSelector) {
+            this.walletProviderSelector = window.walletProviderSelector;
+            return this.walletProviderSelector;
+        }
+
+        if (window.WalletProviderSelector) {
+            this.walletProviderSelector = new window.WalletProviderSelector();
+            window.walletProviderSelector = this.walletProviderSelector;
+            return this.walletProviderSelector;
+        }
+
+        return null;
+    }
+
+    async promptWalletProviderSelection(providers, contextTitle) {
+        if (!Array.isArray(providers) || providers.length === 0) {
+            return null;
+        }
+
+        if (providers.length === 1) {
+            return providers[0];
+        }
+
+        const selector = this.getWalletProviderSelectorInstance();
+        if (selector && typeof selector.open === 'function') {
+            try {
+                return await selector.open({ providers, contextTitle });
+            } catch (error) {
+                console.warn('Wallet selection cancelled or failed:', error);
+                return null;
+            }
+        }
+
+        return providers[0];
+    }
+
     setupWalletIntegration() {
-        // Ensure MetaMask detection works
-        if (typeof window.ethereum !== 'undefined') {
-            console.log('✅ MetaMask detected');
+        const providerDetail = window.walletManager?.getActiveInjectedProvider?.() ||
+            window.walletManager?.getPreferredInjectedProvider?.();
+        const injectedProvider = providerDetail?.provider;
 
-            // Add wallet detection to global scope for tests
-            window.isMetaMaskAvailable = true;
+        if (injectedProvider) {
+            console.log('✅ Injected wallet detected', providerDetail?.info || {});
 
-            // Setup account change listeners
-            if (window.ethereum.on) {
-                window.ethereum.on('accountsChanged', (accounts) => {
+            window.isMetaMaskAvailable = window.walletManager?.isInjectedProviderAvailable?.('io.metamask') ?? !!injectedProvider.isMetaMask;
+
+            if (typeof injectedProvider.on === 'function') {
+                injectedProvider.on('accountsChanged', (accounts) => {
                     console.log('Accounts changed:', accounts);
-                    if (window.walletManager) {
-                        if (accounts.length === 0) {
-                            window.walletManager.disconnect?.();
-                        } else {
-                            window.walletManager.account = accounts[0];
-                            window.walletManager.updateUI?.();
-                        }
+                    if (!window.walletManager) {
+                        return;
+                    }
+
+                    if (accounts.length === 0) {
+                        window.walletManager.disconnect?.();
+                    } else {
+                        window.walletManager.updateUI?.();
                     }
                 });
 
-                window.ethereum.on('chainChanged', (chainId) => {
+                injectedProvider.on('chainChanged', (chainId) => {
                     console.log('Chain changed:', chainId);
                     if (window.notificationManager) {
                         window.notificationManager.info('Network Changed');
@@ -415,7 +469,7 @@ class MasterInitializer {
                 });
             }
         } else {
-            console.log('❌ MetaMask not detected');
+            console.log('❌ No injected wallet detected');
             window.isMetaMaskAvailable = false;
         }
 
@@ -458,14 +512,40 @@ class MasterInitializer {
                     return;
                 }
 
-                // Check if MetaMask is available
-                if (!window.ethereum) {
-                    console.error('MetaMask not available');
+                const allProviders = window.walletManager.getInjectedProviders ? window.walletManager.getInjectedProviders() : [];
+
+                const currentProviderDetail = window.walletManager.getActiveInjectedProvider?.() ||
+                    window.walletManager.getPreferredInjectedProvider?.();
+                const currentProvider = currentProviderDetail?.provider;
+
+                // Check if injected provider is available
+                if (!currentProvider && allProviders.length === 0) {
+                    console.error('No injected wallet provider available');
                     if (window.notificationManager) {
-                        window.notificationManager.error('Please install MetaMask browser extension to connect your wallet');
+                        window.notificationManager.error('Please install a compatible browser wallet to connect');
                     }
                     this.updateConnectButtonStatus();
                     return;
+                }
+
+                let selectedProviderDetail = currentProviderDetail;
+
+                if (allProviders.length > 1) {
+                    this.renderConnectButton(newConnectBtn, {
+                        text: 'Select a wallet...',
+                        isLoading: true,
+                        disabled: true
+                    });
+
+                    selectedProviderDetail = await this.promptWalletProviderSelection(allProviders, 'Select a wallet');
+
+                    if (!selectedProviderDetail) {
+                        console.log('Wallet selection cancelled');
+                        this.updateConnectButtonStatus();
+                        return;
+                    }
+                } else if (!selectedProviderDetail && allProviders.length === 1) {
+                    selectedProviderDetail = allProviders[0];
                 }
 
                 this.renderConnectButton(newConnectBtn, {
@@ -475,8 +555,9 @@ class MasterInitializer {
                 });
 
                 try {
-                    // Use safe MetaMask connection with circuit breaker protection
-                    await window.walletManager.connectMetaMask();
+                    // Use safe injected provider connection
+                    const selectedUuid = selectedProviderDetail?.info?.uuid;
+                    await window.walletManager.connectMetaMask(selectedUuid);
 
                 } catch (error) {
                     console.error('Failed to connect wallet:', error);
@@ -487,9 +568,9 @@ class MasterInitializer {
 
                         // Customize error messages for better UX
                         if (error.message.includes('circuit breaker')) {
-                            errorMessage = 'MetaMask is temporarily busy. Please wait a moment and try again.';
+                            errorMessage = 'Your wallet is temporarily busy. Please wait a moment and try again.';
                         } else if (error.message.includes('already processing')) {
-                            errorMessage = 'MetaMask is processing another request. Please wait and try again.';
+                            errorMessage = 'Your wallet is processing another request. Please wait and try again.';
                         } else if (error.message.includes('cancelled')) {
                             errorMessage = 'Connection was cancelled. Click connect to try again.';
                         }
@@ -620,11 +701,11 @@ class MasterInitializer {
                 window.errorHandler.handleError(event.error, { context: 'global_error' });
             }
 
-            // Handle specific MetaMask circuit breaker errors
+            // Handle specific wallet circuit breaker errors
             if (event.error && event.error.message && event.error.message.includes('circuit breaker')) {
                 if (window.notificationManager) {
                     window.notificationManager.error(
-                        'MetaMask is temporarily busy. Please wait a moment and try again.'
+                        'Your wallet is temporarily busy. Please wait a moment and try again.'
                     );
                 }
                 return true; // Prevent default error handling
@@ -645,12 +726,12 @@ class MasterInitializer {
                 window.errorHandler.handleError(event.reason, { context: 'unhandled_promise' });
             }
 
-            // Handle specific MetaMask circuit breaker errors
+            // Handle specific wallet circuit breaker errors
             if (event.reason && event.reason.message) {
                 if (event.reason.message.includes('circuit breaker')) {
                     if (window.notificationManager) {
                         window.notificationManager.error(
-                            'MetaMask is temporarily overloaded. Please wait a moment and try again.'
+                            'Your wallet is temporarily overloaded. Please wait a moment and try again.'
                         );
                     }
                     event.preventDefault(); // Prevent console spam
@@ -658,7 +739,7 @@ class MasterInitializer {
                 } else if (event.reason.message.includes('already processing')) {
                     if (window.notificationManager) {
                         window.notificationManager.warning(
-                            'MetaMask is processing another request. Please wait.'
+                            'Your wallet is processing another request. Please wait.'
                         );
                     }
                     event.preventDefault();

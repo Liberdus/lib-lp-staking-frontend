@@ -53,10 +53,11 @@ class NetworkManager {
      */
     async hasRequiredNetworkPermission() {
         try {
-            if (!window.ethereum) return false;
+            const provider = this.getInjectedProvider();
+            if (!provider) return false;
 
             // Check if wallet is connected to dApp
-            const permissions = await window.ethereum.request({
+            const permissions = await provider.request({
                 method: 'wallet_getPermissions'
             });
 
@@ -65,7 +66,7 @@ class NetworkManager {
             }
 
             // Check if wallet is on the correct network for the selected app network
-            const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+            const currentChainId = await provider.request({ method: 'eth_chainId' });
             const expectedChainIdHex = this.getChainIdHex();
             
             // If wallet is on wrong network, we need permission to switch
@@ -163,8 +164,9 @@ class NetworkManager {
     async requestNetworkSwitch(chainId) {
         const hexChainId = `0x${chainId.toString(16)}`;
         
-        if (window.ethereum) {
-            await window.ethereum.request({
+        const provider = this.getInjectedProvider();
+        if (provider) {
+            await provider.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: hexChainId }]
             });
@@ -177,7 +179,8 @@ class NetworkManager {
      * Add the configured network to wallet
      */
     async addNetwork() {
-        if (!window.ethereum) {
+        const provider = this.getInjectedProvider();
+        if (!provider) {
             throw new Error('MetaMask not installed');
         }
 
@@ -185,7 +188,7 @@ class NetworkManager {
         const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
         
         try {
-            await window.ethereum.request({
+            await provider.request({
                 method: 'wallet_addEthereumChain',
                 params: [networkConfig]
             });
@@ -463,7 +466,8 @@ class NetworkManager {
      * @returns {Promise<boolean>}
      */
     async _requestMetaMaskPermission() {
-        if (!window.ethereum) {
+        const provider = this.getInjectedProvider();
+        if (!provider) {
             throw new Error('MetaMask not installed');
         }
 
@@ -473,7 +477,7 @@ class NetworkManager {
 
             // First, ensure we have account permissions
             try {
-                await window.ethereum.request({
+                await provider.request({
                     method: 'wallet_requestPermissions',
                     params: [{ eth_accounts: {} }]
                 });
@@ -556,17 +560,34 @@ class NetworkManager {
         }
     }
 
+    getInjectedProvider() {
+        const manager = window.walletManager;
+        if (manager && typeof manager.getActiveInjectedProvider === 'function') {
+            const detail = manager.getActiveInjectedProvider();
+            if (detail?.provider) {
+                return detail.provider;
+            }
+        }
+
+        if (typeof window !== 'undefined' && window.ethereum) {
+            return window.ethereum;
+        }
+
+        return null;
+    }
+
     /**
      * Set up permission change listener to automatically update UI when permissions change
      * Centralized UI state management for network and permission changes
      */
     setupPermissionChangeListener() {
-        if (!window.ethereum) return;
+        const provider = this.getInjectedProvider();
+        if (!provider) return;
         
         console.log('🔍 Setting up permission change listener...');
         
         // Listen for account changes (permission removal)
-        window.ethereum.on('accountsChanged', async (accounts) => {
+        provider.on('accountsChanged', async (accounts) => {
             console.log('🔐 Account change detected:', accounts);
             
             if (!accounts || accounts.length === 0) {
@@ -580,13 +601,13 @@ class NetworkManager {
         });
         
         // Listen for network changes
-        window.ethereum.on('chainChanged', async (chainId) => {
+        provider.on('chainChanged', async (chainId) => {
             console.log('🌐 Network changed to:', chainId);
             await this.checkAndUpdatePermissionState();
         });
         
         // Listen for permission changes
-        window.ethereum.on('disconnect', () => {
+        provider.on('disconnect', () => {
             console.log('🔌 Wallet disconnected - switching to read-only mode');
             this.handleWalletDisconnected();
         });
@@ -643,7 +664,8 @@ class NetworkManager {
             
             // Check if we have permission for the selected network
             const hasPermission = await this.hasRequiredNetworkPermission();
-            const currentChainId = window.ethereum ? parseInt(await window.ethereum.request({ method: 'eth_chainId' }), 16) : null;
+            const provider = this.getInjectedProvider();
+            const currentChainId = provider ? parseInt(await provider.request({ method: 'eth_chainId' }), 16) : null;
             const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
             
             console.log('Permission state:', { hasPermission, currentChainId, expectedChainId });
