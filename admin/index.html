@@ -76,39 +76,6 @@
     <script src="../js/config/app-config.js"></script>
     <!-- <script src="../js/config/dev-config.js"></script> -->
 
-    <!-- Core Libraries with fallbacks -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" onerror="loadEthersFallback()"></script>
-    <script>
-        function loadEthersFallback() {
-            console.log('Primary ethers CDN failed, trying local fallback...');
-            const script = document.createElement('script');
-            script.src = '../libs/ethers.umd.min.js';
-            script.onerror = () => {
-                console.error('❌ All ethers sources failed');
-                document.getElementById('error-boundary').style.display = 'flex';
-                document.getElementById('error-boundary').innerHTML = `
-                    <div class="error-container">
-                        <h2>❌ Critical Error</h2>
-                        <p>Ethers.js library failed to load. Please refresh the page or check your internet connection.</p>
-                    </div>
-                `;
-            };
-            document.head.appendChild(script);
-        }
-
-        // Verify ethers loaded
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                if (typeof ethers === 'undefined') {
-                    console.error('❌ Ethers.js not loaded after page load');
-                    loadEthersFallback();
-                } else {
-                    console.log('✅ Ethers.js loaded successfully:', ethers.version);
-                }
-            }, 1000);
-        });
-    </script>
-
     <!-- Theme System (load early to prevent flash) -->
     <script src="../js/core/unified-theme-manager.js"></script>
 

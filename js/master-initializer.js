@@ -29,6 +29,7 @@ class MasterInitializer {
     async initializeSystem() {
         try {
             await this.loadConfiguration();
+            await this.loadEthersLibrary();
             await this.loadCoreUtilities();
             await this.loadWalletSystems();
             await this.loadUIComponents();
@@ -62,6 +63,22 @@ class MasterInitializer {
         }
 
         console.log('✅ Configuration loaded successfully');
+    }
+
+    async loadEthersLibrary() {
+        if (typeof window.ethers !== 'undefined') {
+            console.log('Ethers.js already available, skipping load');
+            return;
+        }
+
+        console.log('Loading Ethers.js library...');
+        await this.loadScript('libs/ethers.umd.min.js');
+
+        if (typeof window.ethers === 'undefined') {
+            throw new Error('Failed to load Ethers.js library');
+        }
+
+        console.log('Ethers.js loaded successfully:', window.ethers.version);
     }
 
     async loadCoreUtilities() {
@@ -738,7 +755,8 @@ class MasterInitializer {
         }
 
         // Adjust path if running from admin subdirectory
-        const adjustedSrc = this.isAdminPage && src.startsWith('js/') ? `../${src}` : src;
+        const needsAdminPrefix = this.isAdminPage && !src.startsWith('../') && (src.startsWith('js/') || src.startsWith('libs/'));
+        const adjustedSrc = needsAdminPrefix ? `../${src}` : src;
 
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
