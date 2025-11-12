@@ -539,6 +539,9 @@
     align-items: center;
     min-height: 100vh;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
 }
 
 .connect-card,
@@ -1406,17 +1409,6 @@ table td:last-child {
 
 .nav-btn.active:hover {
     background: #0056b3;
-}
-
-/* Connected Wallet Button */
-.connect-wallet-btn.connected {
-    background: #28a745;
-    color: #ffffff;
-    cursor: default;
-}
-
-.connect-wallet-btn.connected:hover {
-    background: #28a745;
 }
 
 /* Animations */

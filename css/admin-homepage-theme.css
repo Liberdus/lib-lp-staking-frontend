@@ -94,7 +94,6 @@ body {
 /* Base button styles */
 .btn-primary,
 .proposal-btn,
-.connect-wallet-btn,
 .btn-secondary,
 .btn-danger,
 .btn-error,
@@ -131,8 +130,7 @@ body {
 
 /* Hover states */
 .btn-primary:hover:not(:disabled),
-.proposal-btn:hover:not(:disabled),
-.connect-wallet-btn:hover:not(:disabled) {
+.proposal-btn:hover:not(:disabled) {
     background: var(--primary-dark) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3) !important;
@@ -674,18 +672,6 @@ textarea::placeholder {
 
 .proposal-row.expired {
     background: rgba(158, 158, 158, 0.05) !important;
-}
-
-/* ========================================
-   CONNECT WALLET STATES - HOMEPAGE STYLE
-   ======================================== */
-.connect-wallet-btn.connected {
-    background: var(--success-main) !important;
-    color: white !important;
-}
-
-.connect-wallet-btn.connected:hover {
-    background: var(--success-main) !important;
 }
 
 /* ========================================

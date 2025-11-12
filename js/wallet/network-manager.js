@@ -513,7 +513,7 @@ class NetworkManager {
 
             // Update UI based on context
             if (context === 'admin' && window.NetworkIndicator) {
-                window.NetworkIndicator.update('network-indicator', 'admin-network-selector', 'admin');
+                window.NetworkIndicator.update('network-indicator-home', 'admin-network-selector', 'admin');
             } else if (context === 'home' && window.NetworkIndicator) {
                 await window.NetworkIndicator.update('network-indicator-home', 'home-network-selector', 'home');
             }
@@ -722,7 +722,7 @@ class NetworkManager {
         
         // Update admin network indicator
         if (window.adminPage && window.NetworkIndicator) {
-            window.NetworkIndicator.update('network-indicator', 'admin-network-selector', 'admin');
+            window.NetworkIndicator.update('network-indicator-home', 'admin-network-selector', 'admin');
         }
         
         // ========================================
