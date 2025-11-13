@@ -424,11 +424,9 @@ class MasterInitializer {
         
         try {
             await window.networkManager.requestPermissionWithUIUpdate(this.getPageContext(), true);
-            await this.updateConnectButtonStatus();
             return true;
         } catch (error) {
             console.error('Failed to get network permission:', error);
-            await this.updateConnectButtonStatus();
             return false;
         }
     }
@@ -487,8 +485,9 @@ class MasterInitializer {
                     const hasPermission = await this.checkNetworkPermission();
                     
                     if (!hasPermission) {
-                        // Request permission and return
+                        // Request permission, then update button status
                         await this.requestNetworkPermission(newConnectBtn);
+                        await this.updateConnectButtonStatus();
                         return;
                     }
                     
@@ -534,6 +533,14 @@ class MasterInitializer {
                 try {
                     // Use safe MetaMask connection with circuit breaker protection
                     await window.walletManager.connectMetaMask();
+
+                    // After successful connection, check and request network permission if needed
+                    const hasPermission = await this.checkNetworkPermission();
+                    
+                    if (!hasPermission) {
+                        console.log('🔐 Wallet connected, now requesting network permission...');
+                        await this.requestNetworkPermission(newConnectBtn);
+                    }
 
                 } catch (error) {
                     console.error('Failed to connect wallet:', error);
