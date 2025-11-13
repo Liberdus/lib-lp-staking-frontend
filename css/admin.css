@@ -748,7 +748,7 @@
 
 .panel-header h2 {
     margin: 0;
-    color: #00d4ff;
+    color: var(--text-primary);
     font-size: 1.5rem;
     font-weight: 600;
 }
