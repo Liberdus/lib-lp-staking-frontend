@@ -48,8 +48,7 @@ body {
 .info-card .card-header h3,
 .info-card .card-header h5,
 .admin-grid-sidebar h3,
-.recent-activity h3,
-.proposal-title {
+.recent-activity h3 {
     color: var(--text-primary) !important;
 }
 
