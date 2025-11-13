@@ -571,9 +571,6 @@ class AdminPage {
      */
     setupThemeToggle() {
         if (window.unifiedThemeManager) {
-            window.unifiedThemeManager.setupToggleButton('theme-toggle');
-
-            // Force apply theme to all admin elements immediately
             this.applyThemeToAllElements();
 
             // Listen for theme changes and reapply

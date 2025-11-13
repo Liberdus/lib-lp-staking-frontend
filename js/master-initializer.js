@@ -181,6 +181,9 @@ class MasterInitializer {
                 window.unifiedThemeManager.initialize();
                 this.components.set('unifiedThemeManager', window.unifiedThemeManager);
                 console.log('✅ Unified Theme Manager initialized');
+                
+                // Setup theme toggle button in header
+                window.unifiedThemeManager.setupToggleButton('theme-toggle');
             } catch (error) {
                 console.error('❌ Failed to initialize UnifiedThemeManager:', error);
             }
