@@ -1577,6 +1577,18 @@ class AdminPage {
                             </div>
                             <h6 class="info-value" data-info="total-weight">Loading...</h6>
                         </div>
+                        <div class="info-item">
+                            <div class="info-label-wrapper">
+                                <h6>Staking Contract</h6>
+                            </div>
+                            <h6 class="info-value" data-info="staking-address">Loading...</h6>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label-wrapper">
+                                <h6>Reward Token Contract</h6>
+                            </div>
+                            <h6 class="info-value" data-info="reward-token-address">Loading...</h6>
+                        </div>
                     </div>
 
                     <hr class="contract-info-separator">
@@ -5292,13 +5304,21 @@ class AdminPage {
             }
             this.contractStats.rewardTokenSymbol = rewardTokenSymbol;
 
+            const stakingAddress = contractManager.stakingContract?.address || null;
+            contractInfo.stakingAddress = stakingAddress;
+            this.contractStats.stakingContractAddress = stakingAddress;
+
+            const rewardTokenAddress = contractManager.rewardTokenContract?.address || null;
+            contractInfo.rewardTokenAddress = rewardTokenAddress;
+            this.contractStats.rewardTokenAddress = rewardTokenAddress;
+
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
-                    const stakingAddress = contractManager.stakingContract?.address;
-                    if (!stakingAddress) {
+                    const stakingContractAddress = contractManager.stakingContract?.address;
+                    if (!stakingContractAddress) {
                         throw new Error('Staking contract address not available');
                     }
-                    const balance = await contractManager.rewardTokenContract.balanceOf(stakingAddress);
+                    const balance = await contractManager.rewardTokenContract.balanceOf(stakingContractAddress);
                     const balanceValue = Number(ethers.utils.formatEther(balance));
                     return `${balanceValue.toFixed(2)} ${rewardTokenSymbol}`;
                 },
@@ -5355,12 +5375,16 @@ class AdminPage {
                 rewardBalance: 'Error',
                 hourlyRate: 'Error',
                 totalWeight: 'Error',
+                stakingAddress: 'Error',
+                rewardTokenAddress: 'Error',
                 pairs: [],
                 signers: []
             };
             this.contractStats = this.contractStats || {};
             this.contractStats.rewardTokenSymbol = this.contractStats.rewardTokenSymbol || 'USDC';
             this.contractStats.rewardBalance = errorInfo.rewardBalance;
+            this.contractStats.stakingContractAddress = this.contractStats.stakingContractAddress || null;
+            this.contractStats.rewardTokenAddress = this.contractStats.rewardTokenAddress || null;
             this.displayContractInfo(errorInfo);
             return { success: false, error };
         }
@@ -5386,6 +5410,16 @@ class AdminPage {
         const totalWeightEl = document.querySelector('[data-info="total-weight"]');
         if (totalWeightEl) {
             totalWeightEl.innerHTML = info.totalWeight ?? 'N/A';
+        }
+
+        const stakingAddressEl = document.querySelector('[data-info="staking-address"]');
+        if (stakingAddressEl) {
+            stakingAddressEl.textContent = info.stakingAddress ?? 'N/A';
+        }
+
+        const rewardTokenAddressEl = document.querySelector('[data-info="reward-token-address"]');
+        if (rewardTokenAddressEl) {
+            rewardTokenAddressEl.textContent = info.rewardTokenAddress ?? 'N/A';
         }
 
         // Update LP pairs with real contract data
