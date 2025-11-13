@@ -181,9 +181,6 @@ class MasterInitializer {
                 window.unifiedThemeManager.initialize();
                 this.components.set('unifiedThemeManager', window.unifiedThemeManager);
                 console.log('✅ Unified Theme Manager initialized');
-                
-                // Setup theme toggle button in header
-                window.unifiedThemeManager.setupToggleButton('theme-toggle');
             } catch (error) {
                 console.error('❌ Failed to initialize UnifiedThemeManager:', error);
             }
@@ -608,6 +605,9 @@ class MasterInitializer {
     }
 
     setupGlobalHandlers() {
+        // Setup theme toggle button
+        window?.unifiedThemeManager?.setupToggleButton?.('theme-toggle');
+
         // Enhanced global error handler with SES lockdown protection
         window.addEventListener('error', (event) => {
             console.error('Global error:', event.error);
