@@ -1638,12 +1638,10 @@
 .connect-card h2 {
     font-size: 1.75rem;
     font-weight: var(--liberdus-font-semibold);
-    color: var(--liberdus-text-primary);
     margin: 0 0 1rem 0;
 }
 
 .connect-card p {
-    color: var(--liberdus-text-secondary);
     margin: 0 0 2rem 0;
     font-size: 1rem;
     line-height: 1.5;

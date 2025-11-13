@@ -542,13 +542,11 @@
     margin: 0 0 20px 0;
     font-size: 24px;
     font-weight: 600;
-    color: #ffffff;
 }
 
 .connect-card p,
 .unauthorized-card p {
     margin: 0 0 25px 0;
-    color: #a0a0a0;
     line-height: 1.6;
 }
 
@@ -2529,7 +2527,6 @@ table td:last-child {
 }
 
 .unauthorized-card h2 {
-    color: #ef4444;
     margin-bottom: 16px;
     font-size: 1.5rem;
     text-align: center;

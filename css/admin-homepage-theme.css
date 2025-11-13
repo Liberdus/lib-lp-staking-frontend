@@ -48,7 +48,9 @@ body {
 .info-card .card-header h3,
 .info-card .card-header h5,
 .admin-grid-sidebar h3,
-.recent-activity h3 {
+.recent-activity h3,
+.connect-card h2,
+.unauthorized-card h2 {
     color: var(--text-primary) !important;
 }
 
@@ -56,7 +58,9 @@ body {
     color: var(--text-primary) !important;
 }
 
-.info-label {
+.info-label,
+.connect-card p,
+.unauthorized-card p {
     color: var(--text-secondary) !important;
 }
 
