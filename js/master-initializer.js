@@ -385,6 +385,54 @@ class MasterInitializer {
         this.setupWalletStatusMonitoring();
     }
 
+    /**
+     * Get current page context (admin or home)
+     * @returns {string} 'admin' or 'home'
+     */
+    getPageContext() {
+        return window.location.pathname.includes('/admin') ? 'admin' : 'home';
+    }
+
+    /**
+     * Check if wallet has permission for selected network
+     * @returns {Promise<boolean>}
+     */
+    async checkNetworkPermission() {
+        if (!window.networkManager) return true;
+        
+        try {
+            return await window.networkManager.hasRequiredNetworkPermission();
+        } catch (error) {
+            console.error('Error checking network permission:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Request network permission and update button UI
+     * @param {HTMLElement} button - Connect button element
+     * @returns {Promise<boolean>} Success status
+     */
+    async requestNetworkPermission(button) {
+        console.log('🔐 Wallet connected but missing network permission, requesting...');
+        
+        this.renderConnectButton(button, {
+            text: 'Requesting permission...',
+            isLoading: true,
+            disabled: true
+        });
+        
+        try {
+            await window.networkManager.requestPermissionWithUIUpdate(this.getPageContext(), true);
+            await this.updateConnectButtonStatus();
+            return true;
+        } catch (error) {
+            console.error('Failed to get network permission:', error);
+            await this.updateConnectButtonStatus();
+            return false;
+        }
+    }
+
     setupWalletIntegration() {
         // Ensure MetaMask detection works
         if (typeof window.ethereum !== 'undefined') {
@@ -435,7 +483,16 @@ class MasterInitializer {
                                   window.walletManager.isConnected ? window.walletManager.isConnected() : false;
 
                 if (isConnected) {
-                    // Show wallet popup for connected wallet
+                    // Check if wallet has permission for the selected network
+                    const hasPermission = await this.checkNetworkPermission();
+                    
+                    if (!hasPermission) {
+                        // Request permission and return
+                        await this.requestNetworkPermission(newConnectBtn);
+                        return;
+                    }
+                    
+                    // Has permission - show wallet popup
                     if (window.walletPopup) {
                         window.walletPopup.show(newConnectBtn);
                     } else {
@@ -497,7 +554,7 @@ class MasterInitializer {
                         window.notificationManager.error(errorMessage);
                     }
                 } finally {
-                    this.updateConnectButtonStatus();
+                    await this.updateConnectButtonStatus();
                 }
             });
 
@@ -558,7 +615,7 @@ class MasterInitializer {
         console.log('✅ Wallet status monitoring set up');
     }
 
-    updateConnectButtonStatus() {
+    async updateConnectButtonStatus() {
         const connectBtn = document.getElementById('connect-wallet-btn');
         if (!connectBtn) return;
 
@@ -579,11 +636,24 @@ class MasterInitializer {
             }
 
             if (isConnected && window.walletManager.address) {
-                // Format address for display (first 6 + last 4 characters)
+                // Check if wallet has permission for the selected network
+                const hasPermission = await this.checkNetworkPermission();
+
+                if (!hasPermission) {
+                    // Wallet is connected but missing permission - show as disconnected
+                    const networkName = window.CONFIG?.NETWORK?.NAME || 'network';
+                    this.renderConnectButton(connectBtn, {
+                        text: 'Connect Wallet',
+                        title: `Grant permission for ${networkName}`,
+                        ariaLabel: `Grant permission for ${networkName}`
+                    });
+                    return;
+                }
+
+                // Has permission - format address for display
                 const address = window.walletManager.address;
                 const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-                // Update button text and style
                 this.renderConnectButton(connectBtn, {
                     text: shortAddress,
                     ariaLabel: `Connected: ${address}`,
