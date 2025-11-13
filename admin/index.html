@@ -317,12 +317,6 @@
         // Connect wallet helper that delegates to the shared WalletManager
         async function connectWallet(preferredWallet = 'metamask') {
             try {
-                if (!window.walletManager) {
-                    console.log('⚙️ WalletManager instance missing, creating one lazily...');
-                    window.walletManager = new window.WalletManager();
-                    await window.walletManager.init?.();
-                }
-
                 console.log('🔗 Attempting wallet connection via WalletManager...');
                 const result = await window.walletManager.connectWallet(preferredWallet);
 
