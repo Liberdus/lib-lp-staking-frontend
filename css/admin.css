@@ -540,9 +540,10 @@
 .connect-card h2,
 .unauthorized-card h2 {
     margin: 0 0 20px 0;
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary);
+    text-align: center;
 }
 
 .connect-card p,
@@ -2527,12 +2528,6 @@ table td:last-child {
     max-width: 600px;
     width: 100%;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.unauthorized-card h2 {
-    margin-bottom: 16px;
-    font-size: 1.5rem;
-    text-align: center;
 }
 
 .unauthorized-card h3 {
