@@ -31,10 +31,10 @@ window.CONFIG = {
         POLYGON_MAINNET: {
             CHAIN_ID: 137,
             NAME: 'Polygon Mainnet',
-            RPC_URL: 'https://rpc.ankr.com/polygon',
+            RPC_URL: ' https://polygon-rpc.com',
             FALLBACK_RPCS: [
-                'https://polygon-rpc.com',
-                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC'
+                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
+                'https://rpc.ankr.com/polygon'
             ],
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: { name: 'Polygon', symbol: 'POL', decimals: 18 },
