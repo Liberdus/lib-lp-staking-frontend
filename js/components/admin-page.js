@@ -342,6 +342,11 @@ class AdminPage {
         container.innerHTML = `
             <div class="admin-connect-prompt">
                 <div class="connect-card">
+                    <button class="btn btn-back" onclick="window.location.href='../'">
+                        <span class="material-icons-outlined">arrow_back</span>
+                        <span>Back to Home</span>
+                    </button>
+                    
                     <h2>🔐 Admin Panel Access</h2>
                     <p>Please connect your wallet to access the admin panel.</p>
                     <button class="btn btn-primary" onclick="connectWallet()">
@@ -362,6 +367,11 @@ class AdminPage {
         container.innerHTML = `
             <div class="admin-unauthorized">
                 <div class="unauthorized-card">
+                    <button class="btn btn-back" onclick="window.location.href='../'">
+                        <span class="material-icons-outlined">arrow_back</span>
+                        <span>Back to Home</span>
+                    </button>
+                    
                     <h2>🚫 Access Denied</h2>
                     <p><strong>Switch to an account with admin privileges for this contract.</strong></p>
                     

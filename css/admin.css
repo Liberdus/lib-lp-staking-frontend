@@ -1439,6 +1439,43 @@ table td:last-child {
     padding: 2rem 1rem;
 }
 
+/* Back Button Styles */
+.btn-back {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 1.5rem;
+    background: transparent;
+    color: #64b5f6;
+    border: 1.5px solid rgba(100, 181, 246, 0.4);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+    background: rgba(100, 181, 246, 0.08);
+    border-color: rgba(100, 181, 246, 0.6);
+    color: #90caf9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
+}
+
+.btn-back:active { transform: translateY(0); }
+.btn-back .material-icons-outlined { font-size: 1.25rem; }
+
+[data-theme="light"] .btn-back { border-color: rgba(66, 165, 245, 0.5); color: #1976d2; }
+[data-theme="light"] .btn-back:hover { 
+    background: rgba(66, 165, 245, 0.1); 
+    border-color: rgba(66, 165, 245, 0.7); 
+    color: #1565c0; 
+}
+
 
 /* Typography variant="h5" gutterBottom */
 .proposal-title {
