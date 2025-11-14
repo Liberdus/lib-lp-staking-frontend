@@ -4738,30 +4738,18 @@ class ContractManager {
 
             // Process error through errorHandler if available
             const context = { operation: operationName, contractManager: true, transaction: true };
-            let processedError = error;
-            
-            if (window.errorHandler?.processError) {
-                processedError = window.errorHandler.processError(error, context);
-            }
+            let processedError = window?.errorHandler?.processError?.(error, context) || error;
 
-            // Display error to user
-            if (window.errorHandler?.displayError) {
-                window.errorHandler.displayError(processedError, {
-                    context: { operation: operationName },
-                    showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
-                });
-            } else {
-                // Fallback: Use errorHandler's userMessage or generate simple message
-                const userMessage = processedError.userMessage?.title || 
-                                  processedError.userMessage?.message || 
-                                  `Transaction ${operationName} failed`;
-                
-                console.error(`Transaction ${operationName} failed:`, error.message);
-                
-                if (window.notificationManager) {
-                    window.notificationManager.error(userMessage);
-                }
-            }
+            // Display error to user using notificationManager (primary pattern in codebase)
+            const userMessage = processedError.userMessage?.title || 
+                              processedError.userMessage?.message || 
+                              `Transaction ${operationName} failed`;
+            
+            console.error(`Transaction ${operationName} failed:`, error.message);
+            
+            
+            window?.notificationManager?.error(userMessage);
+            
 
             // Re-throw error (no retry - user can manually retry)
             throw processedError;
