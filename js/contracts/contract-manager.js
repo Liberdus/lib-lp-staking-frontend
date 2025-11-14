@@ -195,8 +195,7 @@ class ContractManager {
             this.isReadyFlag = true;
             this.log('⚠️ ContractManager marked as ready with limited functionality');
 
-            // Don't throw error - allow system to continue
-            // throw error;
+            throw error;
         }
     }
 
