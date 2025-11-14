@@ -33,8 +33,7 @@ window.CONFIG = {
             NAME: 'Polygon Mainnet',
             RPC_URL: ' https://polygon-rpc.com',
             FALLBACK_RPCS: [
-                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC',
-                'https://rpc.ankr.com/polygon'
+                'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC'
             ],
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: { name: 'Polygon', symbol: 'POL', decimals: 18 },
