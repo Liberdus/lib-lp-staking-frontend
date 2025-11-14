@@ -31,7 +31,7 @@ window.CONFIG = {
         POLYGON_MAINNET: {
             CHAIN_ID: 137,
             NAME: 'Polygon Mainnet',
-            RPC_URL: ' https://polygon-rpc.com',
+            RPC_URL: 'https://polygon-rpc.com',
             FALLBACK_RPCS: [
                 'https://polygon-mainnet.g.alchemy.com/v2/CjcioLVYYWW0tsHWorEfC'
             ],
