@@ -2373,7 +2373,7 @@ class ContractManager {
             console.log(`[PROPOSAL DEBUG] ✅ STEP 2: Signer confirmed`);
 
             console.log(`[PROPOSAL DEBUG] 📋 STEP 3: Starting transaction execution`);
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 console.log(`[PROPOSAL DEBUG] 📋 STEP 4: Converting parameters`);
                 const rateWei = ethers.utils.parseEther(newRate.toString());
                 console.log(`[PROPOSAL DEBUG]   Rate in wei: ${rateWei.toString()}`);
@@ -2425,10 +2425,10 @@ class ContractManager {
                 this.log('Propose hourly rate transaction sent:', tx.hash);
 
                 console.log(`[PROPOSAL DEBUG] 📋 STEP 8: Returning transaction object for monitoring...`);
-                console.log(`[PROPOSAL DEBUG]   Transaction will be monitored by executeTransactionWithRetry`);
+                console.log(`[PROPOSAL DEBUG]   Transaction will be monitored by executeTransactionOnce`);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'proposeSetHourlyRewardRate');
 
@@ -2534,7 +2534,7 @@ class ContractManager {
             // Ensure we have a proper signer
             await this.ensureSigner();
 
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // CRITICAL: Keep original weight conversion logic - this is working correctly
                 const weightsWei = weights.map(w => ethers.utils.parseEther(w.toString()));
 
@@ -2565,7 +2565,7 @@ class ContractManager {
                 this.log('Propose update weights transaction sent:', tx.hash);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'proposeUpdatePairWeights');
 
@@ -2706,7 +2706,7 @@ class ContractManager {
             }
 
             // STEP 4: Execute transaction with proper parameter handling
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // Use wei to match update pair weights logic and what the front end expects
                 const weightUint256 = ethers.utils.parseEther(weight.toString());
 
@@ -2770,7 +2770,7 @@ class ContractManager {
 
                 // STEP 8: Return transaction object for monitoring
                 console.log(`[ADD PAIR FIX] 📋 Returning transaction object for monitoring...`);
-                console.log(`[ADD PAIR FIX]   Transaction will be monitored by executeTransactionWithRetry`);
+                console.log(`[ADD PAIR FIX]   Transaction will be monitored by executeTransactionOnce`);
 
                 // CRITICAL FIX: Return tx object, not receipt
                 return tx;
@@ -2886,7 +2886,7 @@ class ContractManager {
                     console.log(`[ADD PAIR FIX] ✅ Signer recovery successful, retrying transaction...`);
 
                     // Retry with corrected parameters
-                    const result = await this.executeTransactionWithRetry(async () => {
+                    const result = await this.executeTransactionOnce(async () => {
                         // CRITICAL FIX: Use uint256 for weight, not wei (this was the main bug)
                         const weightUint256 = ethers.BigNumber.from(weight.toString());
 
@@ -3085,7 +3085,7 @@ class ContractManager {
             }
 
             // STEP 4: Execute transaction with proper error handling
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // Get current network gas conditions
                 const networkGasPrice = await this.provider.getGasPrice();
                 const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
@@ -3115,7 +3115,7 @@ class ContractManager {
                 this.log('Propose remove pair transaction sent:', tx.hash);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'proposeRemovePair');
 
@@ -3222,7 +3222,7 @@ class ContractManager {
             console.log(`[CHANGE SIGNER FIX] 🔍 Skipping explicit admin check - letting contract handle access control like other proposals`);
 
             // STEP 4: Execute transaction with proper error handling
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // Get current network gas conditions
                 const networkGasPrice = await this.provider.getGasPrice();
                 const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
@@ -3252,7 +3252,7 @@ class ContractManager {
                 this.log('Propose change signer transaction sent:', tx.hash);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'proposeChangeSigner');
 
@@ -3378,7 +3378,7 @@ class ContractManager {
             // Ensure we have a proper signer
             await this.ensureSigner();
 
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
                 // Use network-appropriate gas configuration for Polygon Amoy
@@ -3415,7 +3415,7 @@ class ContractManager {
                 this.log('Propose withdraw rewards transaction sent:', tx.hash);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'proposeWithdrawRewards');
 
@@ -3500,7 +3500,7 @@ class ContractManager {
             const signerAddress = await this.signer.getAddress();
             console.log(`[APPROVE DEBUG] ✅ STEP 2: Signer confirmed: ${signerAddress}`);
 
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // Use network-appropriate gas configuration for Polygon Amoy
                 const networkGasPrice = await this.provider.getGasPrice();
                 const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
@@ -3550,6 +3550,7 @@ class ContractManager {
 
                 this.log('Approve action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
                 // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'approveAction');
 
@@ -3714,8 +3715,8 @@ class ContractManager {
                 console.log(`[EXECUTE DEBUG] ⚠️ Non-critical check error, proceeding with execution attempt...`);
             }
 
-            // Execute with retry logic and proper gas configuration
-            const result = await this.executeTransactionWithRetry(async () => {
+            // Execute without retry (user can manually retry by pressing button again)
+            const result = await this.executeTransactionOnce(async () => {
                 // Use network-appropriate gas configuration for Polygon Amoy
                 const networkGasPrice = await this.provider.getGasPrice();
                 const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
@@ -3748,9 +3749,10 @@ class ContractManager {
                 console.log(`[EXECUTE DEBUG]   Nonce: ${tx.nonce}`);
 
                 console.log(`[EXECUTE DEBUG] 📋 Returning transaction object for monitoring...`);
-                console.log(`[EXECUTE DEBUG]   Transaction will be monitored by executeTransactionWithRetry`);
+                console.log(`[EXECUTE DEBUG]   Transaction will be monitored by executeTransactionOnce`);
 
                 // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'executeAction');
 
@@ -3829,7 +3831,7 @@ class ContractManager {
             // Ensure we have a proper signer
             await this.ensureSigner();
 
-            const result = await this.executeTransactionWithRetry(async () => {
+            const result = await this.executeTransactionOnce(async () => {
                 // Use network-appropriate gas configuration for Polygon Amoy
                 const networkGasPrice = await this.provider.getGasPrice();
                 const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
@@ -3871,6 +3873,7 @@ class ContractManager {
 
                 this.log('Reject action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
                 // CRITICAL FIX: Return tx object, not receipt
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'rejectAction');
 
@@ -3944,7 +3947,7 @@ class ContractManager {
      * Clean up expired actions (admin only)
      */
     async cleanupExpiredActions() {
-        return await this.executeTransactionWithRetry(async () => {
+        return await this.executeTransactionOnce(async () => {
             const tx = await this.stakingContract.cleanupExpiredActions();
             this.log('Cleanup expired actions transaction sent:', tx.hash);
             // CRITICAL FIX: Return tx object, not receipt
@@ -4158,7 +4161,7 @@ class ContractManager {
             // Get LP token contract
             const lpContract = this.getLPTokenContract(pairName);
 
-            return await this.executeTransactionWithRetry(async () => {
+            return await this.executeTransactionOnce(async () => {
                 const stakingAddress = this.contractAddresses.get('STAKING');
                 const amountWei = typeof amount === 'bigint' ? amount : ethers.utils.parseEther(amount.toString());
 
@@ -4210,7 +4213,7 @@ class ContractManager {
         }
 
         try {
-            return await this.executeTransactionWithRetry(async () => {
+            return await this.executeTransactionOnce(async () => {
                 // Enhanced gas estimation
                 const gasLimit = await this.estimateGasWithBuffer(this.stakingContract, 'claimRewards', [lpTokenAddress]);
                 const gasPrice = await this.getGasPrice();
@@ -4228,7 +4231,7 @@ class ContractManager {
                 this.log(`   Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'claimRewards');
         } catch (error) {
@@ -4265,7 +4268,7 @@ class ContractManager {
         }
 
         try {
-            return await this.executeTransactionWithRetry(async () => {
+            return await this.executeTransactionOnce(async () => {
                 // Convert amount to wei
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
@@ -4286,7 +4289,7 @@ class ContractManager {
                 this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'stake');
         } catch (error) {
@@ -4323,7 +4326,7 @@ class ContractManager {
         }
 
         try {
-            return await this.executeTransactionWithRetry(async () => {
+            return await this.executeTransactionOnce(async () => {
                 // Convert amount to wei
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
@@ -4344,7 +4347,7 @@ class ContractManager {
                 this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
 
                 // CRITICAL FIX: Return tx object, not receipt
-                // The executeTransactionWithRetry will call tx.wait() via monitorTransactionWithTimeout
+                // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
             }, 'unstake');
         } catch (error) {
@@ -4699,165 +4702,72 @@ class ContractManager {
     }
 
     /**
-     * Fallback retry with monitoring for when ErrorHandler is not available
+     * Execute transaction once without automatic retry
+     * 
+     * Used for all user-initiated transactions (staking, proposals, approvals, etc.)
+     * Users can manually retry by pressing the button again if a transaction fails.
+     * 
+     * @param {Function} operation - Async function that returns a transaction object
+     * @param {string} operationName - Name of the operation for logging
+     * @returns {Promise<Object>} Transaction receipt with hash, blockNumber, etc.
      */
-    async fallbackExecuteWithRetryWithMonitoring(operation, operationName, retries = this.config.maxRetries) {
-        let lastError = null;
+    async executeTransactionOnce(operation, operationName) {
+        try {
+            this.log(`🚀 Starting transaction ${operationName}`);
 
-        for (let attempt = 1; attempt <= retries + 1; attempt++) {
-            try {
-                this.log(`🚀 Fallback: Executing ${operationName} (attempt ${attempt}/${retries + 1})`);
+            // Execute the operation (this sends the transaction)
+            this.notifyTransactionPhase(operationName, 'user_approval');
+            const tx = await operation();
+            this.notifyTransactionPhase(operationName, 'processing');
 
-                // Execute the operation
-                this.notifyTransactionPhase(operationName, 'user_approval');
-                const tx = await operation();
-                this.notifyTransactionPhase(operationName, 'processing');
+            // CRITICAL: Log transaction hash immediately after MetaMask confirmation
+            this.log(`✅ Transaction submitted to blockchain: ${tx.hash}`);
+            this.log(`🔗 Track on PolygonScan: https://amoy.polygonscan.com/tx/${tx.hash}`);
+            console.log(`[TRANSACTION MONITORING] ${operationName} - Hash: ${tx.hash}`);
 
-                // Log transaction hash immediately
-                this.log(`✅ Transaction submitted: ${tx.hash}`);
-                this.log(`🔗 Track on PolygonScan: https://amoy.polygonscan.com/tx/${tx.hash}`);
+            // Add transaction monitoring with timeout
+            const result = await this.monitorTransactionWithTimeout(tx, operationName, 300000); // 5 minute timeout
+            this.notifyTransactionPhase(operationName, 'confirmed');
 
-                // Monitor with timeout
-                const result = await this.monitorTransactionWithTimeout(tx, operationName, 60000);
-                this.notifyTransactionPhase(operationName, 'confirmed');
+            this.log(`🎉 Transaction ${operationName} completed successfully in block ${result.blockNumber}`);
 
-                this.log(`🎉 Fallback: ${operationName} completed successfully`);
-                return result;
+            return result;
+        } catch (error) {
+            this.log(`❌ Transaction ${operationName} failed:`, error.message);
+            this.notifyTransactionPhase(operationName, 'failed');
 
-            } catch (error) {
-                lastError = error;
-                this.notifyTransactionPhase(operationName, 'failed');
-                this.log(`❌ Fallback: ${operationName} attempt ${attempt} failed: ${error.message}`);
+            // Process error through errorHandler if available
+            const context = { operation: operationName, contractManager: true, transaction: true };
+            let processedError = error;
+            
+            if (window.errorHandler?.processError) {
+                processedError = window.errorHandler.processError(error, context);
+            }
 
-                if (attempt <= retries) {
-                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-                    this.log(`⏳ Fallback: Retrying in ${delay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
+            // Display error to user
+            if (window.errorHandler?.displayError) {
+                window.errorHandler.displayError(processedError, {
+                    context: { operation: operationName },
+                    showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
+                });
+            } else {
+                // Fallback: Use errorHandler's userMessage or generate simple message
+                const userMessage = processedError.userMessage?.title || 
+                                  processedError.userMessage?.message || 
+                                  `Transaction ${operationName} failed`;
+                
+                console.error(`Transaction ${operationName} failed:`, error.message);
+                
+                if (window.notificationManager) {
+                    window.notificationManager.error(userMessage);
                 }
             }
-        }
 
-        throw lastError;
+            // Re-throw error (no retry - user can manually retry)
+            throw processedError;
+        }
     }
 
-    /**
-     * Execute transaction with enhanced retry logic, gas estimation, and error handling
-     */
-    async executeTransactionWithRetry(operation, operationName, retries = this.config.maxRetries) {
-        const context = { operation: operationName, contractManager: true, transaction: true };
-
-        // Safety check for errorHandler availability
-        if (!window.errorHandler || typeof window.errorHandler.executeWithRetry !== 'function') {
-            console.warn('ErrorHandler not available for transaction, using fallback retry logic');
-            return await this.fallbackExecuteWithRetryWithMonitoring(operation, operationName, retries);
-        }
-
-        return await window.errorHandler.executeWithRetry(async () => {
-            try {
-                this.log(`🚀 Starting transaction ${operationName}`);
-
-                // Execute the operation (this sends the transaction)
-                this.notifyTransactionPhase(operationName, 'user_approval');
-                const tx = await operation();
-                this.notifyTransactionPhase(operationName, 'processing');
-
-                // CRITICAL: Log transaction hash immediately after MetaMask confirmation
-                this.log(`✅ Transaction submitted to blockchain: ${tx.hash}`);
-                this.log(`🔗 Track on PolygonScan: https://amoy.polygonscan.com/tx/${tx.hash}`);
-                console.log(`[TRANSACTION MONITORING] ${operationName} - Hash: ${tx.hash}`);
-
-                // Add transaction monitoring with timeout
-                const result = await this.monitorTransactionWithTimeout(tx, operationName, 60000); // 60 second timeout
-                this.notifyTransactionPhase(operationName, 'confirmed');
-
-                this.log(`🎉 Transaction ${operationName} completed successfully in block ${result.blockNumber}`);
-
-                return result;
-            } catch (error) {
-                this.log(`❌ Transaction ${operationName} failed:`, error.message);
-                this.notifyTransactionPhase(operationName, 'failed');
-
-                // Enhanced error handling with specific error types
-                let userMessage = `Transaction ${operationName} failed`;
-                let errorType = 'TRANSACTION_FAILED';
-                let isRetryable = true;
-
-                // Handle specific error types
-                if (error.message && error.message.includes('timeout')) {
-                    userMessage = `Transaction ${operationName} timed out. Check PolygonScan for status.`;
-                    errorType = 'TRANSACTION_TIMEOUT';
-                    isRetryable = false;
-                } else if (error.message && error.message.includes('insufficient funds')) {
-                    userMessage = 'Insufficient MATIC balance for gas fees';
-                    errorType = 'INSUFFICIENT_FUNDS';
-                    isRetryable = false;
-                } else if (error.message && error.message.includes('nonce')) {
-                    userMessage = 'Transaction nonce conflict. Try resetting your MetaMask account.';
-                    errorType = 'NONCE_CONFLICT';
-                    isRetryable = false;
-                } else if (error.message && error.message.includes('gas')) {
-                    userMessage = 'Gas estimation failed. Network may be congested.';
-                    errorType = 'GAS_ESTIMATION_FAILED';
-                    isRetryable = true;
-                } else if (error.message && error.message.includes('user rejected')) {
-                    userMessage = 'Transaction was cancelled by user';
-                    errorType = 'USER_REJECTED';
-                    isRetryable = false;
-                }
-
-                // Enhanced error processing with user-friendly messages and safety checks
-                let processedError = error;
-                if (window.errorHandler && typeof window.errorHandler.processError === 'function') {
-                    processedError = window.errorHandler.processError(error, context);
-                } else {
-                    console.warn('ErrorHandler.processError not available, using raw error');
-                }
-
-                // Display error to user with safety check
-                if (window.errorHandler && typeof window.errorHandler.displayError === 'function') {
-                    window.errorHandler.displayError(processedError, {
-                        context: { operation: operationName },
-                        showTechnical: window.CONFIG?.DEV?.DEBUG_MODE
-                    });
-                } else {
-                    console.error(`Transaction ${operationName} failed:`, error.message);
-                    // Fallback notification with user-friendly message
-                    if (window.notificationManager) {
-                        window.notificationManager.error(userMessage);
-                    }
-                }
-
-                // Try fallback provider for network errors and RPC errors
-                const isRpcError = error.code === -32603 ||
-                                 (error.error && error.error.code === -32603) ||
-                                 error.message.includes('missing trie node') ||
-                                 error.message.includes('Internal JSON-RPC error') ||
-                                 error.message.includes('network error') ||
-                                 error.message.includes('timeout') ||
-                                 error.message.includes('could not detect network');
-
-                if ((processedError.category === 'network' || error.code === 'NETWORK_ERROR' || isRpcError) && this.canUseFallbackProvider()) {
-                    this.log('🔄 Network/RPC error detected in transaction, trying fallback provider...');
-                    await this.switchToNextProvider();
-
-                    // Recreate signer with new provider
-                    try {
-                        this.log('🔧 Recreating signer with new provider for transaction retry...');
-                        this.signer = this.provider.getSigner();
-                        await this.initializeContracts();
-                        this.log('✅ Signer and contracts recreated for transaction retry');
-                    } catch (signerError) {
-                        this.logError('❌ Failed to recreate signer for transaction retry:', signerError);
-                    }
-                }
-
-                throw error; // Re-throw for retry logic
-            }
-        }, context, {
-            maxRetries: retries,
-            baseDelay: this.config.retryDelay
-        });
-    }
 
     /**
      * Enhanced gas estimation with buffer and fallback for UNPREDICTABLE_GAS_LIMIT
