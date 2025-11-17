@@ -146,19 +146,6 @@ class PerformanceMonitor {
     }
 
     /**
-     * Update memory metrics
-     */
-    updateMemoryMetrics(adminState, domUpdates, optimisticUI) {
-        if (!this.isMonitoring) return;
-        
-        this.metrics.memory = {
-            proposalsInState: adminState ? adminState.proposalsMap.size : 0,
-            cachedRows: domUpdates ? domUpdates.proposalRowCache.size : 0,
-            pendingTransactions: optimisticUI ? optimisticUI.pendingTransactions.size : 0
-        };
-    }
-
-    /**
      * Calculate performance statistics
      */
     calculateStats() {
