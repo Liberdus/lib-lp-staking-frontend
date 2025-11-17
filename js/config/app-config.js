@@ -174,7 +174,7 @@ window.CONFIG = {
 
     // Development Configuration
     DEV: {
-        DEBUG: true
+        DEBUG: false
     },
 
     // Default Values for Contract Stats
@@ -218,17 +218,6 @@ window.CONFIG = {
         TRANSACTION_CONFIRMED: 'Transaction confirmed'
     }
 };
-
-if (!window.CONFIG?.DEV?.DEBUG) {
-    console.log = () => {};
-    console.info = () => {};
-    console.warn = () => {};
-    console.table = () => {};
-    console.group = () => {};
-    console.groupCollapsed = () => {};
-    console.groupEnd = () => {};
-    console.debug = () => {};
-}
 
 // Contract ABIs (Essential functions for local deployment)
 window.CONFIG.ABIS = {
