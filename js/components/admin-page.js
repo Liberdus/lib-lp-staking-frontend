@@ -444,9 +444,6 @@ class AdminPage {
     async loadAdminInterface() {
         console.log('🎨 Loading admin interface...');
 
-        // Initialize performance optimization components
-        this.initializeOptimizedComponents();
-
         // Create admin layout
         this.createAdminLayout();
 
@@ -467,27 +464,6 @@ class AdminPage {
 
         // Start auto-refresh
         this.startAutoRefresh();
-    }
-
-    /**
-     * Initialize optimized performance components
-     */
-    initializeOptimizedComponents() {
-        console.log('⚡ Initializing performance optimization components...');
-
-        try {
-            // Initialize optimized state management
-            if (window.OptimizedAdminState) {
-                this.optimizedAdminState = new window.OptimizedAdminState();
-                console.log('✅ OptimizedAdminState initialized');
-            }
-
-            console.log('🎉 All performance optimization components initialized successfully');
-
-        } catch (error) {
-            console.warn('⚠️ Failed to initialize some optimization components:', error);
-            console.log('📋 Falling back to legacy admin panel behavior');
-        }
     }
 
     /**
@@ -2156,11 +2132,6 @@ class AdminPage {
                             // Set to 0 to indicate unknown, but still show Load More button
                             this.totalProposalCount = 0;
                         }
-                    }
-
-                    if (this.optimizedAdminState) {
-                        this.optimizedAdminState.initializeProposals(formattedProposals);
-                        console.log('🎯 Proposals initialized in optimized state management');
                     }
 
                     // SELECTIVE UPDATE OPTIMIZATION: Initialize proposal state cache
