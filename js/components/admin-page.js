@@ -488,12 +488,6 @@ class AdminPage {
                 console.log('✅ EfficientDOMUpdates initialized');
             }
 
-            // Initialize optimistic UI updates
-            if (window.OptimisticUIUpdates && this.optimizedAdminState) {
-                this.optimisticUI = new window.OptimisticUIUpdates(this.optimizedAdminState);
-                console.log('✅ OptimisticUIUpdates initialized');
-            }
-
             // Initialize performance monitor
             if (window.PerformanceMonitor) {
                 this.performanceMonitor = new window.PerformanceMonitor();

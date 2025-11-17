@@ -129,7 +129,6 @@
             `${basePath}js/components/efficient-dom-updates.js`,
             `${basePath}js/components/home-page.js`,
             `${basePath}js/components/network-indicator-selector.js`,
-            `${basePath}js/components/optimistic-ui-updates.js`,
             `${basePath}js/components/optimized-admin-state.js`,
             `${basePath}js/components/performance-monitor.js`,
             `${basePath}js/components/staking-modal-new.js`,
