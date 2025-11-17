@@ -147,7 +147,6 @@
             `${basePath}js/core/unified-theme-manager.js`,
             
             // JavaScript - Root
-            `${basePath}js/debug-logger.js`,
             `${basePath}js/master-initializer.js`,
             
             // JavaScript - Utils (only existing files)
