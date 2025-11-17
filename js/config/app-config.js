@@ -222,6 +222,7 @@ window.CONFIG = {
 if (!window.CONFIG?.DEV?.DEBUG) {
     console.log = () => {};
     console.info = () => {};
+    console.warn = () => {};
     console.table = () => {};
     console.group = () => {};
     console.groupCollapsed = () => {};
