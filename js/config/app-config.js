@@ -174,8 +174,7 @@ window.CONFIG = {
 
     // Development Configuration
     DEV: {
-        DEBUG: false,
-        CONSOLE_LOGS: true
+        DEBUG: true
     },
 
     // Default Values for Contract Stats
@@ -220,17 +219,13 @@ window.CONFIG = {
     }
 };
 
-if (!window.CONFIG?.DEV?.CONSOLE_LOGS) {
-    const noop = () => {};
-    console.log = noop;
-    console.info = noop;
-    console.table = noop;
-    console.group = noop;
-    console.groupCollapsed = noop;
-    console.groupEnd = noop;
-}
-
 if (!window.CONFIG?.DEV?.DEBUG) {
+    console.log = () => {};
+    console.info = () => {};
+    console.table = () => {};
+    console.group = () => {};
+    console.groupCollapsed = () => {};
+    console.groupEnd = () => {};
     console.debug = () => {};
 }
 
