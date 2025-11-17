@@ -129,7 +129,6 @@
             `${basePath}js/components/home-page.js`,
             `${basePath}js/components/network-indicator-selector.js`,
             `${basePath}js/components/optimized-admin-state.js`,
-            `${basePath}js/components/performance-monitor.js`,
             `${basePath}js/components/staking-modal-new.js`,
             `${basePath}js/components/wallet-popup.js`,
             
