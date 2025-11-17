@@ -126,7 +126,6 @@
             
             // JavaScript - Components (only existing files)
             `${basePath}js/components/admin-page.js`,
-            `${basePath}js/components/efficient-dom-updates.js`,
             `${basePath}js/components/home-page.js`,
             `${basePath}js/components/network-indicator-selector.js`,
             `${basePath}js/components/optimized-admin-state.js`,
