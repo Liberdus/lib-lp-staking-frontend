@@ -3579,8 +3579,6 @@ class ContractManager {
                 console.log(`[APPROVE DEBUG] Contract connection check:`);
                 console.log(`[APPROVE DEBUG]   Contract address: ${this.stakingContract?.address || 'undefined'}`);
                 console.log(`[APPROVE DEBUG]   Original Action ID: ${actionId} (type: ${typeof actionId})`);
-                console.log(`[APPROVE DEBUG]   Converted Action ID: ${numericActionId} (type: ${typeof numericActionId})`);
-                console.log(`[APPROVE DEBUG]   Contract call used: ${numericActionId} (NUMERIC)`);
             }
 
             this.logError('Failed to approve action:', error);
