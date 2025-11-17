@@ -2378,30 +2378,7 @@ class ContractManager {
                 const rateWei = ethers.utils.parseEther(newRate.toString());
                 console.log(`[PROPOSAL DEBUG]   Rate in wei: ${rateWei.toString()}`);
 
-                // Use network-appropriate gas configuration for Polygon Amoy
-                console.log(`[PROPOSAL DEBUG] 📋 STEP 5: Fetching network gas price`);
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // UPDATED: Use appropriate gas price for current network conditions
-                const maxGweiForAmoy = 50; // Updated for current network conditions
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForAmoy); // 50% above network, capped at 50 gwei
-                const gasLimit = 350000; // Increased gas limit for safety
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-                const finalGwei = parseFloat(ethers.utils.formatUnits(gasPrice, 'gwei'));
-
-                console.log(`[PROPOSAL DEBUG] 🔄 Gas Configuration (Polygon Amoy Optimized):`);
-                console.log(`[PROPOSAL DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[PROPOSAL DEBUG]   Target gas price: ${finalGwei.toFixed(2)} gwei (capped at ${maxGweiForAmoy} gwei)`);
-                console.log(`[PROPOSAL DEBUG]   Gas limit: ${gasLimit}`);
-                console.log(`[PROPOSAL DEBUG]   Estimated cost: ${(finalGwei * gasLimit / 1e9).toFixed(6)} MATIC`);
-
-                // Warn if gas price seems too high
-                if (finalGwei > 15) {
-                    console.warn(`[PROPOSAL DEBUG] ⚠️ WARNING: Gas price ${finalGwei} gwei exceeds recommended 15 gwei for Polygon Amoy`);
-                } else {
-                    console.log(`[PROPOSAL DEBUG] ✅ Gas price ${finalGwei} gwei is appropriate for Polygon Amoy`);
-                }
+                console.log(`[PROPOSAL DEBUG] 📋 STEP 5: Using MetaMask gas estimation`);
 
                 console.log(`[PROPOSAL DEBUG] 📋 STEP 6: Calling contract method`);
                 console.log(`[PROPOSAL DEBUG]   Contract address: ${this.stakingContract.address}`);
@@ -2411,10 +2388,7 @@ class ContractManager {
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[PROPOSAL DEBUG]   About to show MetaMask popup...`);
 
-                const tx = await contractWithSigner.proposeSetHourlyRewardRate(rateWei, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
+                const tx = await contractWithSigner.proposeSetHourlyRewardRate(rateWei);
 
                 console.log(`[PROPOSAL DEBUG] ✅ STEP 7: Transaction submitted!`);
                 console.log(`[PROPOSAL DEBUG]   Transaction hash: ${tx.hash}`);
@@ -2538,28 +2512,10 @@ class ContractManager {
                 // CRITICAL: Keep original weight conversion logic - this is working correctly
                 const weightsWei = weights.map(w => ethers.utils.parseEther(w.toString()));
 
-                // Get current network gas conditions for appropriate pricing
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // Use reasonable gas price for current network conditions
-                const maxGweiForWeights = 50; // Updated for current network conditions
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForWeights);
-                const gasLimit = 400000; // Conservative gas limit for weight updates
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[UPDATE WEIGHTS] 🔄 Gas Configuration:`);
-                console.log(`[UPDATE WEIGHTS]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[UPDATE WEIGHTS]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
-                console.log(`[UPDATE WEIGHTS]   Gas limit: ${gasLimit}`);
-
                 // Prepare contract call with proper signer connection
                 const contractWithSigner = this.stakingContract.connect(this.signer);
 
-                const tx = await contractWithSigner.proposeUpdatePairWeights(lpTokens, weightsWei, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
+                const tx = await contractWithSigner.proposeUpdatePairWeights(lpTokens, weightsWei);
 
                 console.log(`[UPDATE WEIGHTS] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose update weights transaction sent:', tx.hash);
@@ -2715,22 +2671,8 @@ class ContractManager {
                 console.log(`[ADD PAIR FIX]   Weight as uint256: ${weightUint256.toString()}`);
                 console.log(`[ADD PAIR FIX]   Weight NOT converted to wei (this was the bug)`);
 
-                // STEP 5: Get current network gas conditions
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // CRITICAL FIX: Use appropriate gas price for current Polygon Amoy conditions
-                // Updated gas price limits based on current network congestion
-                const maxGweiForAddPair = 50; // Increased from 10 to handle network congestion
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForAddPair); // 50% above network, capped at 50 gwei
-                const gasLimit = 350000; // Increased gas limit for safety
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[ADD PAIR FIX] 🔄 Gas Configuration (Updated):`);
-                console.log(`[ADD PAIR FIX]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[ADD PAIR FIX]   Using gas price: ${targetGwei.toFixed(2)} gwei (capped at ${maxGweiForAddPair} gwei)`);
-                console.log(`[ADD PAIR FIX]   Gas limit: ${gasLimit}`);
-                console.log(`[ADD PAIR FIX]   Estimated cost: ${(targetGwei * gasLimit / 1e9).toFixed(6)} MATIC`);
+                // STEP 5: Using MetaMask gas estimation
+                console.log(`[ADD PAIR FIX] 🔄 Using MetaMask gas estimation`);
 
                 // STEP 6: Prepare contract call with proper signer connection
                 console.log(`[ADD PAIR FIX] 📋 Preparing contract call:`);
@@ -2752,11 +2694,7 @@ class ContractManager {
                     lpToken,
                     pairName,
                     platform,
-                    weightUint256, // FIXED: Use uint256, not wei
-                    {
-                        gasLimit: gasLimit,
-                        gasPrice: gasPrice
-                    }
+                    weightUint256 // FIXED: Use uint256, not wei
                 );
 
                 console.log(`[ADD PAIR FIX] ✅ Transaction submitted successfully!`);
@@ -2890,28 +2828,12 @@ class ContractManager {
                         // CRITICAL FIX: Use uint256 for weight, not wei (this was the main bug)
                         const weightUint256 = ethers.BigNumber.from(weight.toString());
 
-                        // Use updated gas configuration
-                        const networkGasPrice = await this.provider.getGasPrice();
-                        const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-                        const maxGweiForAddPair = 50; // Updated gas price cap
-                        const targetGwei = Math.min(networkGwei * 1.5, maxGweiForAddPair);
-                        const gasLimit = 350000; // Increased gas limit
-                        const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                        console.log(`[ADD PAIR FIX] 🔄 Retry Gas Configuration:`);
-                        console.log(`[ADD PAIR FIX]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
-                        console.log(`[ADD PAIR FIX]   Gas limit: ${gasLimit}`);
-
                         const contractWithSigner = this.stakingContract.connect(this.signer);
                         const tx = await contractWithSigner.proposeAddPair(
                             lpToken,
                             pairName,
                             platform,
-                            weightUint256, // FIXED: Use uint256, not wei
-                            {
-                                gasLimit: gasLimit,
-                                gasPrice: gasPrice
-                            }
+                            weightUint256 // FIXED: Use uint256, not wei
                         );
 
                         console.log(`[ADD PAIR FIX] ✅ Retry transaction submitted: ${tx.hash}`);
@@ -3086,30 +3008,12 @@ class ContractManager {
 
             // STEP 4: Execute transaction with proper error handling
             const result = await this.executeTransactionOnce(async () => {
-                // Get current network gas conditions
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // Use appropriate gas price for current network conditions
-                const maxGweiForRemovePair = 50; // Updated for current network conditions
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForRemovePair);
-                const gasLimit = 300000; // Increased gas limit for safety
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[REMOVE PAIR FIX] 🔄 Gas Configuration:`);
-                console.log(`[REMOVE PAIR FIX]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[REMOVE PAIR FIX]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
-                console.log(`[REMOVE PAIR FIX]   Gas limit: ${gasLimit}`);
-
                 // Prepare contract call with proper signer connection
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[REMOVE PAIR FIX] 🔧 Contract connected with signer`);
 
                 // Execute the transaction
-                const tx = await contractWithSigner.proposeRemovePair(lpToken, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
+                const tx = await contractWithSigner.proposeRemovePair(lpToken);
 
                 console.log(`[REMOVE PAIR FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose remove pair transaction sent:', tx.hash);
@@ -3223,30 +3127,13 @@ class ContractManager {
 
             // STEP 4: Execute transaction with proper error handling
             const result = await this.executeTransactionOnce(async () => {
-                // Get current network gas conditions
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // Use appropriate gas price for current network conditions
-                const maxGweiForChangeSigner = 50; // Updated for current network conditions
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForChangeSigner);
-                const gasLimit = 300000; // Increased gas limit for safety
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[CHANGE SIGNER FIX] 🔄 Gas Configuration:`);
-                console.log(`[CHANGE SIGNER FIX]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[CHANGE SIGNER FIX]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
-                console.log(`[CHANGE SIGNER FIX]   Gas limit: ${gasLimit}`);
 
                 // CRITICAL FIX: Prepare contract call with proper signer connection
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[CHANGE SIGNER FIX] 🔧 Contract connected with signer`);
 
                 // Execute the transaction with correct parameter order
-                const tx = await contractWithSigner.proposeChangeSigner(oldSigner, newSigner, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
+                const tx = await contractWithSigner.proposeChangeSigner(oldSigner, newSigner);
 
                 console.log(`[CHANGE SIGNER FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose change signer transaction sent:', tx.hash);
@@ -3381,35 +3268,11 @@ class ContractManager {
             const result = await this.executeTransactionOnce(async () => {
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
-                // Use network-appropriate gas configuration for Polygon Amoy
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // UPDATED: Use appropriate gas price for current network conditions
-                const maxGweiForWithdraw = 50; // Updated for current network conditions
-                const targetGwei = Math.min(networkGwei * 1.5, maxGweiForWithdraw); // 50% above network, capped at 50 gwei
-                const gasLimit = 350000; // Increased gas limit for safety
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[WITHDRAW DEBUG] 🔄 Gas Configuration:`);
-                console.log(`[WITHDRAW DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[WITHDRAW DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei (capped at ${maxGweiForWithdraw} gwei)`);
-                console.log(`[WITHDRAW DEBUG]   Gas limit: ${gasLimit}`);
-
-                if (targetGwei > 15) {
-                    console.warn(`[WITHDRAW DEBUG] ⚠️ WARNING: Gas price ${targetGwei} gwei exceeds recommended 15 gwei for withdrawal`);
-                } else {
-                    console.log(`[WITHDRAW DEBUG] ✅ Gas price ${targetGwei} gwei is appropriate for Polygon Amoy withdrawal`);
-                }
-
                 // CRITICAL FIX: Prepare contract call with proper signer connection
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[WITHDRAW REWARDS FIX] 🔧 Contract connected with signer`);
 
-                const tx = await contractWithSigner.proposeWithdrawRewards(recipient, amountWei, {
-                    gasLimit: gasLimit,
-                    gasPrice: gasPrice
-                });
+                const tx = await contractWithSigner.proposeWithdrawRewards(recipient, amountWei);
 
                 console.log(`[WITHDRAW REWARDS FIX] ✅ Transaction submitted: ${tx.hash}`);
                 this.log('Propose withdraw rewards transaction sent:', tx.hash);
@@ -3501,27 +3364,6 @@ class ContractManager {
             console.log(`[APPROVE DEBUG] ✅ STEP 2: Signer confirmed: ${signerAddress}`);
 
             const result = await this.executeTransactionOnce(async () => {
-                // Use network-appropriate gas configuration for Polygon Amoy
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // UPDATED: Use current Polygon Amoy network conditions (25-30 gwei)
-                const maxGweiForApproval = 35; // Updated for current network congestion
-                const targetGwei = Math.min(networkGwei * 1.2, maxGweiForApproval); // 20% above network, capped at 35 gwei
-                const gasLimit = 200000; // Conservative gas limit for multi-sig operations
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[APPROVE DEBUG] 🔄 Gas Configuration:`);
-                console.log(`[APPROVE DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[APPROVE DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei (capped at ${maxGweiForApproval} gwei)`);
-                console.log(`[APPROVE DEBUG]   Gas limit: ${gasLimit}`);
-
-                if (targetGwei > 40) {
-                    console.warn(`[APPROVE DEBUG] ⚠️ WARNING: Gas price ${targetGwei} gwei exceeds recommended 40 gwei for approvals`);
-                } else {
-                    console.log(`[APPROVE DEBUG] ✅ Gas price ${targetGwei} gwei is appropriate for current Polygon Amoy conditions`);
-                }
-
                 console.log(`[APPROVE DEBUG] 📋 STEP 6: Calling contract method`);
                 console.log(`[APPROVE DEBUG]   Contract address: ${this.stakingContract.address}`);
                 console.log(`[APPROVE DEBUG]   Method: ${methodToUse}`);
@@ -3539,16 +3381,13 @@ class ContractManager {
                 console.log(`[APPROVE DEBUG]   About to show MetaMask popup...`);
 
                 // Use the signer-connected contract (React pattern)
-                const tx = await contractWithSigner[methodToUse](numericActionId, {
-                    gasLimit,
-                    gasPrice
-                });
+                const tx = await contractWithSigner[methodToUse](numericActionId);
 
                 console.log(`[APPROVE DEBUG] ✅ STEP 7: Transaction submitted!`);
                 console.log(`[APPROVE DEBUG]   Transaction hash: ${tx.hash}`);
                 console.log(`[APPROVE DEBUG]   Action ID used: ${numericActionId} (numeric)`);
 
-                this.log('Approve action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
+                this.log('Approve action transaction sent:', tx.hash, 'Action ID:', numericActionId);
                 // CRITICAL FIX: Return tx object, not receipt
                 // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
@@ -3715,32 +3554,13 @@ class ContractManager {
 
             // Execute without retry (user can manually retry by pressing button again)
             const result = await this.executeTransactionOnce(async () => {
-                // Use network-appropriate gas configuration for Polygon Amoy
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // Use appropriate gas price for current network conditions
-                const maxGweiForExecute = 50; // Reasonable max for execute operations
-                const targetGwei = Math.min(networkGwei * 1.2, maxGweiForExecute);
-                const gasLimit = 300000; // Conservative gas limit for execute operations
-
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[EXECUTE DEBUG] 📋 Gas Configuration:`);
-                console.log(`[EXECUTE DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[EXECUTE DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei`);
-                console.log(`[EXECUTE DEBUG]   Gas limit: ${gasLimit}`);
-
                 // CRITICAL FIX: Ensure contract is connected with signer (like all other methods)
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[EXECUTE DEBUG] 🔧 Contract connected with signer`);
                 console.log(`[EXECUTE DEBUG]   About to show MetaMask popup...`);
 
-                // Execute the transaction with proper gas settings
-                const tx = await contractWithSigner.executeAction(numericActionId, {
-                    gasLimit,
-                    gasPrice
-                });
+                // Execute the transaction
+                const tx = await contractWithSigner.executeAction(numericActionId);
 
                 console.log(`[EXECUTE DEBUG] ✅ Transaction submitted!`);
                 console.log(`[EXECUTE DEBUG]   Transaction hash: ${tx.hash}`);
@@ -3830,27 +3650,6 @@ class ContractManager {
             await this.ensureSigner();
 
             const result = await this.executeTransactionOnce(async () => {
-                // Use network-appropriate gas configuration for Polygon Amoy
-                const networkGasPrice = await this.provider.getGasPrice();
-                const networkGwei = parseFloat(ethers.utils.formatUnits(networkGasPrice, 'gwei'));
-
-                // UPDATED: Use current Polygon Amoy network conditions (25-30 gwei)
-                const maxGweiForReject = 35; // Updated for current network congestion
-                const targetGwei = Math.min(networkGwei * 1.2, maxGweiForReject); // 20% above network, capped at 35 gwei
-                const gasLimit = 200000; // Conservative gas limit for reject operations
-                const gasPrice = ethers.utils.parseUnits(targetGwei.toFixed(2), 'gwei');
-
-                console.log(`[REJECT DEBUG] 🔄 Gas Configuration:`);
-                console.log(`[REJECT DEBUG]   Network gas price: ${networkGwei.toFixed(2)} gwei`);
-                console.log(`[REJECT DEBUG]   Using gas price: ${targetGwei.toFixed(2)} gwei (capped at ${maxGweiForReject} gwei)`);
-                console.log(`[REJECT DEBUG]   Gas limit: ${gasLimit}`);
-
-                if (targetGwei > 40) {
-                    console.warn(`[REJECT DEBUG] ⚠️ WARNING: Gas price ${targetGwei} gwei exceeds recommended 40 gwei for rejections`);
-                } else {
-                    console.log(`[REJECT DEBUG] ✅ Gas price ${targetGwei} gwei is appropriate for current Polygon Amoy conditions`);
-                }
-
                 console.log(`[REJECT DEBUG] 📋 STEP 6: Calling contract method`);
                 console.log(`[REJECT DEBUG]   Contract address: ${this.stakingContract.address}`);
                 console.log(`[REJECT DEBUG]   Method: rejectAction`);
@@ -3860,16 +3659,13 @@ class ContractManager {
                 const contractWithSigner = this.stakingContract.connect(this.signer);
                 console.log(`[REJECT DEBUG]   About to show MetaMask popup...`);
 
-                const tx = await contractWithSigner.rejectAction(numericActionId, {
-                    gasLimit,
-                    gasPrice
-                });
+                const tx = await contractWithSigner.rejectAction(numericActionId);
 
                 console.log(`[REJECT DEBUG] ✅ STEP 7: Transaction submitted!`);
                 console.log(`[REJECT DEBUG]   Transaction hash: ${tx.hash}`);
                 console.log(`[REJECT DEBUG]   Action ID used: ${numericActionId} (numeric)`);
 
-                this.log('Reject action transaction sent:', tx.hash, 'Action ID:', numericActionId, `Gas: ${gasLimit}`);
+                this.log('Reject action transaction sent:', tx.hash, 'Action ID:', numericActionId);
                 // CRITICAL FIX: Return tx object, not receipt
                 // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
                 return tx;
@@ -4744,7 +4540,6 @@ class ContractManager {
             throw processedError;
         }
     }
-
 
     /**
      * Enhanced gas estimation with buffer and fallback for UNPREDICTABLE_GAS_LIMIT
