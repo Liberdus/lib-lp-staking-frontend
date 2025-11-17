@@ -54,8 +54,6 @@ class ContractManager {
         this.config = {
             maxRetries: 2, // Reduced from 3 for faster failure
             retryDelay: 400, // Reduced from 800ms for faster recovery
-            gasLimitMultiplier: 1.2,
-            gasEstimationBuffer: 0.1, // 10% buffer for gas estimation
             providerTimeout: 2000 // Reduced from 5000ms for faster failover
         };
 
@@ -3958,18 +3956,9 @@ class ContractManager {
             return await this.executeTransactionOnce(async () => {
                 const stakingAddress = this.contractAddresses.get('STAKING');
                 const amountWei = typeof amount === 'bigint' ? amount : ethers.utils.parseEther(amount.toString());
+                const tx = await lpContract.approve(stakingAddress, amountWei);
 
-                // Enhanced gas estimation
-                const gasLimit = await this.estimateGasWithBuffer(lpContract, 'approve', [stakingAddress, amountWei]);
-                const gasPrice = await this.getGasPrice();
-
-                // Execute transaction with optimized gas settings
-                const tx = await lpContract.approve(stakingAddress, amountWei, {
-                    gasLimit,
-                    gasPrice
-                });
-
-                this.log('Approve transaction sent:', tx.hash, `Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
+                this.log('Approve transaction sent:', tx.hash);
 
                 return tx;
             }, 'approveLPToken');
@@ -4008,21 +3997,11 @@ class ContractManager {
 
         try {
             return await this.executeTransactionOnce(async () => {
-                // Enhanced gas estimation
-                const gasLimit = await this.estimateGasWithBuffer(this.stakingContract, 'claimRewards', [lpTokenAddress]);
-                const gasPrice = await this.getGasPrice();
-
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-
-                // Execute transaction with optimized gas settings
-                const tx = await contractWithSigner.claimRewards(lpTokenAddress, {
-                    gasLimit,
-                    gasPrice
-                });
+                const tx = await contractWithSigner.claimRewards(lpTokenAddress);
 
                 this.log(`✅ Claim rewards transaction sent: ${tx.hash}`);
-                this.log(`   Gas: ${gasLimit}, Price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`);
 
                 // CRITICAL FIX: Return tx object, not receipt
                 // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
@@ -4066,21 +4045,12 @@ class ContractManager {
                 // Convert amount to wei
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
-                // Enhanced gas estimation
-                const gasLimit = await this.estimateGasWithBuffer(this.stakingContract, 'stake', [lpTokenAddress, amountWei]);
-                const gasPrice = await this.getGasPrice();
-
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-
-                // Execute transaction
-                const tx = await contractWithSigner.stake(lpTokenAddress, amountWei, {
-                    gasLimit,
-                    gasPrice
-                });
+                const tx = await contractWithSigner.stake(lpTokenAddress, amountWei);
 
                 this.log(`✅ Stake transaction sent: ${tx.hash}`);
-                this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
+                this.log(`   Amount: ${amount} LP tokens`);
 
                 // CRITICAL FIX: Return tx object, not receipt
                 // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
@@ -4124,21 +4094,12 @@ class ContractManager {
                 // Convert amount to wei
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
-                // Enhanced gas estimation
-                const gasLimit = await this.estimateGasWithBuffer(this.stakingContract, 'unstake', [lpTokenAddress, amountWei]);
-                const gasPrice = await this.getGasPrice();
-
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-
-                // Execute transaction
-                const tx = await contractWithSigner.unstake(lpTokenAddress, amountWei, {
-                    gasLimit,
-                    gasPrice
-                });
+                const tx = await contractWithSigner.unstake(lpTokenAddress, amountWei);
 
                 this.log(`✅ Unstake transaction sent: ${tx.hash}`);
-                this.log(`   Amount: ${amount} LP tokens, Gas: ${gasLimit}`);
+                this.log(`   Amount: ${amount} LP tokens`);
 
                 // CRITICAL FIX: Return tx object, not receipt
                 // The executeTransactionOnce will call tx.wait() via monitorTransactionWithTimeout
@@ -4541,72 +4502,6 @@ class ContractManager {
         }
     }
 
-    /**
-     * Enhanced gas estimation with buffer and fallback for UNPREDICTABLE_GAS_LIMIT
-     */
-    async estimateGasWithBuffer(contract, methodName, args = [], options = {}) {
-        try {
-            this.log(`Estimating gas for ${methodName}...`);
-
-            // Get base gas estimate with timeout
-            const gasEstimate = await Promise.race([
-                contract.estimateGas[methodName](...args, options),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Gas estimation timeout')), 5000)
-                )
-            ]);
-
-            // Add buffer for safety
-            const buffer = this.config.gasEstimationBuffer;
-            const gasWithBuffer = Math.floor(Number(gasEstimate) * (1 + buffer));
-
-            // Apply multiplier from config
-            const finalGasLimit = Math.floor(gasWithBuffer * this.config.gasLimitMultiplier);
-
-            this.log(`Gas estimation: base=${gasEstimate}, withBuffer=${gasWithBuffer}, final=${finalGasLimit}`);
-
-            return finalGasLimit;
-        } catch (error) {
-            this.logError('Gas estimation failed:', error.message);
-
-            // Enhanced fallback for specific error types
-            if (error.code === 'UNPREDICTABLE_GAS_LIMIT' || error.message.includes('UNPREDICTABLE_GAS_LIMIT')) {
-                this.log('⚠️ UNPREDICTABLE_GAS_LIMIT detected, using conservative fallback');
-            }
-
-            // Fallback to default gas limits based on operation type
-            const fallbackGasLimits = {
-                'approve': 80000,        // Increased for safety
-                'stake': 200000,         // Increased for complex staking logic
-                'unstake': 180000,       // Increased for unstaking calculations
-                'claimRewards': 150000,  // Increased for reward calculations
-                'approveAction': 250000, // Multi-sig operations need more gas
-                'rejectAction': 200000,
-                'executeAction': 300000,
-                'transfer': 21000
-            };
-
-            const fallbackGas = fallbackGasLimits[methodName] || 250000; // Higher default
-            this.log(`Using fallback gas limit: ${fallbackGas} for ${methodName}`);
-
-            return fallbackGas;
-        }
-    }
-
-    /**
-     * Get current gas price with fallback
-     */
-    async getGasPrice() {
-        try {
-            const gasPrice = await this.provider.getGasPrice();
-            this.log('Current gas price:', ethers.utils.formatUnits(gasPrice, 'gwei'), 'gwei');
-            return gasPrice;
-        } catch (error) {
-            this.logError('Failed to get gas price:', error);
-            // Fallback to 30 gwei for Polygon
-            return ethers.utils.parseUnits('30', 'gwei');
-        }
-    }
 
     /**
      * Check if fallback provider can be used
