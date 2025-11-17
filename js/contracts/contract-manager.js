@@ -1,5 +1,4 @@
-﻿
-(function(global) {
+﻿(function(global) {
     'use strict';
 
     console.log('🔧 ContractManager script starting to load...');
