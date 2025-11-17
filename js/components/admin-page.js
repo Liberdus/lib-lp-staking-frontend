@@ -482,19 +482,6 @@ class AdminPage {
                 console.log('✅ OptimizedAdminState initialized');
             }
 
-            // Initialize performance monitor
-            if (window.PerformanceMonitor) {
-                this.performanceMonitor = new window.PerformanceMonitor();
-                console.log('✅ PerformanceMonitor initialized');
-
-                // Log performance report every 5 minutes
-                setInterval(() => {
-                    if (this.performanceMonitor) {
-                        this.performanceMonitor.generateReport();
-                    }
-                }, 300000); // 5 minutes
-            }
-
             console.log('🎉 All performance optimization components initialized successfully');
 
         } catch (error) {
@@ -2174,14 +2161,6 @@ class AdminPage {
                     if (this.optimizedAdminState) {
                         this.optimizedAdminState.initializeProposals(formattedProposals);
                         console.log('🎯 Proposals initialized in optimized state management');
-
-                        // Track performance
-                        if (this.performanceMonitor) {
-                            this.performanceMonitor.trackNetworkCall('full-refresh', {
-                                reason: 'initial-load',
-                                proposalCount: realProposals.length
-                            });
-                        }
                     }
 
                     // SELECTIVE UPDATE OPTIMIZATION: Initialize proposal state cache
