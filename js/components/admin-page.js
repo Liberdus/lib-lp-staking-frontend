@@ -482,12 +482,6 @@ class AdminPage {
                 console.log('✅ OptimizedAdminState initialized');
             }
 
-            // Initialize efficient DOM updates
-            if (window.EfficientDOMUpdates && this.optimizedAdminState) {
-                this.efficientDOM = new window.EfficientDOMUpdates(this.optimizedAdminState);
-                console.log('✅ EfficientDOMUpdates initialized');
-            }
-
             // Initialize performance monitor
             if (window.PerformanceMonitor) {
                 this.performanceMonitor = new window.PerformanceMonitor();
