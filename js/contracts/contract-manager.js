@@ -4740,16 +4740,7 @@ class ContractManager {
             const context = { operation: operationName, contractManager: true, transaction: true };
             let processedError = window?.errorHandler?.processError?.(error, context) || error;
 
-            // Display error to user using notificationManager (primary pattern in codebase)
-            const userMessage = processedError.userMessage?.title || 
-                              processedError.userMessage?.message || 
-                              `Transaction ${operationName} failed`;
-            
             console.error(`Transaction ${operationName} failed:`, error.message);
-            
-            
-            window?.notificationManager?.error(userMessage);
-            
 
             // Re-throw error (no retry - user can manually retry)
             throw processedError;
