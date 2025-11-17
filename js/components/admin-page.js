@@ -563,8 +563,7 @@ class AdminPage {
             if (window.contractManager) {
                 try {
                     await window.contractManager.initialize();
-                    await this.loadContractStats();
-                    await this.loadMultiSignPanel();
+                    await this.refreshData();
                 } catch (error) {
                     console.error('❌ Error refreshing contract data:', error);
                 }
