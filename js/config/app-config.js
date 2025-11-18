@@ -47,12 +47,12 @@ window.CONFIG = {
 
     // Backward compatibility - these reference the selected network
     get NETWORK() {
-        const selectedNetwork = localStorage.getItem('liberdus-selected-network') || Object.keys(this.NETWORKS)[0];
+        const selectedNetwork = localStorage.getItem('liberdus-selected-network');
         return this.NETWORKS[selectedNetwork];
     },
 
     get CONTRACTS() {
-        const selectedNetwork = localStorage.getItem('liberdus-selected-network') || Object.keys(this.NETWORKS)[0];
+        const selectedNetwork = localStorage.getItem('liberdus-selected-network');
         return this.NETWORKS[selectedNetwork]?.CONTRACTS;
     },
 
