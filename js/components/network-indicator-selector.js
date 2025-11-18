@@ -287,6 +287,14 @@ class NetworkSelector {
     }
 
     /**
+     * Get native currency for current network
+     * @returns {object|undefined} Native currency object or undefined
+     */
+    getCurrentNativeCurrency() {
+        return this.getCurrentNetworkConfig()?.NATIVE_CURRENCY;
+    }
+
+    /**
      * Check if network is currently switching
      * @returns {boolean} True if network is switching
      */

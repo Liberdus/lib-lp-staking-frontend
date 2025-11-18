@@ -140,8 +140,7 @@ class WalletPopup {
 
     createPopupHTML(walletData) {
         const shortAddress = this.formatAddress(walletData.address);
-        const networkConfig = window.networkSelector?.getCurrentNetworkConfig();
-        const nativeCurrency = networkConfig?.NATIVE_CURRENCY;
+        const nativeCurrency = window.networkSelector?.getCurrentNativeCurrency();
         const labelToken = nativeCurrency?.name || nativeCurrency?.symbol;
         const balanceLabel = labelToken ? `${labelToken} Balance` : 'Balance';
 
@@ -306,8 +305,7 @@ class WalletPopup {
             return;
         }
 
-        const networkConfig = window.networkSelector?.getCurrentNetworkConfig();
-        const nativeCurrency = networkConfig?.NATIVE_CURRENCY || {};
+        const nativeCurrency = window.networkSelector?.getCurrentNativeCurrency();
         const decimals = typeof nativeCurrency.decimals === 'number' ? nativeCurrency.decimals : 18;
         const displaySymbol = nativeCurrency.symbol || 'Native';
         const displayName = nativeCurrency.name || displaySymbol;
@@ -324,7 +322,7 @@ class WalletPopup {
         try {
             const balance = await this.fetchNativeBalance(
                 walletData.address,
-                networkConfig?.CHAIN_ID,
+                window.networkSelector?.getCurrentChainId(),
                 walletData.chainId
             );
 
