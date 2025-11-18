@@ -4646,13 +4646,6 @@ class ContractManager {
             return errorFallback;
         }
 
-        // Check if contract is deployed on current network
-        const contract = window.networkSelector?.getStakingContractAddress();
-        if (!contract || contract.trim() === '') {
-            console.log(`⚠️ No staking contract deployed on current network - ${functionName} skipped gracefully`);
-            return errorFallback;
-        }
-
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 return await contractFunction();
