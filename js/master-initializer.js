@@ -55,6 +55,9 @@ class MasterInitializer {
         // Load SES-safe handler
         await this.loadScript('js/utils/ses-safe-handler.js');
 
+        // Load network selector (contains network config utilities)
+        await this.loadScript('js/components/network-indicator-selector.js');
+
         // Load main configuration
         await this.loadScript('js/config/app-config.js');
 
@@ -62,6 +65,12 @@ class MasterInitializer {
         if (!window.CONFIG) {
             throw new Error('Failed to load application configuration');
         }
+
+        // Initialize network selection (validate localStorage)
+        window.networkSelector.loadSelectedNetwork(Object.keys(window.CONFIG.NETWORKS)[0]);
+
+        // Freeze CONFIG to make it immutable - network state is only in localStorage
+        Object.freeze(window.CONFIG);
 
         // Disable console output if not in debug mode
         if (!window.CONFIG?.DEV?.DEBUG) {
@@ -77,6 +86,7 @@ class MasterInitializer {
         }
 
         console.log('✅ Configuration loaded successfully');
+        console.log('📄 Staking Contract:', window.CONFIG.CONTRACTS.STAKING_CONTRACT);
     }
 
     async loadEthersLibrary() {
@@ -99,7 +109,6 @@ class MasterInitializer {
         const coreScripts = [
             'js/utils/multicall-service.js',    // Multicall2 for batch loading (90% RPC reduction)
             'js/utils/formatter.js',            // Formatter utilities (needed before UI components)
-            'js/components/network-indicator-selector.js',
             'js/core/error-handler.js',        // Error handling system
             'js/core/unified-theme-manager.js', // Unified theme manager
             'js/core/notification-manager-new.js'
