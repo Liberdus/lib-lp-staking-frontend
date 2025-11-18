@@ -1086,15 +1086,13 @@ class AdminPage {
         // Update network indicator when chain changes
         const indicator = document.getElementById('network-indicator-home');
         if (indicator) {
-            const chainIdDecimal = parseInt(chainId, 16);
-            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-
             // Check permission asynchronously and update
             if (window.networkManager) {
                 window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
                     window.NetworkIndicator?.update('network-indicator-home', 'admin-network-selector', 'admin');
                 }).catch(error => {
-                    console.error('Error checking permission after chain change:', error);
+                    const networkName = window.networkSelector?.getCurrentNetworkName();
+                    console.error(`Error checking permission after chain change: ${networkName}`, error);
                 });
             }
         }
@@ -3886,7 +3884,7 @@ class AdminPage {
             }
 
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const expectedChainId = window.networkManager?.getChainIdHex() || ('0x' + window.CONFIG.NETWORK.CHAIN_ID.toString(16));
+            const expectedChainId = window.networkManager?.getChainIdHex();
             return chainId === expectedChainId;
         } catch (error) {
             console.error('❌ Network status check failed:', error);

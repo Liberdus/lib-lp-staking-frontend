@@ -86,7 +86,6 @@ class MasterInitializer {
         }
 
         console.log('✅ Configuration loaded successfully');
-        console.log('📄 Staking Contract:', window.CONFIG.CONTRACTS.STAKING_CONTRACT);
     }
 
     async loadEthersLibrary() {

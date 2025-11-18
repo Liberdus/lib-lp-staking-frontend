@@ -245,35 +245,45 @@ class NetworkSelector {
     }
 
     /**
-     * Get available networks for display
+     * Get current network configuration (replaces CONFIG.NETWORK getter)
+     * @returns {object|undefined} Network configuration object or undefined
      */
-    getAvailableNetworks() {
-        return Object.entries(window.CONFIG.NETWORKS).map(([key, network]) => ({
-            key,
-            name: network.NAME,
-            chainId: network.CHAIN_ID
-        }));
+    getCurrentNetworkConfig() {
+        const selectedNetwork = this.getSelectedNetworkKey();
+        return window.CONFIG?.NETWORKS[selectedNetwork] ?? undefined;
     }
 
     /**
-     * Check if a network is available
-     * @param {string} networkKey - Network key to check
+     * Get current network contracts (replaces CONFIG.CONTRACTS getter)
+     * @returns {object|undefined} Contracts object or undefined
      */
-    isNetworkAvailable(networkKey) {
-        return !!window.CONFIG.NETWORKS[networkKey];
+    getCurrentContracts() {
+        const selectedNetwork = this.getSelectedNetworkKey();
+        return window.CONFIG?.NETWORKS[selectedNetwork]?.CONTRACTS;
     }
 
     /**
-     * Get current selected network info
+     * Get current network name
+     * @returns {string|undefined} Network name or undefined
      */
-    getCurrentNetwork() {
-        const selectedKey = this.getSelectedNetworkKey();
-        const network = selectedKey && window.CONFIG?.NETWORKS[selectedKey] ? window.CONFIG.NETWORKS[selectedKey] : null;
-        return {
-            key: selectedKey,
-            name: network?.NAME || 'Unknown',
-            chainId: network?.CHAIN_ID || null
-        };
+    getCurrentNetworkName() {
+        return this.getCurrentNetworkConfig()?.NAME;
+    }
+
+    /**
+     * Get current network chain ID
+     * @returns {number|undefined} Chain ID or undefined
+     */
+    getCurrentChainId() {
+        return this.getCurrentNetworkConfig()?.CHAIN_ID;
+    }
+
+    /**
+     * Get staking contract address for current network
+     * @returns {string|undefined} Staking contract address or undefined
+     */
+    getStakingContractAddress() {
+        return this.getCurrentContracts()?.STAKING_CONTRACT;
     }
 
     /**
@@ -374,7 +384,6 @@ class NetworkIndicator {
         indicator.className = `network-indicator-home loading`;
 
         const isWalletConnected = window.walletManager && window.walletManager.isConnected();
-        const expectedNetworkName = window.CONFIG?.NETWORK?.NAME || 'Unknown';
 
         // Check permission asynchronously if wallet is connected
         if (isWalletConnected && window.networkManager) {

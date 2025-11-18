@@ -563,8 +563,8 @@ class HomePage {
         }
 
         // Check if there are valid contracts for the current network
-        const contracts = window.CONFIG.CONTRACTS;
-        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+        const contract = window.networkSelector?.getStakingContractAddress();
+        if (!contract || contract.trim() === '') {
             console.log('⚠️ No contracts deployed on current network - loading empty data');
             this.loadEmptyData();
             return;

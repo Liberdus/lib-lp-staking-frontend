@@ -105,8 +105,6 @@ class ContractManager {
                 throw new Error('CONFIG not loaded');
             }
 
-            console.log('✅ CONFIG available:', window.CONFIG.CONTRACTS);
-
             // Check if ethers is available
             if (!window.ethers) {
                 console.error('❌ Ethers.js not available - cannot initialize contracts');
@@ -677,7 +675,7 @@ class ContractManager {
                 throw new Error('Configuration not available');
             }
 
-            const stakingAddress = config.CONTRACTS?.STAKING_CONTRACT || null;
+            const stakingAddress = window.networkSelector?.getStakingContractAddress();
             console.log('   - Staking contract (config):', stakingAddress);
 
             if (stakingAddress && this.isValidContractAddress(stakingAddress)) {
@@ -1147,9 +1145,10 @@ class ContractManager {
             }
 
             // Check if the new network has valid contract addresses
-            const contracts = window.CONFIG.CONTRACTS;
-            if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
-                console.log(`⚠️ No contracts deployed on ${network.NAME} - skipping initialization`);
+            const contract = window.CONFIG.NETWORKS[networkKey]?.CONTRACTS?.STAKING_CONTRACT || null;
+            if (!contract || contract.trim() === '') {
+                const networkName = network?.NAME || networkKey || 'current network';
+                console.log(`⚠️ No contracts deployed on ${networkName} - skipping initialization`);
                 this.isInitialized = true; // Mark as initialized but with no contracts
                 return true;
             }
@@ -4648,8 +4647,8 @@ class ContractManager {
         }
 
         // Check if contract is deployed on current network
-        const contracts = window.CONFIG.CONTRACTS;
-        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
+        const contract = window.networkSelector?.getStakingContractAddress();
+        if (!contract || contract.trim() === '') {
             console.log(`⚠️ No staking contract deployed on current network - ${functionName} skipped gracefully`);
             return errorFallback;
         }
