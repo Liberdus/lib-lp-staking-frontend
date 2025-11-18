@@ -1340,7 +1340,7 @@ class ContractManager {
             );
 
             // Get balance of staking contract (total LP tokens staked)
-            const stakingContractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const stakingContractAddress = window.networkSelector?.getStakingContractAddress();
             if (!stakingContractAddress) {
                 throw new Error('Staking contract address not configured');
             }
@@ -1361,7 +1361,7 @@ class ContractManager {
                 throw new Error(`Unable to resolve LP token for identifier: ${pairIdentifier}`);
             }
 
-            const stakingAddress = this.contractAddresses.get('STAKING') || window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const stakingAddress = this.contractAddresses.get('STAKING') || window.networkSelector?.getStakingContractAddress();
             if (!stakingAddress || !this.isValidContractAddress(stakingAddress)) {
                 throw new Error('Staking contract address not available');
             }

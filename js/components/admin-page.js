@@ -223,7 +223,7 @@ class AdminPage {
             }
 
             const healthChecker = new window.NetworkHealthCheck();
-            const contractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const contractAddress = window.networkSelector?.getStakingContractAddress();
 
             // Perform comprehensive health check
             const isReady = await healthChecker.waitForNetworkReady(contractAddress, 20000); // 20 second timeout
