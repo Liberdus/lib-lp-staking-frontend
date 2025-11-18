@@ -71,35 +71,10 @@
         align-items: center;
         gap: 8px;
     }
-
-    .pairs-table {
-        font-size: 13px;
-    }
-
-    .pairs-table th,
-    .pairs-table td {
-        padding: 8px 6px;
-    }
-
-    /* Stack table on very small screens */
-    .pairs-table-responsive {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .pairs-table-responsive table {
-        min-width: 600px;
-    }
 }
 
 @media (max-width: 768px) {
     /* Tablet and large mobile screens */
-    .header-content {
-        flex-direction: column;
-        gap: 16px;
-    }
-
     .nav-section {
         width: 100%;
         justify-content: space-between;
@@ -120,14 +95,6 @@
         overflow-y: auto;
     }
 
-    .staking-tabs {
-        flex-direction: column;
-    }
-
-    .staking-tab {
-        width: 100%;
-        text-align: center;
-    }
 }
 
 /* Enhanced Touch Interactions */
@@ -141,106 +108,16 @@
         min-width: 44px;
     }
 
-    .pairs-table td {
-        padding: 12px 8px; /* Larger touch targets */
-    }
-
     .notification-close {
         min-width: 32px;
         min-height: 32px;
     }
 
-    /* Remove hover effects on touch devices */
-    .animate-hover-lift:hover,
-    .animate-hover-scale:hover,
-    .animate-hover-glow:hover {
-        transform: none;
-        box-shadow: none;
-    }
-}
-
-/* Enhanced Dark Theme Support */
-[data-theme="dark"] {
-    /* Enhanced dark theme variables */
-    --background-default: #0a0e1a;
-    --background-paper: #1a1f2e;
-    --background-elevated: #242938;
-    --surface-hover: rgba(255, 255, 255, 0.08);
-    --action-selected: rgba(25, 118, 210, 0.16);
-    --action-hover: rgba(255, 255, 255, 0.08);
-    
-    --text-primary: rgba(255, 255, 255, 0.95);
-    --text-secondary: rgba(255, 255, 255, 0.7);
-    --text-disabled: rgba(255, 255, 255, 0.5);
-    
-    --divider: rgba(255, 255, 255, 0.12);
-    
-    /* Enhanced shadows for dark theme */
-    --shadow-1: 0px 2px 1px -1px rgba(0,0,0,0.4), 0px 1px 1px 0px rgba(0,0,0,0.28), 0px 1px 3px 0px rgba(0,0,0,0.24);
-    --shadow-4: 0px 2px 4px -1px rgba(0,0,0,0.4), 0px 4px 5px 0px rgba(0,0,0,0.28), 0px 1px 10px 0px rgba(0,0,0,0.24);
-    --shadow-8: 0px 5px 5px -3px rgba(0,0,0,0.4), 0px 8px 10px 1px rgba(0,0,0,0.28), 0px 3px 14px 2px rgba(0,0,0,0.24);
-}
-
-/* Enhanced Light Theme Support */
-[data-theme="light"] {
-    --background-default: #ffffff;
-    --background-paper: #ffffff;
-    --background-elevated: #f8f9fa;
-    --surface-hover: rgba(0, 0, 0, 0.04);
-    --action-selected: rgba(25, 118, 210, 0.08);
-    --action-hover: rgba(0, 0, 0, 0.04);
-    
-    --text-primary: rgba(0, 0, 0, 0.87);
-    --text-secondary: rgba(0, 0, 0, 0.6);
-    --text-disabled: rgba(0, 0, 0, 0.38);
-    
-    --divider: rgba(0, 0, 0, 0.12);
 }
 
 /* Smooth Theme Transitions */
 * {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Enhanced Focus Management */
-.focus-visible {
-    outline: 2px solid var(--primary-main);
-    outline-offset: 2px;
-    border-radius: 4px;
-}
-
-/* Skip to content link */
-.skip-link {
-    position: absolute;
-    top: -40px;
-    left: 6px;
-    background: var(--primary-main);
-    color: white;
-    padding: 8px 16px;
-    text-decoration: none;
-    border-radius: 4px;
-    z-index: 10000;
-    font-weight: 500;
-    transition: top 0.3s ease;
-}
-
-.skip-link:focus {
-    top: 6px;
-}
-
-/* Enhanced Loading States */
-.loading-shimmer {
-    background: linear-gradient(90deg, 
-        var(--divider) 25%, 
-        rgba(255, 255, 255, 0.1) 50%, 
-        var(--divider) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
 }
 
 /* Enhanced Button States */
@@ -311,46 +188,7 @@
     }
 }
 
-/* Enhanced Table Responsiveness */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
 
-.table-responsive::-webkit-scrollbar {
-    height: 6px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: var(--divider);
-    border-radius: 3px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: var(--text-secondary);
-    border-radius: 3px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: var(--text-primary);
-}
-
-/* Enhanced Form Controls */
-.form-control {
-    transition: all 0.2s ease;
-    border: 2px solid var(--divider);
-}
-
-.form-control:focus {
-    border-color: var(--primary-main);
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
-    outline: none;
-}
-
-.form-control:invalid {
-    border-color: var(--error-main);
-    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
-}
 
 /* Enhanced Accessibility */
 @media (prefers-contrast: high) {
@@ -382,71 +220,6 @@
         animation: none;
     }
 }
-
-/* Print Styles */
-@media print {
-    .header,
-    .footer,
-    .modal,
-    .notification-container,
-    .btn,
-    .theme-toggle {
-        display: none !important;
-    }
-    
-    .main-content {
-        padding: 0;
-        margin: 0;
-    }
-    
-    .pairs-table {
-        border-collapse: collapse;
-    }
-    
-    .pairs-table th,
-    .pairs-table td {
-        border: 1px solid #000;
-        padding: 8px;
-    }
-}
-
-/* Enhanced Performance */
-.gpu-accelerated {
-    transform: translateZ(0);
-    will-change: transform;
-}
-
-.contain-layout {
-    contain: layout;
-}
-
-.contain-paint {
-    contain: paint;
-}
-
-/* Enhanced Typography */
-.text-balance {
-    text-wrap: balance;
-}
-
-.text-pretty {
-    text-wrap: pretty;
-}
-
-/* Enhanced Spacing System */
-.space-y-1 > * + * { margin-top: 0.25rem; }
-.space-y-2 > * + * { margin-top: 0.5rem; }
-.space-y-3 > * + * { margin-top: 0.75rem; }
-.space-y-4 > * + * { margin-top: 1rem; }
-.space-y-6 > * + * { margin-top: 1.5rem; }
-.space-y-8 > * + * { margin-top: 2rem; }
-
-.space-x-1 > * + * { margin-left: 0.25rem; }
-.space-x-2 > * + * { margin-left: 0.5rem; }
-.space-x-3 > * + * { margin-left: 0.75rem; }
-.space-x-4 > * + * { margin-left: 1rem; }
-.space-x-6 > * + * { margin-left: 1.5rem; }
-.space-x-8 > * + * { margin-left: 2rem; }
 
 /* Pair Name Link Component */
 .pair-name-link {
