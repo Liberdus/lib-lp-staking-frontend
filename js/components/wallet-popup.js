@@ -306,9 +306,9 @@ class WalletPopup {
         }
 
         const nativeCurrency = window.networkSelector?.getCurrentNativeCurrency();
-        const decimals = typeof nativeCurrency.decimals === 'number' ? nativeCurrency.decimals : 18;
-        const displaySymbol = nativeCurrency.symbol || 'Native';
-        const displayName = nativeCurrency.name || displaySymbol;
+        const decimals = typeof nativeCurrency?.decimals === 'number' ? nativeCurrency.decimals : 18;
+        const displaySymbol = nativeCurrency?.symbol || 'Native';
+        const displayName = nativeCurrency?.name || displaySymbol;
 
         const labelElement = this.popupElement.querySelector('[data-wallet-balance-label]');
         if (labelElement) {
