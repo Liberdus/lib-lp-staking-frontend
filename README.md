@@ -84,8 +84,7 @@ lp-staking-vanilla/
 │   ├── base.css           # Base styles
 │   ├── components.css     # Component styles
 │   ├── main.css           # Main styles
-│   ├── admin.css          # Admin panel styles
-│   └── responsive.css     # Responsive styles
+│   └── admin.css          # Admin panel styles
 ├── js/                     # JavaScript modules
 │   ├── components/        # UI components
 │   ├── config/            # Configuration
