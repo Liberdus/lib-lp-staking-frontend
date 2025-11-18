@@ -15,6 +15,7 @@ class NetworkSelector {
         this.isInitialized = false;
         this.eventListeners = new Map(); // Store event listeners for cleanup
         this._networkSwitching = false; // Track network switching state
+        this.defaultNetwork = 'AMOY';
     }
 
     /**
@@ -22,17 +23,17 @@ class NetworkSelector {
      * @param {string} defaultNetwork - The default network key to use if no network is selected
      * @returns {string|null} Active network key
      */
-    loadSelectedNetwork(defaultNetwork) {
+    loadSelectedNetwork() {
         const stored = localStorage.getItem('liberdus-selected-network');
         if (stored && window.CONFIG?.NETWORKS[stored]) {
             console.log(`🔄 Loaded network from storage: ${window.CONFIG.NETWORKS[stored].NAME}`);
             return stored;
         }
 
-        if (defaultNetwork && window.CONFIG?.NETWORKS[defaultNetwork]) {
-            localStorage.setItem('liberdus-selected-network', defaultNetwork);
-            console.log(`🔄 Initialized network storage with default: ${window.CONFIG.NETWORKS[defaultNetwork].NAME}`);
-            return defaultNetwork;
+        if (this.defaultNetwork && window.CONFIG?.NETWORKS[this.defaultNetwork]) {
+            localStorage.setItem('liberdus-selected-network', this.defaultNetwork);
+            console.log(`🔄 Initialized network storage with default: ${window.CONFIG.NETWORKS[this.defaultNetwork].NAME}`);
+            return this.defaultNetwork;
         }
 
         console.error('❌ No valid default network configured');

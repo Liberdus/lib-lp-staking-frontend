@@ -67,7 +67,7 @@ class MasterInitializer {
         }
 
         // Initialize network selection (validate localStorage)
-        window.networkSelector.loadSelectedNetwork(Object.keys(window.CONFIG.NETWORKS)[0]);
+        window.networkSelector.loadSelectedNetwork();
 
         // Freeze CONFIG to make it immutable - network state is only in localStorage
         Object.freeze(window.CONFIG);
