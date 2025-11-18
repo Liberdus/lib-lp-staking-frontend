@@ -1589,17 +1589,11 @@ class ContractManager {
      * Get signers (like React version) with RPC failover
      */
     async getSigners() {
-        const signers = await this.safeContractCall(
+        return await this.safeContractCall(
             () => this.stakingContract.getSigners(),
-            null,
+            [],
             'getSigners'
         );
-
-        if (!Array.isArray(signers)) {
-            throw new Error('Failed to retrieve signers from staking contract');
-        }
-
-        return signers;
     }
 
     /**
