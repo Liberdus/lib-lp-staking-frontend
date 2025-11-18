@@ -174,9 +174,6 @@ class NetworkSelector {
                 return;
             }
 
-            // Update the network name display immediately
-            this.updateNetworkNameDisplay(networkKey, context);
-
             // Switch contract manager to new network
             if (window.contractManager?.switchNetwork) {
                 try {
@@ -232,16 +229,6 @@ class NetworkSelector {
         if (selector) {
             selector.value = this.getSelectedNetworkKey();
         }
-    }
-
-    /**
-     * Update the network name display immediately
-     * @param {string} networkKey - The selected network key
-     * @param {string} context - Context ('home' or 'admin')
-     */
-    updateNetworkNameDisplay(networkKey, context) {
-        const networkName = window.CONFIG.NETWORKS[networkKey]?.NAME || networkKey;        
-        console.log(`📝 Updated network name display to: ${networkName}`);
     }
 
     /**
