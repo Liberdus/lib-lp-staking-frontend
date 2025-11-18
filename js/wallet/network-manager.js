@@ -117,21 +117,15 @@ class NetworkManager {
             throw new Error('Wallet not connected');
         }
 
-        const network = window.networkSelector?.getCurrentNetworkConfig();
-        const chainId = network?.CHAIN_ID;
+        const chainId = window.networkSelector?.getCurrentChainId();
         if (!chainId) {
             throw new Error('Network configuration not found');
         }
 
         try {
-            this.log('Switching to network:', network.NAME);
-
             // Try to switch to the network
             await this.requestNetworkSwitch(chainId);
-            
-            this.log('Network switch successful');
             return true;
-
         } catch (error) {
             // If the network doesn't exist in wallet, try to add it
             if (error.code === 4902 || error.message.includes('Unrecognized chain ID')) {
@@ -177,7 +171,7 @@ class NetworkManager {
         }
 
         const networkConfig = this.buildNetworkConfig();
-        const networkName = window.networkSelector?.getCurrentNetworkName() || 'configured network';
+        const networkName = window.networkSelector?.getCurrentNetworkName();
 
         try {
             await window.ethereum.request({
@@ -239,7 +233,7 @@ class NetworkManager {
 
         const chainId = this.getCurrentChainId();
         const isCorrect = this.isOnRequiredNetwork(chainId);
-        const network = window.networkSelector?.getCurrentNetworkConfig();
+        const networkName = window.networkSelector?.getCurrentNetworkName();
 
         if (!chainId || !isCorrect) {
             // Show warning
@@ -250,7 +244,7 @@ class NetworkManager {
                 if (!chainId) {
                     messageElement.textContent = 'Please connect your wallet';
                 } else {
-                    messageElement.textContent = `Please switch to ${network?.NAME || 'the configured network'}`;
+                    messageElement.textContent = `Please switch to ${networkName}`;
                 }
             }
         } else {
@@ -438,7 +432,7 @@ class NetworkManager {
 
             throw new Error(`Unsupported wallet type: ${walletType}`);
         } catch (error) {
-            const networkName = window.networkSelector?.getCurrentNetworkName() || 'configured network';
+            const networkName = window.networkSelector?.getCurrentNetworkName();
             console.error(`Failed to request ${networkName} permission:`, error);
             throw error;
         }
@@ -455,7 +449,7 @@ class NetworkManager {
         }
 
         try {
-            const networkName = window.networkSelector?.getCurrentNetworkName() || 'configured network';
+            const networkName = window.networkSelector?.getCurrentNetworkName();
             console.log(`🔐 Requesting ${networkName} network permission...`);
 
             // First, ensure we have account permissions
@@ -492,7 +486,7 @@ class NetworkManager {
         // Set flag for background permission checks
         this._showPermissionNotification = showNotification;
         try {
-            const networkName = window.networkSelector?.getCurrentNetworkName() || 'configured network';
+            const networkName = window.networkSelector?.getCurrentNetworkName();
 
             // Request permission using modern approach
             await this.requestNetworkPermission('metamask');
@@ -517,7 +511,7 @@ class NetworkManager {
             return true;
         } catch (error) {
             console.error('❌ Failed to get network permission:', error);
-            const networkName = window.networkSelector?.getCurrentNetworkName() || 'configured network';
+            const networkName = window.networkSelector?.getCurrentNetworkName();
             const errorMessage = `Failed to get network permission. Please grant permission for ${networkName} network in MetaMask.`;
             
             if (context === 'admin') {
@@ -648,8 +642,7 @@ class NetworkManager {
                 
                 // Only show notification for explicit permission requests, not background checks
                 if (window.notificationManager && this._showPermissionNotification) {
-                    const networkName = network?.NAME || 'the selected network';
-                    window.notificationManager.success(`${networkName} permission confirmed. You can now make transactions.`);
+                    window.notificationManager.success(`${network.NAME} permission confirmed. You can now make transactions.`);
                 }
             } else {
                 // No permission or wrong network
