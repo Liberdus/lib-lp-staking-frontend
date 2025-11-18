@@ -4640,12 +4640,6 @@ class ContractManager {
     async safeContractCall(contractFunction, errorFallback = null, functionName = 'unknown') {
         const maxRetries = 2;
 
-        // Check if contracts are initialized before attempting calls
-        if (!this.stakingContract && functionName.includes('staking')) {
-            console.error(`❌ Staking contract not initialized for ${functionName}`);
-            return errorFallback;
-        }
-
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 return await contractFunction();
