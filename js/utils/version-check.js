@@ -170,7 +170,6 @@
             `${basePath}css/admin.css`,
             `${basePath}css/base.css`,
             `${basePath}css/components.css`,
-            `${basePath}css/day10-enhancements.css`,
             `${basePath}css/main.css`,
             `${basePath}css/network-indicator-selector.css`,
             `${basePath}css/theme-toggle.css`,
