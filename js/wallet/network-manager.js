@@ -642,7 +642,7 @@ class NetworkManager {
                 
                 // Only show notification for explicit permission requests, not background checks
                 if (window.notificationManager && this._showPermissionNotification) {
-                    window.notificationManager.success(`${network.NAME} permission confirmed. You can now make transactions.`);
+                    window.notificationManager.success(`${network?.NAME} permission confirmed. You can now make transactions.`);
                 }
             } else {
                 // No permission or wrong network
