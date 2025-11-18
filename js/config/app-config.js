@@ -48,7 +48,7 @@ window.CONFIG = {
     // Backward compatibility - these reference the selected network
     get NETWORK() {
         const selectedNetwork = window?.networkSelector?.getSelectedNetworkKey();
-        return this.NETWORKS[selectedNetwork];
+        return this.NETWORKS[selectedNetwork] ?? undefined;
     },
 
     get CONTRACTS() {
