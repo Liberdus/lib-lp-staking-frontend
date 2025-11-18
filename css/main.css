@@ -57,8 +57,6 @@
     --liberdus-gold-glow: rgba(246, 173, 85, 0.3);
 
     /* Legacy Compatibility Mappings */
-    --primary-color: var(--liberdus-blue);
-    --primary-light: var(--liberdus-blue-bg);
     --primary-600: var(--liberdus-blue-dark);
 
     --background-primary: var(--liberdus-bg-primary);
@@ -80,16 +78,11 @@
     --warning-color: var(--liberdus-orange);
     --error-color: var(--liberdus-red);
 
-    --primary-color: var(--primary-600);
-    --primary-hover: var(--primary-700);
-    --primary-light: var(--primary-100);
-
     --success-color: var(--success-500);
     --warning-color: var(--warning-500);
     --error-color: var(--error-500);
 
     /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 
     --font-size-xs: 0.75rem;    /* 12px */
