@@ -1589,11 +1589,17 @@ class ContractManager {
      * Get signers (like React version) with RPC failover
      */
     async getSigners() {
-        return await this.safeContractCall(
+        const signers = await this.safeContractCall(
             () => this.stakingContract.getSigners(),
-            window.CONFIG?.GOVERNANCE?.SIGNERS || [], // Fallback signers from config
+            null,
             'getSigners'
         );
+
+        if (!Array.isArray(signers)) {
+            throw new Error('Failed to retrieve signers from staking contract');
+        }
+
+        return signers;
     }
 
     /**
@@ -1635,7 +1641,7 @@ class ContractManager {
      * Get required approvals for multi-signature actions with RPC failover
      */
     async getRequiredApprovals() {
-        return await this.safeContractCall(
+        const requiredApprovals = await this.safeContractCall(
             async () => {
                 if (!this.stakingContract) {
                     throw new Error('Staking contract not initialized');
@@ -1643,16 +1649,21 @@ class ContractManager {
 
                 // Check if function exists first
                 if (typeof this.stakingContract.REQUIRED_APPROVALS !== 'function') {
-                    console.log('⚠️ REQUIRED_APPROVALS function not available in contract');
-                    return 3; // Default fallback value (updated to match config)
+                    throw new Error('REQUIRED_APPROVALS function not available in contract');
                 }
 
                 const result = await this.stakingContract.REQUIRED_APPROVALS();
                 return result.toNumber();
             },
-            window.CONFIG?.GOVERNANCE?.REQUIRED_APPROVALS || 3, // Fallback from config
+            null,
             'getRequiredApprovals'
         );
+
+        if (!Number.isFinite(requiredApprovals)) {
+            throw new Error('Failed to retrieve required approvals from staking contract');
+        }
+
+        return requiredApprovals;
     }
 
     /**
