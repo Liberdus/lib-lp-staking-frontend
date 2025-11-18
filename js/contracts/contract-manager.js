@@ -422,7 +422,7 @@ class ContractManager {
                 const network = await Promise.race([networkPromise, timeoutPromise]);
 
                 // Verify correct network (using centralized config)
-                const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+                const expectedChainId = window.networkSelector?.getCurrentChainId();
                 if (network.chainId !== expectedChainId) {
                     throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                 }
@@ -459,7 +459,7 @@ class ContractManager {
      */
     getAllRPCUrls() {
         const rpcUrls = [];
-        const networkConfig = window.CONFIG?.NETWORK;
+        const networkConfig = window.networkSelector?.getCurrentNetworkConfig();
 
         if (networkConfig?.RPC_URL) {
             rpcUrls.push(networkConfig.RPC_URL);
@@ -515,7 +515,7 @@ class ContractManager {
                     const network = await Promise.race([networkPromise, timeoutPromise]);
 
                     // Verify correct network (using centralized config when available)
-                    const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
+                    const expectedChainId = window.networkSelector?.getCurrentChainId();
                     if (expectedChainId != null && network.chainId !== expectedChainId) {
                         throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                     }
@@ -2901,11 +2901,11 @@ class ContractManager {
 
             // Ensure we're on the correct network (using centralized config)
             const network = await web3Provider.getNetwork();
-            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            const expectedChainId = window.networkSelector?.getCurrentChainId();
             
             // Check permissions for the selected network regardless of current network
-            const selectedNetwork = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
-            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            const selectedNetwork = window.networkSelector?.getCurrentChainId();
+            const networkName = window.networkSelector?.getCurrentNetworkName();
             
             if (selectedNetwork === expectedChainId) {
                 console.log(`🌐 ${networkName} selected in UI, checking permissions...`);

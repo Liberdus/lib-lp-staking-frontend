@@ -360,9 +360,9 @@ class AdminPage {
 
     showUnauthorizedAccess() {
         const container = document.getElementById('admin-content') || document.body;
-        const currentNetwork = window.CONFIG?.NETWORK?.NAME || 'Unknown Network';
-        const currentChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 'Unknown';
-        const currentContract = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT || 'Not configured';
+        const currentNetwork = window.networkSelector?.getCurrentNetworkName();
+        const currentChainId = window.networkSelector?.getCurrentChainId();
+        const currentContract = window.networkSelector?.getStakingContractAddress();
         
         container.innerHTML = `
             <div class="admin-unauthorized">

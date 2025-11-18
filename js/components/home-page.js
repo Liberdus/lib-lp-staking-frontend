@@ -430,7 +430,7 @@ class HomePage {
                     
                     // Check if wallet is on configured network
                     if (!(window.networkManager?.isOnRequiredNetwork() || false)) {
-                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                        const networkName = window.networkSelector?.getCurrentNetworkName();
                         if (window.notificationManager) {
                             window.notificationManager.warning(
                                 `Please switch to ${networkName} network to make transactions`
@@ -669,7 +669,7 @@ class HomePage {
                     const isOnCorrectNetwork = window.networkManager?.isOnRequiredNetwork() || false;
                     
                     if (!isOnCorrectNetwork) {
-                        const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                        const networkName = window.networkSelector?.getCurrentNetworkName();
                         const currentChainId = window.walletManager?.getChainId();
                         const currentNetworkName = window.networkManager?.getNetworkName(currentChainId) || 'Unknown';
                         console.log(`📊 Read-only mode: Wallet on ${currentNetworkName}, viewing ${networkName} data`);

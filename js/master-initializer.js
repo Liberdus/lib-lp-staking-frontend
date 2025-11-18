@@ -687,7 +687,7 @@ class MasterInitializer {
 
                 if (!hasPermission) {
                     // Wallet is connected but missing permission - show as disconnected
-                    const networkName = window.CONFIG?.NETWORK?.NAME || 'network';
+                    const networkName = window.networkSelector?.getCurrentNetworkName();
                     this.renderConnectButton(connectBtn, {
                         text: 'Connect Wallet',
                         title: `Grant permission for ${networkName}`,
@@ -826,7 +826,7 @@ class MasterInitializer {
                     : false;
                 
                 if (!isOnRequiredNetwork) {
-                    const networkName = window.CONFIG?.NETWORK?.NAME || 'configured network';
+                    const networkName = window.networkSelector?.getCurrentNetworkName();
                     console.log(`📊 Wallet connected but not on ${networkName} - staying in read-only mode`);
                     console.log(`💡 ContractManager will upgrade when switched to ${networkName}`);
                     // Don't upgrade yet - stay in read-only mode
