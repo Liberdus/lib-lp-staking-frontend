@@ -18,23 +18,27 @@ class NetworkSelector {
         this.defaultNetwork = 'AMOY';
     }
 
+    getSelectedNetworkKey() {
+        const selectedNetworkKey = localStorage.getItem('liberdus-selected-network')
+        if (!selectedNetworkKey) {
+            localStorage.setItem('liberdus-selected-network', this.defaultNetwork);
+            return this.defaultNetwork;
+        }
+        return selectedNetworkKey;
+    }
+
     /**
      * Load selected network from localStorage and initialize if needed
      * @param {string} defaultNetwork - The default network key to use if no network is selected
      * @returns {string|null} Active network key
      */
     loadSelectedNetwork() {
-        const stored = localStorage.getItem('liberdus-selected-network');
-        if (stored && window.CONFIG?.NETWORKS[stored]) {
-            console.log(`🔄 Loaded network from storage: ${window.CONFIG.NETWORKS[stored].NAME}`);
-            return stored;
+        const selectedNetworkKey = this.getSelectedNetworkKey();
+        if (selectedNetworkKey && window.CONFIG?.NETWORKS[selectedNetworkKey]) {
+            console.log(`🔄 Loaded network from storage: ${window.CONFIG.NETWORKS[selectedNetworkKey].NAME}`);
+            return selectedNetworkKey;
         }
 
-        if (this.defaultNetwork && window.CONFIG?.NETWORKS[this.defaultNetwork]) {
-            localStorage.setItem('liberdus-selected-network', this.defaultNetwork);
-            console.log(`🔄 Initialized network storage with default: ${window.CONFIG.NETWORKS[this.defaultNetwork].NAME}`);
-            return this.defaultNetwork;
-        }
 
         console.error('❌ No valid default network configured');
         return null;
@@ -98,7 +102,7 @@ class NetworkSelector {
      */
     getSelectorHTML() {
         const networks = Object.entries(window.CONFIG.NETWORKS);
-        const selectedNetwork = localStorage.getItem('liberdus-selected-network') || Object.keys(window.CONFIG.NETWORKS)[0];
+        const selectedNetwork = this.getSelectedNetworkKey();
         
         return `
             <div class="network-select-wrapper">
@@ -226,7 +230,7 @@ class NetworkSelector {
         // Update the selector value if it exists
         const selector = document.getElementById('network-select');
         if (selector) {
-            selector.value = localStorage.getItem('liberdus-selected-network') || Object.keys(window.CONFIG.NETWORKS)[0];
+            selector.value = this.getSelectedNetworkKey();
         }
     }
 
@@ -263,7 +267,7 @@ class NetworkSelector {
      * Get current selected network info
      */
     getCurrentNetwork() {
-        const selectedKey = localStorage.getItem('liberdus-selected-network') || Object.keys(window.CONFIG.NETWORKS)[0];
+        const selectedKey = this.getSelectedNetworkKey();
         const network = selectedKey && window.CONFIG?.NETWORKS[selectedKey] ? window.CONFIG.NETWORKS[selectedKey] : null;
         return {
             key: selectedKey,

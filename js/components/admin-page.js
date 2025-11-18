@@ -391,8 +391,8 @@ class AdminPage {
                         <p>Or try switching to a network where you have admin permissions:</p>
                         <div class="network-selector-container">
                             <select id="unauthorized-network-select" class="network-select">
-                                <option value="AMOY" ${(localStorage.getItem('liberdus-selected-network') || '') === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
-                                <option value="POLYGON_MAINNET" ${(localStorage.getItem('liberdus-selected-network') || '') === 'POLYGON_MAINNET' ? 'selected' : ''}>Polygon Mainnet</option>
+                                <option value="AMOY" ${(window.networkSelector.getSelectedNetworkKey() || '') === 'AMOY' ? 'selected' : ''}>Amoy Testnet</option>
+                                <option value="POLYGON_MAINNET" ${(window.networkSelector.getSelectedNetworkKey() || '') === 'POLYGON_MAINNET' ? 'selected' : ''}>Polygon Mainnet</option>
                             </select>
                         </div>
                     </div>
