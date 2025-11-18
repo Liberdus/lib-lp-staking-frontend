@@ -45,38 +45,15 @@ window.CONFIG = {
         }
     },
 
-    // Selected Network (defaults to AMOY, can be changed via dropdown)
-    SELECTED_NETWORK: 'AMOY',
-
     // Backward compatibility - these reference the selected network
     get NETWORK() {
-        return this.NETWORKS[this.SELECTED_NETWORK];
+        const selectedNetwork = window?.networkSelector?.getSelectedNetworkKey();
+        return this.NETWORKS[selectedNetwork] ?? undefined;
     },
 
     get CONTRACTS() {
-        return this.NETWORKS[this.SELECTED_NETWORK].CONTRACTS;
-    },
-
-    // Network switching functionality
-    switchNetwork(networkKey) {
-        if (this.NETWORKS[networkKey]) {
-            this.SELECTED_NETWORK = networkKey;
-            // Store in localStorage for persistence
-            localStorage.setItem('liberdus-selected-network', networkKey);
-            console.log(`🌐 Switched to ${this.NETWORK.NAME} network`);
-            return true;
-        }
-        console.error(`❌ Network ${networkKey} not found`);
-        return false;
-    },
-
-    // Load selected network from localStorage
-    loadSelectedNetwork() {
-        const stored = localStorage.getItem('liberdus-selected-network');
-        if (stored && this.NETWORKS[stored]) {
-            this.SELECTED_NETWORK = stored;
-            console.log(`🔄 Loaded network from storage: ${this.NETWORK.NAME}`);
-        }
+        const selectedNetwork = window?.networkSelector?.getSelectedNetworkKey();
+        return this.NETWORKS[selectedNetwork]?.CONTRACTS;
     },
 
 
@@ -269,21 +246,3 @@ window.CONFIG.ABIS = {
         'function name() external view returns (string)'
     ]
 };
-
-// Initialize network selection
-window.CONFIG.loadSelectedNetwork();
-
-// Make SELECTED_NETWORK writable
-Object.defineProperty(window.CONFIG, 'SELECTED_NETWORK', {
-    value: window.CONFIG.SELECTED_NETWORK,
-    writable: true,
-    enumerable: true,
-    configurable: true
-});
-
-// Note: Not freezing CONFIG to allow SELECTED_NETWORK to be writable for network switching
-
-console.log('✅ Application configuration loaded successfully');
-console.log('🌐 Network:', window.CONFIG.NETWORK.NAME);
-console.log('📄 Staking Contract:', window.CONFIG.CONTRACTS.STAKING_CONTRACT);
-console.log('🎨 Default Theme:', window.CONFIG.UI.THEME.DEFAULT);
