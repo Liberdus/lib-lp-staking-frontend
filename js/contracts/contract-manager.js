@@ -1145,9 +1145,9 @@ class ContractManager {
             }
 
             // Check if the new network has valid contract addresses
-            const contract = window.CONFIG.NETWORKS[networkKey]?.CONTRACTS?.STAKING_CONTRACT || null;
-            if (!contract || contract.trim() === '') {
-                const networkName = network?.NAME || networkKey || 'current network';
+            const contractAddress = window.networkSelector?.getStakingContractAddress();
+            if (!contractAddress || contractAddress.trim() === '') {
+                const networkName = window.networkSelector?.getCurrentNetworkName() || networkKey || 'current network';
                 console.log(`⚠️ No contracts deployed on ${networkName} - skipping initialization`);
                 this.isInitialized = true; // Mark as initialized but with no contracts
                 return true;
