@@ -61,6 +61,26 @@ a:hover {
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.btn:active::before {
+    width: 300px;
+    height: 300px;
 }
 
 .btn-primary {
@@ -204,6 +224,12 @@ a:hover {
     border-top: 1px solid #dee2e6;
 }
 
+@media (prefers-contrast: high) {
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .container {
@@ -213,4 +239,18 @@ a:hover {
     h1 { font-size: 2rem; }
     h2 { font-size: 1.75rem; }
     h3 { font-size: 1.5rem; }
+}
+
+@media (max-width: 320px) {
+    .btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
 }
