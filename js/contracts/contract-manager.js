@@ -105,8 +105,6 @@ class ContractManager {
                 throw new Error('CONFIG not loaded');
             }
 
-            console.log('✅ CONFIG available:', window.CONFIG.CONTRACTS);
-
             // Check if ethers is available
             if (!window.ethers) {
                 console.error('❌ Ethers.js not available - cannot initialize contracts');
@@ -424,7 +422,7 @@ class ContractManager {
                 const network = await Promise.race([networkPromise, timeoutPromise]);
 
                 // Verify correct network (using centralized config)
-                const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+                const expectedChainId = window.networkSelector?.getCurrentChainId();
                 if (network.chainId !== expectedChainId) {
                     throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                 }
@@ -461,7 +459,7 @@ class ContractManager {
      */
     getAllRPCUrls() {
         const rpcUrls = [];
-        const networkConfig = window.CONFIG?.NETWORK;
+        const networkConfig = window.networkSelector?.getCurrentNetworkConfig();
 
         if (networkConfig?.RPC_URL) {
             rpcUrls.push(networkConfig.RPC_URL);
@@ -517,7 +515,7 @@ class ContractManager {
                     const network = await Promise.race([networkPromise, timeoutPromise]);
 
                     // Verify correct network (using centralized config when available)
-                    const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID;
+                    const expectedChainId = window.networkSelector?.getCurrentChainId();
                     if (expectedChainId != null && network.chainId !== expectedChainId) {
                         throw new Error(`Wrong network: expected ${expectedChainId}, got ${network.chainId}`);
                     }
@@ -677,7 +675,7 @@ class ContractManager {
                 throw new Error('Configuration not available');
             }
 
-            const stakingAddress = config.CONTRACTS?.STAKING_CONTRACT || null;
+            const stakingAddress = window.networkSelector?.getStakingContractAddress();
             console.log('   - Staking contract (config):', stakingAddress);
 
             if (stakingAddress && this.isValidContractAddress(stakingAddress)) {
@@ -1147,9 +1145,10 @@ class ContractManager {
             }
 
             // Check if the new network has valid contract addresses
-            const contracts = window.CONFIG.CONTRACTS;
-            if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
-                console.log(`⚠️ No contracts deployed on ${network.NAME} - skipping initialization`);
+            const contractAddress = window.networkSelector?.getStakingContractAddress();
+            if (!contractAddress || contractAddress.trim() === '') {
+                const networkName = window.networkSelector?.getCurrentNetworkName() || networkKey || 'current network';
+                console.log(`⚠️ No contracts deployed on ${networkName} - skipping initialization`);
                 this.isInitialized = true; // Mark as initialized but with no contracts
                 return true;
             }
@@ -1341,7 +1340,7 @@ class ContractManager {
             );
 
             // Get balance of staking contract (total LP tokens staked)
-            const stakingContractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const stakingContractAddress = window.networkSelector?.getStakingContractAddress();
             if (!stakingContractAddress) {
                 throw new Error('Staking contract address not configured');
             }
@@ -1362,7 +1361,7 @@ class ContractManager {
                 throw new Error(`Unable to resolve LP token for identifier: ${pairIdentifier}`);
             }
 
-            const stakingAddress = this.contractAddresses.get('STAKING') || window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const stakingAddress = this.contractAddresses.get('STAKING') || window.networkSelector?.getStakingContractAddress();
             if (!stakingAddress || !this.isValidContractAddress(stakingAddress)) {
                 throw new Error('Staking contract address not available');
             }
@@ -2902,11 +2901,11 @@ class ContractManager {
 
             // Ensure we're on the correct network (using centralized config)
             const network = await web3Provider.getNetwork();
-            const expectedChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
+            const expectedChainId = window.networkSelector?.getCurrentChainId();
             
             // Check permissions for the selected network regardless of current network
-            const selectedNetwork = window.CONFIG?.NETWORK?.CHAIN_ID || 80002;
-            const networkName = window.CONFIG?.NETWORK?.NAME || 'the selected network';
+            const selectedNetwork = window.networkSelector?.getCurrentChainId();
+            const networkName = window.networkSelector?.getCurrentNetworkName();
             
             if (selectedNetwork === expectedChainId) {
                 console.log(`🌐 ${networkName} selected in UI, checking permissions...`);
@@ -4640,19 +4639,6 @@ class ContractManager {
      */
     async safeContractCall(contractFunction, errorFallback = null, functionName = 'unknown') {
         const maxRetries = 2;
-
-        // Check if contracts are initialized before attempting calls
-        if (!this.stakingContract && functionName.includes('staking')) {
-            console.error(`❌ Staking contract not initialized for ${functionName}`);
-            return errorFallback;
-        }
-
-        // Check if contract is deployed on current network
-        const contracts = window.CONFIG.CONTRACTS;
-        if (!contracts.STAKING_CONTRACT || contracts.STAKING_CONTRACT.trim() === '') {
-            console.log(`⚠️ No staking contract deployed on current network - ${functionName} skipped gracefully`);
-            return errorFallback;
-        }
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {

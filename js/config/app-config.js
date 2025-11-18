@@ -45,18 +45,6 @@ window.CONFIG = {
         }
     },
 
-    // Backward compatibility - these reference the selected network
-    get NETWORK() {
-        const selectedNetwork = window?.networkSelector?.getSelectedNetworkKey();
-        return this.NETWORKS[selectedNetwork] ?? undefined;
-    },
-
-    get CONTRACTS() {
-        const selectedNetwork = window?.networkSelector?.getSelectedNetworkKey();
-        return this.NETWORKS[selectedNetwork]?.CONTRACTS;
-    },
-
-
     // Multicall2 addresses (canonical deployment for batch loading optimization)
     MULTICALL2: {
         1: '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696',      // Ethereum Mainnet

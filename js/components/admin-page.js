@@ -223,7 +223,7 @@ class AdminPage {
             }
 
             const healthChecker = new window.NetworkHealthCheck();
-            const contractAddress = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT;
+            const contractAddress = window.networkSelector?.getStakingContractAddress();
 
             // Perform comprehensive health check
             const isReady = await healthChecker.waitForNetworkReady(contractAddress, 20000); // 20 second timeout
@@ -360,9 +360,9 @@ class AdminPage {
 
     showUnauthorizedAccess() {
         const container = document.getElementById('admin-content') || document.body;
-        const currentNetwork = window.CONFIG?.NETWORK?.NAME || 'Unknown Network';
-        const currentChainId = window.CONFIG?.NETWORK?.CHAIN_ID || 'Unknown';
-        const currentContract = window.CONFIG?.CONTRACTS?.STAKING_CONTRACT || 'Not configured';
+        const currentNetwork = window.networkSelector?.getCurrentNetworkName();
+        const currentChainId = window.networkSelector?.getCurrentChainId();
+        const currentContract = window.networkSelector?.getStakingContractAddress();
         
         container.innerHTML = `
             <div class="admin-unauthorized">
@@ -1086,15 +1086,13 @@ class AdminPage {
         // Update network indicator when chain changes
         const indicator = document.getElementById('network-indicator-home');
         if (indicator) {
-            const chainIdDecimal = parseInt(chainId, 16);
-            const expectedChainId = window.CONFIG.NETWORK.CHAIN_ID;
-
             // Check permission asynchronously and update
             if (window.networkManager) {
                 window.networkManager.hasRequiredNetworkPermission().then(hasPermission => {
                     window.NetworkIndicator?.update('network-indicator-home', 'admin-network-selector', 'admin');
                 }).catch(error => {
-                    console.error('Error checking permission after chain change:', error);
+                    const networkName = window.networkSelector?.getCurrentNetworkName();
+                    console.error(`Error checking permission after chain change: ${networkName}`, error);
                 });
             }
         }
@@ -3886,7 +3884,7 @@ class AdminPage {
             }
 
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const expectedChainId = window.networkManager?.getChainIdHex() || ('0x' + window.CONFIG.NETWORK.CHAIN_ID.toString(16));
+            const expectedChainId = window.networkManager?.getChainIdHex();
             return chainId === expectedChainId;
         } catch (error) {
             console.error('❌ Network status check failed:', error);
