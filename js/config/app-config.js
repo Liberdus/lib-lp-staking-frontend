@@ -88,17 +88,6 @@ window.CONFIG = {
         31337: '0xcA11bde05977b3631167028862bE2a173976CA11'   // Local Hardhat
     },
 
-    // Governance Configuration
-    GOVERNANCE: {
-        SIGNERS: [
-            '0x9249cFE964C49Cf2d2D0DBBbB33E99235707aa61',
-            '0xea7bb30fbcCBB2646B0eFeB31382D3A4da07a3cC',
-            '0x2fBe1cd4BC1718B7625932f35e3cb03E6847289F',
-            '0xd3ac493dc0dA16077CC589A838ac473bC010324F'
-        ],
-        REQUIRED_APPROVALS: 3
-    },
-
     // Application Settings
     APP: {
         NAME: 'Liberdus LP Staking',
@@ -174,7 +163,7 @@ window.CONFIG = {
 
     // Development Configuration
     DEV: {
-        DEBUG: false
+        DEBUG: true
     },
 
     // Default Values for Contract Stats
