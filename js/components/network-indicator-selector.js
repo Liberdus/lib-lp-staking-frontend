@@ -305,7 +305,7 @@ class NetworkSelector {
             // If the network is not added to MetaMask, try to add it
             if (error.code === 4902) {
                 console.log(`🔗 Network ${networkKey} not found in MetaMask, attempting to add it...`);
-                return await this.addNetworkToMetaMask(window.CONFIG.NETWORKS[networkKey]);
+                return await this.addNetworkToMetaMask(networkKey);
             }
             
             return false;
@@ -315,26 +315,12 @@ class NetworkSelector {
     /**
      * Add network to MetaMask and switch to it
      * Delegates to NetworkManager.addNetwork()
-     * @param {string|Object} networkKeyOrObject - The network key or network object
+     * @param {string} networkKey - The network key to add
      */
-    async addNetworkToMetaMask(networkKeyOrObject) {
+    async addNetworkToMetaMask(networkKey) {
         try {
-            let networkKey;
-            
-            // Handle both network key string and network object
-            if (typeof networkKeyOrObject === 'string') {
-                networkKey = networkKeyOrObject;
-            } else {
-                // Find the network key from the network object
-                networkKey = Object.keys(window.CONFIG.NETWORKS).find(
-                    key => window.CONFIG.NETWORKS[key] === networkKeyOrObject
-                );
-            }
-            
             // Switch localStorage to target network for NetworkManager
-            if (networkKey) {
-                localStorage.setItem('liberdus-selected-network', networkKey);
-            }
+            localStorage.setItem('liberdus-selected-network', networkKey);
             
             // Use NetworkManager's addNetwork method
             await window.networkManager.addNetwork();
