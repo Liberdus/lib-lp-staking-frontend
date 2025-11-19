@@ -602,7 +602,7 @@ class ContractManager {
                     "function getActionApproval(uint256 actionId) external view returns (address[])",
                     "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, uint256 proposedTime, bool rejected)",
                     "function stake(address lpToken, uint256 amount) external",
-                    "function unstake(address lpToken, uint256 amount) external",
+                    "function unstake(address lpToken, uint256 amount, bool claimRewards) external",
                     "function claimRewards(address lpToken) external",
 
                     // Admin role functions
@@ -4001,7 +4001,7 @@ class ContractManager {
     /**
      * Unstake LP tokens
      */
-    async unstake(lpTokenAddress, amount) {
+    async unstake(lpTokenAddress, amount, claimRewards) {
         console.log(`📉 Executing unstake for LP token: ${lpTokenAddress}, amount: ${amount}`);
 
         // Ensure we have a signer for transactions
@@ -4029,7 +4029,7 @@ class ContractManager {
 
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-                const tx = await contractWithSigner.unstake(lpTokenAddress, amountWei);
+                const tx = await contractWithSigner.unstake(lpTokenAddress, amountWei, claimRewards);
 
                 console.log(`✅ Unstake transaction sent: ${tx.hash}`);
                 console.log(`   Amount: ${amount} LP tokens`);
