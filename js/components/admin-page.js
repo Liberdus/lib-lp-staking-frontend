@@ -14,10 +14,6 @@ class AdminPage {
         this.isRefreshing = false; // Prevent overlapping refreshes
         this.autoRefreshActive = false; // Prevent multiple auto-refresh timers
 
-        // Development mode from centralized config
-        // SECURITY: Default to false (production mode) if DEV_CONFIG is not loaded
-        this.DEVELOPMENT_MODE = window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE ?? false;
-
         // PERFORMANCE OPTIMIZATION: Proposal state management
         this.proposalsCache = new Map(); // Cache proposals by ID for O(1) access
         this.lastProposalId = 0; // Track highest proposal ID for incremental loading
@@ -68,19 +64,6 @@ class AdminPage {
     async init() {
         try {
             console.log('🔐 Initializing Admin Panel...');
-
-            // Development mode bypass
-            if (this.DEVELOPMENT_MODE) {
-                console.log('🚧 DEVELOPMENT MODE: Bypassing access control');
-                this.isAuthorized = true;
-                this.userAddress = '0x1234567890123456789012345678901234567890';
-
-                await this.loadAdminInterface();
-                this.startAutoRefresh();
-                this.isInitialized = true;
-                console.log('✅ Admin Panel initialized (Development Mode)');
-                return;
-            }
 
             // Production mode - wait for contract manager and wallet
             console.log('🚀 Production mode: Waiting for contract manager and wallet...');
@@ -1280,13 +1263,9 @@ class AdminPage {
 
     createAdminLayout() {
         const container = document.getElementById('admin-content') || document.body;
-        const devModeIndicator = this.DEVELOPMENT_MODE
-            ? '<div class="dev-mode-banner">🚧 DEVELOPMENT MODE - Access Control Bypassed</div>'
-            : '';
 
         container.innerHTML = `
             <div class="admin-panel">
-                ${devModeIndicator}
 
                 <div class="admin-container">
 
