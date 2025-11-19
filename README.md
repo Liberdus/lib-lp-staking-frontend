@@ -80,10 +80,9 @@ lp-staking-vanilla/
 │   ├── images/            # UI images
 │   └── logo.png           # Application logo
 ├── css/                    # Stylesheets
-│   ├── variables.css      # CSS variables
-│   ├── base.css           # Base styles
+│   ├── base.css           # Design tokens, resets, shared utilities
 │   ├── components.css     # Component styles
-│   ├── main.css           # Main styles
+│   ├── home.css           # Homepage layout styles
 │   └── admin.css          # Admin panel styles
 ├── js/                     # JavaScript modules
 │   ├── components/        # UI components
@@ -142,7 +141,7 @@ DEV: {
 
 ### Theme Colors
 
-Modify CSS variables in `css/variables.css`:
+Modify design tokens in `css/base.css`:
 
 ```css
 :root {

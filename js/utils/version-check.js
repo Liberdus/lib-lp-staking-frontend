@@ -170,10 +170,8 @@
             `${basePath}css/admin.css`,
             `${basePath}css/base.css`,
             `${basePath}css/components.css`,
-            `${basePath}css/main.css`,
             `${basePath}css/network-indicator-selector.css`,
             `${basePath}css/theme-toggle.css`,
-            `${basePath}css/variables.css`,
             `${basePath}css/wallet-popup.css`
         ];
     }
