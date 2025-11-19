@@ -3794,7 +3794,6 @@ class AdminPage {
         const detailsRow = document.getElementById(`details-${proposalId}`);
         const expandBtn = document.querySelector(`[onclick="adminPage.toggleProposal('${proposalId}')"]`) ||
                          document.querySelector(`[onclick="adminPage.toggleProposal(${proposalId})"]`);
-        const expandIcon = expandBtn?.querySelector('.expand-icon');
 
         if (detailsRow) {
             const isVisible = detailsRow.style.display !== 'none';
