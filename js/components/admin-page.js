@@ -6289,31 +6289,7 @@ class AdminPage {
         }
     }
 
-    /**
-     * Navigate to home page with optimized loading
-     */
-    navigateToHome() {
-        console.log('🏠 Navigating to home page...');
-        
-        // Show loading indicator
-        if (window.notificationManager) {
-            window.notificationManager.info('Loading homepage...');
-        }
-        
-        // Always navigate directly to index.html to ensure correct destination
-        window.location.href = '../';
-    }
 }
 
 // Export for global access
 window.AdminPage = AdminPage;
-
-// Make navigateToHome globally available
-window.navigateToHome = function() {
-    if (window.adminPage && window.adminPage.navigateToHome) {
-        window.adminPage.navigateToHome();
-    } else {
-        // Fallback navigation
-        window.location.href = '../';
-    }
-};
