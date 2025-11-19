@@ -141,7 +141,7 @@ class ContractManager {
             if (window.MulticallService && this.provider) {
                 console.log('📦 Initializing Multicall service...');
                 try {
-                    this.multicallService = new MulticallService();
+                    this.multicallService = new window.MulticallService();
                     const network = await this.provider.getNetwork();
                     const initialized = await this.multicallService.initialize(this.provider, network.chainId);
                     if (initialized) {
@@ -349,7 +349,7 @@ class ContractManager {
             // Initialize Multicall service for batch loading optimization
             if (window.MulticallService) {
                 console.log('📦 Initializing Multicall service...');
-                this.multicallService = new MulticallService();
+                this.multicallService = new window.MulticallService();
                 const chainId = await this.provider.getNetwork().then(n => n.chainId);
                 const initialized = await this.multicallService.initialize(this.provider, chainId);
                 if (initialized) {
@@ -1596,30 +1596,6 @@ class ContractManager {
     }
 
     /**
-     * Get total weight (like React version) with RPC failover
-     */
-    async getTotalWeight() {
-        return await this.safeContractCall(
-            async () => {
-                // Check if staking contract is initialized
-                if (!this.stakingContract) {
-                    throw new Error('Staking contract not initialized');
-                }
-
-                // The deployed contract uses totalWeight() method
-                if (typeof this.stakingContract.totalWeight === 'function') {
-                    return await this.stakingContract.totalWeight();
-                } else {
-                    console.log('⚠️ totalWeight method not available in contract');
-                    throw new Error('totalWeight method not available in contract');
-                }
-            },
-            BigInt(0),
-            'getTotalWeight'
-        );
-    }
-
-    /**
      * Get pairs (like React version) with RPC failover
      */
     async getPairs() {
@@ -1657,40 +1633,6 @@ class ContractManager {
         }
 
         return requiredApprovals;
-    }
-
-    /**
-     * Get action details by ID
-     */
-    async getAction(actionId) {
-        return await this.executeWithRetry(async () => {
-            const [action, approvals, expiredOverride] = await Promise.all([
-                this.stakingContract.actions(actionId),
-                this.stakingContract.getActionApproval(actionId),
-                this.stakingContract.isActionExpired(actionId)
-            ]);
-
-            const expired = expiredOverride !== undefined ? !!expiredOverride : action.expired;
-            return {
-                actionType: action.actionType,
-                newHourlyRewardRate: action.newHourlyRewardRate.toString(),
-                pairs: action.pairs,
-                weights: action.weights.map(w => w.toString()),
-                pairToAdd: action.pairToAdd,
-                pairNameToAdd: action.pairNameToAdd,
-                platformToAdd: action.platformToAdd,
-                weightToAdd: action.weightToAdd.toString(),
-                pairToRemove: action.pairToRemove,
-                recipient: action.recipient,
-                withdrawAmount: action.withdrawAmount.toString(),
-                executed: action.executed,
-                expired: expired,
-                approvals: action.approvals,
-                approvedBy: approvals,
-                proposedTime: action.proposedTime.toNumber(),
-                rejected: action.rejected
-            };
-        }, 'getAction');
     }
 
     /**
@@ -4371,7 +4313,7 @@ class ContractManager {
 
         console.log(`⏱️ Monitoring transaction ${tx.hash} with ${timeoutMs/1000}s timeout`);
 
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             // Set up timeout
             const timeoutId = setTimeout(() => {
                 console.log(`[TX MONITOR] ⏰ TIMEOUT REACHED after ${timeoutMs/1000} seconds`);
@@ -4381,76 +4323,79 @@ class ContractManager {
                 reject(new Error(`Transaction timeout after ${timeoutMs/1000} seconds.`));
             }, timeoutMs);
 
-            try {
-                // Monitor transaction with periodic status updates
-                let checkCount = 0;
-                const checkInterval = setInterval(() => {
-                    checkCount++;
-                    const elapsed = Math.round((Date.now() - startTime) / 1000);
-                    console.log(`[TX MONITOR] ⏳ Check #${checkCount}: Transaction pending for ${elapsed}s`);
-                    console.log(`[TX MONITOR]   Status: Still waiting for confirmation...`);
-                    console.log(`⏳ Transaction ${operationName} pending... ${elapsed}s elapsed`);
-                }, 10000); // Log every 10 seconds
+            // Use async IIFE to handle await inside Promise executor
+            (async () => {
+                try {
+                    // Monitor transaction with periodic status updates
+                    let checkCount = 0;
+                    const checkInterval = setInterval(() => {
+                        checkCount++;
+                        const elapsed = Math.round((Date.now() - startTime) / 1000);
+                        console.log(`[TX MONITOR] ⏳ Check #${checkCount}: Transaction pending for ${elapsed}s`);
+                        console.log(`[TX MONITOR]   Status: Still waiting for confirmation...`);
+                        console.log(`⏳ Transaction ${operationName} pending... ${elapsed}s elapsed`);
+                    }, 10000); // Log every 10 seconds
 
-                // Wait for transaction confirmation
-                console.log(`[TX MONITOR] 🔄 Calling tx.wait() for confirmation...`);
-                console.log(`🔄 Waiting for blockchain confirmation...`);
+                    // Wait for transaction confirmation
+                    console.log(`[TX MONITOR] 🔄 Calling tx.wait() for confirmation...`);
+                    console.log(`🔄 Waiting for blockchain confirmation...`);
 
-                const receipt = await tx.wait();
+                    const receipt = await tx.wait();
 
-                // Clear monitoring
-                clearTimeout(timeoutId);
-                clearInterval(checkInterval);
+                    // Clear monitoring
+                    clearTimeout(timeoutId);
+                    clearInterval(checkInterval);
 
-                const totalTime = Math.round((Date.now() - startTime) / 1000);
+                    const totalTime = Math.round((Date.now() - startTime) / 1000);
 
-                // Check if transaction succeeded or failed
-                if (receipt.status === 0) {
-                    console.log(`[TX MONITOR] ❌ TRANSACTION FAILED ON BLOCKCHAIN!`);
-                    console.log(`[TX MONITOR]   Receipt received but status is 0 (failed)`);
+                    // Check if transaction succeeded or failed
+                    if (receipt.status === 0) {
+                        console.log(`[TX MONITOR] ❌ TRANSACTION FAILED ON BLOCKCHAIN!`);
+                        console.log(`[TX MONITOR]   Receipt received but status is 0 (failed)`);
+                        console.log(`[TX MONITOR] 📊 Transaction Statistics:`);
+                        console.log(`[TX MONITOR]   Total time: ${totalTime}s`);
+                        console.log(`[TX MONITOR]   Block number: ${receipt.blockNumber}`);
+                        console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()} (low gas = early revert)`);
+                        console.log(`[TX MONITOR]   Status: FAILED (0)`);
+                        console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
+
+                        console.log(`❌ Transaction reverted on blockchain - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
+
+                        // Throw error with helpful message
+                        const error = new Error(`Transaction failed on blockchain. The smart contract rejected the transaction.`);
+                        error.code = 'TRANSACTION_REVERTED';
+                        error.receipt = receipt;
+                        throw error;
+                    }
+
+                    console.log(`[TX MONITOR] ✅ TRANSACTION CONFIRMED!`);
+                    console.log(`[TX MONITOR]   Receipt received:`, receipt);
                     console.log(`[TX MONITOR] 📊 Transaction Statistics:`);
                     console.log(`[TX MONITOR]   Total time: ${totalTime}s`);
                     console.log(`[TX MONITOR]   Block number: ${receipt.blockNumber}`);
-                    console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()} (low gas = early revert)`);
-                    console.log(`[TX MONITOR]   Status: FAILED (0)`);
+                    console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()}`);
+                    console.log(`[TX MONITOR]   Status: SUCCESS (1)`);
                     console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
 
-                    console.log(`❌ Transaction reverted on blockchain - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
+                    // add success to receipt. needed for ui to detect and display success.
+                    receipt.success = true;
 
-                    // Throw error with helpful message
-                    const error = new Error(`Transaction failed on blockchain. The smart contract rejected the transaction.`);
-                    error.code = 'TRANSACTION_REVERTED';
-                    error.receipt = receipt;
-                    throw error;
+                    console.log(`✅ Transaction confirmed in ${totalTime}s - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
+
+                    resolve(receipt);
+
+                } catch (error) {
+                    console.log(`[TX MONITOR] ❌ TRANSACTION MONITORING ERROR!`);
+                    console.log(`[TX MONITOR]   Error type: ${error.constructor.name}`);
+                    console.log(`[TX MONITOR]   Error message: ${error.message}`);
+                    console.log(`[TX MONITOR]   Error code: ${error.code}`);
+                    console.log(`[TX MONITOR]   Error details:`, error);
+
+                    clearTimeout(timeoutId);
+                    console.log(`❌ Transaction monitoring failed: ${error.message}`);
+                    reject(error);
                 }
-
-                console.log(`[TX MONITOR] ✅ TRANSACTION CONFIRMED!`);
-                console.log(`[TX MONITOR]   Receipt received:`, receipt);
-                console.log(`[TX MONITOR] 📊 Transaction Statistics:`);
-                console.log(`[TX MONITOR]   Total time: ${totalTime}s`);
-                console.log(`[TX MONITOR]   Block number: ${receipt.blockNumber}`);
-                console.log(`[TX MONITOR]   Gas used: ${receipt.gasUsed.toString()}`);
-                console.log(`[TX MONITOR]   Status: SUCCESS (1)`);
-                console.log(`[TX MONITOR]   Transaction fee: ${ethers.utils.formatEther(receipt.gasUsed.mul(tx.gasPrice || receipt.effectiveGasPrice))} MATIC`);
-
-                // add success to receipt. needed for ui to detect and display success.
-                receipt.success = true;
-
-                console.log(`✅ Transaction confirmed in ${totalTime}s - Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
-
-                resolve(receipt);
-
-            } catch (error) {
-                console.log(`[TX MONITOR] ❌ TRANSACTION MONITORING ERROR!`);
-                console.log(`[TX MONITOR]   Error type: ${error.constructor.name}`);
-                console.log(`[TX MONITOR]   Error message: ${error.message}`);
-                console.log(`[TX MONITOR]   Error code: ${error.code}`);
-                console.log(`[TX MONITOR]   Error details:`, error);
-
-                clearTimeout(timeoutId);
-                console.log(`❌ Transaction monitoring failed: ${error.message}`);
-                reject(error);
-            }
+            })();
         });
     }
 
