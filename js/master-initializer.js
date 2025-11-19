@@ -113,15 +113,6 @@ class MasterInitializer {
             'js/core/notification-manager-new.js'
         ];
 
-        // Only load dev/test utilities if in development mode
-        if (window.DEV_CONFIG?.ADMIN_DEVELOPMENT_MODE) {
-            console.log('🚧 Development mode: Loading test utilities');
-            coreScripts.push('js/utils/rpc-test.js');
-            coreScripts.push('js/utils/admin-test.js');
-        } else {
-            console.log('🚀 Production mode: Skipping test utilities');
-        }
-
         for (const script of coreScripts) {
             await this.loadScript(script);
         }

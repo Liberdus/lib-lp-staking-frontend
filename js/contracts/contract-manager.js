@@ -1095,17 +1095,6 @@ class ContractManager {
                         this.provider &&
                         (this.stakingContract || this.rewardTokenContract));
 
-        // Debug logging
-        if (window.DEV_CONFIG?.VERBOSE_LOGGING) {
-            console.log('🔍 ContractManager.isReady() check:', {
-                isInitialized: this.isInitialized,
-                hasProvider: !!this.provider,
-                hasStakingContract: !!this.stakingContract,
-                hasRewardTokenContract: !!this.rewardTokenContract,
-                ready: ready
-            });
-        }
-
         return ready;
     }
 
