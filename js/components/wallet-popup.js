@@ -189,7 +189,6 @@ class WalletPopup {
         let left = buttonRect.right - popupRect.width;
         
         // Adjust if popup goes off screen
-        const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         
         if (left < 8) {

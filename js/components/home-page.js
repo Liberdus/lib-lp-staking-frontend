@@ -1152,11 +1152,5 @@ class HomePage {
 }
 
 
-// Initialize home page
-let homePage;
-document.addEventListener('DOMContentLoaded', () => {
-    homePage = new HomePage();
-});
-
-// Export for global access
+// Export class for master-initializer.js to use
 window.HomePage = HomePage;
