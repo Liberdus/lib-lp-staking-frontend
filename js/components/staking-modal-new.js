@@ -530,7 +530,7 @@ class StakingModalNew {
             }
 
             if (!approveTx.success) {
-                throw new Error(approveTx.error || 'Approval transaction failed');
+                throw approveTx.error;
             }
 
             // Update state and UI
@@ -541,7 +541,8 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Approval failed:', error);
-            window.notificationManager?.error('Token approval failed. ' + error.message);
+            const errorMessage = error?.userMessage?.message || error?.message || 'Token approval failed. Please try again.';
+            window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
             this.isApproved = false;
             return false;
         } finally {
@@ -1167,7 +1168,7 @@ class StakingModalNew {
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Staking transaction failed');
+                throw result.error;
             }
 
             if (window.notificationManager) {
@@ -1197,9 +1198,8 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Staking failed:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error(`Staking failed: ${error.message}`);
-            }
+            const errorMessage = error?.userMessage?.message || error?.message || 'Staking failed. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         } finally {
             // Always release the guard
             this.pendingOperations.stake = false;
@@ -1251,7 +1251,7 @@ class StakingModalNew {
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Unstaking transaction failed');
+                throw result.error;
             }
 
             if (window.notificationManager) {
@@ -1281,9 +1281,8 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Unstaking failed:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error(`Unstaking failed: ${error.message}`);
-            }
+            const errorMessage = error?.userMessage?.message || error?.message || 'Unstaking failed. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         } finally {
             // Always release the guard
             this.pendingOperations.unstake = false;
@@ -1333,7 +1332,7 @@ class StakingModalNew {
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Claim transaction failed');
+                throw result.error;
             }
 
             if (window.notificationManager) {
@@ -1363,9 +1362,8 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Claim failed:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error(`Claim failed: ${error.message}`);
-            }
+            const errorMessage = error?.userMessage?.message || error?.message || 'Claim failed. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         } finally {
             // Always release the guard
             this.pendingOperations.claim = false;

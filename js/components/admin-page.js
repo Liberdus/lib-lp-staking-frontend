@@ -6190,19 +6190,13 @@ class AdminPage {
                 this.refreshAdminDataOnce();
             } else {
                 // Handle specific contract errors like React version
-                const errorMessage = result.error || 'Failed to approve proposal';
-                if (errorMessage.includes('Already approved')) {
-                    this.showError('✋ You have already approved this proposal. Each signer can only vote once per proposal.');
-                } else if (errorMessage.includes('Cannot reject after approving')) {
-                    this.showError('✋ You cannot reject a proposal you have already approved. Each signer can only vote once.');
-                } else {
-                    this.showError(errorMessage);
-                }
+                throw result.error;
             }
 
         } catch (error) {
             console.error('❌ Failed to approve proposal:', error);
-            this.showError('Unexpected error occurred while approving proposal. Please try again.');
+            const errorMessage = error?.userMessage?.message || error?.message || 'Unexpected error occurred while approving proposal. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         }
     }
 
@@ -6225,19 +6219,13 @@ class AdminPage {
                 this.refreshAdminDataOnce();
             } else {
                 // Handle specific contract errors like React version
-                const errorMessage = result.error || 'Failed to reject proposal';
-                if (errorMessage.includes('Cannot reject after approving')) {
-                    this.showError('✋ You cannot reject a proposal you have already approved. Each signer can only vote once per proposal.');
-                } else if (errorMessage.includes('Already rejected')) {
-                    this.showError('✋ You have already rejected this proposal. Each signer can only vote once per proposal.');
-                } else {
-                    this.showError(errorMessage);
-                }
+                throw result.error;
             }
 
         } catch (error) {
             console.error('❌ Failed to reject proposal:', error);
-            this.showError('Unexpected error occurred while rejecting proposal. Please try again.');
+            const errorMessage = error?.userMessage?.message || error?.message || 'Unexpected error occurred while rejecting proposal. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         }
     }
 
@@ -6254,14 +6242,13 @@ class AdminPage {
                 this.showSuccess(`✅ Proposal #${proposalId} executed successfully! The proposed action has been carried out on the blockchain.`);
                 this.refreshAdminDataOnce();
             } else {
-                throw new Error(result.error);
+                throw result.error;
             }
 
         } catch (error) {
             console.error('Failed to execute proposal:', error);
-            if (window.notificationManager) {
-                window.notificationManager.error(error.message);
-            }
+            const errorMessage = error?.userMessage?.message || error?.message || 'Unexpected error occurred while executing proposal. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         }
     }
 

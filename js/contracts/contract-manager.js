@@ -3323,12 +3323,9 @@ class ContractManager {
 
             console.error('Failed to approve action:', error);
 
-            // Extract user-friendly error message
-            let errorMessage = error.userMessage?.title || 'Failed to approve action';
-
             return {
                 success: false,
-                error: errorMessage,
+                error: error,
                 originalError: error
             };
         }
@@ -3485,11 +3482,7 @@ class ContractManager {
         } catch (error) {
             console.error(`[EXECUTE DEBUG] ❌ Failed to execute action:`, error);
 
-            // Use userMessage if available
-            const errorMessage = error.userMessage?.title || 'Failed to execute action';
-
-
-            throw new Error(errorMessage);
+            throw error;
         }
     }
 
@@ -3517,12 +3510,10 @@ class ContractManager {
             };
 
         } catch (error) {
-            // REACT PATTERN: Simple error handling with error.reason
-            const errorMessage = error.reason || error.message || 'Failed to execute proposal';
 
             return {
                 success: false,
-                error: errorMessage
+                error: error
             };
         }
     }
@@ -3580,12 +3571,9 @@ class ContractManager {
         } catch (error) {
             console.error('Failed to reject action:', error);
 
-            // Extract user-friendly error message
-            let errorMessage = error.userMessage?.title || 'Failed to reject action';
-
             return {
                 success: false,
-                error: errorMessage,
+                error: error,
                 originalError: error
             };
         }
@@ -3869,7 +3857,7 @@ class ContractManager {
             console.error('❌ Failed to approve LP token:', error);
             return {
                 success: false,
-                error: error.userMessage?.title || 'Failed to approve LP token'
+                error: error
             };
         }
     }
@@ -3914,7 +3902,7 @@ class ContractManager {
             console.error('❌ Failed to claim rewards:', error);
             return {
                 success: false,
-                error: error.userMessage?.title || 'Failed to claim rewards'
+                error: error
             };
         }
     }
@@ -3963,7 +3951,7 @@ class ContractManager {
             console.error('❌ Failed to stake:', error);
             return {
                 success: false,
-                error: error.userMessage?.title || 'Failed to stake tokens'
+                error: error
             };
         }
     }
@@ -4012,7 +4000,7 @@ class ContractManager {
             console.error('❌ Failed to unstake:', error);
             return {
                 success: false,
-                error: error.userMessage?.title || 'Failed to unstake tokens'
+                error: error
             };
         }
     }
