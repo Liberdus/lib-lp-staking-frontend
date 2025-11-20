@@ -1,13 +1,3 @@
-.loading-spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 1s linear infinite;
-    margin-right: 5px;
-}
 
 /* Keyframe Animations */
 @keyframes statusPulse {
@@ -17,11 +7,6 @@
 @keyframes loadingShimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 /* Demo Data Indicator */
@@ -590,10 +575,6 @@
     border-top-color: #00d4ff;
     animation: spin 1s ease-in-out infinite;
     margin-left: 10px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
 }
 
 /* Responsive Design */
@@ -1367,11 +1348,6 @@ table td:last-child {
     border-top: 2px solid #00d4ff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 /* React-Matching Styles for Exact Parity */
@@ -2289,20 +2265,6 @@ table td:last-child {
     gap: 8px;
 }
 
-.spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid transparent;
-    border-top: 2px solid currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
 /* Weight Update Styles */
 .weight-pair-item {
     display: flex;
@@ -2392,16 +2354,6 @@ table td:last-child {
     color: white;
     font-size: 12px;
     font-weight: bold;
-}
-
-/* Loading Spinner */
-.loading-spinner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 20px;
-    color: #666;
 }
 
 /* Modal Loading Animation - Modern Circular Spinner */
