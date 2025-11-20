@@ -152,7 +152,7 @@ class ErrorHandler {
             },
             'INSUFFICIENT_REWARD_BALANCE': {
                 title: 'Reward Pool Underfunded',
-                message: 'The reward pool is currently empty or underfunded. You can still unstake your LP tokens, but cannot claim rewards right now.',
+                message: 'The reward pool is currently underfunded. You can still unstake your LP tokens, but cannot claim rewards right now.',
                 action: 'Unstake Without Rewards'
             }
         };
@@ -348,7 +348,6 @@ class ErrorHandler {
             if (reason.includes('insufficient reward balance')) {
                 return 'INSUFFICIENT_REWARD_BALANCE';
             }
-            // For any other revert reason, treat as generic execution revert
             return 'EXECUTION_REVERTED';
         }
 
@@ -440,16 +439,30 @@ class ErrorHandler {
      */
     getUserMessage(error) {
         const errorCode = this.extractErrorCode(error);
-        
-        // Check for specific message override
-        if (this.specificMessages[errorCode]) {
+        const revertReason = this.extractRevertReason(error);
+
+        // 1. Use specific overrides for special cases
+        // (but NOT for EXECUTION_REVERTED – we want that dynamic)
+        if (this.specificMessages[errorCode] && errorCode !== 'EXECUTION_REVERTED') {
             return this.specificMessages[errorCode];
         }
-        
-        // Use category-based message
+
+        // 2. Generic contract revert with a Solidity reason
+        if (errorCode === 'EXECUTION_REVERTED' && revertReason) {
+            return {
+                title: 'Transaction failed',
+                // You can prepend some text if you like:
+                // message: `The transaction would fail: ${revertReason}`,
+                message: revertReason,
+                action: 'Close'
+            };
+        }
+
+        // 3. Fall back to category-level message
         const category = this.categorizeError(error);
         return this.userMessages[category] || this.userMessages.UNKNOWN;
     }
+
 
     /**
      * Get technical error message for debugging
