@@ -51,6 +51,7 @@ class ErrorHandler {
             'CONTRACT_NOT_DEPLOYED': { category: 'CONTRACT', severity: 'high', retryable: false },
             'EXECUTION_REVERTED': { category: 'CONTRACT', severity: 'medium', retryable: false },
             'INVALID_ADDRESS': { category: 'CONTRACT', severity: 'high', retryable: false },
+            'INSUFFICIENT_REWARD_BALANCE': { category: 'CONTRACT', severity: 'medium', retryable: false },
             
             // Wallet errors
             'USER_REJECTED': { category: 'WALLET', severity: 'low', retryable: false },
@@ -146,6 +147,11 @@ class ErrorHandler {
                 title: 'Wallet Not Connected',
                 message: 'Please connect your wallet to continue.',
                 action: 'Connect Wallet'
+            },
+            'INSUFFICIENT_REWARD_BALANCE': {
+                title: 'Insufficient Reward Balance',
+                message: 'Insufficient reward balance in the contract. You can still unstake without claiming rewards by unchecking the "Claim reward tokens" checkbox.',
+                action: 'Uncheck Claim Rewards'
             }
         };
         
@@ -251,21 +257,51 @@ class ErrorHandler {
     extractErrorCode(error) {
         if (error.code) return error.code;
         if (error.reason) return error.reason;
-        if (error.message) {
-            // Try to extract common error patterns
-            const patterns = [
-                { pattern: /execution reverted/i, code: 'EXECUTION_REVERTED' },
-                { pattern: /insufficient funds/i, code: 'INSUFFICIENT_FUNDS' },
-                { pattern: /user rejected/i, code: 'USER_REJECTED' },
-                { pattern: /user denied/i, code: 'USER_REJECTED' },
-                { pattern: /network error/i, code: 'NETWORK_ERROR' },
-                { pattern: /timeout/i, code: 'TIMEOUT' }
-            ];
+        
+        // Deep search for error messages in nested error structures
+        const searchErrorString = (err) => {
+            if (!err) return '';
+            if (typeof err === 'string') return err.toLowerCase();
             
-            for (const { pattern, code } of patterns) {
-                if (pattern.test(error.message)) {
-                    return code;
-                }
+            // Build comprehensive search string from all possible error locations
+            const parts = [
+                err.message,
+                err.reason,
+                err.technicalMessage,
+                err.error?.data?.message,
+                err.error?.message,
+                err.original?.error?.data?.message,
+                err.original?.error?.message,
+                err.original?.reason,
+                err.original?.message,
+                err.original?.technicalMessage,
+                // Also check nested error structures
+                err.error?.error?.data?.message,
+                err.error?.error?.message
+            ].filter(Boolean).join(' ');
+            
+            return parts.toLowerCase();
+        };
+        
+        const fullErrorString = searchErrorString(error);
+        
+        // Try to extract common error patterns (check specific errors first)
+        const patterns = [
+            { pattern: /insufficient reward balance/i, code: 'INSUFFICIENT_REWARD_BALANCE' },
+            { pattern: /execution reverted/i, code: 'EXECUTION_REVERTED' },
+            { pattern: /insufficient funds/i, code: 'INSUFFICIENT_FUNDS' },
+            { pattern: /user rejected/i, code: 'USER_REJECTED' },
+            { pattern: /user denied/i, code: 'USER_REJECTED' },
+            { pattern: /network error/i, code: 'NETWORK_ERROR' },
+            { pattern: /timeout/i, code: 'TIMEOUT' }
+        ];
+        
+        // Build search string from error.message (if exists) and full error string
+        const searchString = (error.message ? error.message + ' ' : '') + fullErrorString;
+        
+        for (const { pattern, code } of patterns) {
+            if (pattern.test(searchString)) {
+                return code;
             }
         }
         
@@ -335,15 +371,68 @@ class ErrorHandler {
      */
     getUserMessage(error) {
         const errorCode = this.extractErrorCode(error);
+        const revertMessage = this.extractRevertMessage(error);
         
-        // Check for specific message override
+        // Check for "Insufficient reward balance" (highest priority)
+        if (errorCode === 'INSUFFICIENT_REWARD_BALANCE' || 
+            (revertMessage && revertMessage.includes('Insufficient reward balance'))) {
+            return this.specificMessages['INSUFFICIENT_REWARD_BALANCE'];
+        }
+        
+        // Check for specific message override based on error code
         if (this.specificMessages[errorCode]) {
             return this.specificMessages[errorCode];
+        }
+        
+        // For EXECUTION_REVERTED errors, return the actual revert message
+        if (errorCode === 'EXECUTION_REVERTED' && revertMessage) {
+            return {
+                title: 'Transaction Failed',
+                message: revertMessage,
+                action: 'Check Details'
+            };
         }
         
         // Use category-based message
         const category = this.categorizeError(error);
         return this.userMessages[category] || this.userMessages.UNKNOWN;
+    }
+    
+    /**
+     * Extract revert message from contract error
+     */
+    extractRevertMessage(error) {
+        // Define paths to check for revert messages
+        const paths = [
+            (e) => e?.error?.data?.message,
+            (e) => e?.error?.error?.data?.message,
+            (e) => e?.original?.error?.data?.message,
+            (e) => e?.original?.error?.error?.data?.message,
+            (e) => e?.reason,
+            (e) => e?.original?.reason,
+            (e) => e?.message,
+            (e) => e?.original?.message
+        ];
+        
+        const checkLocation = (err) => {
+            if (!err) return null;
+            
+            for (const getPath of paths) {
+                const msg = getPath(err);
+                if (!msg || typeof msg !== 'string') continue;
+                
+                // Skip UNPREDICTABLE_GAS_LIMIT reasons
+                if (msg.includes('UNPREDICTABLE_GAS_LIMIT')) continue;
+                
+                // Clean up "execution reverted: " prefix if present
+                const cleanMsg = msg.replace(/^execution reverted:\s*/i, '').trim();
+                if (cleanMsg) return cleanMsg;
+            }
+            
+            return null;
+        };
+        
+        return checkLocation(error) || checkLocation(error?.original);
     }
 
     /**
