@@ -371,11 +371,16 @@ class ErrorHandler {
      */
     getUserMessage(error) {
         const errorCode = this.extractErrorCode(error);
-        const revertMessage = this.extractRevertMessage(error);
         
         // Check for "Insufficient reward balance" (highest priority)
-        if (errorCode === 'INSUFFICIENT_REWARD_BALANCE' || 
-            (revertMessage && revertMessage.includes('Insufficient reward balance'))) {
+        if (errorCode === 'INSUFFICIENT_REWARD_BALANCE') {
+            return this.specificMessages['INSUFFICIENT_REWARD_BALANCE'];
+        }
+        
+        const revertMessage = this.extractRevertMessage(error);
+        
+        // Double-check revert message in case error code extraction missed it
+        if (revertMessage && revertMessage.includes('Insufficient reward balance')) {
             return this.specificMessages['INSUFFICIENT_REWARD_BALANCE'];
         }
         
@@ -598,12 +603,14 @@ class ErrorHandler {
     /**
      * Get user-friendly error message string (convenience method)
      * Returns the message string directly for easy use in components
+     * Optimized to avoid full error processing when only message is needed
      */
     getErrorMessage(error, context = {}) {
-        const processedError = this.processError(error, context);
-        return processedError?.userMessage?.message || 
-               processedError?.userMessage?.title || 
-               processedError?.technicalMessage || 
+        // Directly get user message without full processing overhead
+        const userMessage = this.getUserMessage(error);
+        return userMessage?.message || 
+               userMessage?.title || 
+               this.getTechnicalMessage(error) || 
                error?.message || 
                'An error occurred';
     }
