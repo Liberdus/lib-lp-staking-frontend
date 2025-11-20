@@ -4982,7 +4982,7 @@ class AdminPage {
                         <form id="withdrawal-form" onsubmit="adminPage.submitWithdrawalProposal(event)">
                             <div class="form-group">
                                 <label for="withdrawal-amount">Amount (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
-                                <input type="decimal" id="withdrawal-amount" min="0" required
+                                <input type="number" id="withdrawal-amount" step="any" min="0" inputmode="decimal" required
                                        placeholder="Enter amount to withdraw">
                                 <small class="form-help">Available balance: ${this.contractStats?.rewardBalance ?? 'N/A'}</small>
                             </div>
