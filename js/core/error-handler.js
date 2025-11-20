@@ -234,8 +234,6 @@ class ErrorHandler {
                 technicalMessage,
                 suggestions,
                 metadata,
-                // NEW: make it easy for callers / UI to use the revertReason directly
-                revertReason: revertReason || null
             };
 
             // Add to history
