@@ -262,11 +262,11 @@ class ErrorHandler {
     extractRevertReason(error) {
         if (!error) return null;
 
+        // Messages that often contain "execution reverted: <reason>"
         const candidates = [
             error?.error?.data?.message,
             error?.error?.message,
             error?.data?.message,
-            error?.reason,
             error?.message
         ].filter(Boolean);
 
@@ -278,8 +278,13 @@ class ErrorHandler {
             }
         }
 
-        // Fallback: sometimes the message is just the reason without the prefix
-        if (typeof error?.reason === 'string') return error.reason.trim();
+        // Some providers put the plain revert reason in `reason` for CALL_EXCEPTION / UNPREDICTABLE_GAS_LIMIT
+        if (
+            (error.code === 'CALL_EXCEPTION' || error.code === 'UNPREDICTABLE_GAS_LIMIT') &&
+            typeof error.reason === 'string'
+        ) {
+            return error.reason.trim();
+        }
 
         return null;
     }
