@@ -451,10 +451,8 @@ class ErrorHandler {
         if (errorCode === 'EXECUTION_REVERTED' && revertReason) {
             return {
                 title: 'Transaction failed',
-                // You can prepend some text if you like:
-                // message: `The transaction would fail: ${revertReason}`,
                 message: revertReason,
-                action: 'Close'
+                action: 'Try again'
             };
         }
 
