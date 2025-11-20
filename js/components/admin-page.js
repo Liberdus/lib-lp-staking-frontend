@@ -4240,8 +4240,6 @@ class AdminPage {
                 const withdrawAmount = proposal.withdrawAmount
                     ? (typeof proposal.withdrawAmount === 'bigint'
                         ? ethers.utils.formatEther(proposal.withdrawAmount)
-                        : typeof proposal.withdrawAmount === 'number'
-                        ? proposal.withdrawAmount.toString()
                         : proposal.withdrawAmount)
                     : 'Not specified';
 
