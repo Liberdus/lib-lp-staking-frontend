@@ -4240,6 +4240,8 @@ class AdminPage {
                 const withdrawAmount = proposal.withdrawAmount
                     ? (typeof proposal.withdrawAmount === 'bigint'
                         ? ethers.utils.formatEther(proposal.withdrawAmount)
+                        : typeof proposal.withdrawAmount === 'number'
+                        ? proposal.withdrawAmount.toString()
                         : proposal.withdrawAmount)
                     : 'Not specified';
 
@@ -4980,7 +4982,7 @@ class AdminPage {
                         <form id="withdrawal-form" onsubmit="adminPage.submitWithdrawalProposal(event)">
                             <div class="form-group">
                                 <label for="withdrawal-amount">Amount (${this.contractStats?.rewardTokenSymbol || 'USDC'})</label>
-                                <input type="number" id="withdrawal-amount" step="0.01" min="0" required
+                                <input type="decimal" id="withdrawal-amount" min="0" required
                                        placeholder="Enter amount to withdraw">
                                 <small class="form-help">Available balance: ${this.contractStats?.rewardBalance ?? 'N/A'}</small>
                             </div>
@@ -5375,8 +5377,8 @@ class AdminPage {
                         throw new Error('Staking contract address not available');
                     }
                     const balance = await contractManager.rewardTokenContract.balanceOf(stakingContractAddress);
-                    const balanceValue = Number(ethers.utils.formatEther(balance));
-                    return `${balanceValue.toFixed(2)} ${rewardTokenSymbol}`;
+                    const balanceValue = ethers.utils.formatEther(balance);
+                    return `${balanceValue} ${rewardTokenSymbol}`;
                 },
                 null
             );
