@@ -178,7 +178,7 @@ window.CONFIG.ABIS = {
     STAKING_CONTRACT: [
         // Core staking functions
         'function stake(address lpToken, uint256 amount) external',
-        'function unstake(address lpToken, uint256 amount) external',
+        'function unstake(address lpToken, uint256 amount, bool claimRewards) external',
         'function claimRewards(address lpToken) external',
 
         // View functions - User info
