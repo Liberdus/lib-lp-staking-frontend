@@ -601,21 +601,6 @@ class ErrorHandler {
     // ==================== ERROR DISPLAY ====================
 
     /**
-     * Get user-friendly error message string (convenience method)
-     * Returns the message string directly for easy use in components
-     * Optimized to avoid full error processing when only message is needed
-     */
-    getErrorMessage(error, context = {}) {
-        // Directly get user message without full processing overhead
-        const userMessage = this.getUserMessage(error);
-        return userMessage?.message || 
-               userMessage?.title || 
-               this.getTechnicalMessage(error) || 
-               error?.message || 
-               'An error occurred';
-    }
-
-    /**
      * Display error to user via notification system
      */
     displayError(error, options = {}) {

@@ -4010,8 +4010,10 @@ class ContractManager {
             }, 'unstake');
         } catch (error) {
             console.error('❌ Failed to unstake:', error);
-            const errorMessage = window?.errorHandler?.getErrorMessage?.(error, { operation: 'unstake' }) || 'Failed to unstake tokens';
-            return { success: false, error: errorMessage };
+            return {
+                success: false,
+                error: error.userMessage?.title || 'Failed to unstake tokens'
+            };
         }
     }
 

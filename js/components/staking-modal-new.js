@@ -1281,8 +1281,9 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Unstaking failed:', error);
-            const errorMessage = window?.errorHandler?.getErrorMessage?.(error, { operation: 'unstake' }) || 'Unstaking failed';
-            window.notificationManager?.error(errorMessage);
+            if (window.notificationManager) {
+                window.notificationManager.error(`Unstaking failed: ${error.message}`);
+            }
         } finally {
             // Always release the guard
             this.pendingOperations.unstake = false;
