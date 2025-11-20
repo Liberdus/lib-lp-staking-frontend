@@ -952,6 +952,14 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Light mode hover styles for better contrast */
+[data-theme="light"] .parameter-value.address-display[data-address]:hover {
+    background: var(--primary-50);
+    border-color: var(--primary-500);
+    color: var(--text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
 .no-parameters {
     padding: 16px;
     text-align: center;
