@@ -596,6 +596,19 @@ class ErrorHandler {
     // ==================== ERROR DISPLAY ====================
 
     /**
+     * Get user-friendly error message string (convenience method)
+     * Returns the message string directly for easy use in components
+     */
+    getErrorMessage(error, context = {}) {
+        const processedError = this.processError(error, context);
+        return processedError?.userMessage?.message || 
+               processedError?.userMessage?.title || 
+               processedError?.technicalMessage || 
+               error?.message || 
+               'An error occurred';
+    }
+
+    /**
      * Display error to user via notification system
      */
     displayError(error, options = {}) {

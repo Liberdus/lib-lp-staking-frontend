@@ -4010,12 +4010,7 @@ class ContractManager {
             }, 'unstake');
         } catch (error) {
             console.error('❌ Failed to unstake:', error);
-            const processedError = window?.errorHandler?.processError?.(error, { operation: 'unstake' });
-            const errorMessage = processedError?.userMessage?.message || 
-                                processedError?.userMessage?.title || 
-                                processedError?.technicalMessage || 
-                                error?.message || 
-                                'Failed to unstake tokens';
+            const errorMessage = window?.errorHandler?.getErrorMessage?.(error, { operation: 'unstake' }) || 'Failed to unstake tokens';
             return { success: false, error: errorMessage };
         }
     }
