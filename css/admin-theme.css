@@ -40,18 +40,11 @@ body {
     }
 }
 
-.admin-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-}
-
 /* ========================================
    CARDS - MATCHING HOMEPAGE
    ======================================== */
 .card,
 .info-card,
-.admin-card,
 .table-container {
     width: 100%;
     background: var(--background-paper);
@@ -327,12 +320,6 @@ table tbody tr:last-child td {
     border-color: var(--primary-main);
 }
 
-.chip-secondary {
-    background: rgba(220, 0, 78, 0.1);
-    color: var(--secondary-main);
-    border-color: var(--secondary-main);
-}
-
 /* Success color for APR */
 .success-text {
     color: var(--success-main);
@@ -362,19 +349,6 @@ table tbody tr:last-child td {
     background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
     background-size: 200% 100%;
 }
-
-/* ========================================
-   UTILITY CLASSES - MATCHING HOMEPAGE
-   ======================================== */
-.text-primary { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
-.success-text { color: var(--success-main); font-weight: bold; }
-
-/* Flexbox utilities */
-.d-flex { display: flex; }
-.align-items-center { align-items: center; }
-.justify-content-between { justify-content: space-between; }
-.gap-2 { gap: var(--spacing-2); }
 
 /* ========================================
    RESPONSIVE DESIGN - MATCHING HOMEPAGE

@@ -224,12 +224,6 @@ body {
     border-color: var(--primary-main);
 }
 
-.chip-secondary {
-    background: rgba(220, 0, 78, 0.1);
-    color: var(--secondary-main);
-    border-color: var(--secondary-main);
-}
-
 /* Success color for APR */
 .success-text {
     color: var(--success-main);
@@ -407,10 +401,6 @@ body {
 
 .justify-center {
     justify-content: center;
-}
-
-.gap-2 {
-    gap: var(--spacing-2);
 }
 
 .network-indicator-home.has-permission {
