@@ -1441,7 +1441,7 @@ class AdminPage {
                         <h2>Multi-Signature Proposals</h2>
                     </div>
                     <div class="loading-container" style="text-align: center; padding: 40px;">
-                        <div class="loading-spinner" style="display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <div class="loading-spinner inline"></div>
                         <div style="margin-top: 15px; color: #666;">Loading proposals...</div>
                         <div style="margin-top: 5px; font-size: 0.9em; color: #999;">This may take a few seconds</div>
                     </div>
@@ -4747,7 +4747,7 @@ class AdminPage {
                                 style="padding: 10px 24px; min-width: 180px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                             <span class="btn-text">Create Proposal</span>
                             <span class="btn-loading" style="display: none;">
-                                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;"></span>
+                                <span class="spinner inline"></span>
                                 Creating...
                             </span>
                         </button>
@@ -4786,7 +4786,7 @@ class AdminPage {
                                     <span style="display: flex; align-items: center; gap: 8px;">
                                         🔗 Select Pair to Remove *
                                         <span id="pair-loading-indicator" style="display: none; font-size: 12px; color: var(--text-secondary);">
-                                            <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span>
+                                            <span class="spinner spinner-small"></span>
                                             Loading...
                                         </span>
                                     </span>
@@ -4836,7 +4836,7 @@ class AdminPage {
                                 style="padding: 10px 24px; min-width: 220px;">
                             <span class="btn-text">Submit Removal Proposal</span>
                             <span class="btn-loading" style="display: none;">
-                                <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-right: 8px;"></span>
+                                <span class="spinner inline"></span>
                                 Creating...
                             </span>
                         </button>
