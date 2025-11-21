@@ -261,6 +261,27 @@ class StakingModalNew {
                 this.close();
             }
         });
+
+        // Wallet and network change events - close modal when account/network changes
+        document.addEventListener('walletConnected', () => {
+            this.close();
+        });
+
+        document.addEventListener('walletDisconnected', () => {
+            this.close();
+        });
+
+        // Listen for MetaMask account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                this.close();
+            });
+
+            // Listen for network changes
+            window.ethereum.on('chainChanged', (chainId) => {
+                this.close();
+            });
+        }
     }
 
     applyDecimalLimit(value, maxDecimals) {
@@ -768,6 +789,7 @@ class StakingModalNew {
                 modal.style.display = 'none';
                 this.isOpen = false;
             }, 300);
+            this.clearInputs();
         }
 
         // Restore body scroll
