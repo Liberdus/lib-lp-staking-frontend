@@ -385,11 +385,6 @@ body {
     display: none !important;
 }
 
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
 .text-center {
     text-align: center;
 }

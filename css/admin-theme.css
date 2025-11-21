@@ -61,6 +61,7 @@ body {
 }
 
 .card-header {
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
