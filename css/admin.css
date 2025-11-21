@@ -2418,6 +2418,18 @@ table td:last-child {
     line-height: 1.4;
 }
 
+/* Button Outline Style */
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--primary-color, #007bff);
+    color: var(--primary-color, #007bff);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color, #007bff);
+    color: white;
+}
+
 .btn-sm {
     padding: var(--spacing-1) var(--spacing-2);
     font-size: 12px;

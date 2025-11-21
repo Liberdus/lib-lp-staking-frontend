@@ -587,21 +587,6 @@ textarea::placeholder {
 }
 
 /* ========================================
-   BUTTON VARIANTS - HOMEPAGE STYLE
-   ======================================== */
-
-.btn-outline {
-    background: transparent !important;
-    border: 1px solid var(--primary-main) !important;
-    color: var(--primary-main) !important;
-}
-
-.btn-outline:hover {
-    background: var(--primary-main) !important;
-    color: white !important;
-}
-
-/* ========================================
    PROPOSAL ROWS - HOMEPAGE STYLE
    ======================================== */
 .proposal-row {
