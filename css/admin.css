@@ -269,6 +269,7 @@
     justify-content: space-between;
     padding: var(--spacing-2);
     border-bottom: 1px solid var(--divider);
+    margin-bottom: 0;
 }
 
 .card-header h3,
