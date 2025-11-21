@@ -223,12 +223,6 @@
     background: rgba(0, 212, 255, 0.1);
 }
 
-/* Admin Content */
-.admin-content {
-    padding: 30px;
-    min-height: calc(100vh - 200px);
-}
-
 /* Dashboard Styles */
 .dashboard-section h2 {
     margin: 0 0 30px 0;

@@ -19,6 +19,8 @@ body.admin-page {
     background: var(--background-default) !important;
     color: var(--text-primary) !important;
     transition: background-color 0.3s ease, color 0.3s ease !important;
+    min-height: calc(100vh - 200px);
+    padding: 30px;
 }
 
 /* Ensure body element also gets theme */
