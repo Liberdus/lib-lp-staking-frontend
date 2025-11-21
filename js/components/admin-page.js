@@ -1068,6 +1068,8 @@ class AdminPage {
     handleWalletDisconnected() {
         console.log('👋 Handling wallet disconnected');
 
+        this.closeModal();
+
         this.isAuthorized = false;
 
         // Update UI to reflect disconnected state
