@@ -111,13 +111,6 @@ body {
     box-shadow: none !important;
 }
 
-/* Small button variant */
-.btn-small {
-    padding: 6px 12px;
-    font-size: 13px;
-    min-width: 80px;
-}
-
 /* ========================================
    FORMS - MATCHING HOMEPAGE
    ======================================== */
