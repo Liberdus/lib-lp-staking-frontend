@@ -5694,31 +5694,10 @@ class AdminPage {
 
     showError(titleOrMessage, detail) {
         const hasDetail = typeof detail === 'string' && detail.trim().length > 0;
+        const message = hasDetail ? detail : (titleOrMessage || 'An unexpected error occurred');
+        const title = hasDetail ? (titleOrMessage || 'Error') : null;
 
-        if (hasDetail) {
-            const title = titleOrMessage || 'Error';
-            const message = detail;
-
-            console.error('❌ Error:', title, '-', message);
-
-            const container = document.getElementById('admin-section-content') || document.body;
-            container.innerHTML = `
-                <div class="error-display">
-                    <h3>❌ ${title}</h3>
-                    <p>${message}</p>
-                    <button class="btn btn-primary" onclick="adminPage.init()">
-                        Retry
-                    </button>
-                </div>
-            `;
-            return;
-        }
-
-        const message = typeof titleOrMessage === 'string' && titleOrMessage.trim().length > 0
-            ? titleOrMessage
-            : 'An unexpected error occurred';
-
-        console.error('❌ Error:', message);
+        console.error('❌ Error:', title ? `${title} - ${message}` : message);
 
         const canShowInline = typeof this.showMessage === 'function' && !!document.querySelector('.modal-body');
 
@@ -5727,7 +5706,7 @@ class AdminPage {
         }
 
         if (window.notificationManager) {
-            window.notificationManager.error(message);
+            window.notificationManager.error(message, {title: title});
         } else if (!canShowInline) {
             alert('❌ ' + message);
         }
@@ -5804,12 +5783,12 @@ class AdminPage {
                 // Refresh data once without causing loops
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create hourly rate proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         }
     }
 
@@ -5867,12 +5846,12 @@ class AdminPage {
                 this.showSuccess(successMessage);
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create add pair proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         }
     }
 
@@ -5907,12 +5886,12 @@ class AdminPage {
                 this.showSuccess(successMessage);
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create removal proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create removal proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create removal proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         }
     }
 
@@ -5972,12 +5951,12 @@ class AdminPage {
                 this.showSuccess(successMessage);
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create weight update proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create weight update proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create weight update proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         }
     }
 
@@ -6046,12 +6025,12 @@ class AdminPage {
                 this.showSuccess(successMessage);
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create change signer proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create change signer proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create signer change proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingChangeSigner = false;
@@ -6124,12 +6103,12 @@ class AdminPage {
                 this.showSuccess(successMessage);
                 this.refreshAdminDataOnce();
             } else {
-                this.showError(result.error || 'Failed to create withdrawal proposal');
+                this.showError(result.error.userMessage?.title || 'Failed to create withdrawal proposal', result.error.userMessage?.message);
             }
 
         } catch (error) {
             console.error('Failed to create withdrawal proposal:', error);
-            this.showError('Failed to create proposal: ' + error.message);
+            this.showError(error.userMessage?.title || 'Failed to create proposal', error.userMessage?.message);
         } finally {
             // DUPLICATE PREVENTION FIX: Always reset submission state and button
             this.isSubmittingWithdrawal = false;
@@ -6189,7 +6168,6 @@ class AdminPage {
                 this.showSuccess(`✅ Proposal #${proposalId} approved successfully! Your vote has been recorded on the blockchain.`);
                 this.refreshAdminDataOnce();
             } else {
-                // Handle specific contract errors like React version
                 throw result.error;
             }
 
@@ -6218,7 +6196,6 @@ class AdminPage {
                 this.showSuccess(`✅ Proposal #${proposalId} rejected successfully! Your vote has been recorded on the blockchain.`);
                 this.refreshAdminDataOnce();
             } else {
-                // Handle specific contract errors like React version
                 throw result.error;
             }
 
