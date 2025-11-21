@@ -40,15 +40,6 @@ class ContractManager {
         this.transactionStatus = null;
         this.multicallService = null; // Multicall2 for batch loading optimization
 
-        // Block explorer configuration
-        this.blockExplorer = {
-            name: 'Polygon Amoy Explorer',
-            baseUrl: 'https://amoy.polygonscan.com',
-            txPath: '/tx/',
-            addressPath: '/address/',
-            tokenPath: '/token/'
-        };
-
         // Configuration with enhanced provider fallback - OPTIMIZED FOR SPEED
         this.config = {
             maxRetries: 2, // Reduced from 3 for faster failure
@@ -1209,26 +1200,6 @@ class ContractManager {
     }
 
     /**
-     * Get staking contract instance
-     */
-    getStakingContract() {
-        if (!this.stakingContract) {
-            throw new Error('Staking contract not initialized');
-        }
-        return this.stakingContract;
-    }
-
-    /**
-     * Get reward token contract instance
-     */
-    getRewardTokenContract() {
-        if (!this.rewardTokenContract) {
-            throw new Error('Reward token contract not initialized');
-        }
-        return this.rewardTokenContract;
-    }
-
-    /**
      * Get LP token contract by pair name
      */
     getLPTokenContract(pairName) {
@@ -1252,66 +1223,6 @@ class ContractManager {
                 rewards: ethers.utils.formatEther(stakeInfo.pendingRewards || '0')
             };
         }, 'getUserStake');
-    }
-
-    /**
-     * Get user's pending rewards for a specific LP token (legacy method)
-     */
-    async getPendingRewards(userAddress, lpTokenAddress) {
-        return await this.executeWithRetry(async () => {
-            const stakeInfo = await this.stakingContract.getUserStakeInfo(userAddress, lpTokenAddress);
-            return ethers.utils.formatEther(stakeInfo.pendingRewards || '0');
-        }, 'getPendingRewards');
-    }
-
-    /**
-     * Get pool information for a specific LP token (using available contract methods)
-     */
-    // TODO: Implement or remove if not applicable  
-    async getPoolInfo(lpTokenAddress) {
-        return await this.executeWithRetry(async () => {
-            // Since getPoolInfo doesn't exist, we'll return basic info
-            // In a real implementation, you might calculate this from other contract data
-            return {
-                totalStaked: '0', // Would need to be calculated from contract state
-                rewardRate: '0',  // Would need to be calculated from contract state
-                lastUpdateTime: Date.now() / 1000,
-                apr: '0'
-            };
-        }, 'getPoolInfo');
-    }
-
-    /**
-     * Get TVL (Total Value Locked) for a specific LP token
-     * Matches React implementation: lib-lp-staking-frontend/src/providers/ContractProvider.tsx (Lines 562-573)
-     *
-     * @param {string} lpTokenAddress - LP token contract address
-     * @returns {Promise<BigNumber>} - Total LP tokens staked (in wei)
-     */
-    async getTVL(lpTokenAddress) {
-        return await this.executeWithRetry(async () => {
-            if (!this.provider) {
-                throw new Error('Provider not initialized');
-            }
-
-            // Create LP token contract instance
-            const lpTokenContract = new ethers.Contract(
-                lpTokenAddress,
-                [
-                    "function balanceOf(address owner) external view returns (uint256)"
-                ],
-                this.provider
-            );
-
-            // Get balance of staking contract (total LP tokens staked)
-            const stakingContractAddress = window.networkSelector?.getStakingContractAddress();
-            if (!stakingContractAddress) {
-                throw new Error('Staking contract address not configured');
-            }
-
-            const balance = await lpTokenContract.balanceOf(stakingContractAddress);
-            return balance;
-        }, 'getTVL');
     }
 
     /**
@@ -1523,30 +1434,7 @@ class ContractManager {
         }, 'getLPStakeBreakdown');
     }
 
-    /**
-     * Get all active LP token pairs
-     */
-    async getSupportedTokens() {
-        return await this.executeWithRetry(async () => {
-            return await this.stakingContract.getActivePairs();
-        }, 'getSupportedTokens');
-    }
-
     // ============ ADMIN CONTRACT FUNCTIONS ============
-
-    /**
-     * Get action counter for multi-signature proposals with RPC failover
-     */
-    async getActionCounter() {
-        return await this.safeContractCall(
-            async () => {
-                const counter = await this.stakingContract.actionCounter();
-                return counter.toNumber();
-            },
-            0, // Return 0 as fallback
-            'getActionCounter'
-        );
-    }
 
     /**
      * Get signers (like React version) with RPC failover
@@ -1560,110 +1448,6 @@ class ContractManager {
     }
 
     /**
-     * Get pairs (like React version) with RPC failover
-     */
-    async getPairs() {
-        return await this.safeContractCall(
-            () => this.stakingContract.getPairs(),
-            [], // Fallback empty array
-            'getPairs'
-        );
-    }
-
-    /**
-     * Get required approvals for multi-signature actions with RPC failover
-     */
-    async getRequiredApprovals() {
-        const requiredApprovals = await this.safeContractCall(
-            async () => {
-                if (!this.stakingContract) {
-                    throw new Error('Staking contract not initialized');
-                }
-
-                // Check if function exists first
-                if (typeof this.stakingContract.REQUIRED_APPROVALS !== 'function') {
-                    throw new Error('REQUIRED_APPROVALS function not available in contract');
-                }
-
-                const result = await this.stakingContract.REQUIRED_APPROVALS();
-                return result.toNumber();
-            },
-            null,
-            'getRequiredApprovals'
-        );
-
-        if (!Number.isFinite(requiredApprovals)) {
-            throw new Error('Failed to retrieve required approvals from staking contract');
-        }
-
-        return requiredApprovals;
-    }
-
-    /**
-     * Get single action with full details for UI updates (PERFORMANCE OPTIMIZATION)
-     * This method fetches only one action instead of all actions for efficient updates
-     */
-    async getSingleActionForUpdate(actionId) {
-        console.log(`[SINGLE ACTION] 🎯 Fetching single action ${actionId} for UI update...`);
-
-        try {
-            const numericActionId = parseInt(actionId);
-            if (isNaN(numericActionId)) {
-                throw new Error(`Invalid action ID: ${actionId}`);
-            }
-
-            // Fetch action details, pairs, weights, approvals, and expiration in parallel
-            const [action, pairs, weights, approvedBy, expiredOverride] = await Promise.all([
-                this.stakingContract.actions(BigInt(numericActionId)),
-                this.stakingContract.getActionPairs(numericActionId),
-                this.stakingContract.getActionWeights(numericActionId),
-                this.stakingContract.getActionApproval(numericActionId),
-                this.stakingContract.isActionExpired(numericActionId)
-            ]);
-
-            console.log(`[SINGLE ACTION] ✅ Successfully fetched action ${actionId}:`, {
-                actionType: action.actionType,
-                executed: action.executed,
-                approvals: action.approvals,
-                rejected: action.rejected
-            });
-
-            // Format the action data for UI consumption
-            const formattedAction = {
-                id: numericActionId,
-                actionType: action.actionType,
-                executed: action.executed,
-                rejected: action.rejected,
-                expired: expiredOverride !== undefined ? !!expiredOverride : action.expired,
-                approvals: action.approvals,
-                proposer: action.proposer,
-                createdAt: action.proposedTime ? action.proposedTime.toString() : Date.now().toString(),
-                pairs: pairs,
-                weights: weights.map(w => w.toString()),
-                newHourlyRewardRate: action.newHourlyRewardRate ? action.newHourlyRewardRate.toString() : null,
-                pairToAdd: action.pairToAdd,
-                pairNameToAdd: action.pairNameToAdd,
-                platformToAdd: action.platformToAdd,
-                weightToAdd: action.weightToAdd ? action.weightToAdd.toString() : null,
-                pairToRemove: action.pairToRemove,
-                recipient: action.recipient,
-                withdrawAmount: action.withdrawAmount ? action.withdrawAmount.toString() : null,
-                approvedBy: approvedBy,
-                // Additional UI-specific fields
-                status: this.determineActionStatus(action),
-                approvalCount: action.approvals,
-                canExecute: action.approvals >= (this.contractStats?.requiredApprovals || 2) && !action.executed && !action.rejected
-            };
-
-            return formattedAction;
-
-        } catch (error) {
-            console.error(`[SINGLE ACTION] ❌ Failed to fetch action ${actionId}:`, error);
-            throw new Error(`Failed to fetch action ${actionId}: ${error.message}`);
-        }
-    }
-
-    /**
      * Determine action status for UI display
      */
     determineActionStatus(action) {
@@ -1671,132 +1455,6 @@ class ContractManager {
         if (action.rejected) return 'rejected';
         if (action.expired) return 'expired';
         return 'pending';
-    }
-
-    /**
-     * Get action pairs by ID with RPC failover
-     */
-    async getActionPairs(actionId) {
-        return await this.safeContractCall(
-            () => this.stakingContract.getActionPairs(actionId),
-            [], // React version returns [] on error
-            `getActionPairs(${actionId})`
-        );
-    }
-
-    /**
-     * Get action weights by ID with RPC failover
-     */
-    async getActionWeights(actionId) {
-        return await this.safeContractCall(
-            async () => {
-                const weights = await this.stakingContract.getActionWeights(actionId);
-                return weights.map(w => w.toString());
-            },
-            [], // React version returns [] on error
-            `getActionWeights(${actionId})`
-        );
-    }
-
-    /**
-     * Get specific action by ID (like React version) with RPC failover
-     */
-    async getActions(actionId) {
-        return await this.safeContractCall(
-            async () => {
-                try {
-                    const [rawAction, expiredOverride] = await Promise.all([
-                        this.stakingContract.actions(BigInt(actionId)),
-                        this.stakingContract.isActionExpired(BigInt(actionId))
-                    ]);
-                    console.log(`🔍 Raw action ${actionId}:`, rawAction);
-
-                    const storedExpired = rawAction?.expired ?? (Array.isArray(rawAction) ? rawAction[10] : rawAction?.[10]);
-                    const finalExpired = expiredOverride !== undefined
-                        ? Boolean(expiredOverride)
-                        : (storedExpired !== undefined ? Boolean(storedExpired) : false);
-
-                    // Handle different return formats
-                    if (rawAction) {
-                        // If it's already an object with properties
-                        if (rawAction.actionType !== undefined) {
-                            console.log(`✅ Action ${actionId} is object format`);
-                            
-                            // If the object is frozen (immutable), create a new object to safely add/override properties
-                            if (Object.isFrozen(rawAction)) {
-                                return {
-                                    ...rawAction,
-                                    expired: finalExpired
-                                };
-                            } else {
-                                // If not frozen, we can safely modify the object directly
-                                rawAction.expired = finalExpired;
-                                return rawAction;
-                            }
-                        }
-
-                        // If it's a tuple array (correct ABI structure - 14 fields)
-                        if (Array.isArray(rawAction) && rawAction.length >= 14) {
-                            console.log(`✅ Action ${actionId} is tuple format, converting...`);
-                            return {
-                                actionType: rawAction[0],
-                                newHourlyRewardRate: rawAction[1],
-                                pairToAdd: rawAction[2],
-                                pairNameToAdd: rawAction[3],
-                                platformToAdd: rawAction[4],
-                                weightToAdd: rawAction[5],
-                                pairToRemove: rawAction[6],
-                                recipient: rawAction[7],
-                                withdrawAmount: rawAction[8],
-                                executed: rawAction[9],
-                                expired: finalExpired,
-                                approvals: rawAction[11],
-                                proposedTime: rawAction[12],
-                                rejected: rawAction[13],
-                                // Arrays need to be fetched separately
-                                pairs: [],
-                                weights: [],
-                                approvedBy: []
-                            };
-                        }
-
-                        // If it's a struct-like object (ethers.js sometimes returns this)
-                        if (typeof rawAction === 'object' && rawAction[0] !== undefined) {
-                            console.log(`✅ Action ${actionId} is indexed object format, converting...`);
-                            return {
-                                actionType: rawAction[0],
-                                newHourlyRewardRate: rawAction[1],
-                                pairToAdd: rawAction[2],
-                                pairNameToAdd: rawAction[3],
-                                platformToAdd: rawAction[4],
-                                weightToAdd: rawAction[5],
-                                pairToRemove: rawAction[6],
-                                recipient: rawAction[7],
-                                withdrawAmount: rawAction[8],
-                                executed: rawAction[9],
-                                expired: finalExpired,
-                                approvals: rawAction[11],
-                                proposedTime: rawAction[12],
-                                rejected: rawAction[13],
-                                // Arrays need to be fetched separately
-                                pairs: [],
-                                weights: [],
-                                approvedBy: []
-                            };
-                        }
-                    }
-
-                    console.error(`❌ Action ${actionId} unknown format:`, rawAction);
-                    return null;
-
-                } catch (error) {
-                    console.error(`❌ Failed to get action ${actionId}:`, error.message);
-                    throw error; // Let safeContractCall handle the retry logic
-                }
-            },
-            null, // Return null on error
-            `getActions(${actionId})`
-        );
     }
 
     /**
@@ -3200,57 +2858,6 @@ class ContractManager {
     }
 
     /**
-     * Check if an action is expired
-     */
-    async isActionExpired(actionId) {
-        return await this.executeWithRetry(async () => {
-            return await this.stakingContract.isActionExpired(actionId);
-        }, 'isActionExpired');
-    }
-
-    /**
-     * Clean up expired actions (admin only)
-     */
-    async cleanupExpiredActions() {
-        return await this.executeTransactionOnce(async () => {
-            const tx = await this.stakingContract.cleanupExpiredActions();
-            console.log('Cleanup expired actions transaction sent:', tx.hash);
-            // CRITICAL FIX: Return tx object, not receipt
-            return tx;
-        }, 'cleanupExpiredActions');
-    }
-
-    /**
-     * Get active pairs from the staking contract
-     */
-    async getActivePairs() {
-        return await this.executeWithRetry(async () => {
-            if (!this.stakingContract) {
-                throw new Error('Staking contract not initialized');
-            }
-            return await this.stakingContract.getActivePairs();
-        }, 'getActivePairs');
-    }
-
-    /**
-     * Get pair information for a specific LP token address
-     */
-    async getPairInfo(lpTokenAddress) {
-        return await this.executeWithRetry(async () => {
-            if (!this.stakingContract) {
-                throw new Error('Staking contract not initialized');
-            }
-            const [token, platform, weight, isActive] = await this.stakingContract.getPairInfo(lpTokenAddress);
-            return {
-                lpToken: token,
-                platform: platform,
-                weight: weight.toString(),
-                isActive: isActive
-            };
-        }, 'getPairInfo');
-    }
-
-    /**
      * Get total weight from contract with provider fallback
      */
     async getTotalWeight() {
@@ -3400,18 +3007,6 @@ class ContractManager {
         });
 
         return userData;
-    }
-
-    /**
-     * Get LP token allowance for staking contract
-     */
-    async getLPTokenAllowance(userAddress, pairName) {
-        return await this.executeWithRetry(async () => {
-            const lpContract = this.getLPTokenContract(pairName);
-            const stakingAddress = this.contractAddresses.get('STAKING');
-            const allowance = await lpContract.allowance(userAddress, stakingAddress);
-            return ethers.formatEther(allowance);
-        }, 'getLPTokenAllowance');
     }
 
     // ==================== CONTRACT WRITE OPERATIONS ====================
@@ -4034,54 +3629,6 @@ class ContractManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // ==================== BLOCK EXPLORER INTEGRATION ====================
-
-    /**
-     * Get block explorer URL for transaction
-     */
-    getTransactionUrl(txHash) {
-        if (!txHash) return null;
-        return `${this.blockExplorer.baseUrl}${this.blockExplorer.txPath}${txHash}`;
-    }
-
-    /**
-     * Get block explorer URL for address
-     */
-    getAddressUrl(address) {
-        if (!address) return null;
-        return `${this.blockExplorer.baseUrl}${this.blockExplorer.addressPath}${address}`;
-    }
-
-    /**
-     * Get block explorer URL for token
-     */
-    getTokenUrl(tokenAddress) {
-        if (!tokenAddress) return null;
-        return `${this.blockExplorer.baseUrl}${this.blockExplorer.tokenPath}${tokenAddress}`;
-    }
-
-    /**
-     * Open transaction in block explorer
-     */
-    openTransactionInExplorer(txHash) {
-        const url = this.getTransactionUrl(txHash);
-        if (url) {
-            window.open(url, '_blank', 'noopener,noreferrer');
-            console.log('Opened transaction in explorer:', txHash);
-        }
-    }
-
-    /**
-     * Open address in block explorer
-     */
-    openAddressInExplorer(address) {
-        const url = this.getAddressUrl(address);
-        if (url) {
-            window.open(url, '_blank', 'noopener,noreferrer');
-            console.log('Opened address in explorer:', address);
-        }
-    }
-
     /**
      * Cleanup contract manager
      */
@@ -4267,55 +3814,8 @@ class ContractManager {
     }
 
     /**
-     * Get current signer address for transaction operations
-     * Requires signer setup and network context. Use for sending transactions.
-     * For permission checks only, use getCurrentSignerForPermissions() instead.
-     * 
-     * @returns {Promise<string|null>} The signer address or null if not available
-     */
-    async getCurrentSigner() {
-        try {
-            // First check if MetaMask is available and has connected accounts
-            if (typeof window.ethereum === 'undefined') {
-                console.log('[ContractManager] MetaMask not available');
-                return null;
-            }
-
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length === 0) {
-                console.log('[ContractManager] No connected accounts');
-                return null;
-            }
-
-            if (!this.signer) {
-                await this.ensureSigner();
-            }
-            
-            // Verify the signer is still valid
-            if (!this.signer) {
-                console.log('[ContractManager] No valid signer available');
-                return null;
-            }
-
-            return await this.signer.getAddress();
-        } catch (error) {
-            // Handle specific disconnection errors gracefully
-            if (error.code === 'UNSUPPORTED_OPERATION' || 
-                error.message?.includes('unknown account') ||
-                error.message?.includes('missing provider')) {
-                console.log('[ContractManager] Wallet disconnected or not available');
-                return null;
-            }
-            
-            console.error('Failed to get current signer address:', error);
-            return null;
-        }
-    }
-
-    /**
      * Get current signer address for permission checks (network-agnostic)
      * Directly queries wallet accounts without signer setup. Use for UI/permission checks.
-     * For transactions, use getCurrentSigner() instead.
      * 
      * @returns {Promise<string|null>} The connected wallet address or null if not connected
      */
@@ -4333,47 +3833,6 @@ class ContractManager {
             console.error('Failed to get current signer address for permissions:', error);
             return null;
         }
-    }
-
-    /**
-     * Load TVL (Total Value Locked) data for all LP pairs using multicall
-     * @param {Array} pairs - Array of LP pair objects
-     * @returns {Map} Map of pair address to TVL in wei
-     */
-    async getTVLForAllPairs(pairs) {
-        const calls = [];
-        const tvlMap = new Map();
-        const erc20Interface = new ethers.utils.Interface(this.contractABIs.get('ERC20'));
-
-        // Prepare multicall for each pair's LP token balance
-        pairs.forEach(pair => {
-            const pairAddress = pair.address;
-            if (pairAddress !== '0x0000000000000000000000000000000000000000') {
-                calls.push(this.multicallService.createCall(
-                    { address: pairAddress, interface: erc20Interface },
-                    'balanceOf',
-                    [this.contractAddresses.get('STAKING')]
-                ));
-            }
-        });
-
-        const results = await this.multicallService.tryAggregate(calls);
-        
-        // Parse results
-        let resultIndex = 0;
-        pairs.forEach(pair => {
-            const pairAddress = pair.address;
-            if (pairAddress !== '0x0000000000000000000000000000000000000000') {
-                const result = results[resultIndex++];
-                tvlMap.set(pairAddress, 
-                    result?.success 
-                        ? this.multicallService.decodeResult(erc20Interface, 'balanceOf', result.returnData) || ethers.BigNumber.from(0)
-                        : ethers.BigNumber.from(0)
-                );
-            }
-        });
-
-        return tvlMap;
     }
 
     /**
