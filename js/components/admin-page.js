@@ -1068,6 +1068,8 @@ class AdminPage {
     handleWalletDisconnected() {
         console.log('👋 Handling wallet disconnected');
 
+        this.closeModal();
+
         this.isAuthorized = false;
 
         // Update UI to reflect disconnected state
@@ -1084,6 +1086,9 @@ class AdminPage {
 
     async handleAccountsChanged(accounts) {
         console.log('🔄 Handling accounts changed:', accounts);
+
+        // Close any open modals when account changes
+        this.closeModal();
 
         if (accounts.length === 0) {
             // No accounts connected
@@ -1117,6 +1122,9 @@ class AdminPage {
 
     async handleChainChanged(chainId) {
         console.log('🌐 Handling chain changed:', chainId);
+
+        // Close any open modals when network changes
+        this.closeModal();
 
         // Update network indicator when chain changes
         const indicator = document.getElementById('network-indicator-home');
