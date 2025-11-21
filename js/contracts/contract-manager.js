@@ -2330,75 +2330,10 @@ class ContractManager {
 
             return finalResult;
         } catch (error) {
-            console.log(`[PROPOSAL DEBUG] ❌ PROPOSAL CREATION FAILED!`);
-            console.log(`[PROPOSAL DEBUG] Error details:`, error);
-            console.log(`[PROPOSAL DEBUG] Error message:`, error.message);
-            console.log(`[PROPOSAL DEBUG] Error code:`, error.code);
-            console.log(`[PROPOSAL DEBUG] Error stack:`, error.stack);
-
-            // Special handling for Internal JSON-RPC errors
-            if (error.code === -32603 || error.message?.includes('Internal JSON-RPC error')) {
-                console.log(`[PROPOSAL DEBUG] 🚨 INTERNAL JSON-RPC ERROR DETECTED`);
-                console.log(`[PROPOSAL DEBUG] This usually indicates:`);
-                console.log(`[PROPOSAL DEBUG]   1. Contract method signature mismatch`);
-                console.log(`[PROPOSAL DEBUG]   2. Invalid parameters being passed`);
-                console.log(`[PROPOSAL DEBUG]   3. Network/RPC provider issues`);
-                console.log(`[PROPOSAL DEBUG]   4. MetaMask connection problems`);
-
-                // Check contract connection
-                console.log(`[PROPOSAL DEBUG] Contract connection check:`);
-                console.log(`[PROPOSAL DEBUG]   Contract address: ${this.stakingContract?.address || 'undefined'}`);
-                console.log(`[PROPOSAL DEBUG]   Signer address: ${await this.signer?.getAddress().catch(() => 'undefined')}`);
-                console.log(`[PROPOSAL DEBUG]   Provider network: ${await this.provider?.getNetwork().catch(() => 'undefined')}`);
-            }
-
             console.error('Failed to propose hourly rate:', error);
-
-            // Handle different types of errors
-            const errorMessage = error.message || error.technicalMessage || '';
-            const errorCode = error.code;
-
-            // Detect explicit wallet rejection regardless of provider wording
-            const normalizedMessage = typeof errorMessage === 'string' ? errorMessage.toLowerCase() : '';
-            if (errorCode === 4001 || errorCode === 'ACTION_REJECTED' || normalizedMessage.includes('user rejected')) {
-                console.warn('⚠️ User rejected transaction during proposeSetHourlyRewardRate');
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true,
-                    originalError: error
-                };
-            }
-
-            // Check for RPC/Network errors
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error') ||
-                errorMessage.includes('missing trie node') || errorCode === 'NETWORK_ERROR') {
-                console.warn('⚠️ Network/RPC error detected during proposeSetHourlyRewardRate');
-                return {
-                    success: false,
-                    error: 'Network error occurred while creating hourly rate proposal. Please retry once the connection stabilizes.',
-                    networkError: true,
-                    originalError: error
-                };
-            }
-
-            // Check if this is a signer issue and provide better error message
-            if (errorCode === 'UNSUPPORTED_OPERATION' && errorMessage.includes('signer')) {
-                console.warn('⚠️ Signer error detected during proposeSetHourlyRewardRate');
-                return {
-                    success: false,
-                    error: 'Unable to access wallet signer. Please reconnect your wallet and try again.',
-                    signerUnavailable: true,
-                    originalError: error
-                };
-            }
-
-            console.warn('⚠️ Unknown error while creating hourly rate proposal:', errorMessage);
             return {
                 success: false,
-                error: errorMessage || 'Failed to create hourly rate proposal.',
-                unknownError: true,
-                originalError: error
+                error: error
             };
         }
     }
@@ -2444,86 +2379,9 @@ class ContractManager {
 
         } catch (error) {
             console.error('Failed to propose update pair weights:', error);
-
-            // Enhanced error analysis and handling (same pattern as other proposal methods)
-            const errorMessage = error.message || error.technicalMessage || error.reason || '';
-            const errorCode = error.code;
-
-            // Detect explicit wallet rejection regardless of provider wording
-            const normalizedMessage = typeof errorMessage === 'string' ? errorMessage.toLowerCase() : '';
-            if (errorCode === 4001 || errorCode === 'ACTION_REJECTED' || normalizedMessage.includes('user rejected')) {
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true,
-                    originalError: error
-                };
-            }
-
-            // Check for access control errors
-            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE') ||
-                errorMessage.includes('missing role') || errorMessage.includes('not authorized')) {
-                return {
-                    success: false,
-                    error: 'Access denied: You do not have admin privileges to create proposals',
-                    accessDenied: true
-                };
-            }
-
-            // Check for insufficient funds or gas errors
-            if (errorMessage.includes('insufficient funds') || errorMessage.includes('gas required exceeds allowance') ||
-                errorCode === 'INSUFFICIENT_FUNDS' || errorMessage.includes('out of gas')) {
-                return {
-                    success: false,
-                    error: 'Insufficient funds for gas or transaction amount. Please ensure you have enough MATIC for gas fees.',
-                    insufficientFunds: true
-                };
-            }
-
-            // Check for gas estimation errors
-            if (errorMessage.includes('gas') && (errorMessage.includes('estimate') || errorMessage.includes('limit'))) {
-                return {
-                    success: false,
-                    error: 'Gas estimation failed. The transaction may fail or network conditions are poor.',
-                    gasError: true
-                };
-            }
-
-            // Check for RPC/Network errors
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error') ||
-                errorMessage.includes('missing trie node') || errorCode === 'NETWORK_ERROR' ||
-                errorMessage.includes('network') || errorMessage.includes('connection')) {
-                return {
-                    success: false,
-                    error: 'Network error occurred. Please check your connection and try again.',
-                    networkError: true
-                };
-            }
-
-            // Check for nonce errors (stuck transactions)
-            if (errorMessage.includes('nonce') || errorMessage.includes('replacement transaction underpriced')) {
-                return {
-                    success: false,
-                    error: 'Transaction nonce error. You may have pending transactions. Try resetting your MetaMask account or wait for pending transactions to complete.',
-                    nonceError: true
-                };
-            }
-
-            // Check for signer issues
-            if (errorCode === 'UNSUPPORTED_OPERATION' && errorMessage.includes('signer')) {
-                return {
-                    success: false,
-                    error: 'Unable to access wallet signer. Please reconnect your wallet and try again.',
-                    signerUnavailable: true
-                };
-            }
-
-            // For any other error, provide detailed feedback
             return {
                 success: false,
-                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
-                unknownError: true,
-                originalError: error
+                error: error
             };
         }
     }
@@ -2631,146 +2489,9 @@ class ContractManager {
             console.error(`[ADD PAIR FIX] ❌ Transaction failed:`, error);
             console.error('Failed to propose add pair:', error);
 
-            // Enhanced error analysis and handling
-            const errorMessage = error.message || error.technicalMessage || error.reason || '';
-            const errorCode = error.code;
-            const errorData = error.data;
-
-            console.log(`[ADD PAIR FIX] 🔍 Error Analysis:`);
-            console.log(`[ADD PAIR FIX]   Error message: ${errorMessage}`);
-            console.log(`[ADD PAIR FIX]   Error code: ${errorCode}`);
-            console.log(`[ADD PAIR FIX]   Error data:`, errorData);
-
-            // CRITICAL: Check for parameter validation errors from contract
-            if (errorMessage.includes('Invalid pair') || errorMessage.includes('Weight must be greater than 0') ||
-                errorMessage.includes('Weight exceeds maximum') || errorMessage.includes('Empty pair name') ||
-                errorMessage.includes('Pair name too long') || errorMessage.includes('Empty platform name') ||
-                errorMessage.includes('Platform name too long')) {
-                console.error(`[ADD PAIR FIX] 📋 Contract validation error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: `Contract validation failed: ${errorMessage}`,
-                    validationError: true
-                };
-            }
-
-            // Check for access control errors
-            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE') ||
-                errorMessage.includes('missing role') || errorMessage.includes('not authorized')) {
-                console.error(`[ADD PAIR FIX] 🔐 Access control error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: 'Access denied: You do not have admin privileges to create proposals',
-                    accessDenied: true
-                };
-            }
-
-            // Check for user rejection
-            if (errorMessage.includes('user rejected') || errorMessage.includes('User denied') ||
-                errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
-                console.warn(`[ADD PAIR FIX] 👤 User rejected transaction`);
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true
-                };
-            }
-
-            // Check for insufficient funds or gas errors
-            if (errorMessage.includes('insufficient funds') || errorMessage.includes('gas required exceeds allowance') ||
-                errorCode === 'INSUFFICIENT_FUNDS' || errorMessage.includes('out of gas')) {
-                console.error(`[ADD PAIR FIX] 💰 Insufficient funds error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: 'Insufficient funds for gas or transaction amount. Please ensure you have enough MATIC for gas fees.',
-                    insufficientFunds: true
-                };
-            }
-
-            // Check for gas estimation errors
-            if (errorMessage.includes('gas') && (errorMessage.includes('estimate') || errorMessage.includes('limit'))) {
-                console.error(`[ADD PAIR FIX] ⛽ Gas estimation error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: 'Gas estimation failed. The transaction may fail or network conditions are poor.',
-                    gasError: true
-                };
-            }
-
-            // Check for RPC/Network errors
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error') ||
-                errorMessage.includes('missing trie node') || errorCode === 'NETWORK_ERROR' ||
-                errorMessage.includes('network') || errorMessage.includes('connection')) {
-                console.warn(`[ADD PAIR FIX] 🌐 Network/RPC error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: 'Network error occurred. Please check your connection and try again.',
-                    networkError: true
-                };
-            }
-
-            // Check for nonce errors (stuck transactions)
-            if (errorMessage.includes('nonce') || errorMessage.includes('replacement transaction underpriced')) {
-                console.error(`[ADD PAIR FIX] 🔢 Nonce error: ${errorMessage}`);
-                return {
-                    success: false,
-                    error: 'Transaction nonce error. You may have pending transactions. Try resetting your MetaMask account or wait for pending transactions to complete.',
-                    nonceError: true
-                };
-            }
-
-            // Check for signer-related errors and attempt recovery
-            if (errorMessage.includes('signer') || errorMessage.includes('provider') ||
-                errorCode === 'UNSUPPORTED_OPERATION' || errorMessage.includes('missing provider')) {
-                console.error(`[ADD PAIR FIX] 🔧 Signer connection issue: ${errorMessage}`);
-                console.error(`[ADD PAIR FIX] 🔧 Attempting signer recovery...`);
-
-                try {
-                    await this.ensureSigner();
-                    console.log(`[ADD PAIR FIX] ✅ Signer recovery successful, retrying transaction...`);
-
-                    // Retry with corrected parameters
-                    const result = await this.executeTransactionOnce(async () => {
-                        // CRITICAL FIX: Use uint256 for weight, not wei (this was the main bug)
-                        const weightUint256 = ethers.BigNumber.from(weight.toString());
-
-                        const contractWithSigner = this.stakingContract.connect(this.signer);
-                        const tx = await contractWithSigner.proposeAddPair(
-                            lpToken,
-                            pairName,
-                            platform,
-                            weightUint256 // FIXED: Use uint256, not wei
-                        );
-
-                        console.log(`[ADD PAIR FIX] ✅ Retry transaction submitted: ${tx.hash}`);
-                        // CRITICAL FIX: Return tx object, not receipt
-                        return tx;
-                    }, 'proposeAddPair');
-
-                    return {
-                        success: true,
-                        transactionHash: result.transactionHash,
-                        blockNumber: result.blockNumber,
-                        gasUsed: result.gasUsed.toString(),
-                        message: 'Add pair proposal created successfully (after retry)'
-                    };
-                } catch (retryError) {
-                    console.error(`[ADD PAIR FIX] ❌ Retry failed: ${retryError.message}`);
-                    return {
-                        success: false,
-                        error: `Signer recovery failed: ${retryError.message}`,
-                        signerError: true
-                    };
-                }
-            }
-
-            // For any other error, provide detailed feedback
-            console.error(`[ADD PAIR FIX] ❓ Unknown error: ${errorMessage}`);
             return {
                 success: false,
-                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
-                unknownError: true,
-                originalError: error
+                error: error
             };
         }
     }
@@ -2936,53 +2657,9 @@ class ContractManager {
             console.error(`[REMOVE PAIR FIX] ❌ Transaction failed:`, error);
             console.error('Failed to propose remove pair:', error);
 
-            // Enhanced error handling
-            const errorMessage = error.message || error.technicalMessage || error.reason || '';
-            const errorCode = error.code;
-
-            console.log(`[REMOVE PAIR FIX] 🔍 Error Analysis:`);
-            console.log(`[REMOVE PAIR FIX]   Error message: ${errorMessage}`);
-            console.log(`[REMOVE PAIR FIX]   Error code: ${errorCode}`);
-
-            // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true
-                };
-            }
-
-            if (errorMessage.includes('insufficient funds') || errorCode === 'INSUFFICIENT_FUNDS') {
-                return {
-                    success: false,
-                    error: 'Insufficient funds for gas fees. Please ensure you have enough MATIC.',
-                    insufficientFunds: true
-                };
-            }
-
-            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE')) {
-                return {
-                    success: false,
-                    error: 'Access denied: You do not have admin privileges to create proposals',
-                    accessDenied: true
-                };
-            }
-
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
-                return {
-                    success: false,
-                    error: 'Network error occurred. Please check your connection and try again.',
-                    networkError: true
-                };
-            }
-
-            // For any other error, provide detailed feedback
             return {
                 success: false,
-                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
-                unknownError: true,
-                originalError: error
+                error: error
             };
         }
     }
@@ -3056,100 +2733,9 @@ class ContractManager {
             console.error(`[CHANGE SIGNER FIX] ❌ Transaction failed:`, error);
             console.error('Failed to propose change signer:', error);
 
-            // Enhanced error handling
-            const errorMessage = error.message || error.technicalMessage || error.reason || '';
-            const errorCode = error.code;
-
-            console.log(`[CHANGE SIGNER FIX] 🔍 Error Analysis:`);
-            console.log(`[CHANGE SIGNER FIX]   Error message: ${errorMessage}`);
-            console.log(`[CHANGE SIGNER FIX]   Error code: ${errorCode}`);
-
-            // Check for specific error types
-            if (errorMessage.includes('user rejected') || errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
-                return {
-                    success: false,
-                    error: 'Transaction was rejected by user',
-                    userRejected: true
-                };
-            }
-
-            if (errorMessage.includes('insufficient funds') || errorCode === 'INSUFFICIENT_FUNDS') {
-                return {
-                    success: false,
-                    error: 'Insufficient funds for gas fees. Please ensure you have enough MATIC.',
-                    insufficientFunds: true
-                };
-            }
-
-            // TRANSACTION FAILURE FIX: Handle CALL_EXCEPTION errors specifically
-            if (errorCode === 'CALL_EXCEPTION' || errorMessage.includes('CALL_EXCEPTION')) {
-                console.log(`[CHANGE SIGNER FIX] 🔍 CALL_EXCEPTION detected, analyzing...`);
-
-                // Check if it's a revert with reason
-                if (error.reason) {
-                    console.log(`[CHANGE SIGNER FIX] 🔍 Revert reason: ${error.reason}`);
-                    return {
-                        success: false,
-                        error: `Contract call failed: ${error.reason}`,
-                        contractRevert: true
-                    };
-                }
-
-                // Check if it's a method not found error
-                if (errorMessage.includes('method') || errorMessage.includes('function')) {
-                    return {
-                        success: false,
-                        error: 'Contract method not found. Please verify the contract is deployed correctly.',
-                        methodNotFound: true
-                    };
-                }
-
-                // Generic CALL_EXCEPTION handling
-                return {
-                    success: false,
-                    error: 'Contract call failed. Please check your permissions and try again.',
-                    callException: true
-                };
-            }
-
-            if (errorMessage.includes('AccessControl') || errorMessage.includes('ADMIN_ROLE')) {
-                return {
-                    success: false,
-                    error: 'Access denied: You do not have admin privileges to create proposals',
-                    accessDenied: true
-                };
-            }
-
-            if (errorMessage.includes('Old signer not found')) {
-                return {
-                    success: false,
-                    error: 'The old signer address is not currently an admin. Please verify the address.',
-                    invalidOldSigner: true
-                };
-            }
-
-            if (errorMessage.includes('New signer already exists')) {
-                return {
-                    success: false,
-                    error: 'The new signer address is already an admin. Please choose a different address.',
-                    signerAlreadyExists: true
-                };
-            }
-
-            if (errorCode === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
-                return {
-                    success: false,
-                    error: 'Network error occurred. Please check your connection and try again.',
-                    networkError: true
-                };
-            }
-
-            // For any other error, provide detailed feedback
             return {
                 success: false,
-                error: `Transaction failed: ${errorMessage}. Please check the console for more details.`,
-                unknownError: true,
-                originalError: error
+                error: error
             };
         }
     }
@@ -3194,13 +2780,9 @@ class ContractManager {
             console.error(`[WITHDRAW REWARDS FIX] ❌ Transaction failed:`, error);
             console.error('Failed to propose withdraw rewards:', error);
 
-            
-
-            // For any other error, provide detailed feedback
             return {
                 success: false,
-                error: error.userMessage?.title || 'Failed to propose withdraw rewards',
-                originalError: error
+                error: error
             };
         }
     }
