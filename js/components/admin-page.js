@@ -5705,11 +5705,8 @@ class AdminPage {
             this.showMessage(message, 'error');
         }
 
-        if (window.notificationManager) {
-            window.notificationManager.error(message, {title: title});
-        } else if (!canShowInline) {
-            alert('❌ ' + message);
-        }
+        window.notificationManager.error(message, {title: title});
+
     }
 
     showMessage(message, type = 'info') {
