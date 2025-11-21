@@ -1433,7 +1433,7 @@ class AdminPage {
                         <h2>Multi-Signature Proposals</h2>
                     </div>
                     <div class="loading-container" style="text-align: center; padding: 40px;">
-                        <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <div class="loading-spinner" style="display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                         <div style="margin-top: 15px; color: #666;">Loading proposals...</div>
                         <div style="margin-top: 5px; font-size: 0.9em; color: #999;">This may take a few seconds</div>
                     </div>
