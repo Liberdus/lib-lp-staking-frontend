@@ -263,13 +263,13 @@
 }
 
 .card-header {
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-2);
     border-bottom: 1px solid var(--divider);
     margin-bottom: 0;
-    background: transparent;
 }
 
 .card-header h3,
@@ -277,6 +277,11 @@
     margin: 0;
     font-size: 16px;
     font-weight: 600;
+    color: var(--text-primary);
+}
+
+.card-content {
+    padding: var(--spacing-2);
     color: var(--text-primary);
 }
 
@@ -559,6 +564,7 @@
 
 /* Loading States */
 .loading {
+    position: relative;
     text-align: center;
     padding: 40px;
     color: #a0a0a0;
@@ -567,14 +573,17 @@
 
 .loading::after {
     content: '';
+    position: absolute;
     display: inline-block;
+    top: 50%;
+    left: 50%;
     width: 20px;
     height: 20px;
-    border: 2px solid #a0a0a0;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #ffffff;
     border-radius: 50%;
-    border-top-color: #00d4ff;
+    border-top: 2px solid #00d4ff;
     animation: spin 1s ease-in-out infinite;
-    margin-left: 10px;
 }
 
 /* Responsive Design */
@@ -1329,26 +1338,6 @@ table td:last-child {
     }
 }
 
-/* Loading States */
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-    position: relative;
-}
-
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid #ffffff;
-    border-top: 2px solid #00d4ff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
 
 /* React-Matching Styles for Exact Parity */
 /* Container maxWidth="lg" sx={{ py: 4 }} equivalent */
@@ -2427,18 +2416,6 @@ table td:last-child {
     font-size: 14px;
     color: #856404;
     line-height: 1.4;
-}
-
-/* Button Outline Style */
-.btn-outline {
-    background-color: transparent;
-    border: 1px solid var(--primary-color, #007bff);
-    color: var(--primary-color, #007bff);
-}
-
-.btn-outline:hover {
-    background-color: var(--primary-color, #007bff);
-    color: white;
 }
 
 .btn-sm {
