@@ -262,12 +262,25 @@
     border-color: rgba(0, 212, 255, 0.3);
 }
 
+.card-header {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-2);
+    border-bottom: 1px solid var(--divider);
+}
 
 .card-header h3,
 .card-header h5 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
+    color: var(--text-primary);
+}
+
+.card-content {
+    padding: var(--spacing-2);
     color: var(--text-primary);
 }
 
@@ -1323,6 +1336,7 @@ table td:last-child {
         opacity: 1;
     }
 }
+
 
 /* React-Matching Styles for Exact Parity */
 /* Container maxWidth="lg" sx={{ py: 4 }} equivalent */

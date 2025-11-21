@@ -60,26 +60,6 @@ body {
     overflow: hidden;
 }
 
-.card-header {
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-2);
-    border-bottom: 1px solid var(--divider);
-}
-
-.card-header h3 {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.card-content {
-    padding: var(--spacing-2);
-    color: var(--text-primary);
-}
-
 /* ========================================
    BUTTONS - MATCHING HOMEPAGE EXACTLY
    ======================================== */
