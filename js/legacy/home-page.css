@@ -597,14 +597,6 @@
     min-width: 100px;
 }
 
-.stake-amount,
-.rewards-amount {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--liberdus-text-primary);
-    margin-bottom: 0.25rem;
-}
-
 .stake-usd,
 .rewards-usd {
     font-size: 0.75rem;
