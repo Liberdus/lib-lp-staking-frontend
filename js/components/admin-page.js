@@ -3722,7 +3722,7 @@ class AdminPage {
         const modalContent = modalContainer.querySelector('.modal-content');
 
         if (modalContent) {
-            modalContent.style.background = 'white';
+            modalContent.style.background = 'var(--background-paper)';
             modalContent.style.zIndex = '1000000';
             modalContent.style.opacity = '1';
             modalContent.style.visibility = 'visible';
