@@ -206,6 +206,9 @@ body {
 .modal-body {
     background: var(--background-paper) !important;
     color: var(--text-primary) !important;
+    padding: 3rem 3.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
 }
 
 .modal-body label {
@@ -246,11 +249,28 @@ body {
     background: transparent !important;
     color: var(--text-secondary) !important;
     border: none !important;
+    cursor: pointer;
+    padding: var(--space-2);
+    font-size: var(--font-size-xl);
+    line-height: 1;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+    width: 32px;
+    height: 32px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
 }
 
 .modal-close:hover {
     background: var(--action-hover) !important;
     color: var(--text-primary) !important;
+    background-color: var(--background-tertiary);
 }
 
 /* ========================================
@@ -398,6 +418,9 @@ textarea.form-input {
     line-height: 1.5 !important;
     font-family: var(--font-family) !important;
     transition: all 0.2s ease !important;
+    width: 100%;
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius);
 }
 
 /* CRITICAL: Force text visibility in dark mode - HIGHEST PRIORITY */
@@ -518,6 +541,8 @@ textarea::placeholder {
 .proposal-id {
     background: rgba(0, 0, 0, 0.1) !important;
     color: var(--text-primary) !important;
+    font-weight: 600;
+    font-size: 0.9em;
 }
 
 [data-theme="dark"] .proposal-id {
@@ -691,6 +716,7 @@ select::after {
 /* Custom dropdown arrow using wrapper approach */
 .form-group {
     position: relative !important;
+    margin-bottom: var(--space-4);
 }
 
 select option,

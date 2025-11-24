@@ -124,6 +124,7 @@ label {
     margin-bottom: var(--spacing-1);
     font-weight: 600;
     color: var(--text-primary);
+    font-size: var(--font-size-sm);
 }
 
 .form-input,
@@ -177,6 +178,10 @@ small {
 table {
     width: 100%;
     border-collapse: collapse;
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
 }
 
 .table th,
@@ -196,6 +201,10 @@ table th {
     position: sticky;
     top: 0;
     z-index: 10;
+    background-color: var(--background-tertiary);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .table th .material-icons,
@@ -208,6 +217,7 @@ table th .material-icons {
 .table tbody tr:hover,
 table tbody tr:hover {
     background: var(--surface-hover);
+    background-color: var(--background-tertiary);
 }
 
 .table tbody tr:last-child td,
@@ -262,27 +272,9 @@ table tbody tr:last-child td {
     margin: 0;
 }
 
-.modal-close {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background-color: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-radius: var(--border-radius);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .modal-close:hover {
     background-color: var(--action-hover);
     color: var(--text-primary);
-}
-
-.modal-body {
-    padding: var(--spacing-2);
 }
 
 .modal-footer {

@@ -270,6 +270,7 @@
     font-size: 14px;
     color: #a0a0a0;
     font-weight: 500;
+    margin: 0;
 }
 
 /* Recent Activity */
@@ -809,6 +810,8 @@
     justify-content: center;
     align-items: center;
     width: 100%;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .approval-progress {
@@ -919,6 +922,7 @@
     width: 100%;
     min-width: 120px;
     height: 32px;
+    flex-wrap: wrap;
 }
 
 /* Position specific buttons in fixed grid slots */
@@ -953,6 +957,7 @@
     text-align: center !important;
     vertical-align: middle !important;
     line-height: 1.2 !important;
+    gap: 4px;
 }
 
 /* Icon-only buttons for compact layout */
@@ -1425,26 +1430,6 @@ table td:last-child {
     display: inline-block;
 }
 
-.modal-close {
-    background: rgba(231, 76, 60, 0.08);
-    border: 2px solid rgba(231, 76, 60, 0.25);
-    font-size: 1.25rem;
-    cursor: pointer;
-    color: #e74c3c;
-    padding: 0;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: bold;
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-}
-
 .modal-close:hover {
     background: rgba(231, 76, 60, 0.25);
     color: #ffffff;
@@ -1685,10 +1670,6 @@ table td:last-child {
         background: linear-gradient(90deg, #ffffff 0%, #ffffff 100%);
         transform: scale(1);
     }
-}
-
-.form-group {
-    margin-bottom: 20px;
 }
 
 .form-group label {
@@ -2005,11 +1986,6 @@ table td:last-child {
     margin: 15px 0;
 }
 
-.warning-icon {
-    font-size: 18px;
-    flex-shrink: 0;
-}
-
 .warning-text {
     flex: 1;
     font-size: 14px;
@@ -2028,6 +2004,8 @@ table td:last-child {
 .details-header h4 {
     margin: 0;
     color: #1976d2;
+    font-size: 1em;
+    font-weight: 600;
 }
 
 /* Enhanced Form Validation Styles */
