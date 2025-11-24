@@ -1078,8 +1078,8 @@ button[type="submit"] .btn-text,
     justify-content: flex-end !important;
     padding: 16px 24px !important;
     flex-wrap: wrap !important;
-    border-top: 1px solid var(--border-primary);
-    background: var(--bg-primary);
+    border-top: 1px solid var(--border-primary) !important;
+    background: var(--bg-primary) !important;
     position: relative;
     z-index: 1000;
     min-height: 60px;

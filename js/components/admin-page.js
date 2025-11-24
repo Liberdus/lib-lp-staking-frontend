@@ -3741,8 +3741,8 @@ class AdminPage {
                 modalFooter.style.justifyContent = 'flex-end';
                 modalFooter.style.gap = '10px';
                 modalFooter.style.padding = '20px';
-                modalFooter.style.borderTop = '1px solid var(--divider)';
-                modalFooter.style.background = 'var(--background-paper)';
+                modalFooter.style.borderTop = '1px solid #e0e0e0';
+                modalFooter.style.background = 'white';
                 modalFooter.style.position = 'sticky';
                 modalFooter.style.bottom = '0';
                 modalFooter.style.zIndex = '1000001';
@@ -3766,13 +3766,13 @@ class AdminPage {
                     btn.style.zIndex = '1000002';
 
                     if (btn.classList.contains('btn-primary')) {
-                        btn.style.background = 'var(--primary-main)';
+                        btn.style.background = '#007bff';
                         btn.style.color = 'white';
-                        btn.style.border = '1px solid var(--primary-main)';
+                        btn.style.border = '1px solid #007bff';
                     } else if (btn.classList.contains('btn-secondary')) {
-                        btn.style.background = 'var(--secondary-main)';
+                        btn.style.background = '#6c757d';
                         btn.style.color = 'white';
-                        btn.style.border = '1px solid var(--secondary-main)';
+                        btn.style.border = '1px solid #6c757d';
                     }
 
                     // Add explicit click handler for cancel buttons
