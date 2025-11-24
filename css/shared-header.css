@@ -38,6 +38,13 @@
     width: 44px;
     height: 44px;
     transition: transform 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: var(--liberdus-font-semibold);
+    color: var(--liberdus-text-primary);
+    text-decoration: none;
 }
 
 .logo:hover {
@@ -66,6 +73,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-2);
+    background: transparent !important;
 }
 
 .nav-button {
