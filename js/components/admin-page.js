@@ -4673,7 +4673,7 @@ class AdminPage {
             // Calculate reward runway
             contractInfo.rewardRunway = await this.safeContractCall(
                 async () => {
-                    if (balanceBig && rateBig && rateBig.gt(0)) {
+                    if (balanceBig && obligationBig && rateBig && rateBig.gt(0)) {
                         const effectiveBalance = balanceBig.sub(obligationBig);
                         if (effectiveBalance.gt(0)) {
                             const runwayHoursBig = effectiveBalance.div(rateBig);
