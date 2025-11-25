@@ -1245,6 +1245,7 @@ table td:last-child {
     max-width: 300px !important;
     height: auto !important;
     line-height: normal !important;
+    color: white;
 }
 
 
