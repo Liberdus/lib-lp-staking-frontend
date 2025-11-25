@@ -5064,8 +5064,8 @@ class AdminPage {
         }
 
         const rateNum = parseFloat(rate);
-        if (isNaN(rateNum) || rateNum <= 0) {
-            this.showError('Rate must be a positive number');
+        if (isNaN(rateNum) || rateNum < 0) {
+            this.showError('Rate cannot be negative');
             return;
         }
 
