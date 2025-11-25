@@ -5221,8 +5221,8 @@ class AdminPage {
             const currentWeight = parseInt(input.dataset.current, 10);
             const newWeightNum = parseInt(newWeight, 10);
 
-            if (isNaN(newWeightNum) || newWeightNum < 1 || newWeightNum > 10000) {
-                this.showError(`Invalid weight value: ${newWeight}. Must be between 1-10,000`);
+            if (isNaN(newWeightNum) || newWeightNum < 0 || newWeightNum > 10000) {
+                this.showError(`Invalid weight value: ${newWeight}. Must be between 0-10,000`);
                 return;
             }
 
