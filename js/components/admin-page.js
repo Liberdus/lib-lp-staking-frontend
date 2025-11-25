@@ -4628,8 +4628,9 @@ class AdminPage {
             contractInfo.rewardTokenAddress = rewardTokenAddress;
             this.contractStats.rewardTokenAddress = rewardTokenAddress;
 
-            let balanceValue = null;
-            let rateValue = null;
+            let balanceBig = null;
+            let rateBig = null;
+            let obligationBig = null;
 
             contractInfo.rewardBalance = await this.safeContractCall(
                 async () => {
@@ -4638,8 +4639,9 @@ class AdminPage {
                         throw new Error('Staking contract address not available');
                     }
                     const balance = await contractManager.rewardTokenContract.balanceOf(stakingContractAddress);
-                    balanceValue = Number(ethers.utils.formatEther(balance));
-                    return `${balanceValue} ${rewardTokenSymbol}`;
+                    balanceBig = balance;
+                    const balanceStr = ethers.utils.formatEther(balance);
+                    return `${balanceStr} ${rewardTokenSymbol}`;
                 },
                 null
             );
@@ -4649,8 +4651,9 @@ class AdminPage {
             contractInfo.rewardObligation = await this.safeContractCall(
                 async () => {
                     const obligation = await contractManager.stakingContract.getTotalRewardObligation();
-                    const obligationValue = Number(ethers.utils.formatEther(obligation));
-                    return `${obligationValue} ${rewardTokenSymbol}`;
+                    obligationBig = obligation;
+                    const obligationStr = ethers.utils.formatEther(obligation);
+                    return `${obligationStr} ${rewardTokenSymbol}`;
                 },
                 null
             );
@@ -4660,7 +4663,8 @@ class AdminPage {
             contractInfo.hourlyRate = await this.safeContractCall(
                 async () => {
                     const rate = await contractManager.stakingContract.hourlyRewardRate();
-                    rateValue = Number(ethers.utils.formatEther(rate));
+                    rateBig = rate;
+                    const rateValue = Number(ethers.utils.formatEther(rate));
                     return `${rateValue.toFixed(4)} ${rewardTokenSymbol}/hour`;
                 },
                 null
@@ -4669,12 +4673,11 @@ class AdminPage {
             // Calculate reward runway
             contractInfo.rewardRunway = await this.safeContractCall(
                 async () => {
-                    if (balanceValue && rateValue && rateValue > 0) {
-                        const obligation = await contractManager.stakingContract.getTotalRewardObligation();
-                        const obligationValue = Number(ethers.utils.formatEther(obligation));
-                        const effectiveBalance = balanceValue - obligationValue;
-                        if (effectiveBalance > 0) {
-                            const runwayHours = effectiveBalance / rateValue;
+                    if (balanceBig && obligationBig && rateBig && rateBig.gt(0)) {
+                        const effectiveBalance = balanceBig.sub(obligationBig);
+                        if (effectiveBalance.gt(0)) {
+                            const runwayHoursBig = effectiveBalance.div(rateBig);
+                            const runwayHours = Number(ethers.utils.formatEther(runwayHoursBig));
                             const runwayDays = runwayHours / 24;
                             return `${runwayHours.toFixed(1)} hours (${runwayDays.toFixed(1)} days)`;
                         } else {
