@@ -43,7 +43,9 @@ window.CONFIG = {
             BLOCK_EXPLORER: 'https://polygonscan.com',
             NATIVE_CURRENCY: { name: 'Polygon', symbol: 'POL', decimals: 18 },
             CONTRACTS: {
-                STAKING_CONTRACT: '0x74b00fe491Ab0CDf5291af69bD8c4ECD5FBbE8Ca'
+                STAKING_CONTRACT: '0x0cE924eC0Ed66241d082132a4A6e42E1789f58e0' 
+                                  /* '0x74b00fe491Ab0CDf5291af69bD8c4ECD5FBbE8Ca' */
+
             }
         }
     },
