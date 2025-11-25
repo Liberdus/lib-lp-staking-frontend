@@ -387,6 +387,11 @@ ol {
     transition: width 0.3s ease, height 0.3s ease;
 }
 
+.btn:focus {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
 .btn-primary {
     background: var(--primary-main);
     color: #fff;

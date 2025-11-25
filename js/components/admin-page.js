@@ -3759,28 +3759,6 @@ class AdminPage {
                 // Force all buttons in footer to be visible
                 const buttons = modalFooter.querySelectorAll('button');
                 buttons.forEach((btn, index) => {
-                    btn.style.display = 'inline-block';
-                    btn.style.opacity = '1';
-                    btn.style.visibility = 'visible';
-                    btn.style.pointerEvents = 'auto';
-                    btn.style.minHeight = '40px';
-                    btn.style.padding = '10px 20px';
-                    btn.style.margin = '0 5px';
-                    btn.style.borderRadius = '4px';
-                    btn.style.cursor = 'pointer';
-                    btn.style.fontSize = '14px';
-                    btn.style.zIndex = '1000002';
-
-                    if (btn.classList.contains('btn-primary')) {
-                        btn.style.background = '#007bff';
-                        btn.style.color = 'white';
-                        btn.style.border = '1px solid #007bff';
-                    } else if (btn.classList.contains('btn-secondary')) {
-                        btn.style.background = '#6c757d';
-                        btn.style.color = 'white';
-                        btn.style.border = '1px solid #6c757d';
-                    }
-
                     // Add explicit click handler for cancel buttons
                     if (btn.classList.contains('modal-cancel') ||
                         btn.classList.contains('btn-secondary') ||
