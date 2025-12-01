@@ -3518,6 +3518,7 @@ class ContractManager {
     /**
      * Load basic contract data (hourly reward rate and total weight) using multicall
      * Falls back to individual contract calls if multicall is not available
+     * Falls back to individual contract calls if multicall is not available
      * @returns {Object} Object containing hourlyRewardRate and totalWeight in wei
      */
     async getBasicContractData() {
@@ -3543,7 +3544,8 @@ class ContractManager {
                 };
             }
         }
-        console.warn('Multicall service not available, falling back to individual contract calls');
+        
+        // Fallback to individual contract calls
         const [hourlyRewardRate, totalWeight] = await Promise.all([
             this.stakingContract.hourlyRewardRate().catch(() => ethers.BigNumber.from(0)),
             this.stakingContract.totalWeight().catch(() => ethers.BigNumber.from(0))
