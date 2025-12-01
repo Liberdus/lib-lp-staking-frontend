@@ -3517,19 +3517,42 @@ class ContractManager {
 
     /**
      * Load basic contract data (hourly reward rate and total weight) using multicall
+     * Falls back to individual contract calls if multicall is not available
      * @returns {Object} Object containing hourlyRewardRate and totalWeight in wei
      */
     async getBasicContractData() {
-        const calls = [
-            this.multicallService.createCall(this.stakingContract, 'hourlyRewardRate', []),
-            this.multicallService.createCall(this.stakingContract, 'totalWeight', [])
-        ];
+        // Wait up to 2 seconds for multicall to initialize if it exists but isn't ready (race condition fix)
+        if (!this.multicallService?.isReady()) {
+            for (let i = 0; i < 40 && !this.multicallService?.isReady(); i++) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
 
-        const results = await this.multicallService.tryAggregate(calls);
+        // Try multicall if available
+        if (this.multicallService?.isReady()) {
+            const calls = [
+                this.multicallService.createCall(this.stakingContract, 'hourlyRewardRate', []),
+                this.multicallService.createCall(this.stakingContract, 'totalWeight', [])
+            ];
+            const results = await this.multicallService.tryAggregate(calls);
+            
+            if (results?.length >= 2) {
+                return {
+                    hourlyRewardRate: results[0]?.success ? this.multicallService.decodeResult(this.stakingContract, 'hourlyRewardRate', results[0].returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
+                    totalWeight: results[1]?.success ? this.multicallService.decodeResult(this.stakingContract, 'totalWeight', results[1].returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0)
+                };
+            }
+        }
+        
+        // Fallback to individual contract calls
+        const [hourlyRewardRate, totalWeight] = await Promise.all([
+            this.stakingContract.hourlyRewardRate().catch(() => ethers.BigNumber.from(0)),
+            this.stakingContract.totalWeight().catch(() => ethers.BigNumber.from(0))
+        ]);
         
         return {
-            hourlyRewardRate: results[0]?.success ? this.multicallService.decodeResult(this.stakingContract, 'hourlyRewardRate', results[0].returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0),
-            totalWeight: results[1]?.success ? this.multicallService.decodeResult(this.stakingContract, 'totalWeight', results[1].returnData) || ethers.BigNumber.from(0) : ethers.BigNumber.from(0)
+            hourlyRewardRate: hourlyRewardRate || ethers.BigNumber.from(0),
+            totalWeight: totalWeight || ethers.BigNumber.from(0)
         };
     }
 
