@@ -193,6 +193,7 @@ class HomePage {
             retryBtn.onclick = () => this.loadData().catch(() => {});
         }
         
+        // on click, connect wallet
         const connectWalletBtn = document.getElementById('connect-wallet-error');
         if (connectWalletBtn) {
             connectWalletBtn.onclick = async () => {
