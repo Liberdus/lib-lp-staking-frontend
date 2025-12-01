@@ -3518,7 +3518,6 @@ class ContractManager {
     /**
      * Load basic contract data (hourly reward rate and total weight) using multicall
      * Falls back to individual contract calls if multicall is not available
-     * Falls back to individual contract calls if multicall is not available
      * @returns {Object} Object containing hourlyRewardRate and totalWeight in wei
      */
     async getBasicContractData() {
