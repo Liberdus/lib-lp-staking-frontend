@@ -1134,13 +1134,6 @@ table td:last-child {
   width: 8px;
 }
 
-.modal-header h3::before {
-  content: '✨';
-  font-size: 2rem;
-  flex-shrink: 0;
-  display: inline-block;
-}
-
 .modal-body > * {
   max-width: 100%;
   box-sizing: border-box;
@@ -2070,37 +2063,6 @@ body.admin-page {
 .modal-body small,
 .modal-body .form-help {
   color: var(--text-secondary) !important;
-}
-
-.modal-close {
-  background: transparent !important;
-  color: var(--text-secondary) !important;
-  border: none !important;
-  cursor: pointer;
-  padding: var(--space-2);
-  font-size: var(--font-size-xl);
-  line-height: 1;
-  border-radius: var(--border-radius);
-  transition: all var(--transition-fast);
-  width: 32px;
-  height: 32px;
-  background-color: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-}
-
-.modal-close:hover {
-  background: var(--action-hover) !important;
-  color: var(--text-primary) !important;
-  background-color: var(--background-tertiary);
-  transform: rotate(90deg) scale(1.05);
-  box-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
-  border-color: rgba(231, 76, 60, 0.5);
 }
 
 .proposal-id-container {
