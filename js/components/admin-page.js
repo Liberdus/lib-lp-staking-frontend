@@ -780,15 +780,6 @@ class AdminPage {
                 return;
             }
 
-            // Modal close buttons
-            if (e.target.classList.contains('modal-close') ||
-                e.target.closest('.modal-close')) {
-                e.preventDefault();
-                console.log('🔘 Modal close button clicked');
-                this.closeModal();
-                return;
-            }
-
             // Modal overlay click (close modal)
             if (e.target.classList.contains('modal-overlay')) {
                 e.preventDefault();
@@ -3779,18 +3770,6 @@ class AdminPage {
             }
         }
 
-        // Also add click handler to modal close button (X)
-        const closeButton = modalContent?.querySelector('.modal-close');
-        if (closeButton) {
-            closeButton.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔘 Close button (X) clicked via explicit handler');
-                this.closeModal();
-            };
-            console.log('🔧 DEBUG: Added click handler to close button (X)');
-        }
-
         if (modalOverlay) {
             modalOverlay.style.zIndex = '999999';
             modalOverlay.style.opacity = '1';
@@ -3828,7 +3807,9 @@ class AdminPage {
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Update Hourly Rate</h3>
-                        <button class="modal-close" type="button">×</button>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body">
@@ -3885,7 +3866,9 @@ class AdminPage {
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Add New Pair</h3>
-                        <button class="modal-close" type="button">×</button>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body">
@@ -3989,11 +3972,11 @@ class AdminPage {
             <div class="modal-overlay">
                 <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 700px;">
                     <div class="modal-header" style="padding: 24px; border-bottom: 1px solid var(--divider);">
-                        <h3 style="margin: 0; font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 28px;">⚖️</span>
-                            Update Pair Weights
-                        </h3>
-                        <button class="modal-close" type="button" style="font-size: 28px; color: var(--text-secondary);">×</button>
+                        <h3>
+                            Update Pair Weights</h3>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body" style="padding: 24px; max-height: 600px; overflow-y: auto;">
@@ -4057,8 +4040,10 @@ class AdminPage {
             <div class="modal-overlay" onclick="adminPage.closeModal()">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
-                        <h3>✨ Remove LP Pair</h3>
-                        <button class="modal-close" onclick="adminPage.closeModal()">×</button>
+                        <h3>Remove LP Pair</h3>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body">
@@ -4198,7 +4183,9 @@ class AdminPage {
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Change Signer</h3>
-                        <button class="modal-close" onclick="adminPage.closeModal()">×</button>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body">
@@ -4264,7 +4251,9 @@ class AdminPage {
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>Withdraw Rewards</h3>
-                        <button class="modal-close" onclick="adminPage.closeModal()">×</button>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
 
                     <div class="modal-body">
