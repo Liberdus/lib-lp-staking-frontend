@@ -3544,8 +3544,7 @@ class ContractManager {
                 };
             }
         }
-        
-        // Fallback to individual contract calls
+        console.warn('Multicall service not available, falling back to individual contract calls');
         const [hourlyRewardRate, totalWeight] = await Promise.all([
             this.stakingContract.hourlyRewardRate().catch(() => ethers.BigNumber.from(0)),
             this.stakingContract.totalWeight().catch(() => ethers.BigNumber.from(0))
