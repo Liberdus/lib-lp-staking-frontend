@@ -330,7 +330,7 @@ class HomePage {
         // Generate table rows - either data rows or "no data" row
         let tbodyContent = '';
         if (displayPairs.length === 0) {
-            // Show "no data" row when there are no pairs
+            // Show "no data" row when there are no pairs to display (after filtering)
             tbodyContent = `
                 <tr>
                     <td colspan="6" style="text-align: center; padding: 48px 24px; color: var(--text-secondary);">
@@ -803,7 +803,7 @@ class HomePage {
                             this.pairs[pairIndex].userEarnings = earnings.toFixed(4);  // React uses .toFixed(4)
 
                             const hasUserPosition =
-                                (userStakeAmount > 0 && tvl > 0) ||
+                                userStakeAmount > 0 ||
                                 earnings > 0;
                             this.pairs[pairIndex].hasUserPosition = hasUserPosition;
 
