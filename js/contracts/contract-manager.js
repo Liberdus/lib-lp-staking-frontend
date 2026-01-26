@@ -619,10 +619,24 @@ class ContractManager {
                         });
                     }
 
-                    // Test connection (only if we didn't use static network)
+                    // Test connection (validate chainId once even with static network)
                     let network;
                     if (networkToUse) {
-                        network = networkToUse;
+                        const chainIdPromise = fallbackProvider.send('eth_chainId', []);
+                        const timeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('Chain ID timeout (10s)')), 10000)
+                        );
+                        const chainIdHex = await Promise.race([chainIdPromise, timeoutPromise]);
+                        const actualChainId = typeof chainIdHex === 'string'
+                            ? parseInt(chainIdHex, 16)
+                            : Number(chainIdHex);
+                        if (!Number.isFinite(actualChainId)) {
+                            throw new Error(`Invalid chainId response: ${chainIdHex}`);
+                        }
+                        if (expectedChainId != null && actualChainId !== expectedChainId) {
+                            throw new Error(`Wrong network: expected ${expectedChainId}, got ${actualChainId}`);
+                        }
+                        network = { ...networkToUse, chainId: actualChainId };
                     } else {
                         const networkPromise = fallbackProvider.getNetwork();
                         const timeoutPromise = new Promise((_, reject) =>
@@ -936,8 +950,7 @@ class ContractManager {
 
             const multicall = this.multicallService;
             if (!multicall || !multicall.isReady?.()) {
-                console.log('Multicall not ready; skipping bootstrap load'); 
-                await this.loadContractAddresses();
+                console.log('Multicall not ready; skipping bootstrap load (data will be loaded when multicall becomes available)'); 
                 return;
             }
 
