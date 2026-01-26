@@ -936,7 +936,7 @@ class ContractManager {
 
             const multicall = this.multicallService;
             if (!multicall || !multicall.isReady?.()) {
-                console.log('Multicall not ready; falling back to contract-derived addresses');
+                console.log('Multicall not ready; skipping bootstrap load'); 
                 await this.loadContractAddresses();
                 return;
             }
