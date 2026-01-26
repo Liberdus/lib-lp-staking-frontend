@@ -1524,7 +1524,7 @@ class ContractManager {
                 multicall.createCall(pairContract, 'decimals')
             ];
 
-            const pairResults = await multicall.batchCall(pairCalls, { requireSuccess: true, maxRetries: 0 });
+            const pairResults = await multicall.batchCall(pairCalls, { requireSuccess: true, maxRetries: 1 });
             if (!pairResults || pairResults.length !== pairCalls.length) {
                 throw new Error('Multicall pair query failed');
             }
@@ -1578,7 +1578,7 @@ class ContractManager {
                 multicall.createCall(token1Contract, 'symbol')
             ];
 
-            const tokenMetadataResults = await multicall.batchCall(tokenMetadataCalls, { requireSuccess: true, maxRetries: 0 });
+            const tokenMetadataResults = await multicall.batchCall(tokenMetadataCalls, { requireSuccess: true, maxRetries: 1 });
             if (!tokenMetadataResults || tokenMetadataResults.length !== tokenMetadataCalls.length) {
                 throw new Error('Multicall token metadata query failed');
             }
@@ -1764,13 +1764,13 @@ class ContractManager {
                 return new Map();
             }
 
-            const dynamicResults = await multicall.batchCall(dynamicCalls, { requireSuccess: true, maxRetries: 0 });
+            const dynamicResults = await multicall.batchCall(dynamicCalls, { requireSuccess: true, maxRetries: 1 });
             if (!dynamicResults || dynamicResults.length !== dynamicCalls.length) {
                 throw new Error('Multicall pair query failed');
             }
 
             if (staticCalls.length > 0) {
-                const staticResults = await multicall.batchCall(staticCalls, { requireSuccess: true, maxRetries: 0 });
+                const staticResults = await multicall.batchCall(staticCalls, { requireSuccess: true, maxRetries: 1 });
                 if (!staticResults || staticResults.length !== staticCalls.length) {
                     throw new Error('Multicall pair metadata query failed');
                 }
@@ -1870,7 +1870,7 @@ class ContractManager {
             });
 
             if (metadataCalls.length > 0) {
-                const metadataResults = await multicall.batchCall(metadataCalls, { requireSuccess: true, maxRetries: 0 });
+                const metadataResults = await multicall.batchCall(metadataCalls, { requireSuccess: true, maxRetries: 1 });
                 if (!metadataResults || metadataResults.length !== metadataCalls.length) {
                     throw new Error('Multicall token metadata query failed');
                 }
