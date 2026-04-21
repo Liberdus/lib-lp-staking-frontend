@@ -60,6 +60,21 @@ window.CONFIG = {
             CONTRACTS: {
                 STAKING_CONTRACT: '' // Populate after the BSC staking deployment is live
             }
+        },
+        BSC_TESTNET: {
+            CHAIN_ID: 97,
+            NAME: 'BNB Smart Chain Testnet',
+            RPC_URL: 'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+            FALLBACK_RPCS: [
+                'https://bsc-testnet-dataseed.bnbchain.org',
+                'https://bsc-testnet.bnbchain.org',
+                'https://bsc-prebsc-dataseed.bnbchain.org'
+            ],
+            BLOCK_EXPLORER: 'https://testnet.bscscan.com',
+            NATIVE_CURRENCY: { name: 'Test BNB', symbol: 'tBNB', decimals: 18 },
+            CONTRACTS: {
+                STAKING_CONTRACT: '' // Populate after the BSC testnet staking deployment is live
+            }
         }
     },
 
@@ -67,6 +82,7 @@ window.CONFIG = {
     MULTICALL2: {
         1: '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696',      // Ethereum Mainnet
         56: '0xcA11bde05977b3631167028862bE2a173976CA11',     // BNB Smart Chain
+        97: '0xcA11bde05977b3631167028862bE2a173976CA11',     // BNB Smart Chain Testnet
         137: '0x275617327c958bD06b5D6b871E7f491D76113dd8',    // Polygon Mainnet
         80002: '0xcA11bde05977b3631167028862bE2a173976CA11',  // Polygon Amoy Testnet
         31337: '0xcA11bde05977b3631167028862bE2a173976CA11'   // Local Hardhat

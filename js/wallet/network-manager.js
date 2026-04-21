@@ -409,6 +409,7 @@ class NetworkManager {
             1: 'Ethereum Mainnet',
             5: 'Goerli',
             56: 'BNB Smart Chain',
+            97: 'BNB Smart Chain Testnet',
             11155111: 'Sepolia',
             137: 'Polygon Mainnet',
             80001: 'Mumbai Testnet',
