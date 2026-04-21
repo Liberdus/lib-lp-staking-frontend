@@ -288,7 +288,7 @@ class AdminPage {
 
     renderUnauthorizedNetworkOptions() {
         const selectedNetwork = window.networkSelector?.getSelectedNetworkKey?.() || '';
-        const networks = Object.entries(window.CONFIG?.NETWORKS || {});
+        const networks = window.networkSelector?.getSelectableNetworkEntries?.() || [];
 
         return networks.map(([key, network]) => `
             <option value="${key}" ${selectedNetwork === key ? 'selected' : ''}>${network.NAME}</option>
