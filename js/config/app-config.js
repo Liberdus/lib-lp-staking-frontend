@@ -58,7 +58,7 @@ window.CONFIG = {
             BLOCK_EXPLORER: 'https://bscscan.com',
             NATIVE_CURRENCY: { name: 'BNB', symbol: 'BNB', decimals: 18 },
             CONTRACTS: {
-                STAKING_CONTRACT: '' // Populate after the BSC staking deployment is live
+                STAKING_CONTRACT: '0x89E662CB5d784582DB631e2Cbc81bB6643BB2EF4'
             }
         },
         BSC_TESTNET: {
