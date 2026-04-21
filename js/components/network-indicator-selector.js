@@ -371,28 +371,6 @@ class NetworkSelector {
  */
 class NetworkIndicator {
     /**
-     * Ensure the indicator shell exists without rebuilding the selector on every update.
-     * @param {HTMLElement} indicator
-     * @param {string} selectorId
-     * @returns {{ statusDot: HTMLElement | null, selectorContainer: HTMLElement | null }}
-     */
-    static ensureStructure(indicator, selectorId) {
-        let statusDot = indicator.querySelector('.network-status-dot');
-        let selectorContainer = indicator.querySelector(`#${selectorId}`);
-
-        if (!statusDot || !selectorContainer) {
-            indicator.innerHTML = `
-                <span class="network-status-dot gray"></span>
-                <div id="${selectorId}"></div>
-            `;
-            statusDot = indicator.querySelector('.network-status-dot');
-            selectorContainer = indicator.querySelector(`#${selectorId}`);
-        }
-
-        return { statusDot, selectorContainer };
-    }
-
-    /**
      * Update network indicator for a given context
      * @param {string} indicatorId - ID of the indicator element
      * @param {string} selectorId - ID of the network selector container
@@ -402,33 +380,17 @@ class NetworkIndicator {
         const indicator = document.getElementById(indicatorId);
         if (!indicator) return;
 
-        const requestKey = `${indicatorId}:${selectorId}:${context}`;
-        const nextRequestId = (NetworkIndicator._requestTokens.get(requestKey) || 0) + 1;
-        NetworkIndicator._requestTokens.set(requestKey, nextRequestId);
-
         // Always show the network indicator
         indicator.style.display = 'flex';
 
-        const { statusDot, selectorContainer } = this.ensureStructure(indicator, selectorId);
-
-        // Show loading state initially, but preserve the existing selector DOM to avoid flicker.
+        // Show loading state initially
+        indicator.innerHTML = `
+            <span class="network-status-dot gray"></span>
+            <div id="${selectorId}"></div>
+        `;
         indicator.className = `network-indicator-home loading`;
-        if (statusDot) {
-            statusDot.className = 'network-status-dot gray';
-        }
-
-        if (selectorContainer && window.networkSelector) {
-            const hasSelector = selectorContainer.querySelector('.network-selector');
-            if (!hasSelector) {
-                window.networkSelector.createSelector(selectorId, context);
-            } else {
-                window.networkSelector.updateNetworkDisplay();
-            }
-        }
 
         const isWalletConnected = window.walletManager && window.walletManager.isConnected();
-        let nextClassName = 'network-indicator-home no-wallet';
-        let nextDotClassName = 'network-status-dot gray';
 
         // Check permission asynchronously if wallet is connected
         if (isWalletConnected && window.networkManager) {
@@ -436,32 +398,48 @@ class NetworkIndicator {
                 const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
 
                 if (hasPermission) {
-                    nextClassName = 'network-indicator-home has-permission';
-                    nextDotClassName = 'network-status-dot green';
+                    // Green indicator - has permission
+                    indicator.innerHTML = `
+                        <span class="network-status-dot green"></span>
+                        <div id="${selectorId}"></div>
+                    `;
+                    indicator.className = `network-indicator-home has-permission`;
                 } else {
-                    nextClassName = 'network-indicator-home missing-permission';
-                    nextDotClassName = 'network-status-dot red';
+                    // Red indicator - missing permission
+                    indicator.innerHTML = `
+                        <span class="network-status-dot red"></span>
+                        <div id="${selectorId}"></div>
+                    `;
+                    indicator.className = `network-indicator-home missing-permission`;
                 }
             } catch (error) {
                 console.error('Error checking network permission:', error);
-                nextClassName = 'network-indicator-home missing-permission';
-                nextDotClassName = 'network-status-dot red';
+                // Fallback to no permission state
+                indicator.innerHTML = `
+                    <span class="network-status-dot red"></span>
+                    <div id="${selectorId}"></div>
+                `;
+                indicator.className = `network-indicator-home missing-permission`;
             }
+        } else {
+            // No wallet connected - show network selector only
+            indicator.innerHTML = `
+                <span class="network-status-dot gray"></span>
+                <div id="${selectorId}"></div>
+            `;
+            indicator.className = `network-indicator-home no-wallet`;
         }
 
-        // Ignore stale async updates from earlier network/permission checks.
-        if (NetworkIndicator._requestTokens.get(requestKey) !== nextRequestId) {
-            return;
-        }
-
-        indicator.className = nextClassName;
-        if (statusDot) {
-            statusDot.className = nextDotClassName;
-        }
+        // Add network selector after DOM update
+        setTimeout(() => {
+            const container = document.getElementById(selectorId);
+            if (container && window.networkSelector) {
+                container.innerHTML = '';
+                window.networkSelector.createSelector(selectorId, context);
+            }
+        }, 100);
     }
 }
-
-NetworkIndicator._requestTokens = new Map();
 
 // Create global instances
 window.networkSelector = new NetworkSelector();
