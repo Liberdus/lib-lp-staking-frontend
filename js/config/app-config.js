@@ -73,7 +73,7 @@ window.CONFIG = {
             BLOCK_EXPLORER: 'https://testnet.bscscan.com',
             NATIVE_CURRENCY: { name: 'Test BNB', symbol: 'tBNB', decimals: 18 },
             CONTRACTS: {
-                STAKING_CONTRACT: '' // Populate after the BSC testnet staking deployment is live
+                STAKING_CONTRACT: '0x24F28129B65E9AeDdAfE3f1Fc67ab82DDCF30dF9'
             }
         }
     },
