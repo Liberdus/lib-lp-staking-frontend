@@ -440,13 +440,18 @@ class HomePage {
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
-        const pairNameHtml = window.Formatter?.formatPairName(pair.name, pair.address, pair.platform) || pair.name;
-        const platformHtml = pair.platform ? `<div style="font-size: 12px; color: var(--text-secondary);">${pair.platform}</div>` : '';
+        const pairNameHtml = window.Formatter.formatPairName(pair.name, pair.address, pair.platform);
+        const platform = pair.platform;
+        const lpTokenAddress = pair.lpToken || pair.address;
+        const platformUrl = window.Formatter.getPlatformUrl(platform, lpTokenAddress);
+        const platformHtml = platformUrl
+            ? `<a href="${platformUrl}" target="_blank" rel="noopener noreferrer" class="platform-link" title="View pool on ${platform}" style="font-size: 12px; color: var(--text-secondary); display: inline-block;">${platform}</a>`
+            : `<span style="font-size: 12px; color: var(--text-secondary);">${platform}</span>`;
         
         return `
             <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
                 <td>
-                    <div style="display: flex; flex-direction: column;">
+                    <div class="pair-link-stack">
                         ${pairNameHtml}
                         ${platformHtml}
                     </div>
