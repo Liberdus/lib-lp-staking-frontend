@@ -26,43 +26,86 @@ describe('RewardsCalculator', () => {
         delete globalThis.window;
     });
 
-    it('calculates weighted APR and preserves a zero-weight pool', async () => {
+    it.each([
+        {
+            hourlyRate: 0.01,
+            tvlLpTokens: 10,
+            libPerLp: 10,
+            poolWeight: 70,
+            totalWeight: 100,
+            expected: 61.32
+        },
+        {
+            hourlyRate: 0.01,
+            tvlLpTokens: 10,
+            libPerLp: 10,
+            poolWeight: 30,
+            totalWeight: 100,
+            expected: 26.28
+        },
+        {
+            hourlyRate: 0.01,
+            tvlLpTokens: 10,
+            libPerLp: 10,
+            poolWeight: 0,
+            totalWeight: 100,
+            expected: 0
+        }
+    ])('calcAPR($poolWeight / $totalWeight) -> $expected', async ({
+        hourlyRate,
+        tvlLpTokens,
+        libPerLp,
+        poolWeight,
+        totalWeight,
+        expected
+    }) => {
         const calculator = await loadRewardsCalculator();
 
-        expect(calculator.calcAPR(0.01, 10, 10, 70, 100)).toBeCloseTo(61.32);
-        expect(calculator.calcAPR(0.01, 10, 10, 30, 100)).toBeCloseTo(26.28);
-        expect(calculator.calcAPR(0.01, 10, 10, 0, 100)).toBe(0);
+        if (expected === 0) {
+            expect(calculator.calcAPR(hourlyRate, tvlLpTokens, libPerLp, poolWeight, totalWeight)).toBe(0);
+            return;
+        }
+
+        expect(calculator.calcAPR(hourlyRate, tvlLpTokens, libPerLp, poolWeight, totalWeight)).toBeCloseTo(expected);
     });
 
-    it('calculates USD TVL and handles missing prices safely', async () => {
-        const calculator = await loadRewardsCalculator();
-
-        expect(
-            calculator.calculateTvlUsd({
+    it.each([
+        {
+            input: {
                 token0Staked: 0,
                 token1Staked: 0,
                 token0PriceUsd: 0,
                 token1PriceUsd: 0
-            })
-        ).toBe(0);
-
-        expect(
-            calculator.calculateTvlUsd({
+            },
+            expected: 0
+        },
+        {
+            input: {
                 token0Staked: 10,
                 token1Staked: 2,
                 token0PriceUsd: 5,
                 token1PriceUsd: 0
-            })
-        ).toBeNull();
-
-        expect(
-            calculator.calculateTvlUsd({
+            },
+            expected: null
+        },
+        {
+            input: {
                 token0Staked: 10,
                 token1Staked: 0,
                 token0PriceUsd: 5,
                 token1PriceUsd: 0
-            })
-        ).toBe(50);
+            },
+            expected: 50
+        }
+    ])('calculateTvlUsd($input.token0Staked, $input.token1Staked) -> $expected', async ({ input, expected }) => {
+        const calculator = await loadRewardsCalculator();
+
+        if (expected === null) {
+            expect(calculator.calculateTvlUsd(input)).toBeNull();
+            return;
+        }
+
+        expect(calculator.calculateTvlUsd(input)).toBe(expected);
     });
 
     it('caches repeated token price lookups by normalized address', async () => {

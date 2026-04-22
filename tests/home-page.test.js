@@ -21,18 +21,15 @@ describe('HomePage.formatTvlDisplay', () => {
         delete globalThis.window;
     });
 
-    it('returns a loading placeholder until TVL is calculated', async () => {
+    it.each([
+        { pair: undefined, expected: '...' },
+        { pair: { tvlCalculated: false }, expected: '...' },
+        { pair: { tvlCalculated: true, tvlUsd: null }, expected: 'N/A' },
+        { pair: { tvlCalculated: true, tvlUsd: undefined }, expected: 'N/A' }
+    ])('formatTvlDisplay(%j) -> %s', async ({ pair, expected }) => {
         const homePagePrototype = await loadHomePage();
 
-        expect(homePagePrototype.formatTvlDisplay.call({}, undefined)).toBe('...');
-        expect(homePagePrototype.formatTvlDisplay.call({}, { tvlCalculated: false })).toBe('...');
-    });
-
-    it('returns N/A when USD pricing is unavailable', async () => {
-        const homePagePrototype = await loadHomePage();
-
-        expect(homePagePrototype.formatTvlDisplay.call({}, { tvlCalculated: true, tvlUsd: null })).toBe('N/A');
-        expect(homePagePrototype.formatTvlDisplay.call({}, { tvlCalculated: true, tvlUsd: undefined })).toBe('N/A');
+        expect(homePagePrototype.formatTvlDisplay.call({}, pair)).toBe(expected);
     });
 
     it('uses the shared formatter when available', async () => {

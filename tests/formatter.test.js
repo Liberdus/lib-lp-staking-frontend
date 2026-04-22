@@ -20,27 +20,26 @@ describe('Formatter currency helpers', () => {
         delete globalThis.window;
     });
 
-    it('formats currency values with cents and safe defaults', async () => {
+    it.each([
+        { input: 12.345, expected: '$12.35' },
+        { input: -5, expected: '$-5.00' },
+        { input: 'not-a-number', expected: '$0.00' }
+    ])('formatCurrency(%j) -> %s', async ({ input, expected }) => {
         const formatter = await loadFormatter();
 
-        expect(formatter.formatCurrency(12.345)).toBe('$12.35');
-        expect(formatter.formatCurrency(-5)).toBe('$-5.00');
-        expect(formatter.formatCurrency('not-a-number')).toBe('$0.00');
+        expect(formatter.formatCurrency(input)).toBe(expected);
     });
 
-    it('formats compact currency at threshold boundaries', async () => {
+    it.each([
+        { input: 999.5, expected: '$999.50' },
+        { input: 1000, expected: '$1.00K' },
+        { input: 1500000, expected: '$1.50M' },
+        { input: 2000000000, expected: '$2.00B' },
+        { input: Number.POSITIVE_INFINITY, expected: '$0.00' },
+        { input: undefined, expected: '$0.00' }
+    ])('formatCompactCurrency(%j) -> %s', async ({ input, expected }) => {
         const formatter = await loadFormatter();
 
-        expect(formatter.formatCompactCurrency(999.5)).toBe('$999.50');
-        expect(formatter.formatCompactCurrency(1000)).toBe('$1.00K');
-        expect(formatter.formatCompactCurrency(1500000)).toBe('$1.50M');
-        expect(formatter.formatCompactCurrency(2000000000)).toBe('$2.00B');
-    });
-
-    it('returns a safe default for non-finite compact currency input', async () => {
-        const formatter = await loadFormatter();
-
-        expect(formatter.formatCompactCurrency(Number.POSITIVE_INFINITY)).toBe('$0.00');
-        expect(formatter.formatCompactCurrency(undefined)).toBe('$0.00');
+        expect(formatter.formatCompactCurrency(input)).toBe(expected);
     });
 });
