@@ -615,6 +615,12 @@ class HomePage {
             throw new Error('MetaMask was not detected in this browser.');
         }
 
+        const isOnRequiredNetwork = window.networkManager?.isOnRequiredNetwork() || false;
+        if (!isOnRequiredNetwork) {
+            const networkName = window.networkSelector?.getCurrentNetworkName() || 'the selected';
+            throw new Error(`Please switch to ${networkName} before adding LIB to MetaMask.`);
+        }
+
         const rewardTokenAddress = this.getRewardTokenAddress();
         if (!rewardTokenAddress) {
             throw new Error('Reward token address is not available yet.');
@@ -673,9 +679,10 @@ class HomePage {
         const stakingContractLink = document.getElementById('staking-contract-link');
 
         if (addTokenLink) {
+            const canAddToken = this.isWalletConnected() && (window.networkManager?.isOnRequiredNetwork() || false);
             const showAddTokenLink = Boolean(
                 this.getRewardTokenAddress() &&
-                this.isWalletConnected() &&
+                canAddToken &&
                 this.isMetaMaskWalletSelected()
             );
 
