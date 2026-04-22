@@ -100,6 +100,10 @@ window.Formatter = {
         return platformConfig[selectedNetwork] || platformConfig.default || '';
     },
 
+    getPlatformUrl(platform, lpTokenAddress) {
+        return this.buildPlatformUrl(this.getPlatformBaseUrl(platform), lpTokenAddress);
+    },
+
     /**
      * Format pair name for display with platform-specific link
      * Uses the platform from contract data to link to the correct DEX
