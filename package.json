@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node cors-server.js",
     "dev": "node cors-server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "serve": "python -m http.server 5500",
     "serve-cors": "npx http-server -p 5500 --cors"
   },
@@ -20,9 +22,7 @@
   "author": "LP Staking Team",
   "license": "MIT",
   "devDependencies": {
-    "http-server": "^14.1.1"
-  },
-  "engines": {
-    "node": ">=14.0.0"
+    "http-server": "^14.1.1",
+    "vitest": "^4.1.5"
   }
 }

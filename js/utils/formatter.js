@@ -142,4 +142,30 @@ window.Formatter = {
             </a>
         `;
     },
+
+    formatCurrency(value) {
+        const amount = Number(value);
+        if (!Number.isFinite(amount)) return '$0.00';
+
+        return `$${amount.toFixed(2)}`;
+    },
+
+    formatCompactCurrency(value) {
+        const amount = Number(value);
+        if (!Number.isFinite(amount)) return '$0.00';
+
+        if (amount >= 1000000000) {
+            return `$${(amount / 1000000000).toFixed(2)}B`;
+        }
+
+        if (amount >= 1000000) {
+            return `$${(amount / 1000000).toFixed(2)}M`;
+        }
+
+        if (amount >= 1000) {
+            return `$${(amount / 1000).toFixed(2)}K`;
+        }
+
+        return this.formatCurrency(amount);
+    }
 };
