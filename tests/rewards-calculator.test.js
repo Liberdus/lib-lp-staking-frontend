@@ -4,9 +4,13 @@ async function loadRewardsCalculator() {
     vi.resetModules();
     globalThis.window = globalThis;
     globalThis.global = globalThis;
+    delete globalThis.GeckoTerminalPriceProvider;
+    delete globalThis.DexScreenerPriceProvider;
     delete globalThis.RewardsCalculator;
     delete globalThis.rewardsCalculator;
 
+    await import('../js/utils/pricing/gecko-terminal-price-provider.js');
+    await import('../js/utils/pricing/dex-screener-price-provider.js');
     await import('../js/utils/rewards-calculator.js');
     return new globalThis.RewardsCalculator();
 }
@@ -14,6 +18,10 @@ async function loadRewardsCalculator() {
 describe('RewardsCalculator', () => {
     beforeEach(() => {
         globalThis.fetch = vi.fn();
+        globalThis.window = globalThis;
+        globalThis.window.networkSelector = {
+            getCurrentChainId: vi.fn(() => 56)
+        };
         vi.spyOn(console, 'log').mockImplementation(() => {});
         vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
@@ -21,6 +29,9 @@ describe('RewardsCalculator', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         delete globalThis.fetch;
+        delete globalThis.networkSelector;
+        delete globalThis.GeckoTerminalPriceProvider;
+        delete globalThis.DexScreenerPriceProvider;
         delete globalThis.RewardsCalculator;
         delete globalThis.rewardsCalculator;
         delete globalThis.window;
@@ -108,12 +119,18 @@ describe('RewardsCalculator', () => {
         expect(calculator.calculateTvlUsd(input)).toBe(expected);
     });
 
-    it('caches repeated token price lookups by normalized address', async () => {
+    it('uses GeckoTerminal first and caches repeated lookups by normalized address', async () => {
         const calculator = await loadRewardsCalculator();
         globalThis.fetch.mockResolvedValue({
             ok: true,
             json: vi.fn().mockResolvedValue({
-                pairs: [{ priceUsd: '1.23' }]
+                data: {
+                    attributes: {
+                        token_prices: {
+                            '0xabc': '1.23'
+                        }
+                    }
+                }
             })
         });
 
@@ -123,7 +140,87 @@ describe('RewardsCalculator', () => {
         expect(first).toBe(1.23);
         expect(second).toBe(1.23);
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-        expect(globalThis.fetch).toHaveBeenCalledWith('https://api.dexscreener.com/latest/dex/tokens/0xabc');
+        expect(globalThis.fetch).toHaveBeenCalledWith('https://api.geckoterminal.com/api/v2/simple/networks/bsc/token_price/0xabc');
+    });
+
+    it('scopes cached token prices to the active chain', async () => {
+        const calculator = await loadRewardsCalculator();
+
+        globalThis.fetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        attributes: {
+                            token_prices: {
+                                '0xabc': '1.11'
+                            }
+                        }
+                    }
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        attributes: {
+                            token_prices: {
+                                '0xabc': '2.22'
+                            }
+                        }
+                    }
+                })
+            });
+
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(1.11);
+
+        globalThis.window.networkSelector.getCurrentChainId.mockReturnValue(137);
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(2.22);
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns zero for unsupported testnet pricing contexts', async () => {
+        const calculator = await loadRewardsCalculator();
+        globalThis.window.networkSelector.getCurrentChainId.mockReturnValue(80002);
+
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(0);
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it('falls back to DexScreener when GeckoTerminal cannot price the token', async () => {
+        const calculator = await loadRewardsCalculator();
+
+        globalThis.fetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        attributes: {
+                            token_prices: {}
+                        }
+                    }
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    pairs: [
+                        {
+                            chainId: 'bsc',
+                            baseToken: { address: '0xabc' },
+                            quoteToken: { address: '0xusd' },
+                            priceUsd: '1.00042',
+                            liquidity: { usd: 44962438.69 }
+                        }
+                    ]
+                })
+            });
+
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(1.00042);
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(globalThis.fetch).toHaveBeenNthCalledWith(1, 'https://api.geckoterminal.com/api/v2/simple/networks/bsc/token_price/0xabc');
+        expect(globalThis.fetch).toHaveBeenNthCalledWith(2, 'https://api.dexscreener.com/latest/dex/tokens/0xabc');
     });
 
     it('returns zero and does not cache failed or zero-priced lookups', async () => {
@@ -137,13 +234,39 @@ describe('RewardsCalculator', () => {
             .mockResolvedValueOnce({
                 ok: true,
                 json: vi.fn().mockResolvedValue({
-                    pairs: [{ priceUsd: '0' }]
+                    pairs: [{ chainId: 'bsc', baseToken: { address: '0xzero' }, quoteToken: { address: '0xusd' }, priceUsd: '0' }]
                 })
             })
             .mockResolvedValueOnce({
                 ok: true,
                 json: vi.fn().mockResolvedValue({
-                    pairs: [{ priceUsd: '0' }]
+                    data: {
+                        attributes: {
+                            token_prices: {}
+                        }
+                    }
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    pairs: [{ chainId: 'bsc', baseToken: { address: '0xzero' }, quoteToken: { address: '0xusd' }, priceUsd: '0' }]
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        attributes: {
+                            token_prices: {}
+                        }
+                    }
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    pairs: [{ chainId: 'bsc', baseToken: { address: '0xzero' }, quoteToken: { address: '0xusd' }, priceUsd: '0' }]
                 })
             });
 
@@ -152,7 +275,7 @@ describe('RewardsCalculator', () => {
         expect(await calculator.fetchTokenPriceByAddress('0xzero')).toBe(0);
         expect(await calculator.fetchTokenPriceByAddress('')).toBe(0);
 
-        expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+        expect(globalThis.fetch).toHaveBeenCalledTimes(6);
         expect(console.warn).toHaveBeenCalledTimes(1);
     });
 
