@@ -83,8 +83,39 @@
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
-        getCachedTokenPrice(address) {
-            const cachedEntry = this.priceCache.get(address);
+        getCurrentDexScreenerChainContext() {
+            const chainId = Number(globalThis?.window?.networkSelector?.getCurrentChainId?.());
+
+            if (!Number.isFinite(chainId) || chainId <= 0) {
+                return {
+                    dexScreenerChainId: null,
+                    isSupported: null
+                };
+            }
+
+            switch (chainId) {
+                case 56:
+                    return { dexScreenerChainId: 'bsc', isSupported: true };
+                case 137:
+                    return { dexScreenerChainId: 'polygon', isSupported: true };
+                case 97:
+                case 80002:
+                    return { dexScreenerChainId: null, isSupported: false };
+                default:
+                    return {
+                        dexScreenerChainId: null,
+                        isSupported: null
+                    };
+            }
+        }
+
+        getPriceCacheKey(address, dexScreenerChainId = null) {
+            return `${dexScreenerChainId || 'any'}:${address}`;
+        }
+
+        getCachedTokenPrice(address, dexScreenerChainId = null) {
+            const cacheKey = this.getPriceCacheKey(address, dexScreenerChainId);
+            const cachedEntry = this.priceCache.get(cacheKey);
             if (!cachedEntry) {
                 return null;
             }
@@ -93,45 +124,91 @@
             return cacheAgeMs < this.priceCacheTtlMs ? cachedEntry.price : null;
         }
 
-        setCachedTokenPrice(address, price) {
+        setCachedTokenPrice(address, dexScreenerChainId, price) {
             if (price <= 0) {
                 return;
             }
 
-            this.priceCache.set(address, {
+            const cacheKey = this.getPriceCacheKey(address, dexScreenerChainId);
+            this.priceCache.set(cacheKey, {
                 price,
                 timestamp: Date.now()
             });
         }
 
-        parseDexScreenerPriceUsd(data) {
-            return Number.parseFloat(data?.pairs?.[0]?.priceUsd || '0') || 0;
+        getDexScreenerPairLiquidityUsd(pair) {
+            return this.parseAmount(pair?.liquidity?.usd);
         }
 
-        async requestTokenPriceByAddress(address) {
+        getBestDexScreenerPair(address, data, dexScreenerChainId = null) {
+            const normalizedAddress = this.normalizeAddress(address);
+            const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+            const pricedPairs = pairs.filter((pair) => {
+                const priceUsd = Number.parseFloat(pair?.priceUsd || '0') || 0;
+                if (priceUsd <= 0) {
+                    return false;
+                }
+
+                const baseTokenAddress = this.normalizeAddress(pair?.baseToken?.address);
+                return !normalizedAddress || baseTokenAddress === normalizedAddress;
+            });
+
+            if (pricedPairs.length === 0) {
+                return null;
+            }
+
+            const sameChainPairs = dexScreenerChainId
+                ? pricedPairs.filter((pair) => pair?.chainId === dexScreenerChainId)
+                : pricedPairs;
+            const candidatePairs = sameChainPairs.length > 0 ? sameChainPairs : pricedPairs;
+
+            return candidatePairs.reduce((bestPair, pair) => {
+                if (!bestPair) {
+                    return pair;
+                }
+
+                const bestLiquidityUsd = this.getDexScreenerPairLiquidityUsd(bestPair);
+                const pairLiquidityUsd = this.getDexScreenerPairLiquidityUsd(pair);
+
+                if (pairLiquidityUsd > bestLiquidityUsd) {
+                    return pair;
+                }
+
+                return bestPair;
+            }, null);
+        }
+
+        parseDexScreenerPriceUsd(address, data, dexScreenerChainId = null) {
+            const bestPair = this.getBestDexScreenerPair(address, data, dexScreenerChainId);
+            return Number.parseFloat(bestPair?.priceUsd || '0') || 0;
+        }
+
+        async requestTokenPriceByAddress(address, dexScreenerChainId = null) {
             const response = await fetch(`${this.dexScreenerBaseUrl}/${address}`);
             if (!response.ok) {
                 throw new Error(`DexScreener price request failed: ${response.status}`);
             }
 
             const data = await response.json();
-            return this.parseDexScreenerPriceUsd(data);
+            return this.parseDexScreenerPriceUsd(address, data, dexScreenerChainId);
         }
 
         async fetchTokenPriceByAddress(address) {
             const normalizedAddress = this.normalizeAddress(address);
-            if (!normalizedAddress || typeof fetch !== 'function') {
+            const chainContext = this.getCurrentDexScreenerChainContext();
+
+            if (!normalizedAddress || typeof fetch !== 'function' || chainContext.isSupported === false) {
                 return 0;
             }
 
-            const cachedPrice = this.getCachedTokenPrice(normalizedAddress);
+            const cachedPrice = this.getCachedTokenPrice(normalizedAddress, chainContext.dexScreenerChainId);
             if (cachedPrice !== null) {
                 return cachedPrice;
             }
 
             try {
-                const price = await this.requestTokenPriceByAddress(normalizedAddress);
-                this.setCachedTokenPrice(normalizedAddress, price);
+                const price = await this.requestTokenPriceByAddress(normalizedAddress, chainContext.dexScreenerChainId);
+                this.setCachedTokenPrice(normalizedAddress, chainContext.dexScreenerChainId, price);
                 return price;
             } catch (error) {
                 console.warn(`Failed to fetch token price for ${normalizedAddress}:`, error?.message || error);

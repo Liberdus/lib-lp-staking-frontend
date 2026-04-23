@@ -14,6 +14,10 @@ async function loadRewardsCalculator() {
 describe('RewardsCalculator', () => {
     beforeEach(() => {
         globalThis.fetch = vi.fn();
+        globalThis.window = globalThis;
+        globalThis.window.networkSelector = {
+            getCurrentChainId: vi.fn(() => 56)
+        };
         vi.spyOn(console, 'log').mockImplementation(() => {});
         vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
@@ -21,6 +25,7 @@ describe('RewardsCalculator', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         delete globalThis.fetch;
+        delete globalThis.networkSelector;
         delete globalThis.RewardsCalculator;
         delete globalThis.rewardsCalculator;
         delete globalThis.window;
@@ -108,22 +113,100 @@ describe('RewardsCalculator', () => {
         expect(calculator.calculateTvlUsd(input)).toBe(expected);
     });
 
-    it('caches repeated token price lookups by normalized address', async () => {
+    it('selects the deepest-liquidity pair on the active chain and caches repeated lookups', async () => {
         const calculator = await loadRewardsCalculator();
         globalThis.fetch.mockResolvedValue({
             ok: true,
             json: vi.fn().mockResolvedValue({
-                pairs: [{ priceUsd: '1.23' }]
+                pairs: [
+                    {
+                        chainId: 'bsc',
+                        baseToken: { address: '0xother' },
+                        quoteToken: { address: '0xabc' },
+                        priceUsd: '13.45',
+                        liquidity: { usd: 76300725.73 }
+                    },
+                    {
+                        chainId: 'ethereum',
+                        baseToken: { address: '0xabc' },
+                        quoteToken: { address: '0xusd' },
+                        priceUsd: '9.99',
+                        liquidity: { usd: 99999999 }
+                    },
+                    {
+                        chainId: 'bsc',
+                        baseToken: { address: '0xabc' },
+                        quoteToken: { address: '0xusd' },
+                        priceUsd: '3.11',
+                        liquidity: { usd: 1205785.98 }
+                    },
+                    {
+                        chainId: 'bsc',
+                        baseToken: { address: '0xABC' },
+                        quoteToken: { address: '0xusd' },
+                        priceUsd: '1.00042',
+                        liquidity: { usd: 44962438.69 }
+                    }
+                ]
             })
         });
 
         const first = await calculator.fetchTokenPriceByAddress('0xABC');
         const second = await calculator.fetchTokenPriceByAddress('0xabc');
 
-        expect(first).toBe(1.23);
-        expect(second).toBe(1.23);
+        expect(first).toBe(1.00042);
+        expect(second).toBe(1.00042);
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
         expect(globalThis.fetch).toHaveBeenCalledWith('https://api.dexscreener.com/latest/dex/tokens/0xabc');
+    });
+
+    it('scopes cached token prices to the active chain', async () => {
+        const calculator = await loadRewardsCalculator();
+
+        globalThis.fetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    pairs: [
+                        {
+                            chainId: 'bsc',
+                            baseToken: { address: '0xabc' },
+                            quoteToken: { address: '0xusd' },
+                            priceUsd: '1.11',
+                            liquidity: { usd: 1000 }
+                        }
+                    ]
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: vi.fn().mockResolvedValue({
+                    pairs: [
+                        {
+                            chainId: 'polygon',
+                            baseToken: { address: '0xabc' },
+                            quoteToken: { address: '0xusd' },
+                            priceUsd: '2.22',
+                            liquidity: { usd: 2000 }
+                        }
+                    ]
+                })
+            });
+
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(1.11);
+
+        globalThis.window.networkSelector.getCurrentChainId.mockReturnValue(137);
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(2.22);
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns zero for unsupported testnet pricing contexts', async () => {
+        const calculator = await loadRewardsCalculator();
+        globalThis.window.networkSelector.getCurrentChainId.mockReturnValue(80002);
+
+        expect(await calculator.fetchTokenPriceByAddress('0xabc')).toBe(0);
+        expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 
     it('returns zero and does not cache failed or zero-priced lookups', async () => {
@@ -137,13 +220,13 @@ describe('RewardsCalculator', () => {
             .mockResolvedValueOnce({
                 ok: true,
                 json: vi.fn().mockResolvedValue({
-                    pairs: [{ priceUsd: '0' }]
+                    pairs: [{ chainId: 'bsc', baseToken: { address: '0xzero' }, quoteToken: { address: '0xusd' }, priceUsd: '0' }]
                 })
             })
             .mockResolvedValueOnce({
                 ok: true,
                 json: vi.fn().mockResolvedValue({
-                    pairs: [{ priceUsd: '0' }]
+                    pairs: [{ chainId: 'bsc', baseToken: { address: '0xzero' }, quoteToken: { address: '0xusd' }, priceUsd: '0' }]
                 })
             });
 
