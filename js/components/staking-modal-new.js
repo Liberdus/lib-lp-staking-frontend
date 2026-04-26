@@ -222,6 +222,7 @@ class StakingModalNew {
                 }
                 this.stakeAmount = sanitizedValue;
                 this.updateSlider('stake');
+                this.updateStakeEstimatedAPR();
 
                 // Reset approval state when amount changes
                 this.isApproved = false;
@@ -889,6 +890,7 @@ class StakingModalNew {
                     stakeInput.value = sanitizedValue;
                 }
                 this.stakeAmount = sanitizedValue;
+                this.updateStakeEstimatedAPR();
                 this.updateButtonStates();
             });
         }
@@ -953,7 +955,7 @@ class StakingModalNew {
 
             <div class="balance-info">
                 <span class="balance-label">Estimated APR:</span>
-                <span class="balance-value success-text">${this.currentPair?.apr || '0.00'}%</span>
+                <span id="stake-estimated-apr" class="balance-value success-text">${this.getStakeEstimatedAPRDisplay()}%</span>
             </div>
 
             <div class="modal-actions">
@@ -964,6 +966,35 @@ class StakingModalNew {
                 </button>
             </div>
         `;
+    }
+
+    calculateEstimatedStakeAPR() {
+        if (window.rewardsCalculator?.calcProjectedAPR) {
+            return window.rewardsCalculator.calcProjectedAPR({
+                hourlyRate: window.homePage?.hourlyRewardRate ?? this.currentPair?.hourlyRewardRate,
+                currentTvlLpTokens: this.currentPair?.tvl ?? this.currentPair?.totalStaked,
+                addedLpTokens: this.stakeAmount,
+                libPerLp: this.currentPair?.libPerLp,
+                poolWeight: this.currentPair?.weight,
+                totalWeight: window.homePage?.totalWeight ?? this.currentPair?.totalWeight,
+                fallbackApr: this.currentPair?.apr
+            });
+        }
+
+        const fallbackApr = Number(this.currentPair?.apr);
+        return Number.isFinite(fallbackApr) ? fallbackApr : 0;
+    }
+
+    getStakeEstimatedAPRDisplay() {
+        const apr = this.calculateEstimatedStakeAPR();
+        return Number.isFinite(apr) ? apr.toFixed(1) : '0.0';
+    }
+
+    updateStakeEstimatedAPR() {
+        const aprElement = document.getElementById('stake-estimated-apr');
+        if (aprElement) {
+            aprElement.textContent = `${this.getStakeEstimatedAPRDisplay()}%`;
+        }
     }
 
     renderUnstakeTab() {
@@ -1085,6 +1116,7 @@ class StakingModalNew {
             this.needsApproval = false;
 
             // Update button states
+            this.updateStakeEstimatedAPR();
             this.updateButtonStates();
         } else if (this.currentTab === 'unstake') {
             this.unstakeAmount = amount;
@@ -1132,10 +1164,13 @@ class StakingModalNew {
             this.stakeAmount = amount;
             const input = document.getElementById('stake-amount-input');
             if (input) input.value = amount;
+            this.updateStakeEstimatedAPR();
+            this.updateButtonStates();
         } else if (type === 'unstake') {
             this.unstakeAmount = amount;
             const input = document.getElementById('unstake-amount-input');
             if (input) input.value = amount;
+            this.updateButtonStates();
         }
     }
 
