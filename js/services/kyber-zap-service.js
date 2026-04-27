@@ -22,8 +22,8 @@
             this.tokenMeta = {};
             this.tokenMarketMeta = new Map();
             this.quoteRateLimiter = options.quoteRateLimiter || new global.KyberZapQuoteRateLimiter({
-                getMaxRequests: () => this.getQuoteRateLimitMaxRequests(),
-                getWindowMs: () => this.getQuoteRateLimitWindowMs(),
+                getMaxRequests: () => Number(this.getConfig()?.QUOTE_RATE_LIMIT_MAX_REQUESTS) || 8,
+                getWindowMs: () => Number(this.getConfig()?.RATE_LIMIT_WINDOW_MS) || 10000,
                 now: this.now
             });
         }
@@ -42,14 +42,6 @@
 
         getNetworkConfig(networkKey = this.getCurrentNetworkKey()) {
             return this.getConfig()?.NETWORKS?.[networkKey] || null;
-        }
-
-        getGeckoTerminalBaseUrl() {
-            return this.getConfig()?.GECKO_TERMINAL_BASE_URL || 'https://api.geckoterminal.com/api/v2';
-        }
-
-        getGeckoTerminalNetworkId(networkConfig = this.getNetworkConfig()) {
-            return networkConfig?.GECKO_TERMINAL_NETWORK || networkConfig?.CHAIN || null;
         }
 
         getProvider() {
@@ -78,12 +70,8 @@
             return data?.routerAddress || data?.router || data?.to || data?.tx?.to || data?.transaction?.to || null;
         }
 
-        getExpectedRouterAddress(networkConfig = this.getNetworkConfig()) {
-            return networkConfig?.ROUTER_ADDRESS || null;
-        }
-
         validateRouterAddress(routerAddress, networkConfig = this.getNetworkConfig()) {
-            const expectedRouter = this.getExpectedRouterAddress(networkConfig);
+            const expectedRouter = networkConfig?.ROUTER_ADDRESS || null;
             if (!expectedRouter || !routerAddress) {
                 return;
             }
@@ -104,24 +92,8 @@
             ].join('|');
         }
 
-        getQuoteRateLimitMaxRequests() {
-            return Number(this.getConfig()?.QUOTE_RATE_LIMIT_MAX_REQUESTS) || 8;
-        }
-
-        getQuoteRateLimitWindowMs() {
-            return Number(this.getConfig()?.RATE_LIMIT_WINDOW_MS) || 10000;
-        }
-
         getQuoteRateLimitWaitMs(now = this.now()) {
             return this.quoteRateLimiter.getWaitMs(now);
-        }
-
-        reserveQuoteRequestSlot(now = this.now()) {
-            return this.quoteRateLimiter.reserve(now);
-        }
-
-        getQuoteRateLimitMessage(waitMs = this.getQuoteRateLimitWaitMs()) {
-            return this.quoteRateLimiter.getMessage(waitMs);
         }
 
         createRateLimitError(waitMs) {
@@ -209,7 +181,7 @@
         async getTokenMarketMetadata(address, networkConfig = this.getNetworkConfig()) {
             if (!address || this.isNativeToken(address)) return null;
 
-            const networkId = this.getGeckoTerminalNetworkId(networkConfig);
+            const networkId = networkConfig?.GECKO_TERMINAL_NETWORK || networkConfig?.CHAIN || null;
             const normalized = this.normalizeAddress(address);
             if (!networkId || !normalized) return null;
 
@@ -219,7 +191,8 @@
             }
 
             try {
-                const response = await this.fetchImpl(`${this.getGeckoTerminalBaseUrl()}/networks/${encodeURIComponent(networkId)}/tokens/${normalized}`, {
+                const baseUrl = this.getConfig()?.GECKO_TERMINAL_BASE_URL || 'https://api.geckoterminal.com/api/v2';
+                const response = await this.fetchImpl(`${baseUrl}/networks/${encodeURIComponent(networkId)}/tokens/${normalized}`, {
                     headers: { accept: 'application/json' }
                 });
 
@@ -288,7 +261,7 @@
             let lastError = null;
 
             for (const dexId of dexCandidates) {
-                const rateLimit = this.reserveQuoteRequestSlot();
+                const rateLimit = this.quoteRateLimiter.reserve();
                 if (!rateLimit.allowed) {
                     throw this.createRateLimitError(rateLimit.waitMs);
                 }
