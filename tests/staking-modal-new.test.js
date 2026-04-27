@@ -215,7 +215,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.zapQuoteRefreshTimer).toBeNull();
     });
 
-    it('does not fetch zap quotes when the amount exceeds the selected token balance', async () => {
+    it('fetches zap quote previews when the amount exceeds the selected token balance', async () => {
         vi.useFakeTimers();
         const StakingModalNew = await loadStakingModalClass();
         const modal = createModal(StakingModalNew);
@@ -226,11 +226,12 @@ describe('StakingModalNew zap cleanup', () => {
         modal.debounceZapQuote(0);
         await vi.runAllTimersAsync();
 
-        expect(modal.fetchZapQuote).not.toHaveBeenCalled();
-        expect(modal.canFetchZapQuote()).toBe(false);
+        expect(modal.fetchZapQuote).toHaveBeenCalled();
+        expect(modal.canFetchZapQuote()).toBe(true);
     });
 
-    it('does not start zap quote auto-refresh when the amount exceeds the selected token balance', async () => {
+    it('starts zap quote auto-refresh when the amount exceeds the selected token balance', async () => {
+        vi.useFakeTimers();
         const StakingModalNew = await loadStakingModalClass();
         const modal = createModal(StakingModalNew);
         modal.isOpen = true;
@@ -240,7 +241,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         modal.syncZapQuoteAutoRefresh();
 
-        expect(modal.zapQuoteRefreshTimer).toBeNull();
+        expect(modal.zapQuoteRefreshTimer).not.toBeNull();
+        modal.stopZapQuoteAutoRefresh();
     });
 
     it('renders an insufficient balance error for impossible zap amounts', async () => {

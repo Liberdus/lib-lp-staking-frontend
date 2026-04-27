@@ -901,8 +901,7 @@ class StakingModalNew {
     canFetchZapQuote() {
         return !!this.zapSelectedToken
             && !!this.zapInputAmount
-            && parseFloat(this.zapInputAmount) > 0
-            && this.hasSufficientZapBalance();
+            && parseFloat(this.zapInputAmount) > 0;
     }
 
     getZapInputBalance() {
