@@ -80,6 +80,30 @@ describe('RewardsCalculator', () => {
         expect(calculator.calcAPR(hourlyRate, tvlLpTokens, libPerLp, poolWeight, totalWeight)).toBeCloseTo(expected);
     });
 
+    it('calculates projected APR with newly added LP tokens included in TVL', async () => {
+        const calculator = await loadRewardsCalculator();
+
+        expect(calculator.calcProjectedAPR({
+            hourlyRate: 0.01,
+            currentTvlLpTokens: 10,
+            addedLpTokens: 5,
+            libPerLp: 10,
+            poolWeight: 70,
+            totalWeight: 100,
+            fallbackApr: 61.32
+        })).toBeCloseTo(40.88);
+    });
+
+    it('falls back by scaling current APR when projected APR inputs are incomplete', async () => {
+        const calculator = await loadRewardsCalculator();
+
+        expect(calculator.calcProjectedAPR({
+            currentTvlLpTokens: 10,
+            addedLpTokens: 5,
+            fallbackApr: 60
+        })).toBeCloseTo(40);
+    });
+
     it.each([
         {
             input: {
