@@ -106,6 +106,7 @@ async function loadStakingModalClass() {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    await import('../js/services/kyber-zap-service.js');
     await import('../js/components/staking-modal-new.js');
     return globalThis.StakingModalNew;
 }
@@ -175,7 +176,7 @@ function arrangeQuoteFetch(modal, responsePayload = { data: { route: '0xroute' }
     modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
     modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
     modal.zapInputAmount = '1';
-    modal.getZapDexCandidates = vi.fn().mockResolvedValue(['DEX_UNISWAPV2']);
+    modal.getKyberZapService().getDexCandidates = vi.fn().mockResolvedValue(['DEX_UNISWAPV2']);
     globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(responsePayload)
@@ -203,6 +204,8 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.notificationManager;
         delete globalThis.homePage;
         delete globalThis.fetch;
+        delete globalThis.KyberZapRateLimitError;
+        delete globalThis.KyberZapService;
         delete globalThis.StakingModalNew;
         delete globalThis.stakingModal;
         delete globalThis.stakingModalNew;
@@ -342,7 +345,7 @@ describe('StakingModalNew zap cleanup', () => {
         modal.zapInputAmount = '1';
         modal.fetchZapQuote = vi.fn();
         globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 2;
-        modal.zapQuoteRequestTimestamps = [Date.now(), Date.now()];
+        modal.getKyberZapService().quoteRequestTimestamps = [Date.now(), Date.now()];
 
         modal.startZapQuoteAutoRefresh();
         await vi.advanceTimersByTimeAsync(1000);

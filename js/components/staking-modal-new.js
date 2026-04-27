@@ -36,12 +36,10 @@ class StakingModalNew {
         this.zapQuoteCountdown = 10;
         this.zapQuoteRefreshTimer = null;
         this.zapQuoteRateLimitTimer = null;
-        this.zapQuoteRequestTimestamps = [];
         this.zapQuoteRateLimitMessage = '';
         this.zapQuoteKey = '';
         this.zapQuoteInFlightKey = '';
-        this.zapTokenMeta = null;
-        this.zapPoolDexCache = new Map();
+        this.kyberZapService = window.KyberZapService ? new window.KyberZapService() : null;
         this.zapCustomTokenAddress = '';
         this.zapCustomTokenError = '';
 
@@ -549,129 +547,48 @@ class StakingModalNew {
     }
 
     isNativeZapToken(address) {
-        return !address || address === 'native' || address === window.CONFIG?.KYBER_ZAP?.NATIVE_TOKEN_ADDRESS;
+        return this.getKyberZapService().isNativeToken(address);
+    }
+
+    getKyberZapService() {
+        if (!this.kyberZapService && window.KyberZapService) {
+            this.kyberZapService = new window.KyberZapService();
+        }
+
+        if (!this.kyberZapService) {
+            throw new Error('Kyber zap service is not available.');
+        }
+
+        return this.kyberZapService;
     }
 
     getCurrentNetworkKey() {
-        return window.networkSelector?.getCurrentNetwork?.()
-            || window.networkSelector?.getSelectedNetworkKey?.()
-            || window.networkSelector?.currentNetwork
-            || 'BSC_MAINNET';
+        return this.getKyberZapService().getCurrentNetworkKey();
     }
 
     getKyberZapNetworkConfig() {
-        const networkKey = this.getCurrentNetworkKey();
-        return window.CONFIG?.KYBER_ZAP?.NETWORKS?.[networkKey] || null;
+        return this.getKyberZapService().getNetworkConfig();
     }
 
     async getZapPoolFactoryAddress(poolAddress) {
-        if (!poolAddress || !window.ethers) return null;
-
-        const normalizedPool = poolAddress.toLowerCase();
-        if (this.zapPoolDexCache.has(normalizedPool)) {
-            return this.zapPoolDexCache.get(normalizedPool);
-        }
-
-        const provider = window.contractManager?.provider || window.walletManager?.provider;
-        if (!provider) return null;
-
-        try {
-            const pairAbi = ['function factory() view returns (address)'];
-            const pairContract = new window.ethers.Contract(poolAddress, pairAbi, provider);
-            const factoryAddress = await pairContract.factory();
-            const normalizedFactory = factoryAddress?.toLowerCase?.() || null;
-            this.zapPoolDexCache.set(normalizedPool, normalizedFactory);
-            return normalizedFactory;
-        } catch (error) {
-            console.warn('Unable to detect zap pool factory:', error.message);
-            this.zapPoolDexCache.set(normalizedPool, null);
-            return null;
-        }
+        return this.getKyberZapService().getPoolFactoryAddress(poolAddress);
     }
 
     async getZapDexCandidates(networkConfig, poolAddress) {
-        const candidates = [];
-        const addCandidate = (dexId) => {
-            if (dexId && !candidates.includes(dexId)) {
-                candidates.push(dexId);
-            }
-        };
-
-        const platform = this.currentPair?.platform;
-        if (platform && networkConfig.PLATFORM_DEX_IDS?.[platform]) {
-            addCandidate(networkConfig.PLATFORM_DEX_IDS[platform]);
-        }
-
-        const factoryAddress = await this.getZapPoolFactoryAddress(poolAddress);
-        if (factoryAddress && networkConfig.FACTORY_DEX_IDS?.[factoryAddress]) {
-            addCandidate(networkConfig.FACTORY_DEX_IDS[factoryAddress]);
-        }
-
-        addCandidate(networkConfig.DEX);
-        (networkConfig.DEX_CANDIDATES || []).forEach(addCandidate);
-        return candidates;
+        return this.getKyberZapService().getDexCandidates({
+            networkConfig,
+            poolAddress,
+            platform: this.currentPair?.platform
+        });
     }
 
     async getTokenMetadata(address) {
-        if (!address || !window.ethers) return null;
-
-        const normalized = address.toLowerCase();
-        if (this.zapTokenMeta?.[normalized]) {
-            return this.zapTokenMeta[normalized];
-        }
-
-        const provider = window.contractManager?.provider || window.walletManager?.provider;
-        if (!provider) return null;
-
-        const abi = [
-            'function symbol() view returns (string)',
-            'function name() view returns (string)',
-            'function decimals() view returns (uint8)'
-        ];
-
-        try {
-            const contract = new window.ethers.Contract(address, abi, provider);
-            const [symbol, name, decimals] = await Promise.all([
-                contract.symbol().catch(() => 'TOKEN'),
-                contract.name().catch(() => 'Token'),
-                contract.decimals().catch(() => 18)
-            ]);
-            const meta = { address, symbol, name, decimals: Number(decimals) || 18 };
-            this.zapTokenMeta = this.zapTokenMeta || {};
-            this.zapTokenMeta[normalized] = meta;
-            return meta;
-        } catch (error) {
-            console.warn('Unable to load token metadata:', address, error.message);
-            return { address, symbol: 'TOKEN', name: 'Token', decimals: 18 };
-        }
+        return this.getKyberZapService().getTokenMetadata(address);
     }
 
     async getPairTokenMetadata() {
         const lpTokenAddress = this.currentPair?.lpToken || this.currentPair?.address;
-        const provider = window.contractManager?.provider || window.walletManager?.provider;
-
-        if (!lpTokenAddress || !provider || !window.ethers) {
-            return [];
-        }
-
-        try {
-            const pairAbi = [
-                'function token0() view returns (address)',
-                'function token1() view returns (address)'
-            ];
-            const pairContract = new window.ethers.Contract(lpTokenAddress, pairAbi, provider);
-            const [token0, token1] = await Promise.all([
-                pairContract.token0(),
-                pairContract.token1()
-            ]);
-            return (await Promise.all([
-                this.getTokenMetadata(token0),
-                this.getTokenMetadata(token1)
-            ])).filter(Boolean);
-        } catch (error) {
-            console.warn('Unable to load LP pair tokens for zap:', error.message);
-            return [];
-        }
+        return this.getKyberZapService().getPairTokenMetadata(lpTokenAddress);
     }
 
     async loadZapTokens() {
@@ -923,60 +840,42 @@ class StakingModalNew {
             // Keep the raw input value in the key if parsing fails; fetch validation will surface the error.
         }
 
-        return [
-            this.getCurrentNetworkKey(),
-            window.walletManager?.address || '',
-            String(lpTokenAddress).toLowerCase(),
-            String(tokenAddress).toLowerCase(),
+        return this.getKyberZapService().getQuoteRequestKey({
+            networkKey: this.getCurrentNetworkKey(),
+            walletAddress: window.walletManager?.address || '',
+            lpTokenAddress,
+            tokenAddress,
             amountRaw,
-            this.zapSlippageBps
-        ].join('|');
+            slippageBps: this.zapSlippageBps
+        });
     }
 
     getZapQuoteRateLimitMaxRequests() {
-        return Number(window.CONFIG?.KYBER_ZAP?.QUOTE_RATE_LIMIT_MAX_REQUESTS) || 8;
+        return this.getKyberZapService().getQuoteRateLimitMaxRequests();
     }
 
     getZapQuoteRateLimitWindowMs() {
-        return Number(window.CONFIG?.KYBER_ZAP?.RATE_LIMIT_WINDOW_MS) || 10000;
+        return this.getKyberZapService().getQuoteRateLimitWindowMs();
     }
 
     pruneZapQuoteRequestTimestamps(now = Date.now()) {
-        const windowMs = this.getZapQuoteRateLimitWindowMs();
-        this.zapQuoteRequestTimestamps = this.zapQuoteRequestTimestamps.filter(timestamp => now - timestamp < windowMs);
+        this.getKyberZapService().pruneQuoteRequestTimestamps(now);
     }
 
     getZapQuoteRateLimitWaitMs(now = Date.now()) {
-        this.pruneZapQuoteRequestTimestamps(now);
-
-        if (this.zapQuoteRequestTimestamps.length < this.getZapQuoteRateLimitMaxRequests()) {
-            return 0;
-        }
-
-        const oldestRequest = this.zapQuoteRequestTimestamps[0];
-        return Math.max(0, this.getZapQuoteRateLimitWindowMs() - (now - oldestRequest));
+        return this.getKyberZapService().getQuoteRateLimitWaitMs(now);
     }
 
     reserveZapQuoteRequestSlot(now = Date.now()) {
-        const waitMs = this.getZapQuoteRateLimitWaitMs(now);
-        if (waitMs > 0) {
-            return { allowed: false, waitMs };
-        }
-
-        this.zapQuoteRequestTimestamps.push(now);
-        return { allowed: true, waitMs: 0 };
+        return this.getKyberZapService().reserveQuoteRequestSlot(now);
     }
 
     getZapQuoteRateLimitMessage(waitMs = this.getZapQuoteRateLimitWaitMs()) {
-        const seconds = Math.max(1, Math.ceil(waitMs / 1000));
-        return `Quote refresh paused to avoid Kyber rate limits. Try again in ${seconds}s.`;
+        return this.getKyberZapService().getQuoteRateLimitMessage(waitMs);
     }
 
     createZapQuoteRateLimitError(waitMs) {
-        const error = new Error(this.getZapQuoteRateLimitMessage(waitMs));
-        error.zapRateLimited = true;
-        error.waitMs = waitMs;
-        return error;
+        return this.getKyberZapService().createRateLimitError(waitMs);
     }
 
     scheduleZapQuoteRateLimitRefresh(waitMs = this.getZapQuoteRateLimitWaitMs()) {
@@ -1122,36 +1021,27 @@ class StakingModalNew {
     }
 
     getZapRouteData() {
-        return this.zapQuote?.data || this.zapQuote || null;
+        return this.getKyberZapService().getRouteData(this.zapQuote);
     }
 
     getZapRouteEncoded() {
-        const data = this.getZapRouteData();
-        return data?.route || data?.routeData || data?.encodedRoute || null;
+        return this.getKyberZapService().getRouteEncoded(this.zapQuote);
     }
 
     getZapRouterAddress(source = null) {
-        const data = source || this.getZapRouteData();
-        return data?.routerAddress || data?.router || data?.to || data?.tx?.to || data?.transaction?.to || null;
+        return this.getKyberZapService().getRouterAddress(source || this.getZapRouteData());
     }
 
     getExpectedZapRouterAddress() {
-        return this.getKyberZapNetworkConfig()?.ROUTER_ADDRESS || null;
+        return this.getKyberZapService().getExpectedRouterAddress(this.getKyberZapNetworkConfig());
     }
 
     normalizeAddress(address) {
-        return typeof address === 'string' ? address.toLowerCase() : '';
+        return this.getKyberZapService().normalizeAddress(address);
     }
 
     validateZapRouterAddress(routerAddress) {
-        const expectedRouter = this.getExpectedZapRouterAddress();
-        if (!expectedRouter || !routerAddress) {
-            return;
-        }
-
-        if (this.normalizeAddress(routerAddress) !== this.normalizeAddress(expectedRouter)) {
-            throw new Error('Kyber returned an unexpected zap router. Refresh the quote and try again.');
-        }
+        this.getKyberZapService().validateRouterAddress(routerAddress, this.getKyberZapNetworkConfig());
     }
 
     getZapQuoteSummaryValue(paths, fallback = 'N/A') {
@@ -1389,9 +1279,6 @@ class StakingModalNew {
             const tokenAddress = this.isNativeZapToken(this.zapSelectedToken.address)
                 ? window.CONFIG.KYBER_ZAP.NATIVE_TOKEN_ADDRESS
                 : this.zapSelectedToken.address;
-
-            const baseUrl = window.CONFIG?.KYBER_ZAP?.BASE_URL || 'https://zap-api.kyberswap.com';
-            const dexCandidates = await this.getZapDexCandidates(networkConfig, lpTokenAddress);
             const initialRateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
             if (initialRateLimitWaitMs > 0) {
                 throw this.createZapQuoteRateLimitError(initialRateLimitWaitMs);
@@ -1404,49 +1291,15 @@ class StakingModalNew {
             this.updateZapQuotePanel();
             this.updateZapButton();
 
-            let payload = null;
-            let lastError = null;
-
-            for (const dexId of dexCandidates) {
-                const rateLimit = this.reserveZapQuoteRequestSlot();
-                if (!rateLimit.allowed) {
-                    throw this.createZapQuoteRateLimitError(rateLimit.waitMs);
-                }
-
-                const params = new URLSearchParams({
-                    dex: dexId,
-                    'pool.id': lpTokenAddress,
-                    'position.id': window.walletManager.address,
-                    tokensIn: tokenAddress,
-                    amountsIn: amountRaw.toString(),
-                    slippage: this.zapSlippageBps.toString()
-                });
-
-                const url = `${baseUrl}/${networkConfig.CHAIN}/api/v1/in/route?${params.toString()}`;
-                const response = await fetch(url, {
-                    headers: {
-                        accept: 'application/json',
-                        'x-client-id': window.CONFIG?.KYBER_ZAP?.CLIENT_ID || 'liberdus-lp-staking'
-                    }
-                });
-                const candidatePayload = await response.json().catch(() => ({}));
-                const failed = !response.ok || (candidatePayload.code && candidatePayload.code !== 0 && candidatePayload.code !== 200);
-
-                if (!failed) {
-                    payload = candidatePayload;
-                    break;
-                }
-
-                lastError = new Error(candidatePayload.message || `Kyber quote failed with status ${response.status}`);
-                const canTryNextDex = /invalid pool|does not belong to given dex id/i.test(lastError.message);
-                if (!canTryNextDex) {
-                    break;
-                }
-            }
-
-            if (!payload) {
-                throw lastError || new Error('Unable to fetch a Kyber zap quote.');
-            }
+            const payload = await this.getKyberZapService().fetchQuote({
+                networkConfig,
+                lpTokenAddress,
+                walletAddress: window.walletManager.address,
+                tokenAddress,
+                amountRaw,
+                slippageBps: this.zapSlippageBps,
+                platform: this.currentPair?.platform
+            });
 
             if (requestId !== this.zapQuoteRequestId) {
                 return;
@@ -2600,39 +2453,15 @@ class StakingModalNew {
     async buildZapRoute() {
         const networkConfig = this.getKyberZapNetworkConfig();
         const route = this.getZapRouteEncoded();
-
-        if (!networkConfig) {
-            throw new Error('Zap is not available on this network.');
-        }
-
-        if (!route) {
-            throw new Error('Kyber route is missing. Refresh the quote and try again.');
-        }
-
         const deadlineSeconds = Math.floor(Date.now() / 1000) + (this.zapDeadlineMinutes || 20) * 60;
-        const baseUrl = window.CONFIG?.KYBER_ZAP?.BASE_URL || 'https://zap-api.kyberswap.com';
-        const response = await fetch(`${baseUrl}/${networkConfig.CHAIN}/api/v1/in/route/build`, {
-            method: 'POST',
-            headers: {
-                accept: 'application/json',
-                'content-type': 'application/json',
-                'x-client-id': window.CONFIG?.KYBER_ZAP?.CLIENT_ID || 'liberdus-lp-staking'
-            },
-            body: JSON.stringify({
-                sender: window.walletManager.address,
-                recipient: window.walletManager.address,
-                route,
-                deadline: deadlineSeconds,
-                source: window.CONFIG?.KYBER_ZAP?.SOURCE || 'liberdus-lp-staking'
-            })
+
+        return this.getKyberZapService().buildRoute({
+            networkConfig,
+            route,
+            sender: window.walletManager.address,
+            recipient: window.walletManager.address,
+            deadline: deadlineSeconds
         });
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok || (payload.code && payload.code !== 0 && payload.code !== 200)) {
-            throw new Error(payload.message || `Kyber build failed with status ${response.status}`);
-        }
-
-        return payload?.data || payload;
     }
 
     getZapTransactionRequest(buildData) {

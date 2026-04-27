@@ -168,6 +168,7 @@ class MasterInitializer {
         const uiScripts = [
             'js/components/wallet-popup.js',
             'js/components/home-page.js',
+            'js/services/kyber-zap-service.js',
             'js/components/staking-modal-new.js'
         ];
         console.log('Loading homepage UI components');
