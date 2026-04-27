@@ -382,7 +382,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--spacing-1);
     align-items: center;
-    margin-top: calc(var(--spacing-2) * -1);
+    margin-top: var(--spacing-1);
     margin-bottom: var(--spacing-2);
 }
 
