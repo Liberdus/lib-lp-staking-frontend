@@ -312,12 +312,8 @@ class StakingModalNew {
                     e.target.value = sanitizedValue;
                 }
                 this.zapInputAmount = sanitizedValue;
-                this.zapQuote = null;
-                this.zapQuoteStatus = 'idle';
-                this.zapQuoteError = '';
-                this.zapQuoteRequestId += 1;
+                this.resetZapQuoteState();
                 document.querySelectorAll('.zap-percentage-btn').forEach(btn => btn.classList.remove('active'));
-                this.resetZapQuoteCountdown();
                 this.updateZapBalanceError();
                 this.updateZapQuotePanel();
                 this.debounceZapQuote();
@@ -342,10 +338,6 @@ class StakingModalNew {
             if (e.target.id === 'claim-rewards-checkbox') {
                 this.claimRewardsOnUnstake = e.target.checked;
                 console.log('Claim rewards on unstake:', this.claimRewardsOnUnstake);
-            }
-
-            if (e.target.id === 'zap-token-select') {
-                this.setZapInputToken(e.target.value);
             }
         });
 
@@ -572,18 +564,6 @@ class StakingModalNew {
         return this.getKyberZapService().getNetworkConfig();
     }
 
-    async getZapPoolFactoryAddress(poolAddress) {
-        return this.getKyberZapService().getPoolFactoryAddress(poolAddress);
-    }
-
-    async getZapDexCandidates(networkConfig, poolAddress) {
-        return this.getKyberZapService().getDexCandidates({
-            networkConfig,
-            poolAddress,
-            platform: this.currentPair?.platform
-        });
-    }
-
     async getTokenMetadata(address) {
         return this.getKyberZapService().getTokenMetadata(address);
     }
@@ -595,6 +575,17 @@ class StakingModalNew {
     async getPairTokenMetadata() {
         const lpTokenAddress = this.currentPair?.lpToken || this.currentPair?.address;
         return this.getKyberZapService().getPairTokenMetadata(lpTokenAddress);
+    }
+
+    resetZapQuoteState({ status = 'idle', error = '' } = {}) {
+        this.zapQuote = null;
+        this.zapQuoteStatus = status;
+        this.zapQuoteError = error;
+        this.zapQuoteKey = '';
+        this.zapQuoteInFlightKey = '';
+        this.zapQuoteRequestId += 1;
+
+        this.resetZapQuoteCountdown();
     }
 
     sortZapInputTokens(tokens) {
@@ -697,12 +688,8 @@ class StakingModalNew {
             this.zapInputTokenAddress = 'custom';
             this.zapSelectedToken = null;
             this.zapInputAmount = '';
-            this.zapQuote = null;
-            this.zapQuoteStatus = 'idle';
-            this.zapQuoteError = '';
+            this.resetZapQuoteState();
             this.zapCustomTokenError = '';
-            this.zapQuoteRequestId += 1;
-            this.resetZapQuoteCountdown();
             this.stopZapQuoteAutoRefresh();
             this.renderTabContent();
             return;
@@ -711,11 +698,7 @@ class StakingModalNew {
         this.zapInputTokenAddress = address;
         this.zapSelectedToken = this.zapInputTokens.find(token => token.address === address) || null;
         this.zapInputAmount = '';
-        this.zapQuote = null;
-        this.zapQuoteStatus = 'idle';
-        this.zapQuoteError = '';
-        this.zapQuoteRequestId += 1;
-        this.resetZapQuoteCountdown();
+        this.resetZapQuoteState();
         this.stopZapQuoteAutoRefresh();
         this.renderTabContent();
     }
@@ -754,11 +737,7 @@ class StakingModalNew {
             this.zapInputTokenAddress = token.address;
             this.zapSelectedToken = token;
             this.zapInputAmount = '';
-            this.zapQuote = null;
-            this.zapQuoteStatus = 'idle';
-            this.zapQuoteError = '';
-            this.zapQuoteRequestId += 1;
-            this.resetZapQuoteCountdown();
+            this.resetZapQuoteState();
             await this.loadZapTokenBalances();
             this.renderTabContent();
             this.loadZapCustomTokenIcon(address).catch(error => {
@@ -808,11 +787,7 @@ class StakingModalNew {
                 this.zapSlippageBps = parsed;
                 this.zapCustomSlippage = '';
                 this.zapCustomSlippageError = '';
-                this.zapQuote = null;
-                this.zapQuoteStatus = 'idle';
-                this.zapQuoteError = '';
-                this.zapQuoteRequestId += 1;
-                this.resetZapQuoteCountdown();
+                this.resetZapQuoteState();
                 this.renderTabContent();
                 this.debounceZapQuote();
             }
@@ -846,13 +821,10 @@ class StakingModalNew {
         this.zapCustomSlippageError = this.getZapCustomSlippageError(sanitizedValue);
 
         if (this.zapCustomSlippageError) {
-            this.zapQuote = null;
-            this.zapQuoteStatus = 'error';
-            this.zapQuoteError = this.zapCustomSlippageError;
-            this.zapQuoteKey = '';
-            this.zapQuoteInFlightKey = '';
-            this.zapQuoteRequestId += 1;
-            this.resetZapQuoteCountdown();
+            this.resetZapQuoteState({
+                status: 'error',
+                error: this.zapCustomSlippageError
+            });
             this.stopZapQuoteAutoRefresh();
             this.updateZapQuotePanel();
             this.updateZapButton();
@@ -872,12 +844,7 @@ class StakingModalNew {
 
         const customValue = Number(sanitizedValue);
         this.zapSlippageBps = Math.round(customValue * 100);
-        this.zapQuote = null;
-        this.zapQuoteStatus = 'idle';
-        this.zapQuoteKey = '';
-        this.zapQuoteInFlightKey = '';
-        this.zapQuoteRequestId += 1;
-        this.resetZapQuoteCountdown();
+        this.resetZapQuoteState();
         this.updateZapQuotePanel();
         this.debounceZapQuote();
         this.updateZapButton();
@@ -901,11 +868,7 @@ class StakingModalNew {
         const amount = this.applyDecimalLimit(this.formatTokenAmount(amountRaw, decimals), decimals);
 
         this.zapInputAmount = amount;
-        this.zapQuote = null;
-        this.zapQuoteStatus = 'idle';
-        this.zapQuoteError = '';
-        this.zapQuoteRequestId += 1;
-        this.resetZapQuoteCountdown();
+        this.resetZapQuoteState();
 
         const input = document.getElementById('zap-amount-input');
         if (input) input.value = amount;
@@ -965,32 +928,8 @@ class StakingModalNew {
         });
     }
 
-    getZapQuoteRateLimitMaxRequests() {
-        return this.getKyberZapService().getQuoteRateLimitMaxRequests();
-    }
-
-    getZapQuoteRateLimitWindowMs() {
-        return this.getKyberZapService().getQuoteRateLimitWindowMs();
-    }
-
-    pruneZapQuoteRequestTimestamps(now = Date.now()) {
-        this.getKyberZapService().pruneQuoteRequestTimestamps(now);
-    }
-
     getZapQuoteRateLimitWaitMs(now = Date.now()) {
         return this.getKyberZapService().getQuoteRateLimitWaitMs(now);
-    }
-
-    reserveZapQuoteRequestSlot(now = Date.now()) {
-        return this.getKyberZapService().reserveQuoteRequestSlot(now);
-    }
-
-    getZapQuoteRateLimitMessage(waitMs = this.getZapQuoteRateLimitWaitMs()) {
-        return this.getKyberZapService().getQuoteRateLimitMessage(waitMs);
-    }
-
-    createZapQuoteRateLimitError(waitMs) {
-        return this.getKyberZapService().createRateLimitError(waitMs);
     }
 
     scheduleZapQuoteRateLimitRefresh(waitMs = this.getZapQuoteRateLimitWaitMs()) {
@@ -1147,27 +1086,12 @@ class StakingModalNew {
         return this.getKyberZapService().getRouterAddress(source || this.getZapRouteData());
     }
 
-    getExpectedZapRouterAddress() {
-        return this.getKyberZapService().getExpectedRouterAddress(this.getKyberZapNetworkConfig());
-    }
-
-    normalizeAddress(address) {
-        return this.getKyberZapService().normalizeAddress(address);
-    }
-
     validateZapRouterAddress(routerAddress) {
         this.getKyberZapService().validateRouterAddress(routerAddress, this.getKyberZapNetworkConfig());
     }
 
     getZapQuoteSummaryValue(paths, fallback = 'N/A') {
-        const data = this.getZapRouteData();
-        for (const path of paths) {
-            const value = path.split('.').reduce((current, key) => current?.[key], data);
-            if (value !== undefined && value !== null && value !== '') {
-                return value;
-            }
-        }
-        return fallback;
+        return this.getZapQuoteSummaryEntry(paths, fallback).value;
     }
 
     getZapQuoteSummaryEntry(paths, fallback = 'N/A') {
@@ -1208,15 +1132,6 @@ class StakingModalNew {
     isHighZapPriceImpact(value, path = '') {
         const percentValue = this.getZapPercentNumber(value, path);
         return percentValue !== null && Math.abs(percentValue) >= this.getZapHighPriceImpactPercent();
-    }
-
-    formatZapRawAmount(value, decimals = 18) {
-        if (!value || !window.ethers) return 'N/A';
-        try {
-            return this.formatTokenAmount(value.toString(), decimals);
-        } catch (error) {
-            return String(value);
-        }
     }
 
     formatZapDisplayAmount(value, decimals = 18, symbol = '') {
@@ -1308,14 +1223,6 @@ class StakingModalNew {
         }
 
         return `${formatted} ${token.symbol}`;
-    }
-
-    formatZapTokenOptionLabel(token) {
-        if (!token) {
-            return '';
-        }
-
-        return this.getZapTokenLabelParts(token).fullLabel;
     }
 
     getZapTokenLabelParts(token) {
@@ -1560,7 +1467,7 @@ class StakingModalNew {
                 : this.zapSelectedToken.address;
             const initialRateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
             if (initialRateLimitWaitMs > 0) {
-                throw this.createZapQuoteRateLimitError(initialRateLimitWaitMs);
+                throw this.getKyberZapService().createRateLimitError(initialRateLimitWaitMs);
             }
 
             this.zapQuoteStatus = 'loading';
@@ -2494,6 +2401,15 @@ class StakingModalNew {
         `;
     }
 
+    renderZapQuoteRow(label, value, riskClass = '') {
+        return `
+                    <div class="zap-quote-row${riskClass ? ` ${riskClass}` : ''}">
+                        <dt>${this.escapeHtml(label)}</dt>
+                        <dd>${this.escapeHtml(value)}</dd>
+                    </div>
+        `;
+    }
+
     renderZapQuotePanel() {
         const isLoading = this.zapQuoteStatus === 'loading';
         const isError = this.zapQuoteStatus === 'error';
@@ -2572,6 +2488,14 @@ class StakingModalNew {
             routeSummary = this.getZapRouteSummary();
         }
 
+        const quoteRows = [
+            this.renderZapQuoteRow('Input', inputDisplay),
+            this.renderZapQuoteRow('Estimated LP', lpResultDisplay),
+            showFeeRow ? this.renderZapQuoteRow('Kyber Fee', feeDisplay) : '',
+            this.renderZapQuoteRow('Price Impact', priceImpactDisplay, priceImpactRiskClass),
+            this.renderZapQuoteRow('Slippage', slippageDisplay, slippageRiskClass)
+        ].join('');
+
         return `
             <div class="${cardClass}">
                 <div class="zap-quote-header">
@@ -2591,28 +2515,7 @@ class StakingModalNew {
                     </div>
                 </div>
                 <dl class="zap-quote-list">
-                    <div class="zap-quote-row">
-                        <dt>Input</dt>
-                        <dd>${this.escapeHtml(inputDisplay)}</dd>
-                    </div>
-                    <div class="zap-quote-row">
-                        <dt>Estimated LP</dt>
-                        <dd>${this.escapeHtml(lpResultDisplay)}</dd>
-                    </div>
-                    ${showFeeRow ? `
-                        <div class="zap-quote-row">
-                            <dt>Kyber Fee</dt>
-                            <dd>${this.escapeHtml(feeDisplay)}</dd>
-                        </div>
-                    ` : ''}
-                    <div class="zap-quote-row${priceImpactRiskClass ? ` ${priceImpactRiskClass}` : ''}">
-                        <dt>Price Impact</dt>
-                        <dd>${this.escapeHtml(priceImpactDisplay)}</dd>
-                    </div>
-                    <div class="zap-quote-row${slippageRiskClass ? ` ${slippageRiskClass}` : ''}">
-                        <dt>Slippage</dt>
-                        <dd>${this.escapeHtml(slippageDisplay)}</dd>
-                    </div>
+                    ${quoteRows}
                 </dl>
                 ${rateLimitMessage ? `
                     <div class="zap-rate-limit-note" role="status">
@@ -2778,7 +2681,6 @@ class StakingModalNew {
         const txData = buildData?.txData || buildData?.calldata || buildData?.callData || buildData?.transaction?.data || buildData?.data;
         const to = this.getZapRouterAddress(buildData);
         const rawValue = buildData?.value || buildData?.txValue || buildData?.transaction?.value || '0';
-        const gasLimit = buildData?.gas || buildData?.gasLimit || buildData?.transaction?.gasLimit;
 
         if (!to || !txData) {
             throw new Error('Kyber did not return transaction calldata.');
@@ -2786,17 +2688,11 @@ class StakingModalNew {
 
         this.validateZapRouterAddress(to);
 
-        const request = {
+        return {
             to,
             data: txData,
             value: window.ethers.BigNumber.from(rawValue || '0')
         };
-
-        if (gasLimit) {
-            request.gasLimit = window.ethers.BigNumber.from(gasLimit).mul(2);
-        }
-
-        return request;
     }
 
     async executeZap() {

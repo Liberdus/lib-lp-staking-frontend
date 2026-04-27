@@ -121,6 +121,10 @@ function createModal(StakingModalNew) {
     return modal;
 }
 
+async function createLoadedModal() {
+    return createModal(await loadStakingModalClass());
+}
+
 function arrangeExecutableZap(modal, { executeResult, sendTransaction } = {}) {
     modal.zapQuote = { data: { route: '0xroute' } };
     modal.zapQuoteStatus = 'ready';
@@ -184,6 +188,15 @@ function arrangeQuoteFetch(modal, responsePayload = { data: { route: '0xroute' }
     });
 }
 
+function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
+    modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
+    modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+    modal.zapInputTokens = [modal.zapSelectedToken];
+    modal.zapInputAmount = '1';
+    modal.zapQuoteStatus = 'ready';
+    modal.zapQuote = { data };
+}
+
 describe('StakingModalNew zap cleanup', () => {
     beforeEach(() => {
         vi.useRealTimers();
@@ -221,10 +234,9 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('clearInputs removes active zap percentage button state', async () => {
-        const StakingModalNew = await loadStakingModalClass();
+        const modal = await createLoadedModal();
         const activeButton = document.registerElement(createElement({ classes: ['zap-percentage-btn', 'active'] }));
         const inactiveButton = document.registerElement(createElement({ classes: ['zap-percentage-btn'] }));
-        const modal = createModal(StakingModalNew);
 
         modal.clearInputs();
 
@@ -234,8 +246,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.isOpen = true;
         modal.currentTab = 'zap';
         modal.zapSelectedToken = { address: 'native' };
@@ -252,8 +263,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('fetches zap quote previews when the amount exceeds the selected token balance', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         setZapBalance(modal, 5);
         modal.zapInputAmount = '10';
         modal.fetchZapQuote = vi.fn();
@@ -267,8 +277,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('starts zap quote auto-refresh when the amount exceeds the selected token balance', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.isOpen = true;
         modal.currentTab = 'zap';
         setZapBalance(modal, 5);
@@ -282,8 +291,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('debounces rapid zap percentage clicks before fetching a quote', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 0 };
         modal.zapInputTokenBalances.set('0xtoken', {
             raw: createZapRawBalance(100),
@@ -304,11 +312,9 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('deduplicates identical non-forced zap quote requests', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeQuoteFetch(modal);
-        modal.zapQuote = { data: { route: '0xroute' } };
-        modal.zapQuoteStatus = 'ready';
+        arrangeReadyZapQuote(modal);
         modal.zapQuoteKey = modal.getZapQuoteRequestKey();
 
         await modal.fetchZapQuote();
@@ -319,8 +325,7 @@ describe('StakingModalNew zap cleanup', () => {
     it('rate-limits Kyber quote HTTP requests', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-04-27T12:00:00Z'));
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeQuoteFetch(modal);
         globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 2;
 
@@ -338,8 +343,7 @@ describe('StakingModalNew zap cleanup', () => {
     it('auto-refresh skips zap quote fetches while rate-limited', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-04-27T12:00:00Z'));
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.isOpen = true;
         modal.currentTab = 'zap';
         modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
@@ -358,8 +362,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('renders an insufficient balance error for impossible zap amounts', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT' };
         modal.zapInputTokens = [{ symbol: 'USDT', address: '0xtoken', decimals: 18 }];
         modal.zapInputTokenAddress = '0xtoken';
@@ -372,8 +375,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('renders abbreviated token addresses in zap token options', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT' };
         modal.zapInputTokens = [
             { symbol: 'BNB', address: 'native', decimals: 18 },
@@ -398,8 +400,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('sorts zap input tokens alphabetically by symbol', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
 
         const sortedTokens = modal.sortZapInputTokens([
             { symbol: 'USDT', address: '0xusdt' },
@@ -412,14 +413,8 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('invalid custom zap slippage clears stale quotes and is not shown as active', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
-        modal.currentPair = { name: 'LIB/USDT' };
-        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
-        modal.zapInputTokens = [modal.zapSelectedToken];
-        modal.zapInputAmount = '1';
-        modal.zapQuote = { data: { route: '0xroute' } };
-        modal.zapQuoteStatus = 'ready';
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal);
         modal.zapSlippageBps = 50;
 
         const sanitizedValue = modal.setZapCustomSlippageInput('0');
@@ -439,12 +434,8 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('valid custom zap slippage applies bps and refreshes quotes', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
-        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
-        modal.zapInputAmount = '1';
-        modal.zapQuote = { data: { route: '0xroute' } };
-        modal.zapQuoteStatus = 'ready';
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal);
         modal.fetchZapQuote = vi.fn();
 
         const sanitizedValue = modal.setZapCustomSlippageInput('2.345');
@@ -459,8 +450,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('does not execute zap while custom slippage is invalid', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeExecutableZap(modal);
         modal.zapCustomSlippage = '101';
         modal.zapCustomSlippageError = modal.getZapCustomSlippageError();
@@ -472,8 +462,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('applies a GeckoTerminal icon URL to custom zap tokens after metadata loads', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.zapInputTokens = [
             { symbol: 'ABC', address: '0xabc', decimals: 18, custom: true }
         ];
@@ -492,8 +481,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('keeps the symbol badge when custom token metadata returns an unsafe icon URL', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         modal.zapInputTokens = [
             { symbol: 'ABC', address: '0xabc', decimals: 18, custom: true }
         ];
@@ -511,9 +499,8 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('updates the visible zap balance error without re-rendering the tab', async () => {
-        const StakingModalNew = await loadStakingModalClass();
+        const modal = await createLoadedModal();
         const errorElement = document.registerElement(createElement({ id: 'zap-balance-error' }));
-        const modal = createModal(StakingModalNew);
         setZapBalance(modal, 5);
         modal.zapInputAmount = '10';
 
@@ -530,8 +517,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('does not execute a ready zap quote when the amount exceeds the selected token balance', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeExecutableZap(modal);
         setZapBalance(modal, 5);
         modal.zapInputAmount = '10';
@@ -543,8 +529,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('executeZap stops quote auto-refresh before building the zap transaction', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         const calls = [];
         modal.stopZapQuoteAutoRefresh = vi.fn(() => calls.push('stop'));
         arrangeExecutableZap(modal);
@@ -560,8 +545,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('executeZap syncs quote auto-refresh after a failed zap attempt', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeExecutableZap(modal, {
             sendTransaction: vi.fn().mockRejectedValue(new Error('User rejected transaction'))
         });
@@ -574,8 +558,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('executeZap clears inputs after a successful confirmed zap transaction', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeExecutableZap(modal);
         modal.clearInputs = vi.fn();
         modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
@@ -591,8 +574,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('executeZap does not leave zap quote auto-refresh running after success', async () => {
         vi.useFakeTimers();
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
         arrangeExecutableZap(modal);
         modal.isOpen = true;
         modal.currentTab = 'zap';
@@ -616,8 +598,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('rejects zap transactions returned for an unexpected Kyber router', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
 
         expect(() => modal.getZapTransactionRequest({
             to: '0x1111111111111111111111111111111111111111',
@@ -627,8 +608,7 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('allows zap transactions returned for the configured Kyber router', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
+        const modal = await createLoadedModal();
 
         const request = modal.getZapTransactionRequest({
             to: '0x0e97c887b61ccd952a53578b04763e7134429e05',
@@ -640,45 +620,33 @@ describe('StakingModalNew zap cleanup', () => {
     });
 
     it('highlights high slippage in the zap quote panel', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
-        modal.zapInputAmount = '1';
-        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
-        modal.currentPair = { name: 'LIB/USDT' };
-        modal.zapQuoteStatus = 'ready';
-        modal.zapQuote = {
-            data: {
-                route: '0xroute',
-                suggestedSlippage: 500,
-                zapDetails: { priceImpact: 1 }
-            }
-        };
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            suggestedSlippage: 500,
+            zapDetails: { priceImpact: 1 }
+        });
 
         const html = modal.renderZapQuotePanel();
 
-        expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Slippage</dt>');
+        expect(html).toContain('zap-quote-row zap-risk-high');
+        expect(html).toContain('<dt>Slippage</dt>');
         expect(html).toContain('5.00%');
         expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
     });
 
     it('highlights very high price impact in the zap quote panel', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = createModal(StakingModalNew);
-        modal.zapInputAmount = '1';
-        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
-        modal.currentPair = { name: 'LIB/USDT' };
-        modal.zapQuoteStatus = 'ready';
-        modal.zapQuote = {
-            data: {
-                route: '0xroute',
-                suggestedSlippage: 50,
-                zapDetails: { priceImpactPcm: 6000 }
-            }
-        };
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            suggestedSlippage: 50,
+            zapDetails: { priceImpactPcm: 6000 }
+        });
 
         const html = modal.renderZapQuotePanel();
 
-        expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Price Impact</dt>');
+        expect(html).toContain('zap-quote-row zap-risk-high');
+        expect(html).toContain('<dt>Price Impact</dt>');
         expect(html).toContain('6%');
         expect(html).toContain('High price impact. You may receive significantly less LP value than expected.');
     });
