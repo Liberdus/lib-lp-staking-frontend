@@ -35,6 +35,11 @@ class StakingModalNew {
         this.zapQuoteRefreshSeconds = 10;
         this.zapQuoteCountdown = 10;
         this.zapQuoteRefreshTimer = null;
+        this.zapQuoteRateLimitTimer = null;
+        this.zapQuoteRequestTimestamps = [];
+        this.zapQuoteRateLimitMessage = '';
+        this.zapQuoteKey = '';
+        this.zapQuoteInFlightKey = '';
         this.zapTokenMeta = null;
         this.zapPoolDexCache = new Map();
         this.zapCustomTokenAddress = '';
@@ -428,6 +433,9 @@ class StakingModalNew {
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
         this.zapQuoteError = '';
+        this.zapQuoteRateLimitMessage = '';
+        this.zapQuoteKey = '';
+        this.zapQuoteInFlightKey = '';
         this.zapInputTokenBalances = new Map();
         this.zapCustomTokenAddress = '';
         this.zapCustomTokenError = '';
@@ -840,7 +848,7 @@ class StakingModalNew {
                 this.zapQuoteRequestId += 1;
                 this.resetZapQuoteCountdown();
                 this.renderTabContent();
-                this.debounceZapQuote(0);
+                this.debounceZapQuote();
             }
         }
     }
@@ -879,7 +887,7 @@ class StakingModalNew {
         this.updateZapButton();
         this.updateZapQuotePanel();
         this.syncZapQuoteAutoRefresh();
-        this.debounceZapQuote(0);
+        this.debounceZapQuote();
     }
 
     debounceZapQuote(delay = 600) {
@@ -902,6 +910,95 @@ class StakingModalNew {
         return !!this.zapSelectedToken
             && !!this.zapInputAmount
             && parseFloat(this.zapInputAmount) > 0;
+    }
+
+    getZapQuoteRequestKey() {
+        const lpTokenAddress = this.currentPair?.lpToken || this.currentPair?.address || '';
+        const tokenAddress = this.zapSelectedToken?.address || '';
+        let amountRaw = this.zapInputAmount || '';
+
+        try {
+            amountRaw = this.getZapAmountRaw()?.toString() || amountRaw;
+        } catch (error) {
+            // Keep the raw input value in the key if parsing fails; fetch validation will surface the error.
+        }
+
+        return [
+            this.getCurrentNetworkKey(),
+            window.walletManager?.address || '',
+            String(lpTokenAddress).toLowerCase(),
+            String(tokenAddress).toLowerCase(),
+            amountRaw,
+            this.zapSlippageBps
+        ].join('|');
+    }
+
+    getZapQuoteRateLimitMaxRequests() {
+        return Number(window.CONFIG?.KYBER_ZAP?.QUOTE_RATE_LIMIT_MAX_REQUESTS) || 8;
+    }
+
+    getZapQuoteRateLimitWindowMs() {
+        return Number(window.CONFIG?.KYBER_ZAP?.RATE_LIMIT_WINDOW_MS) || 10000;
+    }
+
+    pruneZapQuoteRequestTimestamps(now = Date.now()) {
+        const windowMs = this.getZapQuoteRateLimitWindowMs();
+        this.zapQuoteRequestTimestamps = this.zapQuoteRequestTimestamps.filter(timestamp => now - timestamp < windowMs);
+    }
+
+    getZapQuoteRateLimitWaitMs(now = Date.now()) {
+        this.pruneZapQuoteRequestTimestamps(now);
+
+        if (this.zapQuoteRequestTimestamps.length < this.getZapQuoteRateLimitMaxRequests()) {
+            return 0;
+        }
+
+        const oldestRequest = this.zapQuoteRequestTimestamps[0];
+        return Math.max(0, this.getZapQuoteRateLimitWindowMs() - (now - oldestRequest));
+    }
+
+    reserveZapQuoteRequestSlot(now = Date.now()) {
+        const waitMs = this.getZapQuoteRateLimitWaitMs(now);
+        if (waitMs > 0) {
+            return { allowed: false, waitMs };
+        }
+
+        this.zapQuoteRequestTimestamps.push(now);
+        return { allowed: true, waitMs: 0 };
+    }
+
+    getZapQuoteRateLimitMessage(waitMs = this.getZapQuoteRateLimitWaitMs()) {
+        const seconds = Math.max(1, Math.ceil(waitMs / 1000));
+        return `Quote refresh paused to avoid Kyber rate limits. Try again in ${seconds}s.`;
+    }
+
+    createZapQuoteRateLimitError(waitMs) {
+        const error = new Error(this.getZapQuoteRateLimitMessage(waitMs));
+        error.zapRateLimited = true;
+        error.waitMs = waitMs;
+        return error;
+    }
+
+    scheduleZapQuoteRateLimitRefresh(waitMs = this.getZapQuoteRateLimitWaitMs()) {
+        this.clearZapQuoteRateLimitTimer();
+
+        if (waitMs <= 0) {
+            return;
+        }
+
+        this.zapQuoteRateLimitTimer = setTimeout(() => {
+            this.zapQuoteRateLimitTimer = null;
+            this.zapQuoteRateLimitMessage = '';
+            this.updateZapQuotePanel();
+            this.syncZapQuoteAutoRefresh();
+        }, waitMs + 50);
+    }
+
+    clearZapQuoteRateLimitTimer() {
+        if (this.zapQuoteRateLimitTimer) {
+            clearTimeout(this.zapQuoteRateLimitTimer);
+            this.zapQuoteRateLimitTimer = null;
+        }
     }
 
     getZapInputBalance() {
@@ -952,11 +1049,21 @@ class StakingModalNew {
     updateZapQuoteCountdownDisplay() {
         const countdown = document.getElementById('zap-quote-countdown');
         if (countdown) {
-            countdown.textContent = this.canFetchZapQuote() ? `${this.zapQuoteCountdown}s` : '--';
+            const rateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
+            countdown.textContent = rateLimitWaitMs > 0
+                ? `${Math.ceil(rateLimitWaitMs / 1000)}s`
+                : this.canFetchZapQuote() ? `${this.zapQuoteCountdown}s` : '--';
         }
     }
 
     syncZapQuoteAutoRefresh() {
+        const rateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
+        if (rateLimitWaitMs > 0) {
+            this.stopZapQuoteAutoRefresh();
+            this.scheduleZapQuoteRateLimitRefresh(rateLimitWaitMs);
+            return;
+        }
+
         if (this.isOpen && this.currentTab === 'zap' && this.canFetchZapQuote()) {
             this.startZapQuoteAutoRefresh();
         } else {
@@ -982,12 +1089,20 @@ class StakingModalNew {
                 return;
             }
 
+            const rateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
+            if (rateLimitWaitMs > 0) {
+                this.stopZapQuoteAutoRefresh();
+                this.scheduleZapQuoteRateLimitRefresh(rateLimitWaitMs);
+                this.updateZapQuotePanel();
+                return;
+            }
+
             this.zapQuoteCountdown = Math.max(0, this.zapQuoteCountdown - 1);
             this.updateZapQuoteCountdownDisplay();
 
             if (this.zapQuoteCountdown === 0) {
                 this.resetZapQuoteCountdown();
-                this.fetchZapQuote();
+                this.fetchZapQuote({ force: true, silentRateLimit: true });
             }
         }, 1000);
     }
@@ -1221,10 +1336,21 @@ class StakingModalNew {
         return `${inputSymbol} -> ${middle}${pairName} LP`;
     }
 
-    async fetchZapQuote() {
+    async fetchZapQuote({ force = false, silentRateLimit = false } = {}) {
         if (!this.canFetchZapQuote()) {
             this.stopZapQuoteAutoRefresh();
             this.updateZapBalanceError();
+            this.updateZapQuotePanel();
+            this.updateZapButton();
+            return;
+        }
+
+        const quoteKey = this.getZapQuoteRequestKey();
+        if (this.zapQuoteStatus === 'loading' && this.zapQuoteInFlightKey === quoteKey) {
+            return;
+        }
+
+        if (!force && this.zapQuoteStatus === 'ready' && this.zapQuote && this.zapQuoteKey === quoteKey) {
             this.updateZapQuotePanel();
             this.updateZapButton();
             return;
@@ -1255,13 +1381,9 @@ class StakingModalNew {
         }
 
         const requestId = ++this.zapQuoteRequestId;
+        const previousQuote = this.zapQuote;
 
         try {
-            this.zapQuoteStatus = 'loading';
-            this.zapQuoteError = '';
-            this.updateZapQuotePanel();
-            this.updateZapButton();
-
             const lpTokenAddress = this.currentPair?.lpToken || this.currentPair?.address;
             const amountRaw = this.getZapAmountRaw();
             const tokenAddress = this.isNativeZapToken(this.zapSelectedToken.address)
@@ -1270,10 +1392,27 @@ class StakingModalNew {
 
             const baseUrl = window.CONFIG?.KYBER_ZAP?.BASE_URL || 'https://zap-api.kyberswap.com';
             const dexCandidates = await this.getZapDexCandidates(networkConfig, lpTokenAddress);
+            const initialRateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
+            if (initialRateLimitWaitMs > 0) {
+                throw this.createZapQuoteRateLimitError(initialRateLimitWaitMs);
+            }
+
+            this.zapQuoteStatus = 'loading';
+            this.zapQuoteError = '';
+            this.zapQuoteRateLimitMessage = '';
+            this.zapQuoteInFlightKey = quoteKey;
+            this.updateZapQuotePanel();
+            this.updateZapButton();
+
             let payload = null;
             let lastError = null;
 
             for (const dexId of dexCandidates) {
+                const rateLimit = this.reserveZapQuoteRequestSlot();
+                if (!rateLimit.allowed) {
+                    throw this.createZapQuoteRateLimitError(rateLimit.waitMs);
+                }
+
                 const params = new URLSearchParams({
                     dex: dexId,
                     'pool.id': lpTokenAddress,
@@ -1316,17 +1455,29 @@ class StakingModalNew {
             this.zapQuote = payload;
             this.zapQuoteStatus = 'ready';
             this.zapQuoteError = '';
+            this.zapQuoteRateLimitMessage = '';
+            this.zapQuoteKey = quoteKey;
         } catch (error) {
             if (requestId !== this.zapQuoteRequestId) {
                 return;
             }
 
-            console.error('Failed to fetch zap quote:', error);
-            this.zapQuote = null;
-            this.zapQuoteStatus = 'error';
-            this.zapQuoteError = error.message || 'Unable to fetch a zap quote.';
+            if (error?.zapRateLimited) {
+                this.scheduleZapQuoteRateLimitRefresh(error.waitMs);
+                this.zapQuoteRateLimitMessage = silentRateLimit ? '' : error.message;
+                this.zapQuote = previousQuote;
+                this.zapQuoteStatus = previousQuote ? 'ready' : (silentRateLimit ? 'idle' : 'error');
+                this.zapQuoteError = previousQuote || silentRateLimit ? '' : error.message;
+            } else {
+                console.error('Failed to fetch zap quote:', error);
+                this.zapQuote = null;
+                this.zapQuoteStatus = 'error';
+                this.zapQuoteError = error.message || 'Unable to fetch a zap quote.';
+                this.zapQuoteRateLimitMessage = '';
+            }
         } finally {
             if (requestId === this.zapQuoteRequestId) {
+                this.zapQuoteInFlightKey = '';
                 this.updateZapQuotePanel();
                 this.updateZapButton();
                 this.syncZapQuoteAutoRefresh();
@@ -1752,8 +1903,12 @@ class StakingModalNew {
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
         this.zapQuoteError = '';
+        this.zapQuoteRateLimitMessage = '';
+        this.zapQuoteKey = '';
+        this.zapQuoteInFlightKey = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
+        this.clearZapQuoteRateLimitTimer();
         this.isApproved = false;
         this.needsApproval = false;
         this.resetActionStates(false);
@@ -2185,8 +2340,13 @@ class StakingModalNew {
             ? `${this.zapInputAmount} ${this.zapSelectedToken?.symbol || ''}`.trim()
             : '-';
         const canRefreshQuote = this.canFetchZapQuote();
-        const countdownDisplay = canRefreshQuote ? `${this.zapQuoteCountdown}s` : '--';
-        const refreshDisabled = !canRefreshQuote || isLoading;
+        const rateLimitWaitMs = this.getZapQuoteRateLimitWaitMs();
+        const isRateLimited = rateLimitWaitMs > 0;
+        const countdownDisplay = isRateLimited
+            ? `${Math.ceil(rateLimitWaitMs / 1000)}s`
+            : canRefreshQuote ? `${this.zapQuoteCountdown}s` : '--';
+        const refreshDisabled = !canRefreshQuote || isLoading || isRateLimited;
+        const rateLimitMessage = isRateLimited ? this.zapQuoteRateLimitMessage : '';
         let routeSummary = this.zapInputAmount
             ? this.getZapRouteSummary()
             : 'Enter an amount to preview the LP route.';
@@ -2291,6 +2451,11 @@ class StakingModalNew {
                         <dd>${this.escapeHtml(slippageDisplay)}</dd>
                     </div>
                 </dl>
+                ${rateLimitMessage ? `
+                    <div class="zap-rate-limit-note" role="status">
+                        ${this.escapeHtml(rateLimitMessage)}
+                    </div>
+                ` : ''}
                 ${warningMessages.length ? `
                     <div class="zap-risk-warning" role="alert">
                         <span class="material-icons" aria-hidden="true">warning</span>
@@ -2951,7 +3116,7 @@ window.safeModalFetchZapQuote = function() {
     try {
         const modal = window.stakingModal || window.stakingModalNew || window.getStakingModal();
         if (modal && typeof modal.fetchZapQuote === 'function') {
-            modal.fetchZapQuote();
+            modal.fetchZapQuote({ force: true });
         } else {
             console.warn('⚠️ Modal fetchZapQuote method not available');
         }

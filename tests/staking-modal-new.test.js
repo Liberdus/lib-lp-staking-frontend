@@ -75,8 +75,14 @@ async function loadStakingModalClass() {
             DEFAULT_DEADLINE_MINUTES: 20,
             HIGH_SLIPPAGE_BPS: 300,
             HIGH_PRICE_IMPACT_PERCENT: 5,
+            QUOTE_RATE_LIMIT_MAX_REQUESTS: 8,
+            RATE_LIMIT_WINDOW_MS: 10000,
+            NATIVE_TOKEN_ADDRESS: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+            CLIENT_ID: 'liberdus-lp-staking',
             NETWORKS: {
                 BSC_MAINNET: {
+                    CHAIN: 'bsc',
+                    DEX: 'DEX_UNISWAPV2',
                     ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05'
                 }
             }
@@ -154,6 +160,28 @@ function setZapBalance(modal, balanceValue) {
     });
 }
 
+function createZapRawBalance(value) {
+    return {
+        value,
+        gte: other => Number(value) >= Number(other?.value ?? other),
+        mul: multiplier => createZapRawBalance(Number(value) * Number(multiplier)),
+        div: divisor => createZapRawBalance(Number(value) / Number(divisor)),
+        toString: () => String(value)
+    };
+}
+
+function arrangeQuoteFetch(modal, responsePayload = { data: { route: '0xroute' } }) {
+    globalThis.walletManager = { address: '0xwallet' };
+    modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
+    modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+    modal.zapInputAmount = '1';
+    modal.getZapDexCandidates = vi.fn().mockResolvedValue(['DEX_UNISWAPV2']);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(responsePayload)
+    });
+}
+
 describe('StakingModalNew zap cleanup', () => {
     beforeEach(() => {
         vi.useRealTimers();
@@ -170,8 +198,11 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.CONFIG;
         delete globalThis.ethers;
         delete globalThis.contractManager;
+        delete globalThis.walletManager;
+        delete globalThis.networkSelector;
         delete globalThis.notificationManager;
         delete globalThis.homePage;
+        delete globalThis.fetch;
         delete globalThis.StakingModalNew;
         delete globalThis.stakingModal;
         delete globalThis.stakingModalNew;
@@ -243,6 +274,83 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.zapQuoteRefreshTimer).not.toBeNull();
         modal.stopZapQuoteAutoRefresh();
+    });
+
+    it('debounces rapid zap percentage clicks before fetching a quote', async () => {
+        vi.useFakeTimers();
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 0 };
+        modal.zapInputTokenBalances.set('0xtoken', {
+            raw: createZapRawBalance(100),
+            formatted: '100'
+        });
+        modal.fetchZapQuote = vi.fn();
+
+        modal.setZapAmountPercentage(25);
+        modal.setZapAmountPercentage(50);
+        await vi.advanceTimersByTimeAsync(599);
+
+        expect(modal.fetchZapQuote).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(modal.zapInputAmount).toBe('50');
+        expect(modal.fetchZapQuote).toHaveBeenCalledTimes(1);
+    });
+
+    it('deduplicates identical non-forced zap quote requests', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        arrangeQuoteFetch(modal);
+        modal.zapQuote = { data: { route: '0xroute' } };
+        modal.zapQuoteStatus = 'ready';
+        modal.zapQuoteKey = modal.getZapQuoteRequestKey();
+
+        await modal.fetchZapQuote();
+
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it('rate-limits Kyber quote HTTP requests', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-04-27T12:00:00Z'));
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        arrangeQuoteFetch(modal);
+        globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 2;
+
+        await modal.fetchZapQuote({ force: true });
+        await modal.fetchZapQuote({ force: true });
+        await modal.fetchZapQuote({ force: true });
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(modal.zapQuoteStatus).toBe('ready');
+        expect(modal.zapQuoteRateLimitMessage).toContain('Quote refresh paused');
+
+        modal.clearZapQuoteRateLimitTimer();
+    });
+
+    it('auto-refresh skips zap quote fetches while rate-limited', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-04-27T12:00:00Z'));
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.isOpen = true;
+        modal.currentTab = 'zap';
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+        modal.zapInputAmount = '1';
+        modal.fetchZapQuote = vi.fn();
+        globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 2;
+        modal.zapQuoteRequestTimestamps = [Date.now(), Date.now()];
+
+        modal.startZapQuoteAutoRefresh();
+        await vi.advanceTimersByTimeAsync(1000);
+
+        expect(modal.fetchZapQuote).not.toHaveBeenCalled();
+        expect(modal.zapQuoteRefreshTimer).toBeNull();
+
+        modal.clearZapQuoteRateLimitTimer();
     });
 
     it('renders an insufficient balance error for impossible zap amounts', async () => {
