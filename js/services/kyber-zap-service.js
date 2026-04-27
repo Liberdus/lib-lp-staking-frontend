@@ -49,7 +49,9 @@
         }
 
         isNativeToken(address) {
-            return !address || address === 'native' || address === this.getConfig()?.NATIVE_TOKEN_ADDRESS;
+            return !address
+                || address === 'native'
+                || this.normalizeAddress(address) === this.normalizeAddress(this.getConfig()?.NATIVE_TOKEN_ADDRESS);
         }
 
         normalizeAddress(address) {

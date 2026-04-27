@@ -434,6 +434,18 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('zap-custom-slippage-error');
     });
 
+    it('clearInputs resets invalid custom zap slippage state', async () => {
+        const modal = await createLoadedModal();
+        modal.zapCustomSlippage = '0';
+        modal.zapCustomSlippageError = modal.getZapCustomSlippageError();
+
+        modal.clearInputs();
+
+        expect(modal.zapCustomSlippage).toBe('');
+        expect(modal.zapCustomSlippageError).toBe('');
+        expect(modal.hasInvalidZapCustomSlippage()).toBe(false);
+    });
+
     it('valid custom zap slippage applies bps and refreshes quotes', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
@@ -651,5 +663,65 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('<dt>Price Impact</dt>');
         expect(html).toContain('6%');
         expect(html).toContain('High price impact. You may receive significantly less LP value than expected.');
+    });
+
+    it('renders Kyber Zap Fee when protocol fee is returned in zap actions', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            zapDetails: {
+                priceImpact: 1,
+                actions: [
+                    {
+                        type: 'ACTION_TYPE_PROTOCOL_FEE',
+                        protocolFee: {
+                            tokens: [
+                                {
+                                    address: '0xtoken',
+                                    amount: '250000000000000000',
+                                    decimals: 18,
+                                    symbol: 'USDT'
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        });
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<dt>Kyber Zap Fee</dt>');
+        expect(html).toContain('0.25 USDT');
+    });
+
+    it('renders Kyber Zap Fee as none when the protocol fee is zero', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            zapDetails: {
+                priceImpact: 1,
+                actions: [
+                    {
+                        type: 'ACTION_TYPE_PROTOCOL_FEE',
+                        protocolFee: {
+                            tokens: [
+                                {
+                                    address: '0xtoken',
+                                    amount: '0',
+                                    decimals: 18,
+                                    symbol: 'USDT'
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        });
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<dt>Kyber Zap Fee</dt>');
+        expect(html).toContain('<dd>None</dd>');
     });
 });

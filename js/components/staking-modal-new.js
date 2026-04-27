@@ -430,6 +430,7 @@ class StakingModalNew {
         this.zapInputTokenBalances = new Map();
         this.zapCustomTokenAddress = '';
         this.zapCustomTokenError = '';
+        this.zapCustomSlippage = '';
         this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
@@ -1170,6 +1171,10 @@ class StakingModalNew {
         try {
             const valueText = String(value);
             if (/^\d+$/.test(valueText) && window.ethers?.BigNumber) {
+                if (/^0+$/.test(valueText)) {
+                    return true;
+                }
+
                 return window.ethers.BigNumber.from(valueText).isZero();
             }
 
@@ -1186,6 +1191,75 @@ class StakingModalNew {
         }
 
         return this.formatZapDisplayAmount(value, decimals, symbol);
+    }
+
+    getZapTokenByAddress(address) {
+        if (!address) {
+            return null;
+        }
+
+        const service = this.getKyberZapService();
+        const normalizedAddress = service.normalizeAddress(address);
+        return this.zapInputTokens.find(token => {
+            if (this.isNativeZapToken(address) && this.isNativeZapToken(token.address)) {
+                return true;
+            }
+
+            return service.normalizeAddress(token.address) === normalizedAddress;
+        }) || null;
+    }
+
+    getZapProtocolFeeDetails(data = this.getZapRouteData()) {
+        const protocolFeeSources = [];
+        const addProtocolFeeSource = (source) => {
+            if (source && typeof source === 'object') {
+                protocolFeeSources.push(source);
+            }
+        };
+
+        addProtocolFeeSource(data?.zapDetails?.protocolFee);
+        addProtocolFeeSource(data?.protocolFee);
+
+        if (Array.isArray(data?.zapDetails?.actions)) {
+            data.zapDetails.actions.forEach(action => {
+                addProtocolFeeSource(action?.protocolFee);
+            });
+        }
+
+        for (const source of protocolFeeSources) {
+            const tokenFee = Array.isArray(source?.tokens)
+                ? (source.tokens.find(token => !this.isZeroZapAmount(token?.amount)) || source.tokens[0])
+                : null;
+            const amount = tokenFee?.amount ?? source?.amount ?? null;
+
+            if (amount !== null && amount !== undefined) {
+                const knownToken = this.getZapTokenByAddress(tokenFee?.address);
+                return {
+                    amount,
+                    symbol: tokenFee?.symbol || knownToken?.symbol || this.zapSelectedToken?.symbol || '',
+                    decimals: Number(tokenFee?.decimals ?? knownToken?.decimals ?? this.zapSelectedToken?.decimals ?? 18) || 18
+                };
+            }
+        }
+
+        const fallbackAmount = this.getZapQuoteSummaryValue(['zapDetails.feeAmount', 'fee'], null);
+        if (fallbackAmount !== null && fallbackAmount !== undefined) {
+            return {
+                amount: fallbackAmount,
+                symbol: this.zapSelectedToken?.symbol || '',
+                decimals: this.zapSelectedToken?.decimals ?? 18
+            };
+        }
+
+        if (data?.protocolFee !== null && data?.protocolFee !== undefined && typeof data.protocolFee !== 'object') {
+            return {
+                amount: data.protocolFee,
+                symbol: this.zapSelectedToken?.symbol || '',
+                decimals: this.zapSelectedToken?.decimals ?? 18
+            };
+        }
+
+        return null;
     }
 
     formatZapBalanceDisplay(balance, token) {
@@ -1950,6 +2024,7 @@ class StakingModalNew {
         this.zapQuoteRateLimitMessage = '';
         this.zapQuoteKey = '';
         this.zapQuoteInFlightKey = '';
+        this.zapCustomSlippage = '';
         this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
@@ -2430,8 +2505,7 @@ class StakingModalNew {
             ? this.getZapRouteSummary()
             : 'Enter an amount to preview the LP route.';
         let lpResultDisplay = pendingValue;
-        let feeDisplay = '';
-        let showFeeRow = false;
+        let feeDisplay = pendingValue;
         let priceImpactDisplay = pendingValue;
         let slippageDisplay = `${(Number(this.zapSlippageBps) / 100).toFixed(2)}%`;
         let priceImpactRiskClass = '';
@@ -2457,17 +2531,8 @@ class StakingModalNew {
                 'amountOut'
             ]);
             lpResultDisplay = this.formatZapDisplayAmount(lpResult, this.userBalanceDecimals, 'LP');
-            const fee = this.getZapQuoteSummaryValue([
-                'zapDetails.protocolFee.tokens.0.amount',
-                'zapDetails.protocolFee.amount',
-                'zapDetails.feeAmount',
-                'protocolFee',
-                'fee'
-            ], null);
-            const feeTokenSymbol = data?.zapDetails?.protocolFee?.tokens?.[0]?.symbol || this.zapSelectedToken?.symbol || '';
-            const feeTokenDecimals = data?.zapDetails?.protocolFee?.tokens?.[0]?.decimals || this.zapSelectedToken?.decimals || 18;
-            showFeeRow = !this.isZeroZapAmount(fee);
-            feeDisplay = showFeeRow ? this.formatZapFeeDisplay(fee, feeTokenDecimals, feeTokenSymbol) : '';
+            const feeDetails = this.getZapProtocolFeeDetails(data);
+            feeDisplay = feeDetails ? this.formatZapFeeDisplay(feeDetails.amount, feeDetails.decimals, feeDetails.symbol) : 'N/A';
             const priceImpact = this.getZapQuoteSummaryEntry([
                 'zapDetails.priceImpact',
                 'zapDetails.priceImpactPcm',
@@ -2491,7 +2556,7 @@ class StakingModalNew {
         const quoteRows = [
             this.renderZapQuoteRow('Input', inputDisplay),
             this.renderZapQuoteRow('Estimated LP', lpResultDisplay),
-            showFeeRow ? this.renderZapQuoteRow('Kyber Fee', feeDisplay) : '',
+            this.renderZapQuoteRow('Kyber Zap Fee', feeDisplay),
             this.renderZapQuoteRow('Price Impact', priceImpactDisplay, priceImpactRiskClass),
             this.renderZapQuoteRow('Slippage', slippageDisplay, slippageRiskClass)
         ].join('');
