@@ -303,6 +303,7 @@ class StakingModalNew {
                 this.zapQuoteRequestId += 1;
                 document.querySelectorAll('.zap-percentage-btn').forEach(btn => btn.classList.remove('active'));
                 this.resetZapQuoteCountdown();
+                this.updateZapBalanceError();
                 this.updateZapQuotePanel();
                 this.debounceZapQuote();
                 this.updateZapButton();
@@ -874,6 +875,7 @@ class StakingModalNew {
             btn.classList.toggle('active', parseInt(btn.dataset.percentage, 10) === percentage);
         });
 
+        this.updateZapBalanceError();
         this.updateZapButton();
         this.updateZapQuotePanel();
         this.syncZapQuoteAutoRefresh();
@@ -885,7 +887,7 @@ class StakingModalNew {
             clearTimeout(this.zapQuoteDebounceTimer);
         }
 
-        if (!this.zapInputAmount || parseFloat(this.zapInputAmount) <= 0) {
+        if (!this.canFetchZapQuote()) {
             this.stopZapQuoteAutoRefresh();
             return;
         }
@@ -897,7 +899,50 @@ class StakingModalNew {
     }
 
     canFetchZapQuote() {
-        return !!this.zapSelectedToken && !!this.zapInputAmount && parseFloat(this.zapInputAmount) > 0;
+        return !!this.zapSelectedToken
+            && !!this.zapInputAmount
+            && parseFloat(this.zapInputAmount) > 0
+            && this.hasSufficientZapBalance();
+    }
+
+    getZapInputBalance() {
+        return this.zapInputTokenBalances.get(this.zapSelectedToken?.address) || null;
+    }
+
+    hasSufficientZapBalance() {
+        if (!this.zapSelectedToken || !this.zapInputAmount || parseFloat(this.zapInputAmount) <= 0) {
+            return true;
+        }
+
+        const balance = this.getZapInputBalance();
+        if (!balance?.raw) {
+            return true;
+        }
+
+        try {
+            return balance.raw.gte(this.getZapAmountRaw());
+        } catch (error) {
+            return false;
+        }
+    }
+
+    getZapBalanceError() {
+        if (this.hasSufficientZapBalance()) {
+            return '';
+        }
+
+        return `Insufficient ${this.zapSelectedToken?.symbol || 'token'} balance.`;
+    }
+
+    updateZapBalanceError() {
+        const errorElement = document.getElementById('zap-balance-error');
+        if (!errorElement) {
+            return;
+        }
+
+        const message = this.getZapBalanceError();
+        errorElement.textContent = message;
+        errorElement.hidden = !message;
     }
 
     resetZapQuoteCountdown(seconds = this.zapQuoteRefreshSeconds) {
@@ -1178,8 +1223,11 @@ class StakingModalNew {
     }
 
     async fetchZapQuote() {
-        if (!this.zapSelectedToken || !this.zapInputAmount || parseFloat(this.zapInputAmount) <= 0) {
+        if (!this.canFetchZapQuote()) {
             this.stopZapQuoteAutoRefresh();
+            this.updateZapBalanceError();
+            this.updateZapQuotePanel();
+            this.updateZapButton();
             return;
         }
 
@@ -1550,16 +1598,7 @@ class StakingModalNew {
         const buttonText = zapButton.childNodes[zapButton.childNodes.length - 1];
         const amount = parseFloat(this.zapInputAmount) || 0;
         const hasAmount = amount > 0;
-        const balance = this.zapInputTokenBalances.get(this.zapSelectedToken?.address);
-        let hasSufficientBalance = true;
-
-        if (hasAmount && balance?.raw && this.zapSelectedToken) {
-            try {
-                hasSufficientBalance = balance.raw.gte(this.getZapAmountRaw());
-            } catch (error) {
-                hasSufficientBalance = false;
-            }
-        }
+        const hasSufficientBalance = this.hasSufficientZapBalance();
 
         const approvePhase = this.actionPhases?.approveZap || 'idle';
         const zapPhase = this.actionPhases?.zap || 'idle';
@@ -2022,6 +2061,7 @@ class StakingModalNew {
         const isCustomTokenMode = this.zapInputTokenAddress === 'custom';
         const selectedToken = isCustomTokenMode ? null : (this.zapSelectedToken || this.zapInputTokens[0]);
         const selectedBalance = selectedToken ? this.formatZapBalanceDisplay(this.zapInputTokenBalances.get(selectedToken.address), selectedToken) : '';
+        const balanceError = selectedToken ? this.getZapBalanceError() : '';
         const slippageOptions = [10, 50, 100];
         const tokenOptions = this.zapInputTokens.map(token => `
             <option value="${this.escapeHtml(token.address)}" ${token.address === selectedToken?.address ? 'selected' : ''}>
@@ -2079,6 +2119,7 @@ class StakingModalNew {
                         inputmode="decimal"
                         ${!selectedToken ? 'disabled' : ''}
                     >
+                    <div id="zap-balance-error" class="zap-field-error zap-balance-error" aria-live="polite" ${balanceError ? '' : 'hidden'}>${this.escapeHtml(balanceError)}</div>
                 </div>
             </div>
 
@@ -2463,6 +2504,14 @@ class StakingModalNew {
 
         if (!this.zapQuote || this.zapQuoteStatus !== 'ready') {
             window.notificationManager?.error('Fetch a zap quote before creating LP tokens.');
+            return;
+        }
+
+        const balanceError = this.getZapBalanceError();
+        if (balanceError) {
+            this.updateZapBalanceError();
+            this.updateZapButton();
+            window.notificationManager?.error(balanceError);
             return;
         }
 

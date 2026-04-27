@@ -85,6 +85,13 @@ async function loadStakingModalClass() {
     globalThis.ethers = {
         BigNumber: {
             from: vi.fn(value => ({ value, toString: () => String(value) }))
+        },
+        utils: {
+            parseUnits: vi.fn(value => ({
+                value,
+                gte: other => Number(value) >= Number(other?.value ?? other),
+                toString: () => String(value)
+            }))
         }
     };
     globalThis.console = console;
@@ -134,6 +141,17 @@ function arrangeExecutableZap(modal, { executeResult, sendTransaction } = {}) {
         success: vi.fn(),
         error: vi.fn()
     };
+}
+
+function setZapBalance(modal, balanceValue) {
+    modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+    modal.zapInputTokenBalances.set('0xtoken', {
+        raw: {
+            value: String(balanceValue),
+            gte: other => Number(balanceValue) >= Number(other?.value ?? other)
+        },
+        formatted: String(balanceValue)
+    });
 }
 
 describe('StakingModalNew zap cleanup', () => {
@@ -195,6 +213,80 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.fetchZapQuote).not.toHaveBeenCalled();
         expect(modal.zapQuoteRefreshTimer).toBeNull();
+    });
+
+    it('does not fetch zap quotes when the amount exceeds the selected token balance', async () => {
+        vi.useFakeTimers();
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        setZapBalance(modal, 5);
+        modal.zapInputAmount = '10';
+        modal.fetchZapQuote = vi.fn();
+
+        modal.debounceZapQuote(0);
+        await vi.runAllTimersAsync();
+
+        expect(modal.fetchZapQuote).not.toHaveBeenCalled();
+        expect(modal.canFetchZapQuote()).toBe(false);
+    });
+
+    it('does not start zap quote auto-refresh when the amount exceeds the selected token balance', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.isOpen = true;
+        modal.currentTab = 'zap';
+        setZapBalance(modal, 5);
+        modal.zapInputAmount = '10';
+
+        modal.syncZapQuoteAutoRefresh();
+
+        expect(modal.zapQuoteRefreshTimer).toBeNull();
+    });
+
+    it('renders an insufficient balance error for impossible zap amounts', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.currentPair = { name: 'LIB/USDT' };
+        modal.zapInputTokens = [{ symbol: 'USDT', address: '0xtoken', decimals: 18 }];
+        modal.zapInputTokenAddress = '0xtoken';
+        setZapBalance(modal, 5);
+        modal.zapInputAmount = '10';
+
+        const html = modal.renderZapTab();
+
+        expect(html).toContain('Insufficient USDT balance.');
+    });
+
+    it('updates the visible zap balance error without re-rendering the tab', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const errorElement = document.registerElement(createElement({ id: 'zap-balance-error' }));
+        const modal = createModal(StakingModalNew);
+        setZapBalance(modal, 5);
+        modal.zapInputAmount = '10';
+
+        modal.updateZapBalanceError();
+
+        expect(errorElement.textContent).toBe('Insufficient USDT balance.');
+        expect(errorElement.hidden).toBe(false);
+
+        modal.zapInputAmount = '5';
+        modal.updateZapBalanceError();
+
+        expect(errorElement.textContent).toBe('');
+        expect(errorElement.hidden).toBe(true);
+    });
+
+    it('does not execute a ready zap quote when the amount exceeds the selected token balance', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        arrangeExecutableZap(modal);
+        setZapBalance(modal, 5);
+        modal.zapInputAmount = '10';
+
+        await modal.executeZap();
+
+        expect(modal.buildZapRoute).not.toHaveBeenCalled();
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Insufficient USDT balance.');
     });
 
     it('executeZap stops quote auto-refresh before building the zap transaction', async () => {

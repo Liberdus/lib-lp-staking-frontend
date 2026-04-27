@@ -398,6 +398,11 @@
     margin-bottom: var(--spacing-2);
 }
 
+.zap-balance-error {
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
 .zap-slippage-row {
     display: grid;
     grid-template-columns: repeat(4, minmax(64px, 1fr)) minmax(88px, 1fr);
