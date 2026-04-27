@@ -9,13 +9,8 @@
         return;
     }
 
-    class KyberZapRateLimitError extends Error {
-        constructor(message, waitMs) {
-            super(message);
-            this.name = 'KyberZapRateLimitError';
-            this.zapRateLimited = true;
-            this.waitMs = waitMs;
-        }
+    if (!global.KyberZapQuoteRateLimiter) {
+        throw new Error('KyberZapQuoteRateLimiter must be loaded before KyberZapService');
     }
 
     class KyberZapService {
@@ -26,7 +21,11 @@
             this.poolDexCache = new Map();
             this.tokenMeta = {};
             this.tokenMarketMeta = new Map();
-            this.quoteRequestTimestamps = [];
+            this.quoteRateLimiter = options.quoteRateLimiter || new global.KyberZapQuoteRateLimiter({
+                getMaxRequests: () => this.getQuoteRateLimitMaxRequests(),
+                getWindowMs: () => this.getQuoteRateLimitWindowMs(),
+                now: this.now
+            });
         }
 
         getConfig() {
@@ -113,39 +112,20 @@
             return Number(this.getConfig()?.RATE_LIMIT_WINDOW_MS) || 10000;
         }
 
-        pruneQuoteRequestTimestamps(now = this.now()) {
-            const windowMs = this.getQuoteRateLimitWindowMs();
-            this.quoteRequestTimestamps = this.quoteRequestTimestamps.filter(timestamp => now - timestamp < windowMs);
-        }
-
         getQuoteRateLimitWaitMs(now = this.now()) {
-            this.pruneQuoteRequestTimestamps(now);
-
-            if (this.quoteRequestTimestamps.length < this.getQuoteRateLimitMaxRequests()) {
-                return 0;
-            }
-
-            const oldestRequest = this.quoteRequestTimestamps[0];
-            return Math.max(0, this.getQuoteRateLimitWindowMs() - (now - oldestRequest));
+            return this.quoteRateLimiter.getWaitMs(now);
         }
 
         reserveQuoteRequestSlot(now = this.now()) {
-            const waitMs = this.getQuoteRateLimitWaitMs(now);
-            if (waitMs > 0) {
-                return { allowed: false, waitMs };
-            }
-
-            this.quoteRequestTimestamps.push(now);
-            return { allowed: true, waitMs: 0 };
+            return this.quoteRateLimiter.reserve(now);
         }
 
         getQuoteRateLimitMessage(waitMs = this.getQuoteRateLimitWaitMs()) {
-            const seconds = Math.max(1, Math.ceil(waitMs / 1000));
-            return `Quote refresh paused to avoid Kyber rate limits. Try again in ${seconds}s.`;
+            return this.quoteRateLimiter.getMessage(waitMs);
         }
 
         createRateLimitError(waitMs) {
-            return new KyberZapRateLimitError(this.getQuoteRateLimitMessage(waitMs), waitMs);
+            return this.quoteRateLimiter.createError(waitMs);
         }
 
         async getPoolFactoryAddress(poolAddress, provider = this.getProvider()) {
@@ -386,10 +366,9 @@
         }
     }
 
-    global.KyberZapRateLimitError = KyberZapRateLimitError;
     global.KyberZapService = KyberZapService;
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = { KyberZapService, KyberZapRateLimitError };
+        module.exports = { KyberZapService, KyberZapRateLimitError: global.KyberZapRateLimitError };
     }
 })(typeof window !== 'undefined' ? window : globalThis);

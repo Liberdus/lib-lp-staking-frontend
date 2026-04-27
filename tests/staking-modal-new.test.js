@@ -107,6 +107,7 @@ async function loadStakingModalClass() {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    await import('../js/services/kyber-zap-rate-limiter.js');
     await import('../js/services/kyber-zap-service.js');
     await import('../js/components/staking-modal-new.js');
     return globalThis.StakingModalNew;
@@ -219,6 +220,7 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.homePage;
         delete globalThis.fetch;
         delete globalThis.KyberZapRateLimitError;
+        delete globalThis.KyberZapQuoteRateLimiter;
         delete globalThis.KyberZapService;
         delete globalThis.StakingModalNew;
         delete globalThis.stakingModal;
@@ -350,7 +352,7 @@ describe('StakingModalNew zap cleanup', () => {
         modal.zapInputAmount = '1';
         modal.fetchZapQuote = vi.fn();
         globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 2;
-        modal.getKyberZapService().quoteRequestTimestamps = [Date.now(), Date.now()];
+        modal.getKyberZapService().quoteRateLimiter.timestamps = [Date.now(), Date.now()];
 
         modal.startZapQuoteAutoRefresh();
         await vi.advanceTimersByTimeAsync(1000);

@@ -25,6 +25,7 @@ async function loadKyberZapService() {
 
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
+    await import('../js/services/kyber-zap-rate-limiter.js');
     await import('../js/services/kyber-zap-service.js');
     return globalThis.KyberZapService;
 }
@@ -49,6 +50,7 @@ describe('KyberZapService', () => {
         delete globalThis.CONFIG;
         delete globalThis.fetch;
         delete globalThis.KyberZapRateLimitError;
+        delete globalThis.KyberZapQuoteRateLimiter;
         delete globalThis.KyberZapService;
     });
 
@@ -81,7 +83,7 @@ describe('KyberZapService', () => {
 
         expect(quote.data.route).toBe('0xroute');
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(service.quoteRequestTimestamps).toHaveLength(2);
+        expect(service.quoteRateLimiter.timestamps).toHaveLength(2);
     });
 
     it('blocks quote HTTP requests when the Kyber quote window is exhausted', async () => {
@@ -91,7 +93,7 @@ describe('KyberZapService', () => {
         globalThis.CONFIG.KYBER_ZAP.QUOTE_RATE_LIMIT_MAX_REQUESTS = 1;
         globalThis.fetch = vi.fn();
         const service = new KyberZapService();
-        service.quoteRequestTimestamps = [Date.now()];
+        service.quoteRateLimiter.timestamps = [Date.now()];
 
         await expect(service.fetchQuote({
             networkConfig: { CHAIN: 'bsc', DEX: 'DEX_UNISWAPV2' },
