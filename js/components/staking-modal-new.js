@@ -928,7 +928,7 @@ class StakingModalNew {
 
         this.resetZapQuoteCountdown();
         this.zapQuoteRefreshTimer = setInterval(() => {
-            if (!this.isOpen || this.currentTab !== 'zap' || !this.canFetchZapQuote()) {
+            if (!this.isOpen || this.currentTab !== 'zap' || this.isExecutingZap || !this.canFetchZapQuote()) {
                 this.stopZapQuoteAutoRefresh();
                 return;
             }
@@ -1660,7 +1660,11 @@ class StakingModalNew {
             if (slider) slider.value = '0';
         });
 
+        const zapInput = document.getElementById('zap-amount-input');
         if (zapInput) zapInput.value = '';
+        document.querySelectorAll('.zap-percentage-btn').forEach(button => {
+            button.classList.remove('active');
+        });
         
         console.log('🧹 Input values cleared');
         this.updateButtonStates();
@@ -2375,6 +2379,7 @@ class StakingModalNew {
 
         try {
             this.isExecutingZap = true;
+            this.stopZapQuoteAutoRefresh();
             this.updateZapButton();
 
             if (!window.contractManager || !window.contractManager.isReady()) {
@@ -2429,6 +2434,7 @@ class StakingModalNew {
             this.setActionPhase('zap', 'idle');
             this.isExecutingZap = false;
             this.updateZapButton();
+            this.syncZapQuoteAutoRefresh();
         }
     }
 
