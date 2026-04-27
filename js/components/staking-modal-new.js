@@ -976,6 +976,25 @@ class StakingModalNew {
         return data?.routerAddress || data?.router || data?.to || data?.tx?.to || data?.transaction?.to || null;
     }
 
+    getExpectedZapRouterAddress() {
+        return this.getKyberZapNetworkConfig()?.ROUTER_ADDRESS || null;
+    }
+
+    normalizeAddress(address) {
+        return typeof address === 'string' ? address.toLowerCase() : '';
+    }
+
+    validateZapRouterAddress(routerAddress) {
+        const expectedRouter = this.getExpectedZapRouterAddress();
+        if (!expectedRouter || !routerAddress) {
+            return;
+        }
+
+        if (this.normalizeAddress(routerAddress) !== this.normalizeAddress(expectedRouter)) {
+            throw new Error('Kyber returned an unexpected zap router. Refresh the quote and try again.');
+        }
+    }
+
     getZapQuoteSummaryValue(paths, fallback = 'N/A') {
         const data = this.getZapRouteData();
         for (const path of paths) {
@@ -985,6 +1004,46 @@ class StakingModalNew {
             }
         }
         return fallback;
+    }
+
+    getZapQuoteSummaryEntry(paths, fallback = 'N/A') {
+        const data = this.getZapRouteData();
+        for (const path of paths) {
+            const value = path.split('.').reduce((current, key) => current?.[key], data);
+            if (value !== undefined && value !== null && value !== '') {
+                return { value, path };
+            }
+        }
+        return { value: fallback, path: null };
+    }
+
+    getZapHighSlippageBps() {
+        return window.CONFIG?.KYBER_ZAP?.HIGH_SLIPPAGE_BPS || 300;
+    }
+
+    getZapHighPriceImpactPercent() {
+        return window.CONFIG?.KYBER_ZAP?.HIGH_PRICE_IMPACT_PERCENT || 5;
+    }
+
+    getZapPercentNumber(value, path = '') {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+            return null;
+        }
+
+        return String(path).toLowerCase().includes('pcm')
+            ? numericValue / 1000
+            : numericValue;
+    }
+
+    isHighZapSlippage(slippageBps) {
+        const numericValue = Number(slippageBps);
+        return Number.isFinite(numericValue) && numericValue >= this.getZapHighSlippageBps();
+    }
+
+    isHighZapPriceImpact(value, path = '') {
+        const percentValue = this.getZapPercentNumber(value, path);
+        return percentValue !== null && Math.abs(percentValue) >= this.getZapHighPriceImpactPercent();
     }
 
     formatZapRawAmount(value, decimals = 18) {
@@ -1088,6 +1147,15 @@ class StakingModalNew {
     }
 
     formatZapPercent(value) {
+        if (typeof value === 'object' && value !== null && Object.prototype.hasOwnProperty.call(value, 'value')) {
+            const percentValue = this.getZapPercentNumber(value.value, value.path);
+            if (percentValue === null) {
+                return String(value.value);
+            }
+
+            return `${percentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+        }
+
         if (value === undefined || value === null || value === 'N/A') {
             return 'N/A';
         }
@@ -2087,6 +2155,8 @@ class StakingModalNew {
         let showFeeRow = false;
         let priceImpactDisplay = pendingValue;
         let slippageDisplay = `${(Number(this.zapSlippageBps) / 100).toFixed(2)}%`;
+        let priceImpactRiskClass = '';
+        let slippageRiskClass = this.isHighZapSlippage(this.zapSlippageBps) ? 'zap-risk-high' : '';
         const cardClass = [
             'zap-quote-card',
             isLoading ? 'zap-quote-loading' : '',
@@ -2118,15 +2188,17 @@ class StakingModalNew {
             const feeTokenDecimals = data?.zapDetails?.protocolFee?.tokens?.[0]?.decimals || this.zapSelectedToken?.decimals || 18;
             showFeeRow = !this.isZeroZapAmount(fee);
             feeDisplay = showFeeRow ? this.formatZapFeeDisplay(fee, feeTokenDecimals, feeTokenSymbol) : '';
-            const priceImpact = this.getZapQuoteSummaryValue([
+            const priceImpact = this.getZapQuoteSummaryEntry([
                 'zapDetails.priceImpact',
                 'zapDetails.priceImpactPcm',
                 'priceImpact',
                 'priceImpactPcm'
             ], 'N/A');
             priceImpactDisplay = this.formatZapPercent(priceImpact);
+            priceImpactRiskClass = this.isHighZapPriceImpact(priceImpact.value, priceImpact.path) ? 'zap-risk-high' : '';
             const suggestedSlippage = data?.suggestedSlippage || data?.slippage || this.zapSlippageBps;
             slippageDisplay = `${(Number(suggestedSlippage) / 100).toFixed(2)}%`;
+            slippageRiskClass = this.isHighZapSlippage(suggestedSlippage) ? 'zap-risk-high' : '';
             routeSummary = this.getZapRouteSummary();
         }
 
@@ -2163,11 +2235,11 @@ class StakingModalNew {
                             <dd>${this.escapeHtml(feeDisplay)}</dd>
                         </div>
                     ` : ''}
-                    <div class="zap-quote-row">
+                    <div class="zap-quote-row${priceImpactRiskClass ? ` ${priceImpactRiskClass}` : ''}">
                         <dt>Price Impact</dt>
                         <dd>${this.escapeHtml(priceImpactDisplay)}</dd>
                     </div>
-                    <div class="zap-quote-row">
+                    <div class="zap-quote-row${slippageRiskClass ? ` ${slippageRiskClass}` : ''}">
                         <dt>Slippage</dt>
                         <dd>${this.escapeHtml(slippageDisplay)}</dd>
                     </div>
@@ -2352,6 +2424,8 @@ class StakingModalNew {
         if (!to || !txData) {
             throw new Error('Kyber did not return transaction calldata.');
         }
+
+        this.validateZapRouterAddress(to);
 
         const request = {
             to,

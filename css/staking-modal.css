@@ -558,6 +558,11 @@
     text-align: right;
 }
 
+.zap-quote-row.zap-risk-high dt,
+.zap-quote-row.zap-risk-high dd {
+    color: var(--error-main);
+}
+
 .zap-empty-state {
     justify-content: center;
     padding: var(--spacing-3);

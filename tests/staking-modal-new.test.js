@@ -72,7 +72,14 @@ async function loadStakingModalClass() {
     globalThis.CONFIG = {
         KYBER_ZAP: {
             DEFAULT_SLIPPAGE_BPS: 50,
-            DEFAULT_DEADLINE_MINUTES: 20
+            DEFAULT_DEADLINE_MINUTES: 20,
+            HIGH_SLIPPAGE_BPS: 300,
+            HIGH_PRICE_IMPACT_PERCENT: 5,
+            NETWORKS: {
+                BSC_MAINNET: {
+                    ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05'
+                }
+            }
         }
     };
     globalThis.ethers = {
@@ -261,5 +268,71 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.zapQuoteRefreshTimer).toBeNull();
         expect(modal.currentTab).toBe('stake');
+    });
+
+    it('rejects zap transactions returned for an unexpected Kyber router', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+
+        expect(() => modal.getZapTransactionRequest({
+            to: '0x1111111111111111111111111111111111111111',
+            txData: '0xabcdef',
+            value: '0'
+        })).toThrow('Kyber returned an unexpected zap router');
+    });
+
+    it('allows zap transactions returned for the configured Kyber router', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+
+        const request = modal.getZapTransactionRequest({
+            to: '0x0e97c887b61ccd952a53578b04763e7134429e05',
+            txData: '0xabcdef',
+            value: '0'
+        });
+
+        expect(request.to).toBe('0x0e97c887b61ccd952a53578b04763e7134429e05');
+    });
+
+    it('highlights high slippage in the zap quote panel', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapInputAmount = '1';
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+        modal.currentPair = { name: 'LIB/USDT' };
+        modal.zapQuoteStatus = 'ready';
+        modal.zapQuote = {
+            data: {
+                route: '0xroute',
+                suggestedSlippage: 500,
+                zapDetails: { priceImpact: 1 }
+            }
+        };
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Slippage</dt>');
+        expect(html).toContain('5.00%');
+    });
+
+    it('highlights very high price impact in the zap quote panel', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapInputAmount = '1';
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+        modal.currentPair = { name: 'LIB/USDT' };
+        modal.zapQuoteStatus = 'ready';
+        modal.zapQuote = {
+            data: {
+                route: '0xroute',
+                suggestedSlippage: 50,
+                zapDetails: { priceImpactPcm: 6000 }
+            }
+        };
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Price Impact</dt>');
+        expect(html).toContain('6%');
     });
 });

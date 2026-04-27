@@ -148,11 +148,14 @@ window.CONFIG = {
         SOURCE: 'liberdus-lp-staking',
         NATIVE_TOKEN_ADDRESS: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         DEFAULT_SLIPPAGE_BPS: 50,
+        HIGH_SLIPPAGE_BPS: 300,
+        HIGH_PRICE_IMPACT_PERCENT: 5,
         DEFAULT_DEADLINE_MINUTES: 20,
         NETWORKS: {
             BSC_MAINNET: {
                 CHAIN: 'bsc',
                 DEX: 'DEX_UNISWAPV2',
+                ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05',
                 DEX_CANDIDATES: [
                     'DEX_UNISWAPV2',
                     'DEX_PANCAKESWAPV2',
