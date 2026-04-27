@@ -178,6 +178,9 @@ window.CONFIG = {
                 INPUT_TOKENS: [
                     { symbol: 'BNB', name: 'BNB', address: 'native', decimals: 18 },
                     { symbol: 'USDT', name: 'Tether USD', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 },
+                    { symbol: 'USDC', name: 'USD Coin', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18 },
+                    { symbol: 'CAKE', name: 'PancakeSwap Token', address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', decimals: 18 },
+                    { symbol: 'ETH', name: 'Binance-Peg Ethereum Token', address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', decimals: 18 },
                     { symbol: 'LIB', name: 'Liberdus', address: 'pool-token', decimals: null }
                 ]
             }

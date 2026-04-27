@@ -1195,6 +1195,25 @@ class StakingModalNew {
         return `${formatted} ${token.symbol}`;
     }
 
+    formatZapTokenOptionLabel(token) {
+        if (!token) {
+            return '';
+        }
+
+        const address = token.address;
+        const symbol = token.symbol || 'Token';
+        if (!address || this.isNativeZapToken(address)) {
+            return symbol;
+        }
+
+        const addressText = String(address);
+        const shortAddress = addressText.length > 12
+            ? `${addressText.slice(0, 6)}...${addressText.slice(-4)}`
+            : addressText;
+
+        return `${symbol} (${shortAddress})`;
+    }
+
     formatZapPercent(value) {
         if (typeof value === 'object' && value !== null && Object.prototype.hasOwnProperty.call(value, 'value')) {
             const percentValue = this.getZapPercentNumber(value.value, value.path);
@@ -2072,7 +2091,7 @@ class StakingModalNew {
         const slippageOptions = [10, 50, 100];
         const tokenOptions = this.zapInputTokens.map(token => `
             <option value="${this.escapeHtml(token.address)}" ${token.address === selectedToken?.address ? 'selected' : ''}>
-                ${this.escapeHtml(token.symbol)}
+                ${this.escapeHtml(this.formatZapTokenOptionLabel(token))}
             </option>
         `).join('') + `
             <option value="custom" ${isCustomTokenMode ? 'selected' : ''}>Custom</option>

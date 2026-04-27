@@ -370,6 +370,23 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('Insufficient USDT balance.');
     });
 
+    it('renders abbreviated token addresses in zap token options', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.currentPair = { name: 'LIB/USDT' };
+        modal.zapInputTokens = [
+            { symbol: 'BNB', address: 'native', decimals: 18 },
+            { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 }
+        ];
+        modal.zapInputTokenAddress = 'native';
+        modal.zapSelectedToken = modal.zapInputTokens[0];
+
+        const html = modal.renderZapTab();
+
+        expect(html).toContain('BNB');
+        expect(html).toContain('USDT (0x55d3...7955)');
+    });
+
     it('updates the visible zap balance error without re-rendering the tab', async () => {
         const StakingModalNew = await loadStakingModalClass();
         const errorElement = document.registerElement(createElement({ id: 'zap-balance-error' }));
