@@ -620,6 +620,17 @@
     font-size: 14px;
 }
 
+.zap-empty-state .material-icons {
+    color: var(--warning-main);
+    font-size: 20px;
+    line-height: 1;
+}
+
+.zap-empty-state p {
+    margin: 0;
+    line-height: 1.4;
+}
+
 .zap-quote-card.zap-quote-error {
     border-color: var(--error-main);
 }

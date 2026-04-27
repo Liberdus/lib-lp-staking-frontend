@@ -2280,7 +2280,7 @@ class StakingModalNew {
         if (!networkConfig) {
             return `
                 <div class="zap-empty-state">
-                    <span class="material-icons">info</span>
+                    <span class="material-icons" aria-hidden="true">warning</span>
                     <p>Zap is not available on this network.</p>
                 </div>
                 <div class="modal-actions">
