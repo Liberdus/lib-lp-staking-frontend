@@ -83,7 +83,8 @@ async function loadStakingModalClass() {
                 BSC_MAINNET: {
                     CHAIN: 'bsc',
                     DEX: 'DEX_UNISWAPV2',
-                    ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05'
+                    ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                    WRAPPED_NATIVE_TOKEN_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'
                 }
             }
         }
@@ -380,11 +381,73 @@ describe('StakingModalNew zap cleanup', () => {
         ];
         modal.zapInputTokenAddress = 'native';
         modal.zapSelectedToken = modal.zapInputTokens[0];
+        modal.zapInputTokenBalances.set('native', { formatted: '1.25' });
+        modal.zapInputTokenBalances.set('0x55d398326f99059fF775485246999027B3197955', { formatted: '50' });
 
         const html = modal.renderZapTab();
 
         expect(html).toContain('BNB');
-        expect(html).toContain('USDT (0x55d3...7955)');
+        expect(html).toContain('zap-token-icon-bnb');
+        expect(html).toContain('src="assets/images/tokens/bsc/0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c.png"');
+        expect(html).toContain('1.25 BNB');
+        expect(html).toContain('USDT</span> <span class="zap-token-option-address">0x55d3...7955</span>');
+        expect(html).toContain('zap-token-icon-usdt');
+        expect(html).toContain('src="assets/images/tokens/bsc/0x55d398326f99059ff775485246999027b3197955.png"');
+        expect(html).toContain('50 USDT');
+        expect(html).not.toContain('Balance:');
+    });
+
+    it('sorts zap input tokens alphabetically by symbol', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+
+        const sortedTokens = modal.sortZapInputTokens([
+            { symbol: 'USDT', address: '0xusdt' },
+            { symbol: 'BNB', address: 'native' },
+            { symbol: 'DAI', address: '0xdai' },
+            { symbol: 'CAKE', address: '0xcake' }
+        ]);
+
+        expect(sortedTokens.map(token => token.symbol)).toEqual(['BNB', 'CAKE', 'DAI', 'USDT']);
+    });
+
+    it('applies a GeckoTerminal icon URL to custom zap tokens after metadata loads', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapInputTokens = [
+            { symbol: 'ABC', address: '0xabc', decimals: 18, custom: true }
+        ];
+        modal.zapInputTokenAddress = '0xabc';
+        modal.zapSelectedToken = modal.zapInputTokens[0];
+        modal.getTokenMarketMetadata = vi.fn().mockResolvedValue({
+            imageUrl: 'https://assets.geckoterminal.com/abc'
+        });
+
+        const updated = await modal.loadZapCustomTokenIcon('0xABC');
+
+        expect(updated).toBe(true);
+        expect(modal.zapInputTokens[0].iconUrl).toBe('https://assets.geckoterminal.com/abc');
+        expect(modal.zapSelectedToken.iconUrl).toBe('https://assets.geckoterminal.com/abc');
+        expect(modal.renderTabContent).toHaveBeenCalled();
+    });
+
+    it('keeps the symbol badge when custom token metadata returns an unsafe icon URL', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapInputTokens = [
+            { symbol: 'ABC', address: '0xabc', decimals: 18, custom: true }
+        ];
+        modal.zapInputTokenAddress = '0xabc';
+        modal.zapSelectedToken = modal.zapInputTokens[0];
+        modal.getTokenMarketMetadata = vi.fn().mockResolvedValue({
+            imageUrl: 'javascript:alert(1)'
+        });
+
+        const updated = await modal.loadZapCustomTokenIcon('0xABC');
+
+        expect(updated).toBe(false);
+        expect(modal.zapInputTokens[0].iconUrl).toBeUndefined();
+        expect(modal.renderTabContent).not.toHaveBeenCalled();
     });
 
     it('updates the visible zap balance error without re-rendering the tab', async () => {

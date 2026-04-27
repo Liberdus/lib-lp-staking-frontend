@@ -140,6 +140,41 @@ describe('KyberZapService', () => {
         );
     });
 
+    it('fetches and caches GeckoTerminal token market metadata', async () => {
+        const KyberZapService = await loadKyberZapService();
+        globalThis.fetch = vi.fn().mockResolvedValue(createJsonResponse({
+            payload: {
+                data: {
+                    attributes: {
+                        address: '0xabc',
+                        symbol: 'ABC',
+                        name: 'ABC Token',
+                        image_url: 'https://assets.geckoterminal.com/abc',
+                        coingecko_coin_id: 'abc-token'
+                    }
+                }
+            }
+        }));
+        const service = new KyberZapService();
+
+        const firstResult = await service.getTokenMarketMetadata('0xAbC', { CHAIN: 'bsc' });
+        const secondResult = await service.getTokenMarketMetadata('0xAbC', { CHAIN: 'bsc' });
+
+        expect(firstResult).toEqual({
+            address: '0xabc',
+            symbol: 'ABC',
+            name: 'ABC Token',
+            imageUrl: 'https://assets.geckoterminal.com/abc',
+            coingeckoCoinId: 'abc-token'
+        });
+        expect(secondResult).toBe(firstResult);
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            'https://api.geckoterminal.com/api/v2/networks/bsc/tokens/0xabc',
+            { headers: { accept: 'application/json' } }
+        );
+    });
+
     it('rejects unexpected Kyber router addresses', async () => {
         const KyberZapService = await loadKyberZapService();
         const service = new KyberZapService();

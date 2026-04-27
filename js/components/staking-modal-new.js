@@ -263,6 +263,17 @@ class StakingModalNew {
                 const button = e.target.closest('.zap-percentage-btn');
                 this.setZapAmountPercentage(parseInt(button.dataset.percentage, 10));
             }
+
+            if (e.target.closest('.zap-token-option')) {
+                const button = e.target.closest('.zap-token-option');
+                this.setZapInputToken(button.dataset.tokenAddress);
+            }
+
+            if (!e.target.closest('.zap-token-picker')) {
+                document.querySelectorAll('.zap-token-picker[open]').forEach(menu => {
+                    menu.open = false;
+                });
+            }
         });
 
         // Input changes
@@ -586,9 +597,21 @@ class StakingModalNew {
         return this.getKyberZapService().getTokenMetadata(address);
     }
 
+    async getTokenMarketMetadata(address) {
+        return this.getKyberZapService().getTokenMarketMetadata(address);
+    }
+
     async getPairTokenMetadata() {
         const lpTokenAddress = this.currentPair?.lpToken || this.currentPair?.address;
         return this.getKyberZapService().getPairTokenMetadata(lpTokenAddress);
+    }
+
+    sortZapInputTokens(tokens) {
+        return [...tokens].sort((a, b) => {
+            return String(a?.symbol || '').localeCompare(String(b?.symbol || ''), undefined, {
+                sensitivity: 'base'
+            });
+        });
     }
 
     async loadZapTokens() {
@@ -619,11 +642,12 @@ class StakingModalNew {
             }
 
             if (token.address === 'pool-token') {
-                return pairTokensBySymbol.get((token.symbol || '').toUpperCase()) || null;
+                const pairToken = pairTokensBySymbol.get((token.symbol || '').toUpperCase());
+                return pairToken || null;
             }
 
             const pairToken = pairTokensByAddress.get(String(token.address).toLowerCase());
-            return pairToken || token;
+            return pairToken ? { ...token, ...pairToken } : token;
         }).filter(Boolean);
 
         for (const token of pairTokens) {
@@ -632,7 +656,7 @@ class StakingModalNew {
             }
         }
 
-        this.zapInputTokens = resolvedTokens;
+        this.zapInputTokens = this.sortZapInputTokens(resolvedTokens);
         if (!this.zapInputTokens.some(token => token.address === this.zapInputTokenAddress)) {
             this.zapInputTokenAddress = this.zapInputTokens[0]?.address || 'native';
         }
@@ -721,6 +745,7 @@ class StakingModalNew {
                 symbol: metadata?.symbol || 'TOKEN',
                 name: metadata?.name || 'Token',
                 decimals: metadata?.decimals ?? 18,
+                iconUrl: '',
                 custom: true
             };
 
@@ -733,6 +758,7 @@ class StakingModalNew {
             } else {
                 this.zapInputTokens.push(token);
             }
+            this.zapInputTokens = this.sortZapInputTokens(this.zapInputTokens);
 
             this.zapInputTokenAddress = token.address;
             this.zapSelectedToken = token;
@@ -744,11 +770,41 @@ class StakingModalNew {
             this.resetZapQuoteCountdown();
             await this.loadZapTokenBalances();
             this.renderTabContent();
+            this.loadZapCustomTokenIcon(address).catch(error => {
+                console.warn('Unable to load custom zap token icon:', error.message);
+            });
         } catch (error) {
             console.error('Failed to add custom zap token:', error);
             this.zapCustomTokenError = 'Unable to load token details.';
             this.renderTabContent();
         }
+    }
+
+    async loadZapCustomTokenIcon(address) {
+        const tokenIndex = this.zapInputTokens.findIndex(existing =>
+            String(existing.address).toLowerCase() === String(address).toLowerCase()
+        );
+        if (tokenIndex < 0) {
+            return false;
+        }
+
+        const marketMetadata = await this.getTokenMarketMetadata(address);
+        const imageUrl = this.getSafeZapTokenIconUrl(marketMetadata?.imageUrl);
+        if (!imageUrl) {
+            return false;
+        }
+
+        this.zapInputTokens[tokenIndex] = {
+            ...this.zapInputTokens[tokenIndex],
+            iconUrl: imageUrl
+        };
+
+        if (String(this.zapInputTokenAddress).toLowerCase() === String(address).toLowerCase()) {
+            this.zapSelectedToken = this.zapInputTokens[tokenIndex];
+        }
+
+        this.renderTabContent();
+        return true;
     }
 
     setZapSlippage(value) {
@@ -1200,10 +1256,18 @@ class StakingModalNew {
             return '';
         }
 
+        return this.getZapTokenLabelParts(token).fullLabel;
+    }
+
+    getZapTokenLabelParts(token) {
+        if (!token) {
+            return { symbol: '', shortAddress: '', fullLabel: '' };
+        }
+
         const address = token.address;
         const symbol = token.symbol || 'Token';
         if (!address || this.isNativeZapToken(address)) {
-            return symbol;
+            return { symbol, shortAddress: '', fullLabel: symbol };
         }
 
         const addressText = String(address);
@@ -1211,7 +1275,144 @@ class StakingModalNew {
             ? `${addressText.slice(0, 6)}...${addressText.slice(-4)}`
             : addressText;
 
-        return `${symbol} (${shortAddress})`;
+        return {
+            symbol,
+            shortAddress,
+            fullLabel: `${symbol} ${shortAddress}`
+        };
+    }
+
+    getZapTokenIconClass(token) {
+        const symbol = String(token?.symbol || 'token').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        return `zap-token-icon-${symbol || 'token'}`;
+    }
+
+    getZapTokenIconText(token) {
+        return String(token?.symbol || '?').slice(0, 4).toUpperCase();
+    }
+
+    getZapTokenIconNetworkId() {
+        const networkConfig = this.getKyberZapNetworkConfig();
+        const networkId = networkConfig?.TOKEN_ICON_NETWORK || networkConfig?.CHAIN || 'bsc';
+        return String(networkId).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    }
+
+    getZapTokenIconAddress(token) {
+        const address = token?.address;
+        if (!address || address === 'custom' || address === 'pool-token') {
+            return '';
+        }
+
+        const networkConfig = this.getKyberZapNetworkConfig();
+        if (this.isNativeZapToken(address)) {
+            return String(networkConfig?.WRAPPED_NATIVE_TOKEN_ADDRESS || '').toLowerCase();
+        }
+
+        const normalizedAddress = String(address).toLowerCase();
+        return /^0x[a-f0-9]{40}$/.test(normalizedAddress) ? normalizedAddress : '';
+    }
+
+    getLocalZapTokenIconUrl(token) {
+        if (token?.custom) {
+            return '';
+        }
+
+        const networkId = this.getZapTokenIconNetworkId();
+        const address = this.getZapTokenIconAddress(token);
+        return networkId && address ? `assets/images/tokens/${networkId}/${address}.png` : '';
+    }
+
+    getSafeZapTokenIconUrl(url) {
+        const value = String(url || '').trim();
+        if (!value) {
+            return '';
+        }
+
+        if (/^https:\/\//i.test(value)) {
+            return value;
+        }
+
+        if (/^(?:\.\/)?assets\/images\/tokens\/[a-z0-9_-]+\/0x[a-f0-9]{40}\.png$/i.test(value)) {
+            return value.replace(/^\.\//, '');
+        }
+
+        return '';
+    }
+
+    renderZapTokenIcon(token, options = {}) {
+        const iconText = options.iconText || this.getZapTokenIconText(token);
+        const iconClass = options.iconClass || this.getZapTokenIconClass(token);
+        const imageUrl = this.getSafeZapTokenIconUrl(
+            Object.prototype.hasOwnProperty.call(options, 'iconUrl') ? options.iconUrl : (token?.iconUrl || this.getLocalZapTokenIconUrl(token))
+        );
+
+        if (imageUrl) {
+            return `
+                <span class="zap-token-icon ${this.escapeHtml(iconClass)} zap-token-icon-has-image" aria-hidden="true">
+                    <img
+                        class="zap-token-icon-image"
+                        src="${this.escapeHtml(imageUrl)}"
+                        alt=""
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                        onerror="this.parentElement.classList.remove('zap-token-icon-has-image'); this.remove();"
+                    >
+                    <span class="zap-token-icon-fallback-text">${this.escapeHtml(iconText)}</span>
+                </span>
+            `;
+        }
+
+        return `<span class="zap-token-icon ${this.escapeHtml(iconClass)}" aria-hidden="true">${this.escapeHtml(iconText)}</span>`;
+    }
+
+    getZapTokenBalanceLabel(token) {
+        if (!token) {
+            return '';
+        }
+
+        if (token.address === 'custom') {
+            return 'Add by address';
+        }
+
+        const balance = this.formatZapBalanceDisplay(this.zapInputTokenBalances.get(token.address), token);
+        return balance || '--';
+    }
+
+    renderZapTokenPickerRow(token, selectedAddress, options = {}) {
+        const address = token?.address || '';
+        const isSelected = address === selectedAddress;
+        const labelParts = this.getZapTokenLabelParts(token);
+        const label = options.label || labelParts.fullLabel;
+        const shortAddress = options.shortAddress ?? labelParts.shortAddress;
+        const balanceLabel = options.balanceLabel || this.getZapTokenBalanceLabel(token);
+        const iconText = options.iconText || this.getZapTokenIconText(token);
+        const iconClass = options.iconClass || this.getZapTokenIconClass(token);
+        const iconOptions = { iconText, iconClass };
+        if (Object.prototype.hasOwnProperty.call(options, 'iconUrl')) {
+            iconOptions.iconUrl = options.iconUrl;
+        }
+        const iconHtml = this.renderZapTokenIcon(token, iconOptions);
+
+        return `
+            <button
+                type="button"
+                class="zap-token-option ${isSelected ? 'active' : ''}"
+                data-token-address="${this.escapeHtml(address)}"
+                role="option"
+                aria-selected="${isSelected ? 'true' : 'false'}"
+            >
+                ${iconHtml}
+                <span class="zap-token-option-text">
+                    <span class="zap-token-option-label">
+                        ${options.label
+                            ? this.escapeHtml(label)
+                            : `<span>${this.escapeHtml(labelParts.symbol)}</span>${shortAddress ? ` <span class="zap-token-option-address">${this.escapeHtml(shortAddress)}</span>` : ''}`}
+                    </span>
+                    <span class="zap-token-option-balance">${this.escapeHtml(balanceLabel)}</span>
+                </span>
+                ${isSelected ? '<span class="material-icons zap-token-check" aria-hidden="true">check</span>' : ''}
+            </button>
+        `;
     }
 
     formatZapPercent(value) {
@@ -2086,16 +2287,23 @@ class StakingModalNew {
         const networkConfig = this.getKyberZapNetworkConfig();
         const isCustomTokenMode = this.zapInputTokenAddress === 'custom';
         const selectedToken = isCustomTokenMode ? null : (this.zapSelectedToken || this.zapInputTokens[0]);
-        const selectedBalance = selectedToken ? this.formatZapBalanceDisplay(this.zapInputTokenBalances.get(selectedToken.address), selectedToken) : '';
         const balanceError = selectedToken ? this.getZapBalanceError() : '';
         const slippageOptions = [10, 50, 100];
-        const tokenOptions = this.zapInputTokens.map(token => `
-            <option value="${this.escapeHtml(token.address)}" ${token.address === selectedToken?.address ? 'selected' : ''}>
-                ${this.escapeHtml(this.formatZapTokenOptionLabel(token))}
-            </option>
-        `).join('') + `
-            <option value="custom" ${isCustomTokenMode ? 'selected' : ''}>Custom</option>
-        `;
+        const selectedPickerToken = isCustomTokenMode
+            ? { symbol: 'Custom', address: 'custom' }
+            : selectedToken;
+        const selectedPickerLabelParts = isCustomTokenMode
+            ? { symbol: 'Custom token', shortAddress: '', fullLabel: 'Custom token' }
+            : this.getZapTokenLabelParts(selectedToken);
+        const selectedPickerBalance = isCustomTokenMode ? 'Add by address' : this.getZapTokenBalanceLabel(selectedToken);
+        const tokenOptions = this.zapInputTokens.map(token => this.renderZapTokenPickerRow(
+            token,
+            selectedPickerToken?.address
+        )).join('') + this.renderZapTokenPickerRow(
+            { symbol: 'Custom', address: 'custom' },
+            selectedPickerToken?.address,
+            { label: 'Custom token', balanceLabel: 'Add by address', iconText: '+', iconClass: 'zap-token-icon-custom' }
+        );
 
         if (!networkConfig) {
             return `
@@ -2120,10 +2328,25 @@ class StakingModalNew {
                     <div class="zap-label-row">
                         <label class="form-label">Input Token</label>
                     </div>
-                    <select id="zap-token-select" class="form-input">
-                        ${tokenOptions}
-                    </select>
-                    ${selectedBalance ? `<div class="zap-token-balance">Balance: ${this.escapeHtml(selectedBalance)}</div>` : ''}
+                    <details class="zap-token-picker">
+                        <summary class="zap-token-trigger">
+                            ${this.renderZapTokenIcon(selectedPickerToken, isCustomTokenMode ? {
+                                iconText: '+',
+                                iconClass: 'zap-token-icon-custom',
+                                iconUrl: ''
+                            } : {})}
+                            <span class="zap-token-option-text">
+                                <span class="zap-token-option-label">
+                                    <span>${this.escapeHtml(selectedPickerLabelParts.symbol || 'Select token')}</span>${selectedPickerLabelParts.shortAddress ? ` <span class="zap-token-option-address">${this.escapeHtml(selectedPickerLabelParts.shortAddress)}</span>` : ''}
+                                </span>
+                                <span class="zap-token-option-balance">${this.escapeHtml(selectedPickerBalance || '--')}</span>
+                            </span>
+                            <span class="material-icons zap-token-expand" aria-hidden="true">expand_more</span>
+                        </summary>
+                        <div class="zap-token-menu" role="listbox" aria-label="Zap input token">
+                            ${tokenOptions}
+                        </div>
+                    </details>
                 </div>
                 <div class="form-group zap-amount-group">
                     <div class="zap-label-row zap-amount-label-row">

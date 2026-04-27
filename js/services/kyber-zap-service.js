@@ -25,6 +25,7 @@
             this.now = options.now || (() => Date.now());
             this.poolDexCache = new Map();
             this.tokenMeta = {};
+            this.tokenMarketMeta = new Map();
             this.quoteRequestTimestamps = [];
         }
 
@@ -42,6 +43,14 @@
 
         getNetworkConfig(networkKey = this.getCurrentNetworkKey()) {
             return this.getConfig()?.NETWORKS?.[networkKey] || null;
+        }
+
+        getGeckoTerminalBaseUrl() {
+            return this.getConfig()?.GECKO_TERMINAL_BASE_URL || 'https://api.geckoterminal.com/api/v2';
+        }
+
+        getGeckoTerminalNetworkId(networkConfig = this.getNetworkConfig()) {
+            return networkConfig?.GECKO_TERMINAL_NETWORK || networkConfig?.CHAIN || null;
         }
 
         getProvider() {
@@ -214,6 +223,51 @@
             } catch (error) {
                 console.warn('Unable to load token metadata:', address, error.message);
                 return { address, symbol: 'TOKEN', name: 'Token', decimals: 18 };
+            }
+        }
+
+        async getTokenMarketMetadata(address, networkConfig = this.getNetworkConfig()) {
+            if (!address || this.isNativeToken(address)) return null;
+
+            const networkId = this.getGeckoTerminalNetworkId(networkConfig);
+            const normalized = this.normalizeAddress(address);
+            if (!networkId || !normalized) return null;
+
+            const cacheKey = `${networkId}:${normalized}`;
+            if (this.tokenMarketMeta.has(cacheKey)) {
+                return this.tokenMarketMeta.get(cacheKey);
+            }
+
+            try {
+                const response = await this.fetchImpl(`${this.getGeckoTerminalBaseUrl()}/networks/${encodeURIComponent(networkId)}/tokens/${normalized}`, {
+                    headers: { accept: 'application/json' }
+                });
+
+                if (!response?.ok) {
+                    this.tokenMarketMeta.set(cacheKey, null);
+                    return null;
+                }
+
+                const payload = await response.json().catch(() => ({}));
+                const attributes = payload?.data?.attributes || null;
+                if (!attributes) {
+                    this.tokenMarketMeta.set(cacheKey, null);
+                    return null;
+                }
+
+                const metadata = {
+                    address: attributes.address || address,
+                    symbol: attributes.symbol || null,
+                    name: attributes.name || null,
+                    imageUrl: attributes.image_url || '',
+                    coingeckoCoinId: attributes.coingecko_coin_id || null
+                };
+                this.tokenMarketMeta.set(cacheKey, metadata);
+                return metadata;
+            } catch (error) {
+                console.warn('Unable to load token market metadata:', address, error.message);
+                this.tokenMarketMeta.set(cacheKey, null);
+                return null;
             }
         }
 
