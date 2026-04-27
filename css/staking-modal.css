@@ -563,6 +563,24 @@
     color: var(--error-main);
 }
 
+.zap-risk-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-1);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(244, 67, 54, 0.35);
+    color: var(--error-main);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.zap-risk-warning .material-icons {
+    flex: 0 0 auto;
+    font-size: 16px;
+    line-height: 1.1;
+}
+
 .zap-empty-state {
     justify-content: center;
     padding: var(--spacing-3);

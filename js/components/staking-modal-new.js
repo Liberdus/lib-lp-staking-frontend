@@ -2157,6 +2157,7 @@ class StakingModalNew {
         let slippageDisplay = `${(Number(this.zapSlippageBps) / 100).toFixed(2)}%`;
         let priceImpactRiskClass = '';
         let slippageRiskClass = this.isHighZapSlippage(this.zapSlippageBps) ? 'zap-risk-high' : '';
+        const warningMessages = [];
         const cardClass = [
             'zap-quote-card',
             isLoading ? 'zap-quote-loading' : '',
@@ -2196,9 +2197,15 @@ class StakingModalNew {
             ], 'N/A');
             priceImpactDisplay = this.formatZapPercent(priceImpact);
             priceImpactRiskClass = this.isHighZapPriceImpact(priceImpact.value, priceImpact.path) ? 'zap-risk-high' : '';
+            if (priceImpactRiskClass) {
+                warningMessages.push('High price impact. You may receive significantly less LP value than expected.');
+            }
             const suggestedSlippage = data?.suggestedSlippage || data?.slippage || this.zapSlippageBps;
             slippageDisplay = `${(Number(suggestedSlippage) / 100).toFixed(2)}%`;
             slippageRiskClass = this.isHighZapSlippage(suggestedSlippage) ? 'zap-risk-high' : '';
+            if (slippageRiskClass) {
+                warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
+            }
             routeSummary = this.getZapRouteSummary();
         }
 
@@ -2244,6 +2251,14 @@ class StakingModalNew {
                         <dd>${this.escapeHtml(slippageDisplay)}</dd>
                     </div>
                 </dl>
+                ${warningMessages.length ? `
+                    <div class="zap-risk-warning" role="alert">
+                        <span class="material-icons" aria-hidden="true">warning</span>
+                        <div>
+                            ${warningMessages.map(message => `<div>${this.escapeHtml(message)}</div>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `;
     }

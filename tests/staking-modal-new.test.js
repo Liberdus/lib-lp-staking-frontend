@@ -313,6 +313,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Slippage</dt>');
         expect(html).toContain('5.00%');
+        expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
     });
 
     it('highlights very high price impact in the zap quote panel', async () => {
@@ -334,5 +335,6 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('<div class="zap-quote-row zap-risk-high">\n                        <dt>Price Impact</dt>');
         expect(html).toContain('6%');
+        expect(html).toContain('High price impact. You may receive significantly less LP value than expected.');
     });
 });
