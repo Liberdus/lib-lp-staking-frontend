@@ -29,6 +29,7 @@ class StakingModalNew {
         this.zapQuoteError = '';
         this.zapSlippageBps = window.CONFIG?.KYBER_ZAP?.DEFAULT_SLIPPAGE_BPS || 50;
         this.zapCustomSlippage = '';
+        this.zapCustomSlippageError = '';
         this.zapDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
         this.zapQuoteDebounceTimer = null;
         this.zapQuoteRequestId = 0;
@@ -324,20 +325,9 @@ class StakingModalNew {
             }
 
             if (e.target.id === 'zap-custom-slippage-input') {
-                this.zapCustomSlippage = this.applyDecimalLimit(e.target.value, 2);
-                if (this.zapCustomSlippage !== e.target.value) {
-                    e.target.value = this.zapCustomSlippage;
-                }
-                const customValue = parseFloat(this.zapCustomSlippage);
-                if (customValue > 0 && customValue <= 100) {
-                    this.zapSlippageBps = Math.round(customValue * 100);
-                    this.zapQuote = null;
-                    this.zapQuoteStatus = 'idle';
-                    this.zapQuoteRequestId += 1;
-                    this.resetZapQuoteCountdown();
-                    this.updateZapQuotePanel();
-                    this.debounceZapQuote();
-                    this.updateZapButton();
+                const sanitizedValue = this.setZapCustomSlippageInput(e.target.value);
+                if (sanitizedValue !== e.target.value) {
+                    e.target.value = sanitizedValue;
                 }
             }
 
@@ -448,6 +438,7 @@ class StakingModalNew {
         this.zapInputTokenBalances = new Map();
         this.zapCustomTokenAddress = '';
         this.zapCustomTokenError = '';
+        this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
 
@@ -816,14 +807,81 @@ class StakingModalNew {
             if (Number.isFinite(parsed) && parsed > 0) {
                 this.zapSlippageBps = parsed;
                 this.zapCustomSlippage = '';
+                this.zapCustomSlippageError = '';
                 this.zapQuote = null;
                 this.zapQuoteStatus = 'idle';
+                this.zapQuoteError = '';
                 this.zapQuoteRequestId += 1;
                 this.resetZapQuoteCountdown();
                 this.renderTabContent();
                 this.debounceZapQuote();
             }
         }
+    }
+
+    getZapCustomSlippageError(value = this.zapCustomSlippage) {
+        if (!value) {
+            return '';
+        }
+
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue) || numericValue <= 0 || numericValue > 100) {
+            return 'Enter a custom slippage between 0.01% and 100%.';
+        }
+
+        return '';
+    }
+
+    hasInvalidZapCustomSlippage() {
+        return !!this.getZapCustomSlippageError();
+    }
+
+    isZapCustomSlippageActive() {
+        return !!this.zapCustomSlippage && !this.hasInvalidZapCustomSlippage();
+    }
+
+    setZapCustomSlippageInput(value) {
+        const sanitizedValue = this.applyDecimalLimit(String(value ?? ''), 2);
+        this.zapCustomSlippage = sanitizedValue;
+        this.zapCustomSlippageError = this.getZapCustomSlippageError(sanitizedValue);
+
+        if (this.zapCustomSlippageError) {
+            this.zapQuote = null;
+            this.zapQuoteStatus = 'error';
+            this.zapQuoteError = this.zapCustomSlippageError;
+            this.zapQuoteKey = '';
+            this.zapQuoteInFlightKey = '';
+            this.zapQuoteRequestId += 1;
+            this.resetZapQuoteCountdown();
+            this.stopZapQuoteAutoRefresh();
+            this.updateZapQuotePanel();
+            this.updateZapButton();
+            return sanitizedValue;
+        }
+
+        this.zapQuoteError = '';
+        if (!sanitizedValue) {
+            if (this.zapQuoteStatus === 'error' && !this.zapQuote) {
+                this.zapQuoteStatus = 'idle';
+            }
+            this.updateZapQuotePanel();
+            this.debounceZapQuote();
+            this.updateZapButton();
+            return sanitizedValue;
+        }
+
+        const customValue = Number(sanitizedValue);
+        this.zapSlippageBps = Math.round(customValue * 100);
+        this.zapQuote = null;
+        this.zapQuoteStatus = 'idle';
+        this.zapQuoteKey = '';
+        this.zapQuoteInFlightKey = '';
+        this.zapQuoteRequestId += 1;
+        this.resetZapQuoteCountdown();
+        this.updateZapQuotePanel();
+        this.debounceZapQuote();
+        this.updateZapButton();
+        return sanitizedValue;
     }
 
     setZapAmountPercentage(percentage) {
@@ -882,7 +940,8 @@ class StakingModalNew {
     canFetchZapQuote() {
         return !!this.zapSelectedToken
             && !!this.zapInputAmount
-            && parseFloat(this.zapInputAmount) > 0;
+            && parseFloat(this.zapInputAmount) > 0
+            && !this.hasInvalidZapCustomSlippage();
     }
 
     getZapQuoteRequestKey() {
@@ -1822,6 +1881,7 @@ class StakingModalNew {
         const amount = parseFloat(this.zapInputAmount) || 0;
         const hasAmount = amount > 0;
         const hasSufficientBalance = this.hasSufficientZapBalance();
+        const hasValidSlippage = !this.hasInvalidZapCustomSlippage();
 
         const approvePhase = this.actionPhases?.approveZap || 'idle';
         const zapPhase = this.actionPhases?.zap || 'idle';
@@ -1835,13 +1895,17 @@ class StakingModalNew {
         }
 
         const hasQuote = this.zapQuoteStatus === 'ready' && !!this.zapQuote;
-        const shouldDisable = this.isExecutingZap || !hasAmount || !this.zapSelectedToken || !hasSufficientBalance || !hasQuote;
+        const shouldDisable = this.isExecutingZap || !hasAmount || !this.zapSelectedToken || !hasSufficientBalance || !hasQuote || !hasValidSlippage;
         zapButton.disabled = shouldDisable;
-        zapButton.title = !hasSufficientBalance && hasAmount
-            ? `Insufficient ${this.zapSelectedToken?.symbol || 'token'} balance`
-            : hasQuote
-                ? 'Create LP tokens'
-                : 'Fetch a quote before creating LP tokens';
+        if (!hasValidSlippage) {
+            zapButton.title = this.getZapCustomSlippageError();
+        } else if (!hasSufficientBalance && hasAmount) {
+            zapButton.title = `Insufficient ${this.zapSelectedToken?.symbol || 'token'} balance`;
+        } else if (hasQuote) {
+            zapButton.title = 'Create LP tokens';
+        } else {
+            zapButton.title = 'Fetch a quote before creating LP tokens';
+        }
 
         if (buttonIcon) buttonIcon.textContent = 'bolt';
         if (buttonText) buttonText.textContent = ' Create LP';
@@ -1979,6 +2043,7 @@ class StakingModalNew {
         this.zapQuoteRateLimitMessage = '';
         this.zapQuoteKey = '';
         this.zapQuoteInFlightKey = '';
+        this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
@@ -2398,18 +2463,21 @@ class StakingModalNew {
                             ${(option / 100).toFixed(1)}%
                         </button>
                     `).join('')}
-                    <button class="zap-slippage-btn ${this.zapCustomSlippage ? 'active' : ''}" data-slippage="custom">Custom</button>
+                    <button class="zap-slippage-btn ${this.isZapCustomSlippageActive() ? 'active' : ''}" data-slippage="custom">Custom</button>
                     <input
                         type="number"
                         id="zap-custom-slippage-input"
                         class="form-input zap-custom-slippage"
                         placeholder="${(this.zapSlippageBps / 100).toFixed(2)}%"
                         value="${this.escapeHtml(this.zapCustomSlippage)}"
-                        min="0"
+                        min="0.01"
                         max="100"
                         step="0.01"
+                        aria-invalid="${this.zapCustomSlippageError ? 'true' : 'false'}"
+                        ${this.zapCustomSlippageError ? 'aria-describedby="zap-custom-slippage-error"' : ''}
                     >
                 </div>
+                ${this.zapCustomSlippageError ? `<div id="zap-custom-slippage-error" class="zap-field-error">${this.escapeHtml(this.zapCustomSlippageError)}</div>` : ''}
             </div>
 
             <div id="zap-quote-panel">
@@ -2734,6 +2802,14 @@ class StakingModalNew {
     async executeZap() {
         if (this.isExecutingZap) {
             console.log('⚠️ Zap already in progress, ignoring duplicate call');
+            return;
+        }
+
+        const slippageError = this.getZapCustomSlippageError();
+        if (slippageError) {
+            this.updateZapQuotePanel();
+            this.updateZapButton();
+            window.notificationManager?.error(slippageError);
             return;
         }
 

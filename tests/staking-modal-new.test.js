@@ -411,6 +411,66 @@ describe('StakingModalNew zap cleanup', () => {
         expect(sortedTokens.map(token => token.symbol)).toEqual(['BNB', 'CAKE', 'DAI', 'USDT']);
     });
 
+    it('invalid custom zap slippage clears stale quotes and is not shown as active', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.currentPair = { name: 'LIB/USDT' };
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+        modal.zapInputTokens = [modal.zapSelectedToken];
+        modal.zapInputAmount = '1';
+        modal.zapQuote = { data: { route: '0xroute' } };
+        modal.zapQuoteStatus = 'ready';
+        modal.zapSlippageBps = 50;
+
+        const sanitizedValue = modal.setZapCustomSlippageInput('0');
+        const html = modal.renderZapTab();
+        const customButton = html.match(/<button class="zap-slippage-btn[^"]*" data-slippage="custom">Custom<\/button>/)?.[0] || '';
+
+        expect(sanitizedValue).toBe('0');
+        expect(modal.zapSlippageBps).toBe(50);
+        expect(modal.zapQuote).toBeNull();
+        expect(modal.zapQuoteStatus).toBe('error');
+        expect(modal.zapQuoteError).toContain('Enter a custom slippage');
+        expect(modal.canFetchZapQuote()).toBe(false);
+        expect(customButton).not.toContain('active');
+        expect(html).toContain('aria-invalid="true"');
+        expect(html).toContain('zap-custom-slippage-error');
+    });
+
+    it('valid custom zap slippage applies bps and refreshes quotes', async () => {
+        vi.useFakeTimers();
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        modal.zapSelectedToken = { symbol: 'USDT', address: '0xtoken', decimals: 18 };
+        modal.zapInputAmount = '1';
+        modal.zapQuote = { data: { route: '0xroute' } };
+        modal.zapQuoteStatus = 'ready';
+        modal.fetchZapQuote = vi.fn();
+
+        const sanitizedValue = modal.setZapCustomSlippageInput('2.345');
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(sanitizedValue).toBe('2.34');
+        expect(modal.zapSlippageBps).toBe(234);
+        expect(modal.zapCustomSlippageError).toBe('');
+        expect(modal.zapQuote).toBeNull();
+        expect(modal.zapQuoteStatus).toBe('idle');
+        expect(modal.fetchZapQuote).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not execute zap while custom slippage is invalid', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = createModal(StakingModalNew);
+        arrangeExecutableZap(modal);
+        modal.zapCustomSlippage = '101';
+        modal.zapCustomSlippageError = modal.getZapCustomSlippageError();
+
+        await modal.executeZap();
+
+        expect(modal.buildZapRoute).not.toHaveBeenCalled();
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Enter a custom slippage between 0.01% and 100%.');
+    });
+
     it('applies a GeckoTerminal icon URL to custom zap tokens after metadata loads', async () => {
         const StakingModalNew = await loadStakingModalClass();
         const modal = createModal(StakingModalNew);
