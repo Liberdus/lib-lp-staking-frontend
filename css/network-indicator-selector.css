@@ -132,20 +132,42 @@ html[data-theme="light"] .network-indicator-home {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+    .network-indicator-home {
+        flex: 0 1 142px;
+        min-width: 0;
+        max-width: 160px;
+        padding-left: 8px;
+    }
+
     .network-selector {
         margin-left: 6px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .network-selector-container,
+    .network-select-wrapper {
+        min-width: 0;
+        width: 100%;
     }
     
     .network-select {
+        width: 100%;
+        max-width: 100%;
         height: 34px !important;
         line-height: 34px !important;
         font-size: 12px !important;
-        padding: 0 40px 0 12px !important;
-        min-width: 130px;
+        padding: 0 32px 0 10px !important;
+        min-width: 86px;
     }
 }
 
 @media (max-width: 480px) {
+    .network-indicator-home {
+        flex-basis: 126px;
+        max-width: 142px;
+    }
+
     .network-selector {
         margin-left: 4px;
     }
@@ -154,7 +176,7 @@ html[data-theme="light"] .network-indicator-home {
         height: 32px !important;
         line-height: 32px !important;
         font-size: 11px !important;
-        padding: 0 36px 0 10px !important;
-        min-width: 110px;
+        padding: 0 30px 0 8px !important;
+        min-width: 78px;
     }
 }

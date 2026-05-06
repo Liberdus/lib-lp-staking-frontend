@@ -17,6 +17,12 @@ class NetworkSelector {
         this._networkSwitching = false; // Track network switching state
         this.defaultNetwork = 'BSC_MAINNET';
         this.selectableNetworks = ['BSC_MAINNET', 'BSC_TESTNET'];
+        this.mobileNetworkLabels = {
+            BSC_MAINNET: 'BNB',
+            BSC_TESTNET: 'BNB Test'
+        };
+        this.mobileNetworkLabelQuery = window.matchMedia?.('(max-width: 768px)') || null;
+        this.mobileNetworkLabelListener = null;
     }
 
     getSelectableNetworkEntries() {
@@ -37,6 +43,39 @@ class NetworkSelector {
             return this.defaultNetwork;
         }
         return selectedNetworkKey;
+    }
+
+    getNetworkLabel(networkKey, network) {
+        if (this.mobileNetworkLabelQuery?.matches) {
+            return this.mobileNetworkLabels[networkKey] || network.NAME;
+        }
+
+        return network.NAME;
+    }
+
+    updateNetworkOptionLabels() {
+        document.querySelectorAll('.network-select').forEach((select) => {
+            select.querySelectorAll('option').forEach((option) => {
+                const network = window.CONFIG?.NETWORKS?.[option.value];
+                if (!network) return;
+
+                option.textContent = this.getNetworkLabel(option.value, network);
+            });
+        });
+    }
+
+    setupMobileNetworkLabelListener() {
+        if (!this.mobileNetworkLabelQuery || this.mobileNetworkLabelListener) {
+            return;
+        }
+
+        this.mobileNetworkLabelListener = () => this.updateNetworkOptionLabels();
+
+        if (this.mobileNetworkLabelQuery.addEventListener) {
+            this.mobileNetworkLabelQuery.addEventListener('change', this.mobileNetworkLabelListener);
+        } else if (this.mobileNetworkLabelQuery.addListener) {
+            this.mobileNetworkLabelQuery.addListener(this.mobileNetworkLabelListener);
+        }
     }
 
     /**
@@ -86,6 +125,8 @@ class NetworkSelector {
         document.querySelectorAll('.network-selector').forEach(selector => {
             this.attachEventHandlers(selector, selector.classList.contains('admin') ? 'admin' : 'home');
         });
+        this.setupMobileNetworkLabelListener();
+        this.updateNetworkOptionLabels();
     }
 
     /**
@@ -106,6 +147,8 @@ class NetworkSelector {
         container.appendChild(selector);
         
         this.attachEventHandlers(selector, context);
+        this.setupMobileNetworkLabelListener();
+        this.updateNetworkOptionLabels();
         console.log(`🌐 Network selector added to ${containerId}`);
     }
 
@@ -120,8 +163,8 @@ class NetworkSelector {
             <div class="network-select-wrapper">
                 <select id="network-select" class="network-select">
                     ${networks.map(([key, network]) => `
-                        <option value="${key}" ${key === selectedNetwork ? 'selected' : ''}>
-                            ${network.NAME}
+                        <option value="${key}" ${key === selectedNetwork ? 'selected' : ''} title="${network.NAME}">
+                            ${this.getNetworkLabel(key, network)}
                         </option>
                     `).join('')}
                 </select>
