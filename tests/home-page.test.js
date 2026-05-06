@@ -103,11 +103,15 @@ describe('HomePage.renderPairRow', () => {
             }
         );
 
-        expect(output).toContain('class="staking-cell staking-cell--pair" data-label="Pair"');
-        expect(output).toContain('class="staking-cell staking-cell--apr" data-label="APR"');
-        expect(output).toContain('class="staking-cell staking-cell--weight" data-label="Weight"');
-        expect(output).toContain('class="staking-cell staking-cell--tvl" data-label="TVL"');
-        expect(output).toContain('class="staking-cell staking-cell--share" data-label="My Share"');
-        expect(output).toContain('class="staking-cell staking-cell--reward" data-label="My Reward"');
+        [
+            ['pair', 'Pair'],
+            ['apr', 'APR'],
+            ['weight', 'Weight'],
+            ['tvl', 'TVL'],
+            ['share', 'My Share'],
+            ['reward', 'My Reward']
+        ].forEach(([cell, label]) => {
+            expect(output).toContain(`class="staking-cell staking-cell--${cell}" data-label="${label}"`);
+        });
     });
 });
