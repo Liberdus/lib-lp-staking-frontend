@@ -133,14 +133,16 @@ html[data-theme="light"] .network-indicator-home {
 /* Mobile responsive */
 @media (max-width: 768px) {
     .network-indicator-home {
-        flex: 0 1 142px;
+        flex: 0 1 112px;
         min-width: 0;
-        max-width: 160px;
-        padding-left: 8px;
+        max-width: 124px;
+        height: 40px;
+        padding: 0 4px;
+        gap: 5px;
     }
 
     .network-selector {
-        margin-left: 6px;
+        margin-left: 0;
         min-width: 0;
         width: 100%;
     }
@@ -157,26 +159,28 @@ html[data-theme="light"] .network-indicator-home {
         height: 34px !important;
         line-height: 34px !important;
         font-size: 12px !important;
-        padding: 0 32px 0 10px !important;
-        min-width: 86px;
+        padding: 0 28px 0 9px !important;
+        min-width: 76px;
     }
 }
 
 @media (max-width: 480px) {
     .network-indicator-home {
-        flex-basis: 126px;
-        max-width: 142px;
+        flex: 0 0 96px;
+        max-width: 96px;
+        height: 38px;
+        gap: 4px;
     }
 
     .network-selector {
-        margin-left: 4px;
+        margin-left: 0;
     }
     
     .network-select {
         height: 32px !important;
         line-height: 32px !important;
         font-size: 11px !important;
-        padding: 0 30px 0 8px !important;
-        min-width: 78px;
+        padding: 0 26px 0 8px !important;
+        min-width: 70px;
     }
 }
