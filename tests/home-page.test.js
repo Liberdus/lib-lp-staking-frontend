@@ -62,3 +62,56 @@ describe('HomePage.formatTvlDisplay', () => {
         expect(formatNumber).toHaveBeenCalledWith(123.456);
     });
 });
+
+describe('HomePage.renderPairRow', () => {
+    beforeEach(() => {
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        globalThis.window = globalThis;
+        globalThis.Formatter = {
+            formatPairName: vi.fn().mockReturnValue('<span class="pair-name-link">LIB/BNB</span>'),
+            getPlatformUrl: vi.fn().mockReturnValue('https://example.com/pool')
+        };
+        globalThis.networkManager = {
+            isOnRequiredNetwork: vi.fn().mockReturnValue(true)
+        };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete globalThis.Formatter;
+        delete globalThis.networkManager;
+        delete globalThis.HomePage;
+        delete globalThis.window;
+    });
+
+    it('adds mobile card labels and cell classes to each staking row cell', async () => {
+        const homePagePrototype = await loadHomePage();
+        const output = homePagePrototype.renderPairRow.call(
+            {
+                isWalletConnected: () => true,
+                formatTvlDisplay: () => '$1.2K'
+            },
+            {
+                id: '1',
+                address: '0x123',
+                name: 'LIB/BNB',
+                platform: 'PancakeSwap',
+                apr: '12.3',
+                weightPercentage: '25.00',
+                userShares: '3.50',
+                userEarnings: '1.2345'
+            }
+        );
+
+        [
+            ['pair', 'Pair'],
+            ['apr', 'APR'],
+            ['weight', 'Weight'],
+            ['tvl', 'TVL'],
+            ['share', 'My Share'],
+            ['reward', 'My Reward']
+        ].forEach(([cell, label]) => {
+            expect(output).toContain(`class="staking-cell staking-cell--${cell}" data-label="${label}"`);
+        });
+    });
+});
