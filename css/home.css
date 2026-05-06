@@ -409,10 +409,10 @@ body {
         box-sizing: border-box;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-            "pair pair"
+            "pair tvl"
             "apr weight"
-            "tvl tvl"
-            "share reward";
+            "share share"
+            "reward reward";
         gap: 10px;
         align-items: stretch;
         padding: 12px;
@@ -574,9 +574,9 @@ body {
         grid-template-columns: 1fr;
         grid-template-areas:
             "pair"
+            "tvl"
             "apr"
             "weight"
-            "tvl"
             "share"
             "reward";
         gap: 8px;
