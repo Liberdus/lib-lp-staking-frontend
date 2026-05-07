@@ -938,13 +938,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    window.masterInitializer = new MasterInitializer();
-
     try {
+        if (window.versionCheckReady) {
+            try {
+                const versionCheckResult = await window.versionCheckReady;
+                if (versionCheckResult?.reloading || window.versionCheckReloading) {
+                    return;
+                }
+            } catch (versionError) {
+                console.warn('⚠️ Version check failed before initialization:', versionError);
+            }
+        }
+
+        window.masterInitializer = new MasterInitializer();
         await window.masterInitializer.init();
     } catch (error) {
         console.error('❌ System initialization failed:', error);
-        window.masterInitializer.handleInitializationError(error);
+        if (window.masterInitializer) {
+            window.masterInitializer.handleInitializationError(error);
+        }
     }
 });
 

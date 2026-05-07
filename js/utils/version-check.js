@@ -11,6 +11,7 @@
     const VERSION_FILE = isAdminPage ? '../version.html' : 'version.html';
     const STORAGE_KEY = 'version';
     let cachedVersion = null;
+    window.versionCheckReloading = false;
 
     /**
      * Get current version from localStorage or version.html
@@ -73,7 +74,7 @@
         } catch (error) {
             console.error('Version check failed:', error);
             // Continue with stored version on error
-            return;
+            return { reloading: false, version: storedVersion };
         }
 
         // Compare versions (convert to comparable numbers: "1.2.3" -> 1002003)
@@ -84,15 +85,18 @@
             console.log(`🔄 Updating to version: ${newVersion} (from ${storedVersion})`);
             localStorage.setItem(STORAGE_KEY, newVersion);
             cachedVersion = newVersion;
+            window.versionCheckReloading = true;
             
             if (criticalFiles.length > 0) {
                 await forceReloadFiles(criticalFiles);
             }
             
             window.location.replace(window.location.href.split('?')[0]);
+            return { reloading: true, version: newVersion };
         } else {
             cachedVersion = storedVersion;
             console.log(`✅ Running version: ${storedVersion}`);
+            return { reloading: false, version: newVersion };
         }
     }
 
@@ -198,6 +202,6 @@
     window.getCurrentVersion = getCurrentVersion;
 
     // Auto-run version check on load
-    checkVersion(getCriticalFiles());
+    window.versionCheckReady = checkVersion(getCriticalFiles());
 
 })(window);
