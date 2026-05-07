@@ -939,15 +939,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        if (window.versionCheckReady) {
-            try {
-                const versionCheckResult = await window.versionCheckReady;
-                if (versionCheckResult?.reloading || window.versionCheckReloading) {
-                    return;
-                }
-            } catch (versionError) {
-                console.warn('⚠️ Version check failed before initialization:', versionError);
-            }
+        const versionCheckResult = await window.versionCheckReady;
+        if (versionCheckResult.status === 'reload') {
+            return;
+        }
+
+        if (versionCheckResult.status !== 'ready') {
+            throw new Error(`Unknown version check status: ${versionCheckResult.status}`);
         }
 
         window.masterInitializer = new MasterInitializer();
