@@ -940,7 +940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const versionCheckResult = window.versionCheckReady
-            ? await window.versionCheckReady
+            ? await window.versionCheckReady.catch(() => ({ status: 'ready' }))
             : { status: 'ready' };
         if (versionCheckResult.status === 'reload') {
             return;
