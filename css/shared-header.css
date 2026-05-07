@@ -189,6 +189,10 @@
         gap: 8px;
     }
 
+    .logo-text {
+        display: none;
+    }
+
     .logo-section {
         flex: 0 1 auto;
         min-width: 0;
