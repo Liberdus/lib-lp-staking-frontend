@@ -108,15 +108,11 @@ class NotificationManagerNew {
         messageElement.textContent = String(message ?? '');
         content.appendChild(messageElement);
 
-        const supportActions = this.getSupportActions(type, supportAction);
-        if (supportActions.length > 0) {
+        const discordUrl = window.CONFIG?.SUPPORT?.DISCORD_URL;
+        if (type === 'error' && supportAction !== false && discordUrl) {
             const actions = document.createElement('div');
             actions.className = 'notification-actions';
-
-            supportActions.forEach(action => {
-                actions.appendChild(this.createActionLink(action));
-            });
-
+            actions.appendChild(this.createSupportLink(discordUrl));
             content.appendChild(actions);
         }
 
@@ -133,6 +129,10 @@ class NotificationManagerNew {
             closeIcon.className = 'material-icons';
             closeIcon.textContent = 'close';
             closeButton.appendChild(closeIcon);
+            closeButton.addEventListener('click', event => {
+                event.stopPropagation();
+                this.remove(notification);
+            });
 
             notification.appendChild(closeButton);
         }
@@ -143,47 +143,17 @@ class NotificationManagerNew {
             notification.appendChild(progress);
         }
 
-        // Add close functionality
-        if (!persistent) {
-            const closeBtn = notification.querySelector('.notification-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.remove(notification);
-                });
-            }
-        }
-
         return notification;
     }
 
-    getSupportActions(type, supportAction) {
-        if (type !== 'error' || supportAction === false) {
-            return [];
-        }
-
-        const discordUrl = window.CONFIG?.SUPPORT?.DISCORD_URL;
-        if (!discordUrl) {
-            return [];
-        }
-
-        return [
-            {
-                label: 'Get support',
-                url: discordUrl,
-                ariaLabel: 'Get support on Discord'
-            }
-        ];
-    }
-
-    createActionLink(action) {
+    createSupportLink(discordUrl) {
         const link = document.createElement('a');
         link.className = 'notification-action-link';
-        link.href = action.url;
+        link.href = discordUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = action.label;
-        link.setAttribute('aria-label', action.ariaLabel);
+        link.textContent = 'Get support';
+        link.setAttribute('aria-label', 'Get support on Discord');
 
         link.addEventListener('click', event => {
             event.stopPropagation();
