@@ -210,22 +210,22 @@ class StakingModalNew {
                         </button>
                     </div>
                     
-                    <div class="modal-tabs">
-                        <button class="tab-button active" data-tab="zap">
-                            <span class="material-icons">bolt</span>
-                            Create LP
+                    <div class="modal-tabs" role="group" aria-label="Staking actions">
+                        <button class="tab-button active" type="button" aria-pressed="true" aria-label="Create LP" title="Create LP" data-tab="zap">
+                            <span class="material-icons" aria-hidden="true">bolt</span>
+                            <span class="tab-label">Create LP</span>
                         </button>
-                        <button class="tab-button" data-tab="stake">
-                            <span class="material-icons">add</span>
-                            Stake
+                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Stake" title="Stake" data-tab="stake">
+                            <span class="material-icons" aria-hidden="true">add</span>
+                            <span class="tab-label">Stake</span>
                         </button>
-                        <button class="tab-button" data-tab="unstake">
-                            <span class="material-icons">remove</span>
-                            Unstake
+                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Unstake" title="Unstake" data-tab="unstake">
+                            <span class="material-icons" aria-hidden="true">remove</span>
+                            <span class="tab-label">Unstake</span>
                         </button>
-                        <button class="tab-button" data-tab="claim">
-                            <span class="material-icons">redeem</span>
-                            Claim
+                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Claim" title="Claim" data-tab="claim">
+                            <span class="material-icons" aria-hidden="true">redeem</span>
+                            <span class="tab-label">Claim</span>
                         </button>
                     </div>
                     
@@ -2083,7 +2083,9 @@ class StakingModalNew {
 
         // Update tab buttons
         document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tab);
+            const isActive = btn.dataset.tab === tab;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-pressed', String(isActive));
         });
 
         // Render tab content
