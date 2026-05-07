@@ -99,6 +99,11 @@ window.CONFIG = {
         DEBOUNCE_DELAY: 500 // 500ms
     },
 
+    // Support Links
+    SUPPORT: {
+        DISCORD_URL: 'https://discord.gg/2Cs9YWtFVN'
+    },
+
     // UI Configuration
     UI: {
         THEME: {

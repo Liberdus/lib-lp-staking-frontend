@@ -63,6 +63,8 @@ class MasterInitializer {
             throw new Error('Failed to load application configuration');
         }
 
+        this.applySupportLinks();
+
         // Initialize network selection (validate localStorage)
         window.networkSelector.loadSelectedNetwork();
 
@@ -80,6 +82,15 @@ class MasterInitializer {
             console.groupCollapsed = () => {};
             console.groupEnd = () => {};
             console.debug = () => {};
+        }
+    }
+
+    applySupportLinks() {
+        const discordLink = document.getElementById('discord-support-link');
+        const discordUrl = window.CONFIG?.SUPPORT?.DISCORD_URL;
+
+        if (discordLink && discordUrl) {
+            discordLink.href = discordUrl;
         }
     }
 
