@@ -210,20 +210,20 @@ class StakingModalNew {
                         </button>
                     </div>
                     
-                    <div class="modal-tabs" role="group" aria-label="Staking actions">
-                        <button class="tab-button active" type="button" aria-pressed="true" aria-label="Create LP" title="Create LP" data-tab="zap">
+                    <div class="modal-tabs">
+                        <button class="tab-button active" aria-label="Create LP" data-tab="zap">
                             <span class="material-icons" aria-hidden="true">bolt</span>
                             <span class="tab-label">Create LP</span>
                         </button>
-                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Stake" title="Stake" data-tab="stake">
+                        <button class="tab-button" aria-label="Stake" data-tab="stake">
                             <span class="material-icons" aria-hidden="true">add</span>
                             <span class="tab-label">Stake</span>
                         </button>
-                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Unstake" title="Unstake" data-tab="unstake">
+                        <button class="tab-button" aria-label="Unstake" data-tab="unstake">
                             <span class="material-icons" aria-hidden="true">remove</span>
                             <span class="tab-label">Unstake</span>
                         </button>
-                        <button class="tab-button" type="button" aria-pressed="false" aria-label="Claim" title="Claim" data-tab="claim">
+                        <button class="tab-button" aria-label="Claim" data-tab="claim">
                             <span class="material-icons" aria-hidden="true">redeem</span>
                             <span class="tab-label">Claim</span>
                         </button>
@@ -2083,9 +2083,7 @@ class StakingModalNew {
 
         // Update tab buttons
         document.querySelectorAll('.tab-button').forEach(btn => {
-            const isActive = btn.dataset.tab === tab;
-            btn.classList.toggle('active', isActive);
-            btn.setAttribute('aria-pressed', String(isActive));
+            btn.classList.toggle('active', btn.dataset.tab === tab);
         });
 
         // Render tab content

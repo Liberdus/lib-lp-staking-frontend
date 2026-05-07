@@ -107,7 +107,6 @@
 .modal-tabs {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: 100%;
     border-bottom: 1px solid var(--divider);
 }
 
@@ -123,23 +122,10 @@
     background: transparent;
     color: var(--text-secondary);
     font-weight: 500;
-    line-height: 1.2;
     white-space: nowrap;
     cursor: pointer;
     transition: all 0.2s;
     border-bottom: 2px solid transparent;
-}
-
-.tab-button .material-icons {
-    flex: 0 0 auto;
-    font-size: 20px;
-    line-height: 1;
-}
-
-.tab-label {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .tab-button:hover {
@@ -894,7 +880,6 @@
 
 @media (max-width: 480px) {
     .tab-button {
-        min-height: 48px;
         padding: 10px 6px;
     }
 

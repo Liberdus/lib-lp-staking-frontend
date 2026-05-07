@@ -20,8 +20,6 @@ function createClassList(initialClasses = []) {
 }
 
 function createElement({ id = '', classes = [], value = '' } = {}) {
-    const attributes = new Map();
-
     return {
         id,
         value,
@@ -30,10 +28,6 @@ function createElement({ id = '', classes = [], value = '' } = {}) {
         innerHTML: '',
         classList: createClassList(classes),
         querySelector: vi.fn(() => null),
-        setAttribute: vi.fn((name, attributeValue) => {
-            attributes.set(name, String(attributeValue));
-        }),
-        getAttribute: vi.fn(name => attributes.get(name) || null),
         childNodes: []
     };
 }
@@ -52,10 +46,6 @@ function createDocumentMock() {
         querySelectorAll: vi.fn(selector => {
             if (selector === '.zap-percentage-btn') {
                 return allElements.filter(element => element.classList.contains('zap-percentage-btn'));
-            }
-
-            if (selector === '.tab-button') {
-                return allElements.filter(element => element.classList.contains('tab-button'));
             }
 
             return [];
@@ -263,27 +253,11 @@ describe('StakingModalNew zap cleanup', () => {
 
         new StakingModalNew();
 
-        expect(modalContainer.innerHTML).toContain('class="modal-tabs" role="group"');
+        expect(modalContainer.innerHTML).toContain('class="modal-tabs"');
         expect(modalContainer.innerHTML).toContain('aria-label="Create LP"');
-        expect(modalContainer.innerHTML).toContain('aria-pressed="true"');
         expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">bolt</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
-    });
-
-    it('updates tab accessibility state when switching tabs', async () => {
-        const modal = await createLoadedModal();
-        const zapButton = document.registerElement(createElement({ classes: ['tab-button', 'active'] }));
-        const stakeButton = document.registerElement(createElement({ classes: ['tab-button'] }));
-        zapButton.dataset.tab = 'zap';
-        stakeButton.dataset.tab = 'stake';
-
-        modal.switchTab('stake');
-
-        expect(zapButton.classList.contains('active')).toBe(false);
-        expect(zapButton.getAttribute('aria-pressed')).toBe('false');
-        expect(stakeButton.classList.contains('active')).toBe(true);
-        expect(stakeButton.getAttribute('aria-pressed')).toBe('true');
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
