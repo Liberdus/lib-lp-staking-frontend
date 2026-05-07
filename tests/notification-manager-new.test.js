@@ -178,5 +178,11 @@ describe('footer support link', () => {
 
         expect(discordUrl).toBe('https://discord.gg/2Cs9YWtFVN');
         expect(index).toContain(`id="discord-support-link" href="${discordUrl}"`);
+        expect(index).toContain('class="social-link-icon"');
+        expect(index.match(/class="social-link-icon"/g)).toHaveLength(4);
+        expect(index).not.toContain('<span class="material-icons">code</span>');
+        expect(index).not.toContain('<span class="material-icons">forum</span>');
+        expect(index).not.toContain('<span class="material-icons">alternate_email</span>');
+        expect(index).not.toContain('<span class="material-icons">send</span>');
     });
 });
