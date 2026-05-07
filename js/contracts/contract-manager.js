@@ -2732,8 +2732,7 @@ class ContractManager {
                 if (!hasPermission) {
                     console.log(`🔐 Requesting ${networkName} permission...`);
                     try {
-                        const walletType = window.walletManager?.getWalletType?.() || window.walletManager?.walletType || 'injected';
-                        const permissionGranted = await window.networkManager.requestNetworkPermission(walletType);
+                        const permissionGranted = await window.networkManager.requestNetworkPermission();
                         if (!permissionGranted) {
                             throw new Error(`${networkName} permission required for transactions`);
                         }

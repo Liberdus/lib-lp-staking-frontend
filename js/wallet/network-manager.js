@@ -419,12 +419,11 @@ class NetworkManager {
 
     /**
      * Request permission to use the configured network.
-     * @param {string} walletType - Type of wallet requesting access
      * @returns {Promise<boolean>} True if permission granted
      */
-    async requestNetworkPermission(walletType = 'injected') {
+    async requestNetworkPermission() {
         try {
-            return await this._requestInjectedWalletPermission(walletType);
+            return await this._requestInjectedWalletPermission();
         } catch (error) {
             const networkName = window.networkSelector?.getCurrentNetworkName();
             console.error(`Failed to request ${networkName} permission:`, error);
@@ -437,7 +436,7 @@ class NetworkManager {
      * @private
      * @returns {Promise<boolean>}
      */
-    async _requestInjectedWalletPermission(walletType = 'injected') {
+    async _requestInjectedWalletPermission() {
         if (!window.ethereum?.request) {
             throw new Error('No wallet provider available');
         }
@@ -450,7 +449,7 @@ class NetworkManager {
                 throw new Error('Network configuration not found');
             }
 
-            console.log(`🔐 Requesting ${networkName} wallet access...`, { walletType });
+            console.log(`🔐 Requesting ${networkName} wallet access...`);
 
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             if (!Array.isArray(accounts) || accounts.length === 0) {
@@ -498,7 +497,7 @@ class NetworkManager {
      * @returns {Promise<boolean>}
      */
     async _requestMetaMaskPermission() {
-        return await this._requestInjectedWalletPermission('metamask');
+        return await this._requestInjectedWalletPermission();
     }
 
     /**
@@ -512,10 +511,9 @@ class NetworkManager {
         this._showPermissionNotification = showNotification;
         try {
             const networkName = window.networkSelector?.getCurrentNetworkName();
-            const walletType = window.walletManager?.getWalletType?.() || window.walletManager?.walletType || 'injected';
 
             // Request permission using modern approach
-            await this.requestNetworkPermission(walletType);
+            await this.requestNetworkPermission();
 
             // Update UI based on context
             if (context === 'admin' && window.NetworkIndicator) {

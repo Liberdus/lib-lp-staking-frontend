@@ -77,7 +77,7 @@ describe('NetworkManager injected wallet permissions', () => {
         });
         const manager = await loadNetworkManager({ request });
 
-        await expect(manager.requestNetworkPermission('coinbase')).resolves.toBe(true);
+        await expect(manager.requestNetworkPermission()).resolves.toBe(true);
 
         expect(request.mock.calls.map(([payload]) => payload.method)).toEqual([
             'eth_requestAccounts',
@@ -104,7 +104,7 @@ describe('NetworkManager injected wallet permissions', () => {
         });
         const manager = await loadNetworkManager({ request });
 
-        await expect(manager.requestNetworkPermission('coinbase')).resolves.toBe(true);
+        await expect(manager.requestNetworkPermission()).resolves.toBe(true);
 
         expect(request).toHaveBeenCalledWith({
             method: 'wallet_addEthereumChain',
