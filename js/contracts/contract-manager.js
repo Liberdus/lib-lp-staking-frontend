@@ -2692,28 +2692,28 @@ class ContractManager {
      */
     async ensureSigner() {
         try {
-            // First ensure MetaMask is connected
+            // First ensure an injected wallet is connected
             if (typeof window.ethereum === 'undefined') {
-                throw new Error('MetaMask not installed');
+                throw new Error('Wallet not installed');
             }
 
             // Check if accounts are connected
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (accounts.length === 0) {
-                console.log('🔐 No connected accounts, requesting MetaMask connection...');
+                console.log('🔐 No connected accounts, requesting wallet connection...');
                 try {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
                 } catch (connectionError) {
                     if (connectionError.code === 4001) {
-                        throw new Error('User rejected MetaMask connection');
+                        throw new Error('User rejected wallet connection');
                     }
-                    throw new Error('Failed to connect to MetaMask: ' + connectionError.message);
+                    throw new Error('Failed to connect to wallet: ' + connectionError.message);
                 }
             }
 
             // Always create a fresh Web3Provider for transactions (CRITICAL FIX)
 
-            // Create Web3Provider directly from MetaMask
+            // Create Web3Provider directly from the injected wallet
             const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
 
             // Ensure we're on the correct network (using centralized config)
@@ -2732,7 +2732,8 @@ class ContractManager {
                 if (!hasPermission) {
                     console.log(`🔐 Requesting ${networkName} permission...`);
                     try {
-                        const permissionGranted = await window.networkManager.requestNetworkPermission('metamask');
+                        const walletType = window.walletManager?.getWalletType?.() || window.walletManager?.walletType || 'injected';
+                        const permissionGranted = await window.networkManager.requestNetworkPermission(walletType);
                         if (!permissionGranted) {
                             throw new Error(`${networkName} permission required for transactions`);
                         }
@@ -2745,7 +2746,7 @@ class ContractManager {
                     }
                 }
             } else if (network.chainId !== expectedChainId) {
-                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in MetaMask`);
+                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in your wallet`);
             }
 
             // Get signer from Web3Provider
@@ -2777,7 +2778,7 @@ class ContractManager {
 
             // If it's a user rejection, throw specific error
             if (error.code === 4001) {
-                throw new Error('User rejected MetaMask connection');
+                throw new Error('User rejected wallet connection');
             }
 
             throw new Error('Signer not properly connected: ' + error.message);
@@ -3444,6 +3445,8 @@ class ContractManager {
      */
     async approveLPToken(pairName, amount) {
         try {
+            await this.ensureSigner();
+
             // Get LP token contract
             const lpContract = this.getLPTokenContract(pairName);
 

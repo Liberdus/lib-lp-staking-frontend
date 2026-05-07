@@ -28,8 +28,8 @@ class NetworkManager {
 
     /**
      * Check if wallet is on the required network (synchronous chainId comparison)
-     * ⚠️ NETWORK CHECK ONLY - Does NOT verify MetaMask permissions
-     * Only compares chainId values, not wallet_getPermissions
+     * ⚠️ NETWORK CHECK ONLY - Does NOT verify account access
+     * Only compares chainId values
      * For permission checks, use hasRequiredNetworkPermission()
      * @param {number} chainId - Chain ID to check (defaults to current)
      * @returns {boolean} True if on required network (chainId match)
@@ -41,33 +41,30 @@ class NetworkManager {
     }
 
     /**
-     * Check if we have required network permission (async with RPC calls)
-     * @returns {Promise<boolean>} True if has permission for required network
+     * Check if the injected wallet has an account connected and is on the selected network.
+     * Uses portable EIP-1193 methods so Coinbase, MetaMask, and other injected wallets work.
+     * @returns {Promise<boolean>} True if the wallet can sign on the required network
      */
     async hasRequiredNetworkPermission() {
         try {
-            if (!window.ethereum) return false;
+            if (!window.ethereum?.request) return false;
 
-            // Check if wallet is connected to dApp
-            const permissions = await window.ethereum.request({
-                method: 'wallet_getPermissions'
-            });
-
-            if (!permissions.some(p => p.parentCapability === 'eth_accounts')) {
-                return false; // Not connected to dApp
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (!Array.isArray(accounts) || accounts.length === 0) {
+                return false;
             }
 
-            // Check if wallet is on the correct network for the selected app network
             const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
             const expectedChainIdHex = this.getChainIdHex();
-            
-            // If wallet is on wrong network, we need permission to switch
-            if (currentChainId !== expectedChainIdHex) {
-                console.log(`🔄 Wallet on chain ${currentChainId}, but app expects ${expectedChainIdHex}`);
-                return false; // Need permission to switch networks
+            if (!expectedChainIdHex) {
+                return false;
             }
 
-            // Permission is granted if wallet is connected to dApp and on correct network
+            if (String(currentChainId).toLowerCase() !== expectedChainIdHex.toLowerCase()) {
+                console.log(`🔄 Wallet on chain ${currentChainId}, but app expects ${expectedChainIdHex}`);
+                return false;
+            }
+
             return true;
 
         } catch (error) {
@@ -167,7 +164,7 @@ class NetworkManager {
      */
     async addNetwork() {
         if (!window.ethereum) {
-            throw new Error('MetaMask not installed');
+            throw new Error('No wallet provider available');
         }
 
         const networkConfig = this.buildNetworkConfig();
@@ -183,7 +180,7 @@ class NetworkManager {
         } catch (error) {
             // Error code 4902 means the chain has not been added
             if (error.code === 4902) {
-                throw new Error(`Failed to add ${networkName} network to MetaMask`);
+                throw new Error(`Failed to add ${networkName} network to your wallet`);
             }
             
             // Error code -32602 means chain already added (can be ignored)
@@ -374,7 +371,7 @@ class NetworkManager {
 
     /**
      * Build wallet-ready network configuration
-     * Transforms app-config.js format to MetaMask's expected format
+     * Transforms app-config.js format to wallet_addEthereumChain format
      * @returns {object} Network configuration for wallet_addEthereumChain
      */
     buildNetworkConfig() {
@@ -421,18 +418,13 @@ class NetworkManager {
     }
 
     /**
-     * Request permission to use the configured network
-     * This adds the network to MetaMask and ensures we can interact with it
-     * @param {string} walletType - Type of wallet ('metamask')
+     * Request permission to use the configured network.
+     * @param {string} walletType - Type of wallet requesting access
      * @returns {Promise<boolean>} True if permission granted
      */
-    async requestNetworkPermission(walletType = 'metamask') {
+    async requestNetworkPermission(walletType = 'injected') {
         try {
-            if (walletType === 'metamask') {
-                return await this._requestMetaMaskPermission();
-            }
-
-            throw new Error(`Unsupported wallet type: ${walletType}`);
+            return await this._requestInjectedWalletPermission(walletType);
         } catch (error) {
             const networkName = window.networkSelector?.getCurrentNetworkName();
             console.error(`Failed to request ${networkName} permission:`, error);
@@ -441,41 +433,72 @@ class NetworkManager {
     }
 
     /**
-     * Request MetaMask-specific permission
+     * Request access for any injected EIP-1193 wallet.
      * @private
      * @returns {Promise<boolean>}
      */
-    async _requestMetaMaskPermission() {
-        if (!window.ethereum) {
-            throw new Error('MetaMask not installed');
+    async _requestInjectedWalletPermission(walletType = 'injected') {
+        if (!window.ethereum?.request) {
+            throw new Error('No wallet provider available');
         }
 
         try {
             const networkName = window.networkSelector?.getCurrentNetworkName();
-            console.log(`🔐 Requesting ${networkName} network permission...`);
-
-            // First, ensure we have account permissions
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_requestPermissions',
-                    params: [{ eth_accounts: {} }]
-                });
-            } catch (error) {
-                // User might have rejected or already has permissions
-                if (error.code === 4001) {
-                    throw new Error('User rejected permission request');
-                }
-                // If error is "already processing", continue anyway
+            const expectedChainId = window.networkSelector?.getCurrentChainId();
+            const expectedChainIdHex = this.getChainIdHex();
+            if (!expectedChainId || !expectedChainIdHex) {
+                throw new Error('Network configuration not found');
             }
 
-            // Add configured network to MetaMask
-            await this.addNetwork();
-            return true;
+            console.log(`🔐 Requesting ${networkName} wallet access...`, { walletType });
+
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!Array.isArray(accounts) || accounts.length === 0) {
+                throw new Error('No wallet accounts connected');
+            }
+
+            const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+            if (String(currentChainId).toLowerCase() === String(expectedChainIdHex).toLowerCase()) {
+                return true;
+            }
+
+            try {
+                await this.requestNetworkSwitch(expectedChainId);
+                return true;
+            } catch (switchError) {
+                const needsAddNetwork = switchError.code === 4902 ||
+                    switchError.message?.includes('Unrecognized chain ID') ||
+                    switchError.message?.includes('not been added');
+
+                if (needsAddNetwork) {
+                    await this.addNetwork();
+                    return true;
+                }
+
+                if (switchError.code === 4001) {
+                    throw new Error(`User rejected switching to ${networkName}`);
+                }
+
+                if (switchError.code === -32601 || switchError.code === 4200) {
+                    throw new Error(`Your wallet does not support automatic network switching. Please switch to ${networkName} in your wallet.`);
+                }
+
+                throw switchError;
+            }
 
         } catch (error) {
-            console.error('❌ Failed to request MetaMask permission:', error);
+            console.error('❌ Failed to request wallet permission:', error);
             throw error;
         }
+    }
+
+    /**
+     * Backwards-compatible alias for older callers.
+     * @private
+     * @returns {Promise<boolean>}
+     */
+    async _requestMetaMaskPermission() {
+        return await this._requestInjectedWalletPermission('metamask');
     }
 
     /**
@@ -489,9 +512,10 @@ class NetworkManager {
         this._showPermissionNotification = showNotification;
         try {
             const networkName = window.networkSelector?.getCurrentNetworkName();
+            const walletType = window.walletManager?.getWalletType?.() || window.walletManager?.walletType || 'injected';
 
             // Request permission using modern approach
-            await this.requestNetworkPermission('metamask');
+            await this.requestNetworkPermission(walletType);
 
             // Update UI based on context
             if (context === 'admin' && window.NetworkIndicator) {
@@ -514,7 +538,7 @@ class NetworkManager {
         } catch (error) {
             console.error('❌ Failed to get network permission:', error);
             const networkName = window.networkSelector?.getCurrentNetworkName();
-            const errorMessage = `Failed to get network permission. Please grant permission for ${networkName} network in MetaMask.`;
+            const errorMessage = error.message || `Failed to get network permission. Please grant permission for ${networkName} network in your wallet.`;
             
             if (context === 'admin') {
                 alert(errorMessage);

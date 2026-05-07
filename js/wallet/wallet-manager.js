@@ -170,10 +170,10 @@ class WalletManager {
             };
         }
 
-        // Check MetaMask availability
+        // Check injected wallet availability
         if (!window.ethereum) {
             this.connectionAttempts++;
-            throw new Error('MetaMask not installed. Please install MetaMask browser extension.');
+            throw new Error('Wallet not installed. Please install a supported browser wallet extension.');
         }
 
         // Set connection state with timeout protection
@@ -206,7 +206,7 @@ class WalletManager {
             this.provider = new ethers.providers.Web3Provider(window.ethereum);
             this.signer = this.provider.getSigner();
             this.address = accounts[0];
-            this.walletType = 'metamask';
+            this.walletType = this.detectWalletType();
 
             // Get network information
             const network = await this.provider.getNetwork();
@@ -327,6 +327,17 @@ class WalletManager {
     }
 
     /**
+     * Detect the injected wallet type.
+     */
+    detectWalletType() {
+        const provider = window.ethereum;
+        return provider?.isTrust ? 'trust' :
+               provider?.isCoinbaseWallet ? 'coinbase' :
+               provider?.isBraveWallet ? 'brave' :
+               provider?.isMetaMask ? 'metamask' : 'injected';
+    }
+
+    /**
      * Get wallet type
      */
     getWalletType() {
@@ -372,18 +383,18 @@ class WalletManager {
 
             const { walletType, address } = JSON.parse(connectionInfo);
             
-            if (walletType === 'metamask' && window.ethereum) {
-                // Check if MetaMask is still connected (use eth_accounts to avoid popup)
+            if (walletType && window.ethereum) {
+                // Check if the injected wallet is still connected (use eth_accounts to avoid popup)
                 try {
-                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts && accounts.length > 0 && accounts[0].toLowerCase() === address.toLowerCase()) {
-                        console.log('✅ Previous MetaMask connection found, restoring...');
+                        console.log('✅ Previous wallet connection found, restoring...');
                         
                         // Restore connection without triggering new request
                         this.provider = new ethers.providers.Web3Provider(window.ethereum);
                         this.signer = this.provider.getSigner();
                         this.address = accounts[0];
-                        this.walletType = 'metamask';
+                        this.walletType = this.detectWalletType();
                         
                         // Get network information
                         const network = await this.provider.getNetwork();
@@ -397,8 +408,8 @@ class WalletManager {
                             restored: true
                         });
                         
-                        console.log('✅ MetaMask connection restored successfully:', this.address);
-                    return true;
+                        console.log('✅ Wallet connection restored successfully:', this.address);
+                        return true;
                     }
                 } catch (error) {
                     console.warn('Could not check previous connection:', error);
@@ -510,11 +521,7 @@ class WalletManager {
                     this.signer = this.provider.getSigner();
                     this.chainId = (await this.provider.getNetwork()).chainId;
                     
-                    // Detect wallet type: prioritize specific wallet flags, fallback to metamask/injected
-                    this.walletType = window.ethereum.isTrust ? 'trust' : 
-                                     window.ethereum.isCoinbaseWallet ? 'coinbase' :
-                                     window.ethereum.isBraveWallet ? 'brave' :
-                                     window.ethereum.isMetaMask ? 'metamask' : 'injected';
+                    this.walletType = this.detectWalletType();
                 } catch (error) {
                     this.logError('Failed to re-initialize provider/signer:', error);
                 }
