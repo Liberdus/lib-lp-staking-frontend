@@ -180,12 +180,8 @@ class HomePage {
         }
     }
 
-    getWalletRequiredMessage() {
-        return 'Please connect your wallet to stake token.';
-    }
-
     showWalletRequiredToast() {
-        window.notificationManager?.warning(this.getWalletRequiredMessage());
+        window.notificationManager?.warning('Please connect your wallet to stake token.');
     }
 
     render() {

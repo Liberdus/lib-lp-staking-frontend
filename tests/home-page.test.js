@@ -169,11 +169,6 @@ describe('HomePage table action clicks', () => {
                 }
             })
         };
-        globalThis.CONFIG = {
-            ERRORS: {
-                WALLET_NOT_CONNECTED: 'Please connect your wallet to continue'
-            }
-        };
         globalThis.notificationManager = {
             warning: vi.fn()
         };
@@ -181,7 +176,6 @@ describe('HomePage table action clicks', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        delete globalThis.CONFIG;
         delete globalThis.document;
         delete globalThis.HomePage;
         delete globalThis.notificationManager;
@@ -225,7 +219,6 @@ describe('HomePage table action clicks', () => {
 
         homePagePrototype.attachEventListeners.call({
             isWalletConnected: () => false,
-            getWalletRequiredMessage: homePagePrototype.getWalletRequiredMessage,
             showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
             openStakingModal
         });
@@ -247,7 +240,6 @@ describe('HomePage table action clicks', () => {
 
             homePagePrototype.attachEventListeners.call({
                 isWalletConnected: () => false,
-                getWalletRequiredMessage: homePagePrototype.getWalletRequiredMessage,
                 showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
                 openStakingModal
             });
