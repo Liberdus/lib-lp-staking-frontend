@@ -198,6 +198,7 @@ describe('footer support link', () => {
         expect(discordUrl).toBe('https://liberdus.com/discord/');
         expect(discordHelpUrl).toBe('https://liberdus.com/discord/help/');
         expect(index).toContain(`id="discord-support-link" href="${discordUrl}"`);
+        expect(index).toContain(`id="footer-support-link" href="${discordHelpUrl}"`);
         expect(index).toContain('class="social-link-icon"');
         expect(index.match(/class="social-link-icon"/g)).toHaveLength(4);
         expect(index).not.toContain('<span class="material-icons">code</span>');
