@@ -103,7 +103,8 @@ async function loadNotificationManager() {
     globalThis.requestAnimationFrame = callback => callback();
     globalThis.CONFIG = {
         SUPPORT: {
-            DISCORD_URL: 'https://discord.gg/2Cs9YWtFVN'
+            DISCORD_URL: 'https://liberdus.com/discord/',
+            DISCORD_HELP_URL: 'https://liberdus.com/discord/help/'
         }
     };
 
@@ -125,14 +126,34 @@ describe('NotificationManagerNew support actions', () => {
         const NotificationManagerNew = await loadNotificationManager();
         const manager = new NotificationManagerNew();
 
-        const notification = manager.error('Something failed', { persistent: true });
+        const notification = manager.error('Something failed');
         const action = notification.querySelector('.notification-action-link');
 
         expect(action).not.toBeNull();
         expect(action.textContent).toBe('Get support');
-        expect(action.href).toBe('https://discord.gg/2Cs9YWtFVN');
+        expect(action.href).toBe('https://liberdus.com/discord/help/');
         expect(action.target).toBe('_blank');
         expect(action.rel).toBe('noopener noreferrer');
+    });
+
+    it('makes error toasts persistent by default', async () => {
+        const NotificationManagerNew = await loadNotificationManager();
+        const manager = new NotificationManagerNew();
+
+        const notification = manager.error('Something failed');
+
+        expect(notification.querySelector('.notification-close')).toBeNull();
+        expect(notification.querySelector('.notification-progress')).toBeNull();
+    });
+
+    it('allows callers to make error toasts auto-dismiss', async () => {
+        const NotificationManagerNew = await loadNotificationManager();
+        const manager = new NotificationManagerNew();
+
+        const notification = manager.error('Something failed', { persistent: false });
+
+        expect(notification.querySelector('.notification-close')).not.toBeNull();
+        expect(notification.querySelector('.notification-progress')).not.toBeNull();
     });
 
     it('does not add support actions to non-error toasts', async () => {
@@ -175,8 +196,10 @@ describe('footer support link', () => {
         const config = readFileSync(new URL('../js/config/app-config.js', import.meta.url), 'utf8');
         const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
         const discordUrl = config.match(/DISCORD_URL:\s*'([^']+)'/)?.[1];
+        const discordHelpUrl = config.match(/DISCORD_HELP_URL:\s*'([^']+)'/)?.[1];
 
-        expect(discordUrl).toBe('https://discord.gg/2Cs9YWtFVN');
+        expect(discordUrl).toBe('https://liberdus.com/discord/');
+        expect(discordHelpUrl).toBe('https://liberdus.com/discord/help/');
         expect(index).toContain(`id="discord-support-link" href="${discordUrl}"`);
         expect(index).toContain('class="social-link-icon"');
         expect(index.match(/class="social-link-icon"/g)).toHaveLength(4);

@@ -108,11 +108,11 @@ class NotificationManagerNew {
         messageElement.textContent = String(message ?? '');
         content.appendChild(messageElement);
 
-        const discordUrl = window.CONFIG?.SUPPORT?.DISCORD_URL;
-        if (type === 'error' && supportAction !== false && discordUrl) {
+        const discordHelpUrl = window.CONFIG?.SUPPORT?.DISCORD_HELP_URL;
+        if (type === 'error' && supportAction !== false && discordHelpUrl) {
             const actions = document.createElement('div');
             actions.className = 'notification-actions';
-            actions.appendChild(this.createSupportLink(discordUrl));
+            actions.appendChild(this.createSupportLink(discordHelpUrl));
             content.appendChild(actions);
         }
 
@@ -183,7 +183,11 @@ class NotificationManagerNew {
     }
 
     error(message, options) {
-        return this.show(message, 'error', options);
+        const normalizedOptions = typeof options === 'number' ? { duration: options } : (options || {});
+        return this.show(message, 'error', {
+            persistent: true,
+            ...normalizedOptions
+        });
     }
 
     warning(message, options) {

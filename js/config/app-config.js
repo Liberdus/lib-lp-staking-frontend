@@ -101,7 +101,8 @@ window.CONFIG = {
 
     // Support Links
     SUPPORT: {
-        DISCORD_URL: 'https://discord.gg/2Cs9YWtFVN'
+        DISCORD_URL: 'https://liberdus.com/discord/',
+        DISCORD_HELP_URL: 'https://liberdus.com/discord/help/'
     },
 
     // UI Configuration
