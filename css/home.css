@@ -313,6 +313,12 @@ body {
     transition: transform 0.2s;
 }
 
+.social-link-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
 .social-link:hover {
     transform: translateY(-2px);
     color: var(--primary-main);

@@ -99,6 +99,12 @@ window.CONFIG = {
         DEBOUNCE_DELAY: 500 // 500ms
     },
 
+    // Support Links
+    SUPPORT: {
+        DISCORD_URL: 'https://liberdus.com/discord/',
+        DISCORD_HELP_URL: 'https://liberdus.com/discord/help/'
+    },
+
     // UI Configuration
     UI: {
         THEME: {
