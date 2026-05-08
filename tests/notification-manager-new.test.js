@@ -160,7 +160,7 @@ describe('NotificationManagerNew support actions', () => {
         const NotificationManagerNew = await loadNotificationManager();
         const manager = new NotificationManagerNew();
 
-        const notification = manager.warning('Check this', { persistent: true });
+        const notification = manager.warning('Check this');
 
         expect(notification.querySelector('.notification-action-link')).toBeNull();
     });
@@ -169,10 +169,7 @@ describe('NotificationManagerNew support actions', () => {
         const NotificationManagerNew = await loadNotificationManager();
         const manager = new NotificationManagerNew();
 
-        const notification = manager.error('Something failed', {
-            persistent: true,
-            supportAction: false
-        });
+        const notification = manager.error('Something failed', { supportAction: false });
 
         expect(notification.querySelector('.notification-action-link')).toBeNull();
     });
@@ -182,7 +179,7 @@ describe('NotificationManagerNew support actions', () => {
         const manager = new NotificationManagerNew();
         const unsafeMessage = '<img src=x onerror=alert(1)>';
 
-        const notification = manager.error(unsafeMessage, { persistent: true });
+        const notification = manager.error(unsafeMessage);
         const message = notification.querySelector('.notification-message');
 
         expect(message.textContent).toBe(unsafeMessage);
