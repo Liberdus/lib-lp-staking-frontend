@@ -25,6 +25,7 @@ function createElement({ id = '', classes = [], value = '' } = {}) {
         value,
         style: {},
         dataset: {},
+        innerHTML: '',
         classList: createClassList(classes),
         querySelector: vi.fn(() => null),
         childNodes: []
@@ -244,6 +245,19 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(activeButton.classList.contains('active')).toBe(false);
         expect(inactiveButton.classList.contains('active')).toBe(false);
+    });
+
+    it('renders modal tabs with hideable labels and accessible names', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modalContainer = document.registerElement(createElement({ id: 'modal-container' }));
+
+        new StakingModalNew();
+
+        expect(modalContainer.innerHTML).toContain('class="modal-tabs"');
+        expect(modalContainer.innerHTML).toContain('aria-label="Create LP"');
+        expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">bolt</span>');
+        expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
+        expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {

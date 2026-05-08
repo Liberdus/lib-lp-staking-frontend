@@ -211,21 +211,21 @@ class StakingModalNew {
                     </div>
                     
                     <div class="modal-tabs">
-                        <button class="tab-button active" data-tab="zap">
-                            <span class="material-icons">bolt</span>
-                            Create LP
+                        <button class="tab-button active" aria-label="Create LP" data-tab="zap">
+                            <span class="material-icons" aria-hidden="true">bolt</span>
+                            <span class="tab-label">Create LP</span>
                         </button>
-                        <button class="tab-button" data-tab="stake">
-                            <span class="material-icons">add</span>
-                            Stake
+                        <button class="tab-button" aria-label="Stake" data-tab="stake">
+                            <span class="material-icons" aria-hidden="true">add</span>
+                            <span class="tab-label">Stake</span>
                         </button>
-                        <button class="tab-button" data-tab="unstake">
-                            <span class="material-icons">remove</span>
-                            Unstake
+                        <button class="tab-button" aria-label="Unstake" data-tab="unstake">
+                            <span class="material-icons" aria-hidden="true">remove</span>
+                            <span class="tab-label">Unstake</span>
                         </button>
-                        <button class="tab-button" data-tab="claim">
-                            <span class="material-icons">redeem</span>
-                            Claim
+                        <button class="tab-button" aria-label="Claim" data-tab="claim">
+                            <span class="material-icons" aria-hidden="true">redeem</span>
+                            <span class="tab-label">Claim</span>
                         </button>
                     </div>
                     
