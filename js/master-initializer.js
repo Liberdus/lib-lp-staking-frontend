@@ -938,13 +938,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    window.masterInitializer = new MasterInitializer();
-
     try {
+        const versionCheckResult = window.versionCheckReady
+            ? await window.versionCheckReady.catch(() => ({ status: 'ready' }))
+            : { status: 'ready' };
+        if (versionCheckResult.status === 'reload') {
+            return;
+        }
+
+        if (versionCheckResult.status !== 'ready') {
+            throw new Error(`Unknown version check status: ${versionCheckResult.status}`);
+        }
+
+        window.masterInitializer = new MasterInitializer();
         await window.masterInitializer.init();
     } catch (error) {
         console.error('❌ System initialization failed:', error);
-        window.masterInitializer.handleInitializationError(error);
+        if (window.masterInitializer) {
+            window.masterInitializer.handleInitializationError(error);
+        }
     }
 });
 
