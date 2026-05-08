@@ -309,7 +309,7 @@
                 console.log('🔗 Attempting wallet connection via WalletManager...');
                 const result = await window.walletManager.connectWallet(preferredWallet);
 
-                // Snapshot connection details for legacy checks
+                // Snapshot connection details for shared wallet consumers
                 const wm = window.walletManager;
                 const provider = wm.getProvider?.() || wm.provider;
                 const chainId = wm.getChainId?.() || result?.chainId;
