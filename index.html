@@ -36,7 +36,7 @@
 
 
                 <nav class="nav-section" role="navigation" aria-label="Main navigation">
-                    <a href="admin/" id="admin-panel-link" class="nav-button" style="display: none;">
+                    <a href="admin/" id="admin-panel-link" class="nav-button" style="display: none;" aria-label="Admin Panel">
                         <span class="material-icons" aria-hidden="true">admin_panel_settings</span>
                         <span>Admin Panel</span>
                     </a>
@@ -48,6 +48,7 @@
 
                     <button id="connect-wallet-btn"
                             class="connect-wallet-btn"
+                            aria-label="Connect wallet"
                             aria-describedby="wallet-status"
                             aria-live="polite"
                             aria-busy="true"
@@ -133,7 +134,7 @@
             <div class="footer-content">
                 <span class="footer-text">&copy; <a href="https://liberdus.com" target="_blank" rel="noopener noreferrer" class="footer-brand-link">Liberdus</a> <span id="footer-year">2026</span></span>
                 <div class="footer-actions">
-                    <a id="add-token-link" href="#" class="footer-link-anchor footer-link-action" hidden>
+                    <a id="add-token-link" href="#" class="footer-link-anchor footer-link-action" aria-label="Add reward token to MetaMask" title="Add reward token to MetaMask" hidden>
                         <img src="assets/metamask-fox.svg" alt="" class="footer-link-icon" aria-hidden="true">
                         <span>Add to MetaMask</span>
                     </a>
