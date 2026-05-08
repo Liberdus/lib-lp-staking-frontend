@@ -36,7 +36,9 @@ class NotificationManagerNew {
         } = normalizedOptions;
 
         const duplicateKey = this.getDuplicateKey(message, type, title);
-        const existingNotification = this.findActiveNotification(duplicateKey);
+        this.pruneNotifications();
+
+        const existingNotification = this.notifications.find(notification => notification.duplicateKey === duplicateKey);
         if (existingNotification) {
             return existingNotification.element;
         }
@@ -68,7 +70,6 @@ class NotificationManagerNew {
             element: notification,
             type,
             message,
-            title,
             duplicateKey,
             timestamp: Date.now()
         });
@@ -82,14 +83,6 @@ class NotificationManagerNew {
             title: title == null ? '' : String(title),
             message: message == null ? '' : String(message)
         });
-    }
-
-    findActiveNotification(duplicateKey) {
-        this.pruneNotifications();
-        return this.notifications.find(notification =>
-            notification.duplicateKey === duplicateKey &&
-            notification.element?.parentNode
-        );
     }
 
     pruneNotifications() {
