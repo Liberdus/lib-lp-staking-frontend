@@ -11,6 +11,7 @@
     const VERSION_FILE = isAdminPage ? '../version.html' : 'version.html';
     const STORAGE_KEY = 'version';
     let cachedVersion = null;
+    window.versionCheckSkipReload = false;
 
     /**
      * Get current version from localStorage or version.html
@@ -81,14 +82,24 @@
         const newVer = versionToNumber(newVersion);
 
         if (storedVer !== newVer) {
+            if (window.versionCheckSkipReload) {
+                window.versionCheckSkipReload = false;
+                return { status: 'ready', version: storedVersion };
+            }
+
             console.log(`🔄 Updating to version: ${newVersion} (from ${storedVersion})`);
-            localStorage.setItem(STORAGE_KEY, newVersion);
-            cachedVersion = newVersion;
             
             if (criticalFiles.length > 0) {
                 await forceReloadFiles(criticalFiles);
             }
+
+            if (window.versionCheckSkipReload) {
+                window.versionCheckSkipReload = false;
+                return { status: 'ready', version: storedVersion };
+            }
             
+            localStorage.setItem(STORAGE_KEY, newVersion);
+            cachedVersion = newVersion;
             window.location.replace(window.location.href.split('?')[0]);
             return { status: 'reload', version: newVersion };
         } else {

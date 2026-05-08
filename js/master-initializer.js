@@ -941,15 +941,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        const versionCheckTimeout = new Promise((resolve) => {
-            setTimeout(() => resolve({ status: 'ready' }), VERSION_CHECK_TIMEOUT_MS);
-        });
-        const versionCheckResult = window.versionCheckReady
-            ? await Promise.race([
+        let versionCheckResult = { status: 'ready' };
+        if (window.versionCheckReady) {
+            let timeoutId;
+            const versionCheckTimeout = new Promise((resolve) => {
+                timeoutId = setTimeout(() => {
+                    window.versionCheckSkipReload = true;
+                    resolve({ status: 'ready' });
+                }, VERSION_CHECK_TIMEOUT_MS);
+            });
+            versionCheckResult = await Promise.race([
                 window.versionCheckReady.catch(() => ({ status: 'ready' })),
                 versionCheckTimeout
-            ])
-            : { status: 'ready' };
+            ]);
+            clearTimeout(timeoutId);
+        }
+
         if (versionCheckResult.status === 'reload') {
             return;
         }
