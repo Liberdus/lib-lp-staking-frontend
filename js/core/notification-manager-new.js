@@ -119,23 +119,21 @@ class NotificationManagerNew {
         notification.appendChild(iconContainer);
         notification.appendChild(content);
 
-        if (!persistent) {
-            const closeButton = document.createElement('button');
-            closeButton.className = 'notification-close';
-            closeButton.type = 'button';
-            closeButton.setAttribute('aria-label', 'Close notification');
+        const closeButton = document.createElement('button');
+        closeButton.className = 'notification-close';
+        closeButton.type = 'button';
+        closeButton.setAttribute('aria-label', 'Close notification');
 
-            const closeIcon = document.createElement('span');
-            closeIcon.className = 'material-icons';
-            closeIcon.textContent = 'close';
-            closeButton.appendChild(closeIcon);
-            closeButton.addEventListener('click', event => {
-                event.stopPropagation();
-                this.remove(notification);
-            });
+        const closeIcon = document.createElement('span');
+        closeIcon.className = 'material-icons';
+        closeIcon.textContent = 'close';
+        closeButton.appendChild(closeIcon);
+        closeButton.addEventListener('click', event => {
+            event.stopPropagation();
+            this.remove(notification);
+        });
 
-            notification.appendChild(closeButton);
-        }
+        notification.appendChild(closeButton);
 
         if (showProgress && !persistent) {
             const progress = document.createElement('div');

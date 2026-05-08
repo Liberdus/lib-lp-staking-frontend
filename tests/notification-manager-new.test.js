@@ -142,7 +142,7 @@ describe('NotificationManagerNew support actions', () => {
 
         const notification = manager.error('Something failed');
 
-        expect(notification.querySelector('.notification-close')).toBeNull();
+        expect(notification.querySelector('.notification-close')).not.toBeNull();
         expect(notification.querySelector('.notification-progress')).toBeNull();
     });
 
