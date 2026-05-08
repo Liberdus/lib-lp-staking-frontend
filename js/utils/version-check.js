@@ -10,8 +10,8 @@
     const isAdminPage = window.location.pathname.includes('admin');
     const VERSION_FILE = isAdminPage ? '../version.html' : 'version.html';
     const STORAGE_KEY = 'version';
+    const VERSION_CHECK_TIMEOUT_MS = 3000;
     let cachedVersion = null;
-    window.versionCheckSkipReload = false;
 
     /**
      * Get current version from localStorage or version.html
@@ -29,7 +29,7 @@
                 return stored;
             }
 
-            const response = await fetch(VERSION_FILE, {
+            const response = await fetchWithTimeout(VERSION_FILE, {
                 cache: 'reload',
                 headers: {
                     'Cache-Control': 'no-cache',
@@ -58,7 +58,7 @@
         let newVersion = storedVersion;
 
         try {
-            const response = await fetch(VERSION_FILE, {
+            const response = await fetchWithTimeout(VERSION_FILE, {
                 cache: 'reload',
                 headers: {
                     'Cache-Control': 'no-cache',
@@ -82,20 +82,10 @@
         const newVer = versionToNumber(newVersion);
 
         if (storedVer !== newVer) {
-            if (window.versionCheckSkipReload) {
-                window.versionCheckSkipReload = false;
-                return { status: 'ready', version: storedVersion };
-            }
-
             console.log(`🔄 Updating to version: ${newVersion} (from ${storedVersion})`);
             
             if (criticalFiles.length > 0) {
                 await forceReloadFiles(criticalFiles);
-            }
-
-            if (window.versionCheckSkipReload) {
-                window.versionCheckSkipReload = false;
-                return { status: 'ready', version: storedVersion };
             }
             
             localStorage.setItem(STORAGE_KEY, newVersion);
@@ -119,6 +109,17 @@
         return parseInt(parts.map((p, i) => p.padStart(3, '0')).join('')) || 0;
     }
 
+    async function fetchWithTimeout(url, options) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), VERSION_CHECK_TIMEOUT_MS);
+
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
     /**
      * Force reload files with cache-busting headers
      * @param {string[]} urls - Files to reload
@@ -126,7 +127,7 @@
     async function forceReloadFiles(urls) {
         try {
             const fetchPromises = urls.map(url =>
-                fetch(url, {
+                fetchWithTimeout(url, {
                     cache: 'reload',
                     headers: {
                         'Cache-Control': 'no-cache',
