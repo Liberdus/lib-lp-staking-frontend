@@ -114,6 +114,7 @@ async function loadNotificationManager() {
 
 describe('NotificationManagerNew support actions', () => {
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
         delete globalThis.CONFIG;
         delete globalThis.NotificationManagerNew;
@@ -185,6 +186,47 @@ describe('NotificationManagerNew support actions', () => {
         expect(message.textContent).toBe(unsafeMessage);
         expect(message.children).toHaveLength(0);
         expect(notification.querySelector('img')).toBeNull();
+    });
+
+    it('does not stack duplicate active toasts', async () => {
+        const NotificationManagerNew = await loadNotificationManager();
+        const manager = new NotificationManagerNew();
+
+        const first = manager.error('Something failed', { title: 'Wallet error' });
+        const second = manager.error('Something failed', { title: 'Wallet error' });
+
+        expect(second).toBe(first);
+        expect(manager.container.querySelectorAll('.notification')).toHaveLength(1);
+        expect(manager.notifications).toHaveLength(1);
+    });
+
+    it('keeps different toast types, messages, and titles separate', async () => {
+        const NotificationManagerNew = await loadNotificationManager();
+        const manager = new NotificationManagerNew();
+
+        manager.error('Something failed', { title: 'Wallet error' });
+        manager.warning('Something failed', { title: 'Wallet error' });
+        manager.error('A different failure', { title: 'Wallet error' });
+        manager.error('Something failed', { title: 'Network error' });
+
+        expect(manager.container.querySelectorAll('.notification')).toHaveLength(4);
+        expect(manager.notifications).toHaveLength(4);
+    });
+
+    it('allows the same toast after the active one is dismissed', async () => {
+        vi.useFakeTimers();
+        const NotificationManagerNew = await loadNotificationManager();
+        const manager = new NotificationManagerNew();
+
+        const first = manager.error('Something failed');
+        manager.remove(first);
+        vi.advanceTimersByTime(300);
+
+        const second = manager.error('Something failed');
+
+        expect(second).not.toBe(first);
+        expect(manager.container.querySelectorAll('.notification')).toHaveLength(1);
+        expect(manager.notifications).toHaveLength(1);
     });
 });
 
