@@ -314,6 +314,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.stakeAmount).toBe('2');
         expect(estimateElement.textContent).toBe('$20.00');
+        expect(estimateElement.hidden).toBe(false);
 
         modal.setPercentage(25);
 
@@ -346,6 +347,22 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.unstakeAmount).toBe('4.000000');
         expect(inputElement.value).toBe('4.000000');
         expect(estimateElement.textContent).toBe('$80.00');
+    });
+
+    it('hides unavailable stake input USD estimates instead of rendering N/A', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 1000, tvl: 0 };
+        modal.stakeAmount = '2';
+        const estimateElement = document.registerElement(createElement({ id: 'stake-usd-estimate' }));
+
+        const html = modal.renderStakeTab();
+        modal.updateStakeUsdEstimate();
+
+        expect(html).toContain('id="stake-usd-estimate"');
+        expect(html).toContain('hidden></div>');
+        expect(html).not.toContain('(N/A)');
+        expect(estimateElement.textContent).toBe('');
+        expect(estimateElement.hidden).toBe(true);
     });
 
     it('renders claim tab staked amount with a USD estimate', async () => {
@@ -766,6 +783,25 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('<dt>Estimated LP</dt>');
         expect(html).toContain('2.5 LP ($25.00)');
+    });
+
+    it('keeps zap Estimated LP visible without appending N/A when USD estimate is unavailable', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            positionDetails: {
+                addedLiquidity: '2500000000000000000'
+            },
+            zapDetails: {
+                priceImpact: 1
+            }
+        });
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<dt>Estimated LP</dt>');
+        expect(html).toContain('2.5 LP');
+        expect(html).not.toContain('2.5 LP (N/A)');
     });
 
     it('highlights high slippage in the zap quote panel', async () => {

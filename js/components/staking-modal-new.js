@@ -581,6 +581,22 @@ class StakingModalNew {
         return window.Formatter?.formatCurrency?.(estimate) || `$${estimate.toFixed(2)}`;
     }
 
+    getLpUsdEstimateDisplay(amount) {
+        const estimate = this.formatLpUsdEstimate(amount);
+        return estimate === 'N/A' ? '' : estimate;
+    }
+
+    renderInlineLpUsdEstimate(amount) {
+        const estimate = this.getLpUsdEstimateDisplay(amount);
+        return estimate ? ` <span class="lp-usd-estimate">(${this.escapeHtml(estimate)})</span>` : '';
+    }
+
+    renderLpUsdEstimateElement(id, amount) {
+        const estimate = this.getLpUsdEstimateDisplay(amount);
+        const hiddenAttribute = estimate ? '' : ' hidden';
+        return `<div id="${id}" class="lp-usd-estimate" aria-live="polite"${hiddenAttribute}>${this.escapeHtml(estimate)}</div>`;
+    }
+
     getZapLpAmountForUsdEstimate(amount) {
         if (amount === undefined || amount === null || amount === '' || amount === 'N/A') {
             return null;
@@ -2228,7 +2244,7 @@ class StakingModalNew {
         return `
             <div class="balance-info">
                 <span class="balance-label">Available LP Tokens:</span>
-                <span class="balance-value">${this.userBalance} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userBalance))})</span></span>
+                <span class="balance-value">${this.userBalance} LP${this.renderInlineLpUsdEstimate(this.userBalance)}</span>
             </div>
 
             <div class="form-group">
@@ -2242,7 +2258,7 @@ class StakingModalNew {
                     min="0"
                     inputmode="decimal"
                 >
-                <div id="stake-usd-estimate" class="lp-usd-estimate" aria-live="polite">${this.escapeHtml(this.formatLpUsdEstimate(this.stakeAmount))}</div>
+                ${this.renderLpUsdEstimateElement('stake-usd-estimate', this.stakeAmount)}
                 <div class="slider-container">
                     <input
                         type="range"
@@ -2314,7 +2330,7 @@ class StakingModalNew {
         return `
             <div class="balance-info">
                 <span class="balance-label">Staked LP Tokens:</span>
-                <span class="balance-value">${this.userStaked} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userStaked))})</span></span>
+                <span class="balance-value">${this.userStaked} LP${this.renderInlineLpUsdEstimate(this.userStaked)}</span>
             </div>
 
             <div class="form-group">
@@ -2328,7 +2344,7 @@ class StakingModalNew {
                     min="0"
                     inputmode="decimal"
                 >
-                <div id="unstake-usd-estimate" class="lp-usd-estimate" aria-live="polite">${this.escapeHtml(this.formatLpUsdEstimate(this.unstakeAmount))}</div>
+                ${this.renderLpUsdEstimateElement('unstake-usd-estimate', this.unstakeAmount)}
                 <div class="slider-container">
                     <input
                         type="range"
@@ -2382,7 +2398,9 @@ class StakingModalNew {
     updateLpUsdEstimate(elementId, amount) {
         const estimateElement = document.getElementById(elementId);
         if (estimateElement) {
-            estimateElement.textContent = this.formatLpUsdEstimate(amount);
+            const estimate = this.getLpUsdEstimateDisplay(amount);
+            estimateElement.textContent = estimate;
+            estimateElement.hidden = !estimate;
         }
     }
 
@@ -2395,7 +2413,7 @@ class StakingModalNew {
 
             <div class="balance-info">
                 <span class="balance-label">Staked Amount:</span>
-                <span class="balance-value">${this.userStaked} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userStaked))})</span></span>
+                <span class="balance-value">${this.userStaked} LP${this.renderInlineLpUsdEstimate(this.userStaked)}</span>
             </div>
 
             <div class="balance-info">
@@ -2619,8 +2637,8 @@ class StakingModalNew {
                 'amountOut'
             ]);
             const lpAmountDisplay = this.formatZapDisplayAmount(lpResult, this.userBalanceDecimals, 'LP');
-            const lpUsdEstimate = this.formatLpUsdEstimate(this.getZapLpAmountForUsdEstimate(lpResult));
-            lpResultDisplay = lpAmountDisplay === 'N/A'
+            const lpUsdEstimate = this.getLpUsdEstimateDisplay(this.getZapLpAmountForUsdEstimate(lpResult));
+            lpResultDisplay = lpAmountDisplay === 'N/A' || !lpUsdEstimate
                 ? lpAmountDisplay
                 : `${lpAmountDisplay} (${lpUsdEstimate})`;
             const feeDetails = this.getZapProtocolFeeDetails(data);
