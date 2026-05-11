@@ -613,12 +613,13 @@ body {
         display: none;
     }
 
-    #staking-contract-link {
+    #staking-contract-link,
+    #footer-support-link {
         font-size: 0;
     }
 
-    #staking-contract-link::before {
-        content: "description";
+    #staking-contract-link::before,
+    #footer-support-link::before {
         display: block;
         font-family: "Material Icons";
         font-size: 17px;
@@ -626,6 +627,14 @@ body {
         width: 17px;
         height: 17px;
         text-align: center;
+    }
+
+    #staking-contract-link::before {
+        content: "description";
+    }
+
+    #footer-support-link::before {
+        content: "support_agent";
     }
 
     .social-links {
