@@ -578,7 +578,7 @@ class StakingModalNew {
             return 'N/A';
         }
 
-        return window.Formatter?.formatCurrency(estimate) || `$${estimate.toFixed(2)}`;
+        return window.Formatter?.formatCurrency?.(estimate) || `$${estimate.toFixed(2)}`;
     }
 
     getZapLpAmountForUsdEstimate(amount) {
@@ -2307,10 +2307,7 @@ class StakingModalNew {
     }
 
     updateStakeUsdEstimate() {
-        const estimateElement = document.getElementById('stake-usd-estimate');
-        if (estimateElement) {
-            estimateElement.textContent = this.formatLpUsdEstimate(this.stakeAmount);
-        }
+        this.updateLpUsdEstimate('stake-usd-estimate', this.stakeAmount);
     }
 
     renderUnstakeTab() {
@@ -2379,9 +2376,13 @@ class StakingModalNew {
     }
 
     updateUnstakeUsdEstimate() {
-        const estimateElement = document.getElementById('unstake-usd-estimate');
+        this.updateLpUsdEstimate('unstake-usd-estimate', this.unstakeAmount);
+    }
+
+    updateLpUsdEstimate(elementId, amount) {
+        const estimateElement = document.getElementById(elementId);
         if (estimateElement) {
-            estimateElement.textContent = this.formatLpUsdEstimate(this.unstakeAmount);
+            estimateElement.textContent = this.formatLpUsdEstimate(amount);
         }
     }
 
