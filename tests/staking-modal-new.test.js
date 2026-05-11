@@ -281,12 +281,12 @@ describe('StakingModalNew zap cleanup', () => {
         { currentPair: { tvlUsd: 500, tvl: 'not-a-number' }, amount: '2' },
         { currentPair: { tvlUsd: 500, tvl: 100 }, amount: '' },
         { currentPair: { tvlUsd: 500, tvl: 100 }, amount: 'not-a-number' }
-    ])('renders N/A for unavailable LP USD estimate data %#', async ({ currentPair, amount }) => {
+    ])('returns no display value for unavailable LP USD estimate data %#', async ({ currentPair, amount }) => {
         const modal = await createLoadedModal();
         modal.currentPair = currentPair;
 
         expect(modal.getLpUsdEstimate(amount)).toBeNull();
-        expect(modal.formatLpUsdEstimate(amount)).toBe('N/A');
+        expect(modal.formatLpUsdEstimate(amount)).toBe('');
     });
 
     it('renders stake LP balance and input USD estimates', async () => {

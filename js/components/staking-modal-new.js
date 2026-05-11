@@ -575,24 +575,19 @@ class StakingModalNew {
         const estimate = this.getLpUsdEstimate(amount);
 
         if (estimate === null) {
-            return 'N/A';
+            return '';
         }
 
         return window.Formatter?.formatCurrency?.(estimate) || `$${estimate.toFixed(2)}`;
     }
 
-    getLpUsdEstimateDisplay(amount) {
-        const estimate = this.formatLpUsdEstimate(amount);
-        return estimate === 'N/A' ? '' : estimate;
-    }
-
     renderInlineLpUsdEstimate(amount) {
-        const estimate = this.getLpUsdEstimateDisplay(amount);
+        const estimate = this.formatLpUsdEstimate(amount);
         return estimate ? ` <span class="lp-usd-estimate">(${this.escapeHtml(estimate)})</span>` : '';
     }
 
     renderLpUsdEstimateElement(id, amount) {
-        const estimate = this.getLpUsdEstimateDisplay(amount);
+        const estimate = this.formatLpUsdEstimate(amount);
         const hiddenAttribute = estimate ? '' : ' hidden';
         return `<div id="${id}" class="lp-usd-estimate" aria-live="polite"${hiddenAttribute}>${this.escapeHtml(estimate)}</div>`;
     }
@@ -2398,7 +2393,7 @@ class StakingModalNew {
     updateLpUsdEstimate(elementId, amount) {
         const estimateElement = document.getElementById(elementId);
         if (estimateElement) {
-            const estimate = this.getLpUsdEstimateDisplay(amount);
+            const estimate = this.formatLpUsdEstimate(amount);
             estimateElement.textContent = estimate;
             estimateElement.hidden = !estimate;
         }
@@ -2637,7 +2632,7 @@ class StakingModalNew {
                 'amountOut'
             ]);
             const lpAmountDisplay = this.formatZapDisplayAmount(lpResult, this.userBalanceDecimals, 'LP');
-            const lpUsdEstimate = this.getLpUsdEstimateDisplay(this.getZapLpAmountForUsdEstimate(lpResult));
+            const lpUsdEstimate = this.formatLpUsdEstimate(this.getZapLpAmountForUsdEstimate(lpResult));
             lpResultDisplay = lpAmountDisplay === 'N/A' || !lpUsdEstimate
                 ? lpAmountDisplay
                 : `${lpAmountDisplay} (${lpUsdEstimate})`;
