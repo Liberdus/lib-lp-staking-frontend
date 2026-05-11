@@ -180,6 +180,10 @@ class HomePage {
         }
     }
 
+    showWalletRequiredToast() {
+        window.notificationManager?.warning('Please connect your wallet to stake token.');
+    }
+
     render() {
         const container = document.getElementById('content-container');
         if (!container) return;
@@ -435,8 +439,6 @@ class HomePage {
     }
 
     renderPairRow(pair) {
-        const isConnected = this.isWalletConnected();
-        const canTransact = isConnected && (window.networkManager?.isOnRequiredNetwork() || false);
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
@@ -472,7 +474,6 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="0"
-                            ${!canTransact ? 'disabled' : ''}
                             title="Stake or Unstake"
                             style="min-width: 100px;">
                         <span class="material-icons" style="font-size: 16px;">share</span>
@@ -484,7 +485,6 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="2"
-                            ${!canTransact ? 'disabled' : ''}
                             title="Claim reward"
                             style="min-width: 120px;">
                         <span class="material-icons" style="font-size: 16px;">redeem</span>
@@ -525,22 +525,7 @@ class HomePage {
                 if (!e.target.closest('button') && !e.target.closest('a') && !e.target.closest('.pair-name-link')) {
                     // Check if wallet is connected before opening modal
                     if (!this.isWalletConnected()) {
-                        if (window.notificationManager) {
-                            window.notificationManager.warning(
-                                'Please connect your wallet to stake tokens'
-                            );
-                        }
-                        return; // Don't open modal
-                    }
-                    
-                    // Check if wallet is on configured network
-                    if (!(window.networkManager?.isOnRequiredNetwork() || false)) {
-                        const networkName = window.networkSelector?.getCurrentNetworkName();
-                        if (window.notificationManager) {
-                            window.notificationManager.warning(
-                                `Please switch to ${networkName} network to make transactions`
-                            );
-                        }
+                        this.showWalletRequiredToast();
                         return; // Don't open modal
                     }
                     
@@ -551,6 +536,11 @@ class HomePage {
             // Handle Share button click (open modal on Stake tab)
             if (e.target.closest('.btn-share')) {
                 e.stopPropagation();
+                if (!this.isWalletConnected()) {
+                    this.showWalletRequiredToast();
+                    return;
+                }
+
                 const button = e.target.closest('.btn-share');
                 const pairId = button.dataset.pairId;
                 const tab = parseInt(button.dataset.tab) || 0;
@@ -560,6 +550,11 @@ class HomePage {
             // Handle Earnings button click (open modal on Claim tab)
             if (e.target.closest('.btn-earnings')) {
                 e.stopPropagation();
+                if (!this.isWalletConnected()) {
+                    this.showWalletRequiredToast();
+                    return;
+                }
+
                 const button = e.target.closest('.btn-earnings');
                 const pairId = button.dataset.pairId;
                 this.openStakingModal(pairId, 'claim');

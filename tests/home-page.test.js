@@ -114,4 +114,160 @@ describe('HomePage.renderPairRow', () => {
             expect(output).toContain(`class="staking-cell staking-cell--${cell}" data-label="${label}"`);
         });
     });
+
+    it('keeps table action buttons clickable when the wallet is disconnected', async () => {
+        const homePagePrototype = await loadHomePage();
+        const output = homePagePrototype.renderPairRow.call(
+            {
+                isWalletConnected: () => false,
+                formatTvlDisplay: () => '$1.2K'
+            },
+            {
+                id: '1',
+                address: '0x123',
+                name: 'LIB/BNB',
+                platform: 'PancakeSwap'
+            }
+        );
+
+        expect(output).toContain('btn-share');
+        expect(output).toContain('btn-earnings');
+        expect(output).not.toContain('disabled');
+    });
+
+    it('keeps table action buttons clickable when connected on the wrong network', async () => {
+        const homePagePrototype = await loadHomePage();
+        globalThis.networkManager.isOnRequiredNetwork.mockReturnValue(false);
+
+        const output = homePagePrototype.renderPairRow.call(
+            {
+                isWalletConnected: () => true,
+                formatTvlDisplay: () => '$1.2K'
+            },
+            {
+                id: '1',
+                address: '0x123',
+                name: 'LIB/BNB',
+                platform: 'PancakeSwap'
+            }
+        );
+
+        expect(output).toContain('btn-share');
+        expect(output).toContain('btn-earnings');
+        expect(output).not.toContain('disabled');
+    });
+});
+
+describe('HomePage table action clicks', () => {
+    let clickHandler;
+
+    beforeEach(() => {
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        globalThis.document = {
+            getElementById: vi.fn(() => null),
+            addEventListener: vi.fn((eventName, handler) => {
+                if (eventName === 'click') {
+                    clickHandler = handler;
+                }
+            })
+        };
+        globalThis.notificationManager = {
+            warning: vi.fn()
+        };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete globalThis.document;
+        delete globalThis.HomePage;
+        delete globalThis.notificationManager;
+        delete globalThis.window;
+        clickHandler = undefined;
+    });
+
+    function createActionButtonTarget(actionClass) {
+        const button = {
+            dataset: {
+                pairId: '1',
+                tab: actionClass === 'btn-share' ? '0' : '2'
+            },
+            closest(selector) {
+                if (selector === '.pair-row') return { dataset: { pairId: '1' } };
+                if (selector === 'button') return button;
+                if (selector === '.btn-share') return actionClass === 'btn-share' ? button : null;
+                if (selector === '.btn-earnings') return actionClass === 'btn-earnings' ? button : null;
+                return null;
+            }
+        };
+
+        return button;
+    }
+
+    function createRowTarget() {
+        return {
+            closest(selector) {
+                if (selector === '.pair-row') return { dataset: { pairId: '1' } };
+                return null;
+            }
+        };
+    }
+
+    it('shows the same wallet-required warning toast for disconnected row clicks', async () => {
+        const homePagePrototype = await loadHomePage();
+        const openStakingModal = vi.fn();
+        const event = {
+            target: createRowTarget()
+        };
+
+        homePagePrototype.attachEventListeners.call({
+            isWalletConnected: () => false,
+            showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+            openStakingModal
+        });
+        clickHandler(event);
+
+        expect(globalThis.notificationManager.warning).toHaveBeenCalledWith('Please connect your wallet to stake token.');
+        expect(openStakingModal).not.toHaveBeenCalled();
+    });
+
+    it.each(['btn-share', 'btn-earnings'])(
+        'shows the wallet-required warning toast for disconnected %s clicks',
+        async (actionClass) => {
+            const homePagePrototype = await loadHomePage();
+            const openStakingModal = vi.fn();
+            const event = {
+                target: createActionButtonTarget(actionClass),
+                stopPropagation: vi.fn()
+            };
+
+            homePagePrototype.attachEventListeners.call({
+                isWalletConnected: () => false,
+                showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+                openStakingModal
+            });
+            clickHandler(event);
+
+            expect(event.stopPropagation).toHaveBeenCalled();
+            expect(globalThis.notificationManager.warning).toHaveBeenCalledWith('Please connect your wallet to stake token.');
+            expect(openStakingModal).not.toHaveBeenCalled();
+        }
+    );
+
+    it('opens the modal for connected row clicks even when the wallet is on another network', async () => {
+        const homePagePrototype = await loadHomePage();
+        const openStakingModal = vi.fn();
+        const event = {
+            target: createRowTarget()
+        };
+
+        homePagePrototype.attachEventListeners.call({
+            isWalletConnected: () => true,
+            showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+            openStakingModal
+        });
+        clickHandler(event);
+
+        expect(globalThis.notificationManager.warning).not.toHaveBeenCalled();
+        expect(openStakingModal).toHaveBeenCalledWith('1');
+    });
 });
