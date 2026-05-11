@@ -439,9 +439,6 @@ class HomePage {
     }
 
     renderPairRow(pair) {
-        const isConnected = this.isWalletConnected();
-        const isOnRequiredNetwork = window.networkManager?.isOnRequiredNetwork() || false;
-        const disableActionButtons = isConnected && !isOnRequiredNetwork;
         const userShares = pair.userShares || '0.00';
         const userEarnings = pair.userEarnings || '0.00';
         
@@ -477,7 +474,6 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="0"
-                            ${disableActionButtons ? 'disabled' : ''}
                             title="Stake or Unstake"
                             style="min-width: 100px;">
                         <span class="material-icons" style="font-size: 16px;">share</span>
@@ -489,7 +485,6 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="2"
-                            ${disableActionButtons ? 'disabled' : ''}
                             title="Claim reward"
                             style="min-width: 120px;">
                         <span class="material-icons" style="font-size: 16px;">redeem</span>
@@ -531,17 +526,6 @@ class HomePage {
                     // Check if wallet is connected before opening modal
                     if (!this.isWalletConnected()) {
                         this.showWalletRequiredToast();
-                        return; // Don't open modal
-                    }
-                    
-                    // Check if wallet is on configured network
-                    if (!(window.networkManager?.isOnRequiredNetwork() || false)) {
-                        const networkName = window.networkSelector?.getCurrentNetworkName();
-                        if (window.notificationManager) {
-                            window.notificationManager.warning(
-                                `Please switch to ${networkName} network to make transactions`
-                            );
-                        }
                         return; // Don't open modal
                     }
                     

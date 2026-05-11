@@ -135,7 +135,7 @@ describe('HomePage.renderPairRow', () => {
         expect(output).not.toContain('disabled');
     });
 
-    it('disables table action buttons when connected on the wrong network', async () => {
+    it('keeps table action buttons clickable when connected on the wrong network', async () => {
         const homePagePrototype = await loadHomePage();
         globalThis.networkManager.isOnRequiredNetwork.mockReturnValue(false);
 
@@ -152,7 +152,9 @@ describe('HomePage.renderPairRow', () => {
             }
         );
 
-        expect(output.match(/disabled/g)).toHaveLength(2);
+        expect(output).toContain('btn-share');
+        expect(output).toContain('btn-earnings');
+        expect(output).not.toContain('disabled');
     });
 });
 
@@ -250,4 +252,22 @@ describe('HomePage table action clicks', () => {
             expect(openStakingModal).not.toHaveBeenCalled();
         }
     );
+
+    it('opens the modal for connected row clicks even when the wallet is on another network', async () => {
+        const homePagePrototype = await loadHomePage();
+        const openStakingModal = vi.fn();
+        const event = {
+            target: createRowTarget()
+        };
+
+        homePagePrototype.attachEventListeners.call({
+            isWalletConnected: () => true,
+            showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+            openStakingModal
+        });
+        clickHandler(event);
+
+        expect(globalThis.notificationManager.warning).not.toHaveBeenCalled();
+        expect(openStakingModal).toHaveBeenCalledWith('1');
+    });
 });
