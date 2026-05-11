@@ -278,6 +278,20 @@
     font-weight: var(--font-weight-semibold);
 }
 
+.lp-usd-estimate {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+}
+
+.form-input + .lp-usd-estimate {
+    margin-top: 6px;
+}
+
+.balance-value .lp-usd-estimate {
+    margin-left: 4px;
+}
+
 /* Zap Flow */
 .zap-input-row {
     display: grid;

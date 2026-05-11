@@ -287,6 +287,7 @@ class StakingModalNew {
                 this.stakeAmount = sanitizedValue;
                 this.updateSlider('stake');
                 this.updateStakeEstimatedAPR();
+                this.updateStakeUsdEstimate();
 
                 // Reset approval state when amount changes
                 this.isApproved = false;
@@ -300,6 +301,7 @@ class StakingModalNew {
                 }
                 this.unstakeAmount = sanitizedValue;
                 this.updateSlider('unstake');
+                this.updateUnstakeUsdEstimate();
             }
 
             if (e.target.classList.contains('amount-slider')) {
@@ -530,6 +532,71 @@ class StakingModalNew {
             console.error('❌ Error formatting token amount:', error);
             return '0.00';
         }
+    }
+
+    getLpUsdPrice() {
+        const tvlUsdValue = this.currentPair?.tvlUsd;
+        const tvlValue = this.currentPair?.tvl;
+
+        if (tvlUsdValue === undefined || tvlUsdValue === null || tvlUsdValue === '') {
+            return null;
+        }
+
+        if (tvlValue === undefined || tvlValue === null || tvlValue === '') {
+            return null;
+        }
+
+        const tvlUsd = Number(tvlUsdValue);
+        const tvl = Number(tvlValue);
+
+        if (!Number.isFinite(tvlUsd) || tvlUsd < 0 || !Number.isFinite(tvl) || tvl <= 0) {
+            return null;
+        }
+
+        return tvlUsd / tvl;
+    }
+
+    getLpUsdEstimate(amount) {
+        if (amount === undefined || amount === null || amount === '') {
+            return null;
+        }
+
+        const lpUsdPrice = this.getLpUsdPrice();
+        const lpAmount = Number(amount);
+
+        if (lpUsdPrice === null || !Number.isFinite(lpAmount) || lpAmount < 0) {
+            return null;
+        }
+
+        return lpAmount * lpUsdPrice;
+    }
+
+    formatLpUsdEstimate(amount) {
+        const estimate = this.getLpUsdEstimate(amount);
+
+        if (estimate === null) {
+            return 'N/A';
+        }
+
+        return window.Formatter?.formatCurrency(estimate) || `$${estimate.toFixed(2)}`;
+    }
+
+    getZapLpAmountForUsdEstimate(amount) {
+        if (amount === undefined || amount === null || amount === '' || amount === 'N/A') {
+            return null;
+        }
+
+        const amountText = String(amount);
+
+        try {
+            if (/^\d+$/.test(amountText) && window.ethers) {
+                return this.formatTokenAmount(amountText, this.userBalanceDecimals);
+            }
+        } catch (error) {
+            return amountText;
+        }
+
+        return amountText;
     }
 
     escapeHtml(value) {
@@ -2040,6 +2107,8 @@ class StakingModalNew {
             if (input) input.value = '';
             if (slider) slider.value = '0';
         });
+        this.updateStakeUsdEstimate();
+        this.updateUnstakeUsdEstimate();
 
         const zapInput = document.getElementById('zap-amount-input');
         if (zapInput) zapInput.value = '';
@@ -2127,6 +2196,7 @@ class StakingModalNew {
                 }
                 this.stakeAmount = sanitizedValue;
                 this.updateStakeEstimatedAPR();
+                this.updateStakeUsdEstimate();
                 this.updateButtonStates();
             });
         }
@@ -2138,6 +2208,7 @@ class StakingModalNew {
                     unstakeInput.value = sanitizedValue;
                 }
                 this.unstakeAmount = sanitizedValue;
+                this.updateUnstakeUsdEstimate();
                 this.updateButtonStates();
             });
         }
@@ -2157,7 +2228,7 @@ class StakingModalNew {
         return `
             <div class="balance-info">
                 <span class="balance-label">Available LP Tokens:</span>
-                <span class="balance-value">${this.userBalance} LP</span>
+                <span class="balance-value">${this.userBalance} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userBalance))})</span></span>
             </div>
 
             <div class="form-group">
@@ -2171,6 +2242,7 @@ class StakingModalNew {
                     min="0"
                     inputmode="decimal"
                 >
+                <div id="stake-usd-estimate" class="lp-usd-estimate" aria-live="polite">${this.escapeHtml(this.formatLpUsdEstimate(this.stakeAmount))}</div>
                 <div class="slider-container">
                     <input
                         type="range"
@@ -2234,11 +2306,18 @@ class StakingModalNew {
         }
     }
 
+    updateStakeUsdEstimate() {
+        const estimateElement = document.getElementById('stake-usd-estimate');
+        if (estimateElement) {
+            estimateElement.textContent = this.formatLpUsdEstimate(this.stakeAmount);
+        }
+    }
+
     renderUnstakeTab() {
         return `
             <div class="balance-info">
                 <span class="balance-label">Staked LP Tokens:</span>
-                <span class="balance-value">${this.userStaked} LP</span>
+                <span class="balance-value">${this.userStaked} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userStaked))})</span></span>
             </div>
 
             <div class="form-group">
@@ -2252,6 +2331,7 @@ class StakingModalNew {
                     min="0"
                     inputmode="decimal"
                 >
+                <div id="unstake-usd-estimate" class="lp-usd-estimate" aria-live="polite">${this.escapeHtml(this.formatLpUsdEstimate(this.unstakeAmount))}</div>
                 <div class="slider-container">
                     <input
                         type="range"
@@ -2296,6 +2376,13 @@ class StakingModalNew {
                 </button>
             </div>
         `;
+    }
+
+    updateUnstakeUsdEstimate() {
+        const estimateElement = document.getElementById('unstake-usd-estimate');
+        if (estimateElement) {
+            estimateElement.textContent = this.formatLpUsdEstimate(this.unstakeAmount);
+        }
     }
 
     renderClaimTab() {
@@ -2530,7 +2617,11 @@ class StakingModalNew {
                 'zapDetails.lpAmount',
                 'amountOut'
             ]);
-            lpResultDisplay = this.formatZapDisplayAmount(lpResult, this.userBalanceDecimals, 'LP');
+            const lpAmountDisplay = this.formatZapDisplayAmount(lpResult, this.userBalanceDecimals, 'LP');
+            const lpUsdEstimate = this.formatLpUsdEstimate(this.getZapLpAmountForUsdEstimate(lpResult));
+            lpResultDisplay = lpAmountDisplay === 'N/A'
+                ? lpAmountDisplay
+                : `${lpAmountDisplay} (${lpUsdEstimate})`;
             const feeDetails = this.getZapProtocolFeeDetails(data);
             feeDisplay = feeDetails ? this.formatZapFeeDisplay(feeDetails.amount, feeDetails.decimals, feeDetails.symbol) : 'N/A';
             const priceImpact = this.getZapQuoteSummaryEntry([
@@ -2630,6 +2721,7 @@ class StakingModalNew {
 
             // Update button states
             this.updateStakeEstimatedAPR();
+            this.updateStakeUsdEstimate();
             this.updateButtonStates();
         } else if (this.currentTab === 'unstake') {
             this.unstakeAmount = amount;
@@ -2638,6 +2730,7 @@ class StakingModalNew {
             this.updateSlider('unstake');
 
             // Update button states
+            this.updateUnstakeUsdEstimate();
             this.updateButtonStates();
         }
 
@@ -2678,11 +2771,13 @@ class StakingModalNew {
             const input = document.getElementById('stake-amount-input');
             if (input) input.value = amount;
             this.updateStakeEstimatedAPR();
+            this.updateStakeUsdEstimate();
             this.updateButtonStates();
         } else if (type === 'unstake') {
             this.unstakeAmount = amount;
             const input = document.getElementById('unstake-amount-input');
             if (input) input.value = amount;
+            this.updateUnstakeUsdEstimate();
             this.updateButtonStates();
         }
     }

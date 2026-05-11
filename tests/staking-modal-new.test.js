@@ -23,10 +23,13 @@ function createElement({ id = '', classes = [], value = '' } = {}) {
     return {
         id,
         value,
+        textContent: '',
+        hidden: false,
         style: {},
         dataset: {},
         innerHTML: '',
         classList: createClassList(classes),
+        addEventListener: vi.fn(),
         querySelector: vi.fn(() => null),
         childNodes: []
     };
@@ -219,6 +222,7 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.networkSelector;
         delete globalThis.notificationManager;
         delete globalThis.homePage;
+        delete globalThis.Formatter;
         delete globalThis.fetch;
         delete globalThis.KyberZapRateLimitError;
         delete globalThis.KyberZapQuoteRateLimiter;
@@ -258,6 +262,90 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">bolt</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
+    });
+
+    it('derives LP USD estimates from pair TVL data', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 500, tvl: 100 };
+
+        expect(modal.getLpUsdPrice()).toBe(5);
+        expect(modal.getLpUsdEstimate('2.5')).toBe(12.5);
+        expect(modal.formatLpUsdEstimate('2.5')).toBe('$12.50');
+    });
+
+    it.each([
+        { currentPair: { tvl: 100 }, amount: '2' },
+        { currentPair: { tvlUsd: 500 }, amount: '2' },
+        { currentPair: { tvlUsd: 500, tvl: 0 }, amount: '2' },
+        { currentPair: { tvlUsd: -1, tvl: 100 }, amount: '2' },
+        { currentPair: { tvlUsd: 500, tvl: 'not-a-number' }, amount: '2' },
+        { currentPair: { tvlUsd: 500, tvl: 100 }, amount: '' },
+        { currentPair: { tvlUsd: 500, tvl: 100 }, amount: 'not-a-number' }
+    ])('renders N/A for unavailable LP USD estimate data %#', async ({ currentPair, amount }) => {
+        const modal = await createLoadedModal();
+        modal.currentPair = currentPair;
+
+        expect(modal.getLpUsdEstimate(amount)).toBeNull();
+        expect(modal.formatLpUsdEstimate(amount)).toBe('N/A');
+    });
+
+    it('renders stake LP balance and input USD estimates', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 1200, tvl: 100 };
+        modal.userBalance = '12.5';
+        modal.stakeAmount = '3';
+
+        const html = modal.renderStakeTab();
+
+        expect(html).toContain('12.5 LP <span class="lp-usd-estimate">($150.00)</span>');
+        expect(html).toContain('id="stake-usd-estimate"');
+        expect(html).toContain('$36.00');
+    });
+
+    it('updates stake input USD estimates from input and percentage paths', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 1000, tvl: 100 };
+        modal.userBalance = '8';
+        modal.currentTab = 'stake';
+        const estimateElement = document.registerElement(createElement({ id: 'stake-usd-estimate' }));
+        const inputHandler = document.addEventListener.mock.calls.find(([eventName]) => eventName === 'input')?.[1];
+
+        inputHandler({ target: createElement({ id: 'stake-amount-input', value: '2' }) });
+
+        expect(modal.stakeAmount).toBe('2');
+        expect(estimateElement.textContent).toBe('$20.00');
+
+        modal.setPercentage(25);
+
+        expect(modal.stakeAmount).toBe('2.000000');
+        expect(estimateElement.textContent).toBe('$20.00');
+    });
+
+    it('renders unstake LP balance and input USD estimates', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 2000, tvl: 100 };
+        modal.userStaked = '4';
+        modal.unstakeAmount = '1.5';
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+        expect(html).toContain('id="unstake-usd-estimate"');
+        expect(html).toContain('$30.00');
+    });
+
+    it('updates unstake input USD estimates from the slider path', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 2000, tvl: 100 };
+        modal.userStaked = '8';
+        const estimateElement = document.registerElement(createElement({ id: 'unstake-usd-estimate' }));
+        const inputElement = document.registerElement(createElement({ id: 'unstake-amount-input' }));
+
+        modal.updateAmountFromSlider({ dataset: { type: 'unstake' }, value: '50' });
+
+        expect(modal.unstakeAmount).toBe('4.000000');
+        expect(inputElement.value).toBe('4.000000');
+        expect(estimateElement.textContent).toBe('$80.00');
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
@@ -645,6 +733,29 @@ describe('StakingModalNew zap cleanup', () => {
         });
 
         expect(request.to).toBe('0x0e97c887b61ccd952a53578b04763e7134429e05');
+    });
+
+    it('renders LP USD estimates beside the zap Estimated LP amount', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal, {
+            route: '0xroute',
+            positionDetails: {
+                addedLiquidity: '2500000000000000000'
+            },
+            zapDetails: {
+                priceImpact: 1
+            }
+        });
+        modal.currentPair = {
+            ...modal.currentPair,
+            tvlUsd: 1000,
+            tvl: 100
+        };
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('<dt>Estimated LP</dt>');
+        expect(html).toContain('2.5 LP ($25.00)');
     });
 
     it('highlights high slippage in the zap quote panel', async () => {
