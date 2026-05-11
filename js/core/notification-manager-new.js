@@ -35,6 +35,14 @@ class NotificationManagerNew {
             supportAction = type === 'error'
         } = normalizedOptions;
 
+        const duplicateKey = this.getDuplicateKey(message, type, title);
+        this.pruneNotifications();
+
+        const existingNotification = this.notifications.find(notification => notification.duplicateKey === duplicateKey);
+        if (existingNotification) {
+            return existingNotification.element;
+        }
+
         const notification = this.createNotification(message, type, { title, persistent, showProgress, onClick, supportAction });
         this.container.appendChild(notification);
 
@@ -62,10 +70,23 @@ class NotificationManagerNew {
             element: notification,
             type,
             message,
+            duplicateKey,
             timestamp: Date.now()
         });
 
         return notification;
+    }
+
+    getDuplicateKey(message, type, title) {
+        return JSON.stringify({
+            type: String(type || 'info'),
+            title: title == null ? '' : String(title),
+            message: message == null ? '' : String(message)
+        });
+    }
+
+    pruneNotifications() {
+        this.notifications = this.notifications.filter(notification => notification.element?.parentNode);
     }
 
     createNotification(message, type, options = {}) {
@@ -168,6 +189,7 @@ class NotificationManagerNew {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
+            this.pruneNotifications();
         }, 300);
     }
 
