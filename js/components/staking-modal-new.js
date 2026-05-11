@@ -2395,7 +2395,7 @@ class StakingModalNew {
 
             <div class="balance-info">
                 <span class="balance-label">Staked Amount:</span>
-                <span class="balance-value">${this.userStaked} LP</span>
+                <span class="balance-value">${this.userStaked} LP <span class="lp-usd-estimate">(${this.escapeHtml(this.formatLpUsdEstimate(this.userStaked))})</span></span>
             </div>
 
             <div class="balance-info">

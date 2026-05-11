@@ -348,6 +348,16 @@ describe('StakingModalNew zap cleanup', () => {
         expect(estimateElement.textContent).toBe('$80.00');
     });
 
+    it('renders claim tab staked amount with a USD estimate', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 2000, tvl: 100 };
+        modal.userStaked = '4';
+
+        const html = modal.renderClaimTab();
+
+        expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+    });
+
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
