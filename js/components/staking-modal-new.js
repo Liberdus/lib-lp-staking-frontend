@@ -1721,6 +1721,106 @@ class StakingModalNew {
         return { value: fallback, path: null };
     }
 
+    isRemoveLiquidityOutputTokenAddress(address, outputToken = this.removeLiquiditySelectedOutputToken) {
+        if (!address || !outputToken) {
+            return false;
+        }
+
+        const service = this.getKyberZapService();
+        const normalizedAddress = service.normalizeAddress(address);
+        const normalizedOutputAddress = service.normalizeAddress(this.getRemoveLiquidityOutputTokenAddressForKyber(outputToken));
+        if (normalizedAddress === normalizedOutputAddress) {
+            return true;
+        }
+
+        const wrappedNativeAddress = service.normalizeAddress(this.getKyberZapNetworkConfig()?.WRAPPED_NATIVE_TOKEN_ADDRESS);
+        return this.isNativeZapToken(outputToken.address)
+            && (this.isNativeZapToken(address) || (!!wrappedNativeAddress && normalizedAddress === wrappedNativeAddress));
+    }
+
+    getZapActionTokenAmount(token, outputToken) {
+        if (!token || !this.isRemoveLiquidityOutputTokenAddress(token.address, outputToken)) {
+            return null;
+        }
+
+        const amount = token.amount ?? token.amountRaw ?? token.value ?? null;
+        return amount === undefined || amount === null || amount === '' ? null : String(amount);
+    }
+
+    collectRemoveLiquidityOutputAmounts(outputToken = this.removeLiquiditySelectedOutputToken) {
+        const data = this.getRemoveLiquidityRouteData();
+        const actions = data?.zapDetails?.actions;
+        if (!Array.isArray(actions)) {
+            return [];
+        }
+
+        const amounts = [];
+        const addTokenAmount = token => {
+            const amount = this.getZapActionTokenAmount(token, outputToken);
+            if (amount) {
+                amounts.push(amount);
+            }
+        };
+        const addTokens = tokens => {
+            if (Array.isArray(tokens)) {
+                tokens.forEach(addTokenAmount);
+            }
+        };
+        const addSwapOutputs = swapAction => {
+            if (Array.isArray(swapAction?.swaps)) {
+                swapAction.swaps.forEach(swap => addTokenAmount(swap?.tokenOut || swap?.token_out));
+            }
+        };
+
+        actions.forEach(action => {
+            const removeLiquidity = action?.removeLiquidity || action?.remove_liquidity;
+            addTokens(removeLiquidity?.tokens);
+            addTokenAmount(removeLiquidity?.token0);
+            addTokenAmount(removeLiquidity?.token1);
+
+            addSwapOutputs(action?.aggregatorSwap || action?.aggregator_swap);
+            addSwapOutputs(action?.poolSwap || action?.pool_swap);
+            addTokens((action?.refund || action?.refundAction || action?.refund_action)?.tokens);
+        });
+
+        return amounts;
+    }
+
+    sumZapRawAmounts(amounts) {
+        if (!amounts.length) {
+            return null;
+        }
+
+        if (amounts.every(amount => /^\d+$/.test(String(amount)))) {
+            return amounts.reduce((total, amount) => total + BigInt(amount), 0n).toString();
+        }
+
+        const numericAmounts = amounts.map(Number);
+        if (numericAmounts.every(Number.isFinite)) {
+            return numericAmounts.reduce((total, amount) => total + amount, 0).toString();
+        }
+
+        return amounts[0];
+    }
+
+    getRemoveLiquidityEstimatedOutputEntry(outputToken, fallback = 'N/A') {
+        const directEntry = this.getRemoveLiquidityQuoteSummaryEntry([
+            'zapDetails.finalAmount',
+            'zapDetails.outputAmount',
+            'outputAmount',
+            'amountOut',
+            'routeSummary.amountOut'
+        ], null);
+        if (directEntry.value !== null) {
+            return directEntry;
+        }
+
+        const actionAmount = this.sumZapRawAmounts(this.collectRemoveLiquidityOutputAmounts(outputToken));
+        return actionAmount
+            ? { value: actionAmount, path: 'zapDetails.actions' }
+            : { value: fallback, path: null };
+    }
+
     getZapHighSlippageBps() {
         return window.CONFIG?.KYBER_ZAP?.HIGH_SLIPPAGE_BPS || 300;
     }
@@ -3065,7 +3165,7 @@ class StakingModalNew {
                         ${this.removeLiquidityZapOutEnabled ? 'checked' : ''}
                     >
                     <span class="checkmark"></span>
-                    Zap out to one token with Kyber
+                    Convert to one preferred token
                 </label>
             </div>
 
@@ -3264,13 +3364,7 @@ class StakingModalNew {
                 routerDisplay = 'Unsupported';
             } else if (hasPreview) {
                 const routeData = this.getRemoveLiquidityRouteData();
-                const outputEntry = this.getRemoveLiquidityQuoteSummaryEntry([
-                    'zapDetails.finalAmount',
-                    'zapDetails.outputAmount',
-                    'outputAmount',
-                    'amountOut',
-                    'routeSummary.amountOut'
-                ], pendingValue);
+                const outputEntry = this.getRemoveLiquidityEstimatedOutputEntry(outputToken, pendingValue);
                 const outputUsdEntry = this.getRemoveLiquidityQuoteSummaryEntry([
                     'zapDetails.finalAmountUsd',
                     'amountOutUsd',

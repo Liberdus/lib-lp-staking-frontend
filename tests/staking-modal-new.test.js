@@ -1040,6 +1040,51 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Minimum token0</dt>');
     });
 
+    it('derives checked remove-liquidity output amount from Kyber zap-out actions', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const bnbToken = { address: 'native', symbol: 'BNB', name: 'BNB', decimals: 18 };
+        modal.removeLiquidityOutputTokens = [bnbToken];
+        modal.removeLiquidityOutputTokenAddress = 'native';
+        modal.removeLiquiditySelectedOutputToken = bnbToken;
+        modal.removeLiquidityPreview = {
+            supported: true,
+            zapOut: true,
+            outputToken: bnbToken,
+            data: {
+                route: '0xout-route',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                zapDetails: {
+                    finalAmountUsd: '0.40',
+                    priceImpact: 1.26,
+                    actions: [
+                        {
+                            type: 'ACTION_TYPE_AGGREGATOR_SWAP',
+                            aggregatorSwap: {
+                                swaps: [
+                                    {
+                                        tokenOut: {
+                                            address: globalThis.CONFIG.KYBER_ZAP.NATIVE_TOKEN_ADDRESS,
+                                            amount: '1230000000000000',
+                                            amountUsd: '0.40'
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('<dt>Estimated BNB</dt>');
+        expect(html).toContain('0.00123 BNB');
+        expect(html).toContain('<dt>Estimated value</dt>');
+        expect(html).toContain('$0.4');
+    });
+
     it('configured output token selection refreshes the zap-out quote', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
