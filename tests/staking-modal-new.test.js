@@ -963,6 +963,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-amount-input"');
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
+        expect(html).toContain('remove-liquidity-action-btn');
         expect(html).toContain('Remove liquidity and return pair tokens');
         expect(html).toContain('LIB + USDT via Uniswap V2');
         expect(html).toContain('<dt>Minimum token0</dt>');

@@ -923,6 +923,15 @@
     font-size: var(--font-size);
 }
 
+.remove-liquidity-action-btn,
+.remove-liquidity-action-btn:not(:disabled):hover {
+    box-shadow: none;
+}
+
+.remove-liquidity-action-btn:disabled {
+    opacity: 0.5;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .modal-content {
