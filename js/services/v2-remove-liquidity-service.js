@@ -88,7 +88,9 @@
         getRouterAbi() {
             return [
                 'function factory() view returns (address)',
-                'function removeLiquidity(address tokenA,address tokenB,uint256 liquidity,uint256 amountAMin,uint256 amountBMin,address to,uint256 deadline) returns (uint256 amountA,uint256 amountB)'
+                'function removeLiquidity(address tokenA,address tokenB,uint256 liquidity,uint256 amountAMin,uint256 amountBMin,address to,uint256 deadline) returns (uint256 amountA,uint256 amountB)',
+                'function getAmountsOut(uint256 amountIn,address[] calldata path) view returns (uint256[] memory amounts)',
+                'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] calldata path,address to,uint256 deadline) returns (uint256[] memory amounts)'
             ];
         }
 
@@ -322,8 +324,7 @@
                 throw new Error('LP token, owner, spender, and provider are required for allowance checks.');
             }
 
-            const lpContract = this.createContract(lpTokenAddress, this.getErc20Abi(), provider);
-            return lpContract.allowance(owner, spender);
+            return this.getTokenAllowance({ tokenAddress: lpTokenAddress, owner, spender, provider });
         }
 
         async getBalance({ lpTokenAddress, owner, provider = this.getProvider() }) {
@@ -331,8 +332,25 @@
                 throw new Error('LP token, owner, and provider are required for balance checks.');
             }
 
-            const lpContract = this.createContract(lpTokenAddress, this.getErc20Abi(), provider);
-            return lpContract.balanceOf(owner);
+            return this.getTokenBalance({ tokenAddress: lpTokenAddress, owner, provider });
+        }
+
+        async getTokenAllowance({ tokenAddress, owner, spender, provider = this.getProvider() }) {
+            if (!tokenAddress || !owner || !spender || !provider) {
+                throw new Error('Token, owner, spender, and provider are required for allowance checks.');
+            }
+
+            const tokenContract = this.createContract(tokenAddress, this.getErc20Abi(), provider);
+            return tokenContract.allowance(owner, spender);
+        }
+
+        async getTokenBalance({ tokenAddress, owner, provider = this.getProvider() }) {
+            if (!tokenAddress || !owner || !provider) {
+                throw new Error('Token, owner, and provider are required for balance checks.');
+            }
+
+            const tokenContract = this.createContract(tokenAddress, this.getErc20Abi(), provider);
+            return tokenContract.balanceOf(owner);
         }
 
         async approveIfNeeded({ lpTokenAddress, spender, liquidityRaw, signer }) {
@@ -340,21 +358,51 @@
                 throw new Error('LP token, spender, liquidity amount, and signer are required for approval.');
             }
 
+            return this.approveTokenIfNeeded({
+                tokenAddress: lpTokenAddress,
+                spender,
+                amountRaw: liquidityRaw,
+                signer
+            });
+        }
+
+        async approveTokenIfNeeded({ tokenAddress, spender, amountRaw, signer }) {
+            if (!tokenAddress || !spender || !amountRaw || !signer) {
+                throw new Error('Token, spender, amount, and signer are required for approval.');
+            }
+
             const owner = await signer.getAddress();
-            const allowance = await this.getAllowance({
-                lpTokenAddress,
+            const allowance = await this.getTokenAllowance({
+                tokenAddress,
                 owner,
                 spender,
                 provider: signer.provider || this.getProvider()
             });
-            const liquidity = this.toBigNumber(liquidityRaw);
+            const amount = this.toBigNumber(amountRaw);
 
-            if (allowance.gte(liquidity)) {
+            if (allowance.gte(amount)) {
                 return null;
             }
 
-            const lpContract = this.createContract(lpTokenAddress, this.getErc20Abi(), signer);
-            return lpContract.approve(spender, liquidity);
+            const tokenContract = this.createContract(tokenAddress, this.getErc20Abi(), signer);
+            return tokenContract.approve(spender, amount);
+        }
+
+        async getSwapQuote({ routerAddress, amountIn, path, provider = this.getProvider() }) {
+            if (!routerAddress || !amountIn || !Array.isArray(path) || path.length < 2 || !provider) {
+                throw new Error('Router, amount, path, and provider are required for swap quotes.');
+            }
+
+            const routerContract = this.createContract(routerAddress, this.getRouterAbi(), provider);
+            const amounts = await routerContract.getAmountsOut(this.toBigNumber(amountIn), path);
+            const amountOut = amounts[amounts.length - 1];
+
+            return {
+                path,
+                amounts,
+                amountIn: this.toBigNumber(amountIn),
+                amountOut: this.toBigNumber(amountOut)
+            };
         }
 
         async removeLiquidity({ routerAddress, token0, token1, liquidityRaw, amount0Min, amount1Min, recipient, deadline, signer }) {
@@ -369,6 +417,21 @@
                 this.toBigNumber(liquidityRaw),
                 this.toBigNumber(amount0Min),
                 this.toBigNumber(amount1Min),
+                recipient,
+                deadline
+            );
+        }
+
+        async swapExactTokensForTokens({ routerAddress, amountIn, amountOutMin, path, recipient, deadline, signer }) {
+            if (!routerAddress || !amountIn || !amountOutMin || !Array.isArray(path) || path.length < 2 || !recipient || !deadline || !signer) {
+                throw new Error('Router, amounts, path, recipient, deadline, and signer are required for token swaps.');
+            }
+
+            const routerContract = this.createContract(routerAddress, this.getRouterAbi(), signer);
+            return routerContract.swapExactTokensForTokens(
+                this.toBigNumber(amountIn),
+                this.toBigNumber(amountOutMin),
+                path,
                 recipient,
                 deadline
             );

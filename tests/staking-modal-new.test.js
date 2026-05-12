@@ -215,10 +215,10 @@ function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
     modal.zapQuote = { data };
 }
 
-function arrangeReadyRemoveLiquidityPreview(modal) {
+function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp', address: '0xlp' };
     modal.removeLiquidityAmount = '1';
-    modal.removeLiquidityEnabled = true;
+    modal.convertLibToUsdtEnabled = convert;
     modal.removeLiquidityPreviewStatus = 'ready';
     modal.removeLiquidityPreview = {
         supported: true,
@@ -242,6 +242,20 @@ function arrangeReadyRemoveLiquidityPreview(modal) {
             minAmount: { raw: '49750000000000000000', formatted: '49.75' }
         }
     };
+
+    if (convert) {
+        modal.removeLiquidityPreview.conversion = {
+            supported: true,
+            fromToken: modal.removeLiquidityPreview.token0,
+            toToken: modal.removeLiquidityPreview.token1,
+            path: ['0xlib', '0xusdt'],
+            amountIn: { raw: '100000000000000000000', formatted: '100' },
+            amountOut: { raw: '90000000000000000000', formatted: '90' },
+            minAmountOut: { raw: '89550000000000000000', formatted: '89.55' },
+            finalAmount: { raw: '140000000000000000000', formatted: '140' },
+            finalMinAmount: { raw: '139300000000000000000', formatted: '139.3' }
+        };
+    }
 }
 
 function registerRemoveLiquidityButton(title = 'Wait for a supported remove-liquidity preview.') {
@@ -262,7 +276,10 @@ function createAmount(value) {
     return {
         value,
         lt: other => Number(value) < Number(other?.value ?? other),
+        lte: other => Number(value) <= Number(other?.value ?? other),
         gte: other => Number(value) >= Number(other?.value ?? other),
+        add: other => createAmount(Number(value) + Number(other?.value ?? other)),
+        sub: other => createAmount(Number(value) - Number(other?.value ?? other)),
         toString: () => String(value)
     };
 }
@@ -967,7 +984,7 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('renders guided remove-liquidity controls and preview on the Remove LP tab', async () => {
         const modal = await createLoadedModal();
-        arrangeReadyRemoveLiquidityPreview(modal);
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
         modal.userBalance = '10';
         modal.currentPair = { ...modal.currentPair, tvlUsd: 1000, tvl: 100 };
 
@@ -978,8 +995,11 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
-        expect(html).toContain('Show pair-token return preview and settings');
+        expect(html).toContain('Convert returned LIB to USDT after removing LP');
         expect(html).toContain('LIB + USDT via Uniswap V2');
+        expect(html).toContain('LIB to USDT');
+        expect(html).toContain('140 USDT');
+        expect(html).toContain('139.3 USDT');
         expect(html).toContain('<dt>Minimum token0</dt>');
         expect(html).toContain('99.5 LIB');
         expect(html).toContain('49.75 USDT');
@@ -993,7 +1013,7 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderUnstakeTab();
 
         expect(html).not.toContain('id="remove-liquidity-checkbox"');
-        expect(html).not.toContain('Show pair-token return preview and settings');
+        expect(html).not.toContain('Convert returned LIB to USDT after removing LP');
         expect(html).not.toContain('remove-liquidity-preview-panel');
     });
 
@@ -1001,7 +1021,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
         modal.removeLiquidityAmount = '1';
-        modal.removeLiquidityEnabled = true;
+        modal.convertLibToUsdtEnabled = true;
         modal.removeLiquidityPreviewStatus = 'error';
         modal.removeLiquidityPreviewError = 'This LP factory is not supported for guided remove liquidity.';
         modal.removeLiquidityPreview = {
@@ -1038,7 +1058,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
         modal.removeLiquidityAmount = '1';
-        modal.removeLiquidityEnabled = false;
+        modal.convertLibToUsdtEnabled = false;
         modal.userBalanceRaw = { gte: vi.fn(() => true) };
         const removeButton = registerRemoveLiquidityButton('Confirm the remove-liquidity details first');
 
@@ -1053,7 +1073,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
         const readyPreview = modal.removeLiquidityPreview;
-        modal.removeLiquidityEnabled = false;
+        modal.convertLibToUsdtEnabled = false;
         modal.removeLiquidityPreview = null;
         modal.removeLiquidityPreviewStatus = 'idle';
         modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
@@ -1087,7 +1107,7 @@ describe('StakingModalNew zap cleanup', () => {
     it('valid custom remove-liquidity slippage applies bps and refreshes the preview', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
-        arrangeReadyRemoveLiquidityPreview(modal);
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
         modal.fetchRemoveLiquidityPreview = vi.fn();
 
         const sanitizedValue = modal.setRemoveLiquidityCustomSlippageInput('2.345');
@@ -1165,6 +1185,68 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.clearInputs).toHaveBeenCalled();
         expect(modal.close).toHaveBeenCalled();
         expect(globalThis.notificationManager.success).toHaveBeenCalledWith('Liquidity removed successfully!');
+    });
+
+    it('converts returned LIB to USDT when selected', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const liquidityRaw = createAmount(5);
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
+            getAllowance: vi.fn().mockResolvedValue(createAmount(10)),
+            getTokenBalance: vi.fn()
+                .mockResolvedValueOnce(createAmount(2))
+                .mockResolvedValueOnce(createAmount(102)),
+            getTokenAllowance: vi.fn().mockResolvedValue(createAmount(0)),
+            approveTokenIfNeeded: vi.fn().mockResolvedValue({ hash: '0xapprove-lib' }),
+            getSwapQuote: vi.fn().mockResolvedValue({
+                amountIn: createAmount(100),
+                amountOut: createAmount(90),
+                path: ['0xlib', '0xusdt']
+            }),
+            calculateMinAmount: vi.fn().mockReturnValue(createAmount(89)),
+            approveIfNeeded: vi.fn(),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' }),
+            swapExactTokensForTokens: vi.fn().mockResolvedValue({ hash: '0xswap' })
+        };
+        modal.removeLiquidityService = service;
+        globalThis.contractManager = {
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                provider: {},
+                getAddress: vi.fn().mockResolvedValue('0xuser')
+            },
+            executeTransactionOnce: vi.fn(async (operation) => {
+                const tx = await operation();
+                return { success: true, hash: tx.hash };
+            })
+        };
+        globalThis.walletManager = { provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeRemoveLiquidityTransaction('0xlp', liquidityRaw);
+
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(1, expect.any(Function), 'removeLiquidity');
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(2, expect.any(Function), 'approveRemoveLiquidityConversion');
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(3, expect.any(Function), 'convertRemoveLiquidityToken');
+        expect(service.approveTokenIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
+            tokenAddress: '0xlib',
+            spender: '0xrouter',
+            amountRaw: expect.objectContaining({ value: 100 })
+        }));
+        expect(service.swapExactTokensForTokens).toHaveBeenCalledWith(expect.objectContaining({
+            routerAddress: '0xrouter',
+            amountIn: expect.objectContaining({ value: 100 }),
+            amountOutMin: expect.objectContaining({ value: 89 }),
+            path: ['0xlib', '0xusdt'],
+            recipient: '0xuser'
+        }));
     });
 
     it('approves the router when needed before removing liquidity', async () => {

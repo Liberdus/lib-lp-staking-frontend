@@ -46,7 +46,7 @@ class StakingModalNew {
 
         // V2 remove-liquidity state
         this.removeLiquidityService = window.V2RemoveLiquidityService ? new window.V2RemoveLiquidityService() : null;
-        this.removeLiquidityEnabled = false;
+        this.convertLibToUsdtEnabled = false;
         this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
@@ -72,7 +72,9 @@ class StakingModalNew {
             approveZap: 'idle',
             zap: 'idle',
             approveRemoveLiquidity: 'idle',
-            removeLiquidity: 'idle'
+            removeLiquidity: 'idle',
+            approveRemoveLiquidityConversion: 'idle',
+            convertRemoveLiquidityToken: 'idle'
         };
         this.pendingOperations = {
             approve: false,
@@ -82,7 +84,9 @@ class StakingModalNew {
             approveZap: false,
             zap: false,
             approveRemoveLiquidity: false,
-            removeLiquidity: false
+            removeLiquidity: false,
+            approveRemoveLiquidityConversion: false,
+            convertRemoveLiquidityToken: false
         };
 
         // Execution guards
@@ -125,6 +129,10 @@ class StakingModalNew {
                 return 'approveRemoveLiquidity';
             case 'removeLiquidity':
                 return 'removeLiquidity';
+            case 'approveRemoveLiquidityConversion':
+                return 'approveRemoveLiquidityConversion';
+            case 'convertRemoveLiquidityToken':
+                return 'convertRemoveLiquidityToken';
             default:
                 return null;
         }
@@ -159,7 +167,10 @@ class StakingModalNew {
             this.updateUnstakeButton();
         }
 
-        if (action === 'approveRemoveLiquidity' || action === 'removeLiquidity') {
+        if (action === 'approveRemoveLiquidity'
+            || action === 'removeLiquidity'
+            || action === 'approveRemoveLiquidityConversion'
+            || action === 'convertRemoveLiquidityToken') {
             this.updateRemoveLiquidityButton();
         }
 
@@ -405,7 +416,7 @@ class StakingModalNew {
             }
 
             if (e.target.id === 'remove-liquidity-checkbox') {
-                this.removeLiquidityEnabled = e.target.checked;
+                this.convertLibToUsdtEnabled = e.target.checked;
                 this.resetRemoveLiquidityPreview();
                 this.renderTabContent();
                 this.debounceRemoveLiquidityPreview(0);
@@ -506,7 +517,7 @@ class StakingModalNew {
         this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
-        this.removeLiquidityEnabled = false;
+        this.convertLibToUsdtEnabled = false;
         this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
@@ -863,7 +874,91 @@ class StakingModalNew {
     }
 
     canFetchRemoveLiquidityPreview() {
-        return this.removeLiquidityEnabled && this.canPrepareRemoveLiquidityPreview();
+        return this.convertLibToUsdtEnabled && this.canPrepareRemoveLiquidityPreview();
+    }
+
+    getRemoveLiquidityConversionTokens(preview = this.removeLiquidityPreview) {
+        if (!preview?.supported) {
+            return null;
+        }
+
+        const tokens = [preview.token0, preview.token1];
+        const fromToken = tokens.find(token => String(token.symbol || '').toUpperCase() === 'LIB');
+        const toToken = tokens.find(token => String(token.symbol || '').toUpperCase() === 'USDT');
+
+        if (!fromToken || !toToken || this.normalizeAddress(fromToken.address) === this.normalizeAddress(toToken.address)) {
+            return null;
+        }
+
+        return {
+            fromToken,
+            toToken,
+            path: [fromToken.address, toToken.address]
+        };
+    }
+
+    normalizeAddress(address) {
+        return String(address || '').toLowerCase();
+    }
+
+    async addRemoveLiquidityConversionPreview(preview, provider) {
+        if (!this.convertLibToUsdtEnabled || !preview?.supported) {
+            return preview;
+        }
+
+        const conversion = this.getRemoveLiquidityConversionTokens(preview);
+        if (!conversion) {
+            return {
+                ...preview,
+                conversion: {
+                    supported: false,
+                    reason: 'LIB to USDT conversion is only available for LIB/USDT pools.'
+                }
+            };
+        }
+
+        const service = this.getRemoveLiquidityService();
+        const quote = await service.getSwapQuote({
+            routerAddress: preview.adapter.routerAddress,
+            amountIn: conversion.fromToken.amount.raw,
+            path: conversion.path,
+            provider
+        });
+        const amountOutMin = service.calculateMinAmount(quote.amountOut, this.removeLiquiditySlippageBps);
+        const returnedTargetAmount = window.ethers.BigNumber.from(conversion.toToken.amount.raw);
+        const returnedTargetMinAmount = window.ethers.BigNumber.from(conversion.toToken.minAmount.raw);
+        const finalAmount = returnedTargetAmount.add(quote.amountOut);
+        const finalMinAmount = returnedTargetMinAmount.add(amountOutMin);
+
+        return {
+            ...preview,
+            conversion: {
+                supported: true,
+                fromToken: conversion.fromToken,
+                toToken: conversion.toToken,
+                path: conversion.path,
+                amountIn: {
+                    raw: quote.amountIn.toString(),
+                    formatted: service.formatUnits(quote.amountIn, conversion.fromToken.decimals)
+                },
+                amountOut: {
+                    raw: quote.amountOut.toString(),
+                    formatted: service.formatUnits(quote.amountOut, conversion.toToken.decimals)
+                },
+                minAmountOut: {
+                    raw: amountOutMin.toString(),
+                    formatted: service.formatUnits(amountOutMin, conversion.toToken.decimals)
+                },
+                finalAmount: {
+                    raw: finalAmount.toString(),
+                    formatted: service.formatUnits(finalAmount, conversion.toToken.decimals)
+                },
+                finalMinAmount: {
+                    raw: finalMinAmount.toString(),
+                    formatted: service.formatUnits(finalMinAmount, conversion.toToken.decimals)
+                }
+            }
+        };
     }
 
     debounceRemoveLiquidityPreview(delay = 400) {
@@ -914,25 +1009,28 @@ class StakingModalNew {
             this.updateRemoveLiquidityPreviewPanel();
             this.updateRemoveLiquidityButton();
 
-            const preview = await this.getRemoveLiquidityService().getPreview({
+            const basePreview = await this.getRemoveLiquidityService().getPreview({
                 chainId,
                 lpTokenAddress,
                 liquidityRaw,
                 slippageBps: this.removeLiquiditySlippageBps,
                 provider
             });
+            const preview = await this.addRemoveLiquidityConversionPreview(basePreview, provider);
 
             if (requestId !== this.removeLiquidityPreviewRequestId) {
                 return;
             }
 
             this.removeLiquidityPreview = preview;
-            if (preview.supported) {
+            if (preview.supported && (!this.convertLibToUsdtEnabled || preview.conversion?.supported)) {
                 this.removeLiquidityPreviewStatus = 'ready';
                 this.removeLiquidityPreviewError = '';
             } else {
                 this.removeLiquidityPreviewStatus = 'error';
-                this.removeLiquidityPreviewError = preview.reason || 'Remove liquidity is not supported for this pool.';
+                this.removeLiquidityPreviewError = preview.conversion?.reason
+                    || preview.reason
+                    || 'Remove liquidity is not supported for this pool.';
             }
         } catch (error) {
             if (requestId !== this.removeLiquidityPreviewRequestId) {
@@ -2226,18 +2324,35 @@ class StakingModalNew {
         const hasSufficientBalance = balanceRaw.gte(removeUnits);
         const hasValidPreview = this.removeLiquidityPreviewStatus === 'ready'
             && this.removeLiquidityPreview?.supported;
-        const shouldWaitForOpenPreview = this.removeLiquidityEnabled && !hasValidPreview;
+        const hasSupportedConversion = !this.convertLibToUsdtEnabled
+            || this.removeLiquidityPreview?.conversion?.supported;
+        const shouldWaitForOpenPreview = this.convertLibToUsdtEnabled
+            && (!hasValidPreview || !hasSupportedConversion);
         const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
         const removePhase = this.actionPhases?.removeLiquidity || 'idle';
-        const activePhase = approvePhase !== 'idle' ? approvePhase : removePhase;
+        const approveConversionPhase = this.actionPhases?.approveRemoveLiquidityConversion || 'idle';
+        const convertPhase = this.actionPhases?.convertRemoveLiquidityToken || 'idle';
+        const activePhase = approvePhase !== 'idle'
+            ? approvePhase
+            : removePhase !== 'idle'
+                ? removePhase
+                : approveConversionPhase !== 'idle'
+                    ? approveConversionPhase
+                    : convertPhase;
 
         if (activePhase !== 'idle') {
             removeButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
             if (buttonText) {
-                buttonText.textContent = approvePhase !== 'idle'
-                    ? (approvePhase === 'userApproval' ? ' Approve Router...' : ' Confirming Approval...')
-                    : (removePhase === 'userApproval' ? ' Remove Liquidity...' : ' Removing Liquidity...');
+                if (approvePhase !== 'idle') {
+                    buttonText.textContent = approvePhase === 'userApproval' ? ' Approve LP...' : ' Confirming LP Approval...';
+                } else if (removePhase !== 'idle') {
+                    buttonText.textContent = removePhase === 'userApproval' ? ' Remove Liquidity...' : ' Removing Liquidity...';
+                } else if (approveConversionPhase !== 'idle') {
+                    buttonText.textContent = approveConversionPhase === 'userApproval' ? ' Approve LIB...' : ' Confirming LIB Approval...';
+                } else {
+                    buttonText.textContent = convertPhase === 'userApproval' ? ' Convert LIB...' : ' Converting LIB...';
+                }
             }
             return;
         }
@@ -2250,13 +2365,19 @@ class StakingModalNew {
         if (!hasSufficientBalance && hasAmount) {
             removeButton.title = 'Insufficient LP token balance';
         } else if (shouldWaitForOpenPreview) {
-            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported remove-liquidity preview.';
+            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported LIB to USDT conversion preview.';
         } else {
-            removeButton.title = 'Remove LP liquidity';
+            removeButton.title = this.convertLibToUsdtEnabled
+                ? 'Remove LP liquidity and convert LIB to USDT'
+                : 'Remove LP liquidity';
         }
 
         if (buttonIcon) buttonIcon.textContent = 'swap_horiz';
-        if (buttonText) buttonText.textContent = ' Remove LP Liquidity';
+        if (buttonText) {
+            buttonText.textContent = this.convertLibToUsdtEnabled
+                ? ' Remove LP + Convert LIB'
+                : ' Remove LP Liquidity';
+        }
     }
 
     /**
@@ -2466,7 +2587,7 @@ class StakingModalNew {
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
-        this.removeLiquidityEnabled = false;
+        this.convertLibToUsdtEnabled = false;
         this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
@@ -2821,20 +2942,20 @@ class StakingModalNew {
                     <input
                         type="checkbox"
                         id="remove-liquidity-checkbox"
-                        ${this.removeLiquidityEnabled ? 'checked' : ''}
+                        ${this.convertLibToUsdtEnabled ? 'checked' : ''}
                     >
                     <span class="checkmark"></span>
-                    Show pair-token return preview and settings
+                    Convert returned LIB to USDT after removing LP
                 </label>
             </div>
 
-            ${this.removeLiquidityEnabled ? this.renderRemoveLiquidityControls() : ''}
+            ${this.convertLibToUsdtEnabled ? this.renderRemoveLiquidityControls() : ''}
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
                 <button class="btn btn-primary remove-liquidity-action-btn" onclick="safeModalExecuteRemoveLiquidity()" ${!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0 ? 'disabled' : ''}>
                     <span class="material-icons">swap_horiz</span>
-                    Remove LP Liquidity
+                    ${this.convertLibToUsdtEnabled ? 'Remove LP + Convert LIB' : 'Remove LP Liquidity'}
                 </button>
             </div>
         `;
@@ -2964,7 +3085,28 @@ class StakingModalNew {
             this.renderZapQuoteRow('Minimum token1', token1MinDisplay),
             this.renderZapQuoteRow('Slippage', slippageDisplay),
             this.renderZapQuoteRow('Deadline', deadlineDisplay)
-        ].join('');
+        ];
+
+        if (this.convertLibToUsdtEnabled) {
+            const conversion = this.removeLiquidityPreview?.conversion;
+            if (conversion?.supported) {
+                rows.splice(
+                    5,
+                    0,
+                    this.renderZapQuoteRow('Convert after remove', `${conversion.fromToken.symbol} to ${conversion.toToken.symbol}`),
+                    this.renderZapQuoteRow(
+                        `Estimated final ${conversion.toToken.symbol}`,
+                        this.formatRemoveLiquidityTokenAmount(conversion.finalAmount, conversion.toToken)
+                    ),
+                    this.renderZapQuoteRow(
+                        `Minimum final ${conversion.toToken.symbol}`,
+                        this.formatRemoveLiquidityTokenAmount(conversion.finalMinAmount, conversion.toToken)
+                    )
+                );
+            } else if (conversion?.reason) {
+                rows.splice(5, 0, this.renderZapQuoteRow('Convert after remove', conversion.reason));
+            }
+        }
 
         return `
             <div class="${cardClass}">
@@ -2984,7 +3126,7 @@ class StakingModalNew {
                     </div>
                 </div>
                 <dl class="zap-quote-list remove-liquidity-preview-list">
-                    ${rows}
+                    ${rows.join('')}
                 </dl>
             </div>
         `;
@@ -3700,6 +3842,66 @@ class StakingModalNew {
         }
     }
 
+    async executeRemoveLiquidityConversion({ service, preview, conversion, amountIn, userAddress, provider, signer }) {
+        const spender = preview.adapter.routerAddress;
+        const allowance = await service.getTokenAllowance({
+            tokenAddress: conversion.fromToken.address,
+            owner: userAddress,
+            spender,
+            provider
+        });
+
+        if (allowance.lt(amountIn)) {
+            this.pendingOperations.approveRemoveLiquidityConversion = true;
+            this.setActionPhase('approveRemoveLiquidityConversion', 'userApproval');
+            window.notificationManager?.info(`Approving ${conversion.fromToken.symbol} for conversion...`);
+
+            await window.contractManager.executeTransactionOnce(async () => {
+                const tx = await service.approveTokenIfNeeded({
+                    tokenAddress: conversion.fromToken.address,
+                    spender,
+                    amountRaw: amountIn,
+                    signer
+                });
+                if (!tx) {
+                    throw new Error(`${conversion.fromToken.symbol} allowance is already sufficient.`);
+                }
+                console.log(`✅ ${conversion.fromToken.symbol} conversion approval sent: ${tx.hash}`);
+                return tx;
+            }, 'approveRemoveLiquidityConversion');
+
+            this.pendingOperations.approveRemoveLiquidityConversion = false;
+            this.setActionPhase('approveRemoveLiquidityConversion', 'idle');
+        }
+
+        const quote = await service.getSwapQuote({
+            routerAddress: preview.adapter.routerAddress,
+            amountIn,
+            path: conversion.path,
+            provider
+        });
+        const amountOutMin = service.calculateMinAmount(quote.amountOut, this.removeLiquiditySlippageBps);
+        const deadlineSeconds = Math.floor(Date.now() / 1000) + (Number(this.removeLiquidityDeadlineMinutes) || 20) * 60;
+
+        this.pendingOperations.convertRemoveLiquidityToken = true;
+        this.setActionPhase('convertRemoveLiquidityToken', 'userApproval');
+        window.notificationManager?.info(`Converting ${conversion.fromToken.symbol} to ${conversion.toToken.symbol}...`);
+
+        return await window.contractManager.executeTransactionOnce(async () => {
+            const tx = await service.swapExactTokensForTokens({
+                routerAddress: preview.adapter.routerAddress,
+                amountIn,
+                amountOutMin,
+                path: conversion.path,
+                recipient: userAddress,
+                deadline: deadlineSeconds,
+                signer
+            });
+            console.log(`✅ ${conversion.fromToken.symbol} conversion sent: ${tx.hash}`);
+            return tx;
+        }, 'convertRemoveLiquidityToken');
+    }
+
     async executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw) {
         const service = this.getRemoveLiquidityService();
         const provider = window.contractManager?.provider || window.walletManager?.provider;
@@ -3716,6 +3918,10 @@ class StakingModalNew {
         if (!preview?.supported) {
             throw new Error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
         }
+        const conversion = this.convertLibToUsdtEnabled ? preview.conversion : null;
+        if (this.convertLibToUsdtEnabled && !conversion?.supported) {
+            throw new Error(preview.conversion?.reason || 'LIB to USDT conversion is not supported for this pool.');
+        }
 
         await service.validateRouterFactory({
             routerAddress: preview.adapter.routerAddress,
@@ -3731,6 +3937,14 @@ class StakingModalNew {
         if (lpBalance.lt(liquidityRaw)) {
             throw new Error('Insufficient LP token balance.');
         }
+
+        const preConversionBalance = conversion
+            ? await service.getTokenBalance({
+                tokenAddress: conversion.fromToken.address,
+                owner: userAddress,
+                provider
+            })
+            : null;
 
         const allowance = await service.getAllowance({
             lpTokenAddress,
@@ -3767,7 +3981,7 @@ class StakingModalNew {
         this.setActionPhase('removeLiquidity', 'userApproval');
         window.notificationManager?.info('Removing liquidity...');
 
-        return await window.contractManager.executeTransactionOnce(async () => {
+        const removeResult = await window.contractManager.executeTransactionOnce(async () => {
             const tx = await service.removeLiquidity({
                 routerAddress: preview.adapter.routerAddress,
                 token0: preview.token0.address,
@@ -3782,6 +3996,42 @@ class StakingModalNew {
             console.log(`✅ Remove liquidity transaction sent: ${tx.hash}`);
             return tx;
         }, 'removeLiquidity');
+
+        if (!conversion) {
+            return removeResult;
+        }
+
+        this.pendingOperations.removeLiquidity = false;
+        this.setActionPhase('removeLiquidity', 'idle');
+
+        const postConversionBalance = await service.getTokenBalance({
+            tokenAddress: conversion.fromToken.address,
+            owner: userAddress,
+            provider
+        });
+        const actualAmountIn = postConversionBalance.sub(preConversionBalance);
+        if (actualAmountIn.lte(0)) {
+            const error = new Error(`No ${conversion.fromToken.symbol} was received to convert.`);
+            error.removeLiquidityCompleted = true;
+            throw error;
+        }
+
+        try {
+            await this.executeRemoveLiquidityConversion({
+                service,
+                preview,
+                conversion,
+                amountIn: actualAmountIn,
+                userAddress,
+                provider,
+                signer
+            });
+        } catch (error) {
+            error.removeLiquidityCompleted = true;
+            throw error;
+        }
+
+        return removeResult;
     }
 
     async executeRemoveLiquidity() {
@@ -3822,7 +4072,11 @@ class StakingModalNew {
             const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
             const liquidityRaw = this.getRemoveLiquidityAmountRaw();
             await this.executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw);
-            window.notificationManager?.success('Liquidity removed successfully!');
+            window.notificationManager?.success(
+                this.convertLibToUsdtEnabled
+                    ? 'Liquidity removed and LIB converted to USDT successfully!'
+                    : 'Liquidity removed successfully!'
+            );
 
             this.clearInputs();
             this.close();
@@ -3839,7 +4093,10 @@ class StakingModalNew {
             console.log('✅ Home page data refreshed after remove liquidity');
         } catch (error) {
             console.error('❌ Remove liquidity failed:', error);
-            const errorMessage = error?.userMessage?.message || error?.message || 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            const fallbackMessage = error?.removeLiquidityCompleted
+                ? 'Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.'
+                : 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            const errorMessage = error?.userMessage?.message || error?.message || fallbackMessage;
             window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
             await this.loadUserBalances().catch(loadError => {
                 console.warn('Unable to refresh balances after remove-liquidity failure:', loadError.message);
@@ -3847,8 +4104,12 @@ class StakingModalNew {
         } finally {
             this.pendingOperations.approveRemoveLiquidity = false;
             this.pendingOperations.removeLiquidity = false;
+            this.pendingOperations.approveRemoveLiquidityConversion = false;
+            this.pendingOperations.convertRemoveLiquidityToken = false;
             this.setActionPhase('approveRemoveLiquidity', 'idle');
             this.setActionPhase('removeLiquidity', 'idle');
+            this.setActionPhase('approveRemoveLiquidityConversion', 'idle');
+            this.setActionPhase('convertRemoveLiquidityToken', 'idle');
             this.isExecutingRemoveLiquidity = false;
             this.updateRemoveLiquidityButton();
         }
