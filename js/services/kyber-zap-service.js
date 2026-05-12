@@ -83,9 +83,8 @@
             }
         }
 
-        getQuoteRequestKey({ networkKey, walletAddress, lpTokenAddress, tokenAddress, amountRaw, slippageBps, type = 'in' }) {
+        getQuoteRequestKey({ networkKey, walletAddress, lpTokenAddress, tokenAddress, amountRaw, slippageBps }) {
             return [
-                type,
                 networkKey || this.getCurrentNetworkKey(),
                 walletAddress || '',
                 String(lpTokenAddress || '').toLowerCase(),

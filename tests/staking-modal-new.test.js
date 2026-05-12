@@ -1022,7 +1022,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
-        expect(html).toContain('Zap out to one token with Kyber');
+        expect(html).toContain('Convert to one preferred token');
         expect(html).toContain('<label class="form-label">Output Token</label>');
         expect(html).toContain('remove-liquidity-output-token-picker');
         expect(html).toContain('remove-liquidity-output-token-option');
@@ -1157,7 +1157,7 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderUnstakeTab();
 
         expect(html).not.toContain('id="remove-liquidity-checkbox"');
-        expect(html).not.toContain('Zap out to one token with Kyber');
+        expect(html).not.toContain('Convert to one preferred token');
         expect(html).not.toContain('remove-liquidity-preview-panel');
     });
 

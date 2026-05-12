@@ -1738,25 +1738,25 @@ class StakingModalNew {
             && (this.isNativeZapToken(address) || (!!wrappedNativeAddress && normalizedAddress === wrappedNativeAddress));
     }
 
-    getZapActionTokenAmount(token, outputToken) {
-        if (!token || !this.isRemoveLiquidityOutputTokenAddress(token.address, outputToken)) {
+    getRemoveLiquidityActionTokenAmount(token, outputToken) {
+        if (!token?.amount || !this.isRemoveLiquidityOutputTokenAddress(token.address, outputToken)) {
             return null;
         }
 
-        const amount = token.amount ?? token.amountRaw ?? token.value ?? null;
-        return amount === undefined || amount === null || amount === '' ? null : String(amount);
+        const amount = String(token.amount);
+        return /^\d+$/.test(amount) ? amount : null;
     }
 
-    collectRemoveLiquidityOutputAmounts(outputToken = this.removeLiquiditySelectedOutputToken) {
+    getRemoveLiquidityActionOutputAmount(outputToken) {
         const data = this.getRemoveLiquidityRouteData();
         const actions = data?.zapDetails?.actions;
         if (!Array.isArray(actions)) {
-            return [];
+            return null;
         }
 
         const amounts = [];
         const addTokenAmount = token => {
-            const amount = this.getZapActionTokenAmount(token, outputToken);
+            const amount = this.getRemoveLiquidityActionTokenAmount(token, outputToken);
             if (amount) {
                 amounts.push(amount);
             }
@@ -1768,39 +1768,26 @@ class StakingModalNew {
         };
         const addSwapOutputs = swapAction => {
             if (Array.isArray(swapAction?.swaps)) {
-                swapAction.swaps.forEach(swap => addTokenAmount(swap?.tokenOut || swap?.token_out));
+                swapAction.swaps.forEach(swap => addTokenAmount(swap?.tokenOut));
             }
         };
 
         actions.forEach(action => {
-            const removeLiquidity = action?.removeLiquidity || action?.remove_liquidity;
+            const removeLiquidity = action?.removeLiquidity;
             addTokens(removeLiquidity?.tokens);
             addTokenAmount(removeLiquidity?.token0);
             addTokenAmount(removeLiquidity?.token1);
 
-            addSwapOutputs(action?.aggregatorSwap || action?.aggregator_swap);
-            addSwapOutputs(action?.poolSwap || action?.pool_swap);
-            addTokens((action?.refund || action?.refundAction || action?.refund_action)?.tokens);
+            addSwapOutputs(action?.aggregatorSwap);
+            addSwapOutputs(action?.poolSwap);
+            addTokens(action?.refund?.tokens);
         });
 
-        return amounts;
-    }
-
-    sumZapRawAmounts(amounts) {
         if (!amounts.length) {
             return null;
         }
 
-        if (amounts.every(amount => /^\d+$/.test(String(amount)))) {
-            return amounts.reduce((total, amount) => total + BigInt(amount), 0n).toString();
-        }
-
-        const numericAmounts = amounts.map(Number);
-        if (numericAmounts.every(Number.isFinite)) {
-            return numericAmounts.reduce((total, amount) => total + amount, 0).toString();
-        }
-
-        return amounts[0];
+        return amounts.reduce((total, amount) => total + BigInt(amount), 0n).toString();
     }
 
     getRemoveLiquidityEstimatedOutputEntry(outputToken, fallback = 'N/A') {
@@ -1815,7 +1802,7 @@ class StakingModalNew {
             return directEntry;
         }
 
-        const actionAmount = this.sumZapRawAmounts(this.collectRemoveLiquidityOutputAmounts(outputToken));
+        const actionAmount = this.getRemoveLiquidityActionOutputAmount(outputToken);
         return actionAmount
             ? { value: actionAmount, path: 'zapDetails.actions' }
             : { value: fallback, path: null };
