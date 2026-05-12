@@ -93,6 +93,18 @@ async function loadStakingModalClass() {
             }
         }
     };
+    globalThis.CONFIG.DEX_REMOVE_LIQUIDITY = {
+        56: {
+            wrappedNative: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+            factories: {
+                '0x8909dc15e40173ff4699343b6eb8132c65e18ec6': {
+                    name: 'Uniswap V2',
+                    type: 'uniswapV2',
+                    router: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24'
+                }
+            }
+        }
+    };
     globalThis.ethers = {
         BigNumber: {
             from: vi.fn(value => ({ value, toString: () => String(value) }))
@@ -113,6 +125,7 @@ async function loadStakingModalClass() {
 
     await import('../js/services/kyber-zap-rate-limiter.js');
     await import('../js/services/kyber-zap-service.js');
+    await import('../js/services/v2-remove-liquidity-service.js');
     await import('../js/components/staking-modal-new.js');
     return globalThis.StakingModalNew;
 }
@@ -202,6 +215,44 @@ function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
     modal.zapQuote = { data };
 }
 
+function arrangeReadyRemoveLiquidityPreview(modal) {
+    modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp', address: '0xlp' };
+    modal.unstakeAmount = '1';
+    modal.removeLiquidityEnabled = true;
+    modal.removeLiquidityPreviewStatus = 'ready';
+    modal.removeLiquidityPreview = {
+        supported: true,
+        adapter: {
+            name: 'Uniswap V2',
+            routerAddress: '0xrouter',
+            factoryAddress: '0xfactory'
+        },
+        token0: {
+            address: '0xlib',
+            symbol: 'LIB',
+            decimals: 18,
+            amount: { raw: '100000000000000000000', formatted: '100' },
+            minAmount: { raw: '99500000000000000000', formatted: '99.5' }
+        },
+        token1: {
+            address: '0xusdt',
+            symbol: 'USDT',
+            decimals: 18,
+            amount: { raw: '50000000000000000000', formatted: '50' },
+            minAmount: { raw: '49750000000000000000', formatted: '49.75' }
+        }
+    };
+}
+
+function createAmount(value) {
+    return {
+        value,
+        lt: other => Number(value) < Number(other?.value ?? other),
+        gte: other => Number(value) >= Number(other?.value ?? other),
+        toString: () => String(value)
+    };
+}
+
 describe('StakingModalNew zap cleanup', () => {
     beforeEach(() => {
         vi.useRealTimers();
@@ -227,6 +278,7 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.KyberZapRateLimitError;
         delete globalThis.KyberZapQuoteRateLimiter;
         delete globalThis.KyberZapService;
+        delete globalThis.V2RemoveLiquidityService;
         delete globalThis.StakingModalNew;
         delete globalThis.stakingModal;
         delete globalThis.stakingModalNew;
@@ -238,6 +290,7 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.safeModalFetchZapQuote;
         delete globalThis.safeModalExecuteZap;
         delete globalThis.safeModalAddZapCustomToken;
+        delete globalThis.safeModalFetchRemoveLiquidityPreview;
     });
 
     it('clearInputs removes active zap percentage button state', async () => {
@@ -894,5 +947,140 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('<dt>Kyber Zap Fee</dt>');
         expect(html).toContain('<dd>None</dd>');
+    });
+
+    it('renders guided remove-liquidity controls and preview on the unstake tab', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.userStaked = '10';
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).toContain('id="remove-liquidity-checkbox"');
+        expect(html).toContain('Also remove liquidity and return pair tokens');
+        expect(html).toContain('LIB + USDT via Uniswap V2');
+        expect(html).toContain('<dt>Minimum token0</dt>');
+        expect(html).toContain('99.5 LIB');
+        expect(html).toContain('49.75 USDT');
+    });
+
+    it('shows a blocking unsupported message for unknown remove-liquidity factories', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
+        modal.unstakeAmount = '1';
+        modal.removeLiquidityEnabled = true;
+        modal.removeLiquidityPreviewStatus = 'error';
+        modal.removeLiquidityPreviewError = 'This LP factory is not supported for guided remove liquidity.';
+        modal.removeLiquidityPreview = {
+            supported: false,
+            factoryAddress: '0x9999999999999999999999999999999999999999'
+        };
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).toContain('This LP factory is not supported for guided remove liquidity.');
+        expect(html).toContain('Unsupported factory 0x9999...9999');
+    });
+
+    it('valid custom remove-liquidity slippage applies bps and refreshes the preview', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+
+        const sanitizedValue = modal.setRemoveLiquidityCustomSlippageInput('2.345');
+        await vi.advanceTimersByTimeAsync(400);
+
+        expect(sanitizedValue).toBe('2.34');
+        expect(modal.removeLiquiditySlippageBps).toBe(234);
+        expect(modal.removeLiquidityCustomSlippageError).toBe('');
+        expect(modal.removeLiquidityPreview).toBeNull();
+        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledTimes(1);
+    });
+
+    it('executes unstake before the guided remove-liquidity step', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const calls = [];
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
+        modal.executeRemoveLiquidityAfterUnstake = vi.fn(async () => {
+            calls.push('remove');
+        });
+        modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            unstake: vi.fn(async () => {
+                calls.push('unstake');
+                return { success: true, hash: '0xunstake' };
+            })
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeUnstake();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(calls).toEqual(['unstake', 'remove']);
+        expect(globalThis.contractManager.unstake).toHaveBeenCalledWith('0xlp', '1', true);
+        expect(modal.clearInputs).toHaveBeenCalled();
+        expect(modal.close).toHaveBeenCalled();
+    });
+
+    it('approves the router when needed before removing liquidity', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const liquidityRaw = createAmount(5);
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
+            getAllowance: vi.fn().mockResolvedValue(createAmount(1)),
+            approveIfNeeded: vi.fn().mockResolvedValue({ hash: '0xapprove' }),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
+        };
+        modal.removeLiquidityService = service;
+        globalThis.contractManager = {
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                provider: {},
+                getAddress: vi.fn().mockResolvedValue('0xuser')
+            },
+            executeTransactionOnce: vi.fn(async (operation) => {
+                const tx = await operation();
+                return { success: true, hash: tx.hash };
+            })
+        };
+        globalThis.walletManager = { provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeRemoveLiquidityAfterUnstake('0xlp', liquidityRaw);
+
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(1, expect.any(Function), 'approveRemoveLiquidity');
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(2, expect.any(Function), 'removeLiquidity');
+        expect(service.approveIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
+            lpTokenAddress: '0xlp',
+            spender: '0xrouter',
+            liquidityRaw
+        }));
+        expect(service.removeLiquidity).toHaveBeenCalledWith(expect.objectContaining({
+            routerAddress: '0xrouter',
+            token0: '0xlib',
+            token1: '0xusdt',
+            amount0Min: '99500000000000000000',
+            amount1Min: '49750000000000000000',
+            recipient: '0xuser'
+        }));
     });
 });
