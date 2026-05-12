@@ -1001,6 +1001,35 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('Unsupported factory 0x9999...9999');
     });
 
+    it('enables the remove-liquidity action after a supported preview loads', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const readyPreview = modal.removeLiquidityPreview;
+        const icon = { textContent: 'swap_horiz' };
+        const buttonText = { textContent: ' Remove LP Liquidity' };
+        const removeButton = createElement({ classes: ['btn', 'btn-primary', 'remove-liquidity-action-btn'] });
+        removeButton.disabled = true;
+        removeButton.title = 'Wait for a supported remove-liquidity preview.';
+        removeButton.childNodes = [icon, buttonText];
+        removeButton.querySelector = vi.fn(selector => selector === '.material-icons' ? icon : null);
+
+        globalThis.document.querySelector = vi.fn(selector => (
+            selector.includes('safeModalExecuteRemoveLiquidity') ? removeButton : null
+        ));
+        globalThis.contractManager = { provider: {} };
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.getRemoveLiquidityService = vi.fn(() => ({
+            getPreview: vi.fn().mockResolvedValue(readyPreview)
+        }));
+
+        await modal.fetchRemoveLiquidityPreview({ force: true });
+
+        expect(removeButton.disabled).toBe(false);
+        expect(removeButton.title).toBe('Remove LP liquidity');
+    });
+
     it('valid custom remove-liquidity slippage applies bps and refreshes the preview', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();

@@ -761,7 +761,7 @@ class StakingModalNew {
         this.removeLiquidityPreviewRequestId += 1;
         this.clearRemoveLiquidityPreviewDebounce();
         this.updateRemoveLiquidityPreviewPanel();
-        this.updateUnstakeButton();
+        this.updateRemoveLiquidityButton();
     }
 
     getRemoveLiquidityAmountRaw() {
@@ -831,7 +831,7 @@ class StakingModalNew {
             }
             this.updateRemoveLiquidityPreviewPanel();
             this.debounceRemoveLiquidityPreview();
-            this.updateUnstakeButton();
+            this.updateRemoveLiquidityButton();
             return sanitizedValue;
         }
 
@@ -868,7 +868,7 @@ class StakingModalNew {
 
         if (!this.canFetchRemoveLiquidityPreview()) {
             this.updateRemoveLiquidityPreviewPanel();
-            this.updateUnstakeButton();
+            this.updateRemoveLiquidityButton();
             return;
         }
 
@@ -880,13 +880,13 @@ class StakingModalNew {
     async fetchRemoveLiquidityPreview({ force = false } = {}) {
         if (!this.canFetchRemoveLiquidityPreview()) {
             this.updateRemoveLiquidityPreviewPanel();
-            this.updateUnstakeButton();
+            this.updateRemoveLiquidityButton();
             return;
         }
 
         if (!force && this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported) {
             this.updateRemoveLiquidityPreviewPanel();
-            this.updateUnstakeButton();
+            this.updateRemoveLiquidityButton();
             return;
         }
 
@@ -909,7 +909,7 @@ class StakingModalNew {
             this.removeLiquidityPreviewStatus = 'loading';
             this.removeLiquidityPreviewError = '';
             this.updateRemoveLiquidityPreviewPanel();
-            this.updateUnstakeButton();
+            this.updateRemoveLiquidityButton();
 
             const preview = await this.getRemoveLiquidityService().getPreview({
                 chainId,
@@ -943,7 +943,7 @@ class StakingModalNew {
         } finally {
             if (requestId === this.removeLiquidityPreviewRequestId) {
                 this.updateRemoveLiquidityPreviewPanel();
-                this.updateUnstakeButton();
+                this.updateRemoveLiquidityButton();
             }
         }
     }
