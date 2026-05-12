@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const LIB_TOKEN_ADDRESS = '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c';
+const USDT_TOKEN_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
+
 function createClassList(initialClasses = []) {
     const classes = new Set(initialClasses);
 
@@ -73,6 +76,9 @@ async function loadStakingModalClass() {
     globalThis.removeEventListener = vi.fn();
     globalThis.dispatchEvent = vi.fn();
     globalThis.document = createDocumentMock();
+    globalThis.networkSelector = {
+        getCurrentChainId: vi.fn(() => 56)
+    };
     globalThis.CONFIG = {
         KYBER_ZAP: {
             DEFAULT_SLIPPAGE_BPS: 50,
@@ -91,11 +97,18 @@ async function loadStakingModalClass() {
                     WRAPPED_NATIVE_TOKEN_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'
                 }
             }
+        },
+        DEFAULTS: {
+            REWARD_TOKEN: LIB_TOKEN_ADDRESS
         }
     };
     globalThis.CONFIG.DEX_REMOVE_LIQUIDITY = {
         56: {
             wrappedNative: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+            libToUsdtConversion: {
+                fromToken: LIB_TOKEN_ADDRESS,
+                toToken: USDT_TOKEN_ADDRESS
+            },
             factories: {
                 '0x8909dc15e40173ff4699343b6eb8132c65e18ec6': {
                     name: 'Uniswap V2',
@@ -228,14 +241,14 @@ function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
             factoryAddress: '0xfactory'
         },
         token0: {
-            address: '0xlib',
+            address: LIB_TOKEN_ADDRESS,
             symbol: 'LIB',
             decimals: 18,
             amount: { raw: '100000000000000000000', formatted: '100' },
             minAmount: { raw: '99500000000000000000', formatted: '99.5' }
         },
         token1: {
-            address: '0xusdt',
+            address: USDT_TOKEN_ADDRESS,
             symbol: 'USDT',
             decimals: 18,
             amount: { raw: '50000000000000000000', formatted: '50' },
@@ -248,7 +261,7 @@ function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
             supported: true,
             fromToken: modal.removeLiquidityPreview.token0,
             toToken: modal.removeLiquidityPreview.token1,
-            path: ['0xlib', '0xusdt'],
+            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS],
             amountIn: { raw: '100000000000000000000', formatted: '100' },
             amountOut: { raw: '90000000000000000000', formatted: '90' },
             minAmountOut: { raw: '89550000000000000000', formatted: '89.55' },
@@ -1010,6 +1023,38 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Minimum token0</dt>');
     });
 
+    it('matches remove-liquidity conversion tokens by configured address', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+
+        const conversion = modal.getRemoveLiquidityConversionTokens(modal.removeLiquidityPreview);
+
+        expect(conversion).toEqual(expect.objectContaining({
+            fromToken: expect.objectContaining({ address: LIB_TOKEN_ADDRESS }),
+            toToken: expect.objectContaining({ address: USDT_TOKEN_ADDRESS }),
+            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS]
+        }));
+    });
+
+    it('rejects spoofed LIB and USDT symbols for remove-liquidity conversion', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityPreview.token0 = {
+            ...modal.removeLiquidityPreview.token0,
+            address: '0x1111111111111111111111111111111111111111',
+            symbol: 'LIB'
+        };
+        modal.removeLiquidityPreview.token1 = {
+            ...modal.removeLiquidityPreview.token1,
+            address: '0x2222222222222222222222222222222222222222',
+            symbol: 'USDT'
+        };
+
+        const conversion = modal.getRemoveLiquidityConversionTokens(modal.removeLiquidityPreview);
+
+        expect(conversion).toBeNull();
+    });
+
     it('keeps guided remove-liquidity controls out of the Unstake tab', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
@@ -1208,7 +1253,7 @@ describe('StakingModalNew zap cleanup', () => {
             getSwapQuote: vi.fn().mockResolvedValue({
                 amountIn: createAmount(100),
                 amountOut: createAmount(90),
-                path: ['0xlib', '0xusdt']
+                path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS]
             }),
             calculateMinAmount: vi.fn().mockReturnValue(createAmount(89)),
             approveIfNeeded: vi.fn(),
@@ -1241,7 +1286,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(2, expect.any(Function), 'approveRemoveLiquidityConversion');
         expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(3, expect.any(Function), 'convertRemoveLiquidityToken');
         expect(service.approveTokenIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
-            tokenAddress: '0xlib',
+            tokenAddress: LIB_TOKEN_ADDRESS,
             spender: '0xrouter',
             amountRaw: expect.objectContaining({ value: 100 })
         }));
@@ -1249,9 +1294,76 @@ describe('StakingModalNew zap cleanup', () => {
             routerAddress: '0xrouter',
             amountIn: expect.objectContaining({ value: 100 }),
             amountOutMin: expect.objectContaining({ value: 89 }),
-            path: ['0xlib', '0xusdt'],
+            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS],
             recipient: '0xuser'
         }));
+    });
+
+    it('marks post-remove balance read failures as partial success', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const liquidityRaw = createAmount(5);
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
+            getAllowance: vi.fn().mockResolvedValue(createAmount(10)),
+            getTokenBalance: vi.fn()
+                .mockResolvedValueOnce(createAmount(2))
+                .mockRejectedValueOnce(new Error('Balance read failed')),
+            approveIfNeeded: vi.fn(),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
+        };
+        modal.removeLiquidityService = service;
+        globalThis.contractManager = {
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                provider: {},
+                getAddress: vi.fn().mockResolvedValue('0xuser')
+            },
+            executeTransactionOnce: vi.fn(async (operation) => {
+                const tx = await operation();
+                return { success: true, hash: tx.hash };
+            })
+        };
+        globalThis.walletManager = { provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await expect(modal.executeRemoveLiquidityTransaction('0xlp', liquidityRaw))
+            .rejects.toMatchObject({
+                message: 'Balance read failed',
+                removeLiquidityCompleted: true
+            });
+    });
+
+    it('shows partial-success copy when conversion fails after liquidity was removed', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const failure = new Error('Swap reverted');
+        failure.removeLiquidityCompleted = true;
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
+        modal.executeRemoveLiquidityTransaction = vi.fn().mockRejectedValue(failure);
+        modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true)
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeRemoveLiquidity();
+
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith(
+            expect.stringContaining('Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.'),
+            { title: 'Conversion failed' }
+        );
+        expect(globalThis.notificationManager.error.mock.calls[0][0]).toContain('Details: Swap reverted');
     });
 
     it('approves the router when needed before removing liquidity', async () => {
@@ -1296,8 +1408,8 @@ describe('StakingModalNew zap cleanup', () => {
         }));
         expect(service.removeLiquidity).toHaveBeenCalledWith(expect.objectContaining({
             routerAddress: '0xrouter',
-            token0: '0xlib',
-            token1: '0xusdt',
+            token0: LIB_TOKEN_ADDRESS,
+            token1: USDT_TOKEN_ADDRESS,
             amount0Min: '99500000000000000000',
             amount1Min: '49750000000000000000',
             recipient: '0xuser'

@@ -203,6 +203,10 @@ window.CONFIG = {
     DEX_REMOVE_LIQUIDITY: {
         56: {
             wrappedNative: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+            libToUsdtConversion: {
+                fromToken: '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c',
+                toToken: '0x55d398326f99059fF775485246999027B3197955'
+            },
             factories: {
                 '0x8909dc15e40173ff4699343b6eb8132c65e18ec6': {
                     name: 'Uniswap V2',

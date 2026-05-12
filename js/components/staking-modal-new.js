@@ -882,11 +882,22 @@ class StakingModalNew {
             return null;
         }
 
-        const tokens = [preview.token0, preview.token1];
-        const fromToken = tokens.find(token => String(token.symbol || '').toUpperCase() === 'LIB');
-        const toToken = tokens.find(token => String(token.symbol || '').toUpperCase() === 'USDT');
+        const chainId = this.getRemoveLiquidityChainId();
+        const chainConfig = window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[String(chainId)]
+            || window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[Number(chainId)]
+            || null;
+        const conversionConfig = chainConfig?.libToUsdtConversion || null;
+        const fromAddress = this.normalizeAddress(conversionConfig?.fromToken);
+        const toAddress = this.normalizeAddress(conversionConfig?.toToken);
+        if (!fromAddress || !toAddress) {
+            return null;
+        }
 
-        if (!fromToken || !toToken || this.normalizeAddress(fromToken.address) === this.normalizeAddress(toToken.address)) {
+        const tokens = [preview.token0, preview.token1];
+        const fromToken = tokens.find(token => this.normalizeAddress(token?.address) === fromAddress);
+        const toToken = tokens.find(token => this.normalizeAddress(token?.address) === toAddress);
+
+        if (!fromToken || !toToken || fromAddress === toAddress) {
             return null;
         }
 
@@ -4036,19 +4047,17 @@ class StakingModalNew {
         this.pendingOperations.removeLiquidity = false;
         this.setActionPhase('removeLiquidity', 'idle');
 
-        const postConversionBalance = await service.getTokenBalance({
-            tokenAddress: conversion.fromToken.address,
-            owner: userAddress,
-            provider
-        });
-        const actualAmountIn = postConversionBalance.sub(preConversionBalance);
-        if (actualAmountIn.lte(0)) {
-            const error = new Error(`No ${conversion.fromToken.symbol} was received to convert.`);
-            error.removeLiquidityCompleted = true;
-            throw error;
-        }
-
         try {
+            const postConversionBalance = await service.getTokenBalance({
+                tokenAddress: conversion.fromToken.address,
+                owner: userAddress,
+                provider
+            });
+            const actualAmountIn = postConversionBalance.sub(preConversionBalance);
+            if (actualAmountIn.lte(0)) {
+                throw new Error(`No ${conversion.fromToken.symbol} was received to convert.`);
+            }
+
             await this.executeRemoveLiquidityConversion({
                 service,
                 preview,
@@ -4125,11 +4134,14 @@ class StakingModalNew {
             console.log('✅ Home page data refreshed after remove liquidity');
         } catch (error) {
             console.error('❌ Remove liquidity failed:', error);
-            const fallbackMessage = error?.removeLiquidityCompleted
-                ? 'Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.'
-                : 'Remove liquidity failed. Your LP tokens remain in your wallet.';
-            const errorMessage = error?.userMessage?.message || error?.message || fallbackMessage;
-            window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
+            const detailMessage = error?.userMessage?.message || error?.message || '';
+            const partialSuccessMessage = 'Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.';
+            const fallbackMessage = 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            const errorMessage = error?.removeLiquidityCompleted
+                ? (detailMessage ? `${partialSuccessMessage} Details: ${detailMessage}` : partialSuccessMessage)
+                : (detailMessage || fallbackMessage);
+            const errorTitle = error?.userMessage?.title || (error?.removeLiquidityCompleted ? 'Conversion failed' : undefined);
+            window.notificationManager?.error(errorMessage, {title: errorTitle});
             await this.loadUserBalances().catch(loadError => {
                 console.warn('Unable to refresh balances after remove-liquidity failure:', loadError.message);
             });
