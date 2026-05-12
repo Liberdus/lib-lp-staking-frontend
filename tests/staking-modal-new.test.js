@@ -1530,12 +1530,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         await modal.fetchRemoveLiquidityPreview({ force: true });
 
-        expect(modal.removeLiquidityPreviewError).toBe(
-            'Kyber could not find removable liquidity for this wallet and LP position. Refresh your balance or try a smaller amount.'
-        );
-        expect(modal.renderRemoveLiquidityPreviewPanel()).toContain(
-            'Kyber could not find removable liquidity for this wallet and LP position. Refresh your balance or try a smaller amount.'
-        );
+        expect(modal.removeLiquidityPreviewError).toBe('Refresh your balance or try a smaller amount.');
+        expect(modal.renderRemoveLiquidityPreviewPanel()).toContain('Refresh your balance or try a smaller amount.');
         expect(modal.renderRemoveLiquidityPreviewPanel()).not.toContain('1000000000000000000');
     });
 
