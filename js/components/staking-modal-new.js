@@ -3077,7 +3077,7 @@ class StakingModalNew {
             summary = `${preview.token0.symbol} + ${preview.token1.symbol} via ${dexDisplay}`;
         }
 
-        const rows = [
+        let rows = [
             this.renderZapQuoteRow('DEX', dexDisplay),
             this.renderZapQuoteRow('Estimated token0', token0Display),
             this.renderZapQuoteRow('Estimated token1', token1Display),
@@ -3089,22 +3089,54 @@ class StakingModalNew {
 
         if (this.convertLibToUsdtEnabled) {
             const conversion = this.removeLiquidityPreview?.conversion;
+            const conversionFromSymbol = conversion?.fromToken?.symbol || 'LIB';
+            const conversionToSymbol = conversion?.toToken?.symbol || 'USDT';
+            rows = [
+                this.renderZapQuoteRow('DEX', dexDisplay),
+                this.renderZapQuoteRow('LP removal output', hasPreview ? `${token0Display} + ${token1Display}` : pendingValue),
+                this.renderZapQuoteRow(`${conversionFromSymbol} to convert`, pendingValue),
+                this.renderZapQuoteRow(`Estimated ${conversionToSymbol} from conversion`, pendingValue),
+                this.renderZapQuoteRow(`Estimated total ${conversionToSymbol}`, pendingValue),
+                this.renderZapQuoteRow(`Minimum total ${conversionToSymbol}`, pendingValue),
+                this.renderZapQuoteRow('Slippage', slippageDisplay),
+                this.renderZapQuoteRow('Deadline', deadlineDisplay)
+            ];
+
             if (conversion?.supported) {
-                rows.splice(
-                    5,
-                    0,
-                    this.renderZapQuoteRow('Convert after remove', `${conversion.fromToken.symbol} to ${conversion.toToken.symbol}`),
+                summary = `${conversion.fromToken.symbol} converts to ${conversion.toToken.symbol} after LP removal`;
+                rows = [
+                    this.renderZapQuoteRow('DEX', dexDisplay),
+                    this.renderZapQuoteRow('LP removal output', `${token0Display} + ${token1Display}`),
                     this.renderZapQuoteRow(
-                        `Estimated final ${conversion.toToken.symbol}`,
+                        `${conversion.fromToken.symbol} to convert`,
+                        this.formatRemoveLiquidityTokenAmount(conversion.amountIn, conversion.fromToken)
+                    ),
+                    this.renderZapQuoteRow(
+                        `Estimated ${conversion.toToken.symbol} from conversion`,
+                        this.formatRemoveLiquidityTokenAmount(conversion.amountOut, conversion.toToken)
+                    ),
+                    this.renderZapQuoteRow(
+                        `Estimated total ${conversion.toToken.symbol}`,
                         this.formatRemoveLiquidityTokenAmount(conversion.finalAmount, conversion.toToken)
                     ),
                     this.renderZapQuoteRow(
-                        `Minimum final ${conversion.toToken.symbol}`,
+                        `Minimum total ${conversion.toToken.symbol}`,
                         this.formatRemoveLiquidityTokenAmount(conversion.finalMinAmount, conversion.toToken)
-                    )
-                );
+                    ),
+                    this.renderZapQuoteRow('Slippage', slippageDisplay),
+                    this.renderZapQuoteRow('Deadline', deadlineDisplay)
+                ];
             } else if (conversion?.reason) {
-                rows.splice(5, 0, this.renderZapQuoteRow('Convert after remove', conversion.reason));
+                rows = [
+                    this.renderZapQuoteRow('DEX', dexDisplay),
+                    this.renderZapQuoteRow('Conversion', conversion.reason),
+                    this.renderZapQuoteRow('Slippage', slippageDisplay),
+                    this.renderZapQuoteRow('Deadline', deadlineDisplay)
+                ];
+            } else if (!hasPreview && !isError) {
+                summary = this.removeLiquidityAmount
+                    ? 'Checking LIB to USDT conversion...'
+                    : 'Enter an amount to preview final USDT output.';
             }
         }
 

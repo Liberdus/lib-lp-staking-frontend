@@ -996,13 +996,18 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
         expect(html).toContain('Convert returned LIB to USDT after removing LP');
-        expect(html).toContain('LIB + USDT via Uniswap V2');
-        expect(html).toContain('LIB to USDT');
+        expect(html).toContain('LIB converts to USDT after LP removal');
+        expect(html).toContain('<dt>LP removal output</dt>');
+        expect(html).toContain('100 LIB + 50 USDT');
+        expect(html).toContain('<dt>LIB to convert</dt>');
+        expect(html).toContain('<dt>Estimated USDT from conversion</dt>');
+        expect(html).toContain('90 USDT');
+        expect(html).toContain('<dt>Estimated total USDT</dt>');
         expect(html).toContain('140 USDT');
+        expect(html).toContain('<dt>Minimum total USDT</dt>');
         expect(html).toContain('139.3 USDT');
-        expect(html).toContain('<dt>Minimum token0</dt>');
-        expect(html).toContain('99.5 LIB');
-        expect(html).toContain('49.75 USDT');
+        expect(html).not.toContain('<dt>Estimated token0</dt>');
+        expect(html).not.toContain('<dt>Minimum token0</dt>');
     });
 
     it('keeps guided remove-liquidity controls out of the Unstake tab', async () => {
