@@ -502,7 +502,6 @@ class StakingModalNew {
         // Reset form inputs
         this.stakeAmount = '';
         this.unstakeAmount = '';
-        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -517,15 +516,7 @@ class StakingModalNew {
         this.zapCustomSlippageError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
-        this.convertLibToUsdtEnabled = false;
-        this.removeLiquidityAmount = '';
-        this.removeLiquidityPreview = null;
-        this.removeLiquidityPreviewStatus = 'idle';
-        this.removeLiquidityPreviewError = '';
-        this.removeLiquidityCustomSlippage = '';
-        this.removeLiquidityCustomSlippageError = '';
-        this.removeLiquidityPreviewRequestId += 1;
-        this.clearRemoveLiquidityPreviewDebounce();
+        this.resetRemoveLiquidityFormState();
 
         // Reset transaction progress state
         this.resetActionStates(false);
@@ -765,6 +756,18 @@ class StakingModalNew {
         }
     }
 
+    resetRemoveLiquidityFormState() {
+        this.convertLibToUsdtEnabled = false;
+        this.removeLiquidityAmount = '';
+        this.removeLiquidityPreview = null;
+        this.removeLiquidityPreviewStatus = 'idle';
+        this.removeLiquidityPreviewError = '';
+        this.removeLiquidityCustomSlippage = '';
+        this.removeLiquidityCustomSlippageError = '';
+        this.removeLiquidityPreviewRequestId += 1;
+        this.clearRemoveLiquidityPreviewDebounce();
+    }
+
     resetRemoveLiquidityPreview({ status = 'idle', error = '' } = {}) {
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = status;
@@ -882,10 +885,7 @@ class StakingModalNew {
             return null;
         }
 
-        const chainId = this.getRemoveLiquidityChainId();
-        const chainConfig = window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[String(chainId)]
-            || window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[Number(chainId)]
-            || null;
+        const chainConfig = window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[String(this.getRemoveLiquidityChainId())] || null;
         const conversionConfig = chainConfig?.libToUsdtConversion || null;
         const fromAddress = this.normalizeAddress(conversionConfig?.fromToken);
         const toAddress = this.normalizeAddress(conversionConfig?.toToken);
@@ -2585,7 +2585,6 @@ class StakingModalNew {
         // Clear state
         this.stakeAmount = '';
         this.unstakeAmount = '';
-        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -2598,15 +2597,7 @@ class StakingModalNew {
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
-        this.convertLibToUsdtEnabled = false;
-        this.removeLiquidityAmount = '';
-        this.removeLiquidityPreview = null;
-        this.removeLiquidityPreviewStatus = 'idle';
-        this.removeLiquidityPreviewError = '';
-        this.removeLiquidityCustomSlippage = '';
-        this.removeLiquidityCustomSlippageError = '';
-        this.removeLiquidityPreviewRequestId += 1;
-        this.clearRemoveLiquidityPreviewDebounce();
+        this.resetRemoveLiquidityFormState();
         this.isApproved = false;
         this.needsApproval = false;
         this.resetActionStates(false);

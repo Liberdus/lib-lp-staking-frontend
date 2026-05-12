@@ -198,7 +198,7 @@ window.CONFIG = {
         }
     },
 
-    // Explicit V2 DEX allowlist for unstake -> remove liquidity flows.
+    // Explicit V2 DEX allowlist for guided remove-liquidity flows.
     // Routers are intentionally configured here because they cannot be safely discovered from LP pairs.
     DEX_REMOVE_LIQUIDITY: {
         56: {
