@@ -244,6 +244,20 @@ function arrangeReadyRemoveLiquidityPreview(modal) {
     };
 }
 
+function registerRemoveLiquidityButton(title = 'Wait for a supported remove-liquidity preview.') {
+    const icon = { textContent: 'swap_horiz' };
+    const text = { textContent: ' Remove LP Liquidity' };
+    const button = createElement({ classes: ['btn', 'btn-primary', 'remove-liquidity-action-btn'] });
+    button.disabled = true;
+    button.title = title;
+    button.childNodes = [icon, text];
+    button.querySelector = vi.fn(selector => selector === '.material-icons' ? icon : null);
+    globalThis.document.querySelector = vi.fn(selector => (
+        selector.includes('safeModalExecuteRemoveLiquidity') ? button : null
+    ));
+    return button;
+}
+
 function createAmount(value) {
     return {
         value,
@@ -1005,17 +1019,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
         const readyPreview = modal.removeLiquidityPreview;
-        const icon = { textContent: 'swap_horiz' };
-        const buttonText = { textContent: ' Remove LP Liquidity' };
-        const removeButton = createElement({ classes: ['btn', 'btn-primary', 'remove-liquidity-action-btn'] });
-        removeButton.disabled = true;
-        removeButton.title = 'Wait for a supported remove-liquidity preview.';
-        removeButton.childNodes = [icon, buttonText];
-        removeButton.querySelector = vi.fn(selector => selector === '.material-icons' ? icon : null);
-
-        globalThis.document.querySelector = vi.fn(selector => (
-            selector.includes('safeModalExecuteRemoveLiquidity') ? removeButton : null
-        ));
+        const removeButton = registerRemoveLiquidityButton();
         globalThis.contractManager = { provider: {} };
         modal.userBalanceRaw = { gte: vi.fn(() => true) };
         modal.removeLiquidityPreview = null;
@@ -1036,14 +1040,7 @@ describe('StakingModalNew zap cleanup', () => {
         modal.removeLiquidityAmount = '1';
         modal.removeLiquidityEnabled = false;
         modal.userBalanceRaw = { gte: vi.fn(() => true) };
-        const removeButton = createElement({ classes: ['btn', 'btn-primary', 'remove-liquidity-action-btn'] });
-        removeButton.disabled = true;
-        removeButton.title = 'Confirm the remove-liquidity details first';
-        removeButton.childNodes = [{ textContent: 'swap_horiz' }, { textContent: ' Remove LP Liquidity' }];
-        removeButton.querySelector = vi.fn(() => removeButton.childNodes[0]);
-        globalThis.document.querySelector = vi.fn(selector => (
-            selector.includes('safeModalExecuteRemoveLiquidity') ? removeButton : null
-        ));
+        const removeButton = registerRemoveLiquidityButton('Confirm the remove-liquidity details first');
 
         modal.updateRemoveLiquidityButton();
 
@@ -1082,7 +1079,7 @@ describe('StakingModalNew zap cleanup', () => {
         await vi.runAllTimersAsync();
         await executePromise;
 
-        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledWith({ force: true, requireDetailsOpen: false });
+        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledWith({ force: true });
         expect(modal.executeRemoveLiquidityTransaction).toHaveBeenCalledWith('0xlp', expect.objectContaining({ value: 1 }));
         expect(globalThis.notificationManager.error).not.toHaveBeenCalledWith('Confirm the remove-liquidity details before continuing.');
     });

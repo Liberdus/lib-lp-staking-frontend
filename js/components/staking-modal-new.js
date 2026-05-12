@@ -855,12 +855,15 @@ class StakingModalNew {
         return String(parsed);
     }
 
-    canFetchRemoveLiquidityPreview({ requireDetailsOpen = true } = {}) {
-        return (!requireDetailsOpen || this.removeLiquidityEnabled)
-            && !!this.currentPair
+    canPrepareRemoveLiquidityPreview() {
+        return !!this.currentPair
             && !!this.removeLiquidityAmount
             && parseFloat(this.removeLiquidityAmount) > 0
             && !this.hasInvalidRemoveLiquidityCustomSlippage();
+    }
+
+    canFetchRemoveLiquidityPreview() {
+        return this.removeLiquidityEnabled && this.canPrepareRemoveLiquidityPreview();
     }
 
     debounceRemoveLiquidityPreview(delay = 400) {
@@ -877,8 +880,8 @@ class StakingModalNew {
         }, delay);
     }
 
-    async fetchRemoveLiquidityPreview({ force = false, requireDetailsOpen = true } = {}) {
-        if (!this.canFetchRemoveLiquidityPreview({ requireDetailsOpen })) {
+    async fetchRemoveLiquidityPreview({ force = false } = {}) {
+        if (!this.canPrepareRemoveLiquidityPreview()) {
             this.updateRemoveLiquidityPreviewPanel();
             this.updateRemoveLiquidityButton();
             return;
@@ -2223,7 +2226,7 @@ class StakingModalNew {
         const hasSufficientBalance = balanceRaw.gte(removeUnits);
         const hasValidPreview = this.removeLiquidityPreviewStatus === 'ready'
             && this.removeLiquidityPreview?.supported;
-        const needsOpenPreview = this.removeLiquidityEnabled;
+        const shouldWaitForOpenPreview = this.removeLiquidityEnabled && !hasValidPreview;
         const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
         const removePhase = this.actionPhases?.removeLiquidity || 'idle';
         const activePhase = approvePhase !== 'idle' ? approvePhase : removePhase;
@@ -2242,11 +2245,11 @@ class StakingModalNew {
         const shouldDisable = this.isExecutingRemoveLiquidity
             || !hasAmount
             || !hasSufficientBalance
-            || (needsOpenPreview && !hasValidPreview);
+            || shouldWaitForOpenPreview;
         removeButton.disabled = shouldDisable;
         if (!hasSufficientBalance && hasAmount) {
             removeButton.title = 'Insufficient LP token balance';
-        } else if (needsOpenPreview && !hasValidPreview) {
+        } else if (shouldWaitForOpenPreview) {
             removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported remove-liquidity preview.';
         } else {
             removeButton.title = 'Remove LP liquidity';
@@ -3706,7 +3709,7 @@ class StakingModalNew {
         const userAddress = await signer.getAddress();
 
         if (!this.removeLiquidityPreview?.supported) {
-            await this.fetchRemoveLiquidityPreview({ force: true, requireDetailsOpen: false });
+            await this.fetchRemoveLiquidityPreview({ force: true });
         }
 
         const preview = this.removeLiquidityPreview;
@@ -3807,7 +3810,7 @@ class StakingModalNew {
             }
 
             if (!this.removeLiquidityPreview?.supported) {
-                await this.fetchRemoveLiquidityPreview({ force: true, requireDetailsOpen: false });
+                await this.fetchRemoveLiquidityPreview({ force: true });
             }
 
             if (!this.removeLiquidityPreview?.supported) {
