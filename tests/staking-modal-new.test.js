@@ -105,10 +105,6 @@ async function loadStakingModalClass() {
     globalThis.CONFIG.DEX_REMOVE_LIQUIDITY = {
         56: {
             wrappedNative: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-            libToUsdtConversion: {
-                fromToken: LIB_TOKEN_ADDRESS,
-                toToken: USDT_TOKEN_ADDRESS
-            },
             factories: {
                 '0x8909dc15e40173ff4699343b6eb8132c65e18ec6': {
                     name: 'Uniswap V2',

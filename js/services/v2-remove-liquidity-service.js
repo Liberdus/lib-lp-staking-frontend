@@ -88,9 +88,7 @@
         getRouterAbi() {
             return [
                 'function factory() view returns (address)',
-                'function removeLiquidity(address tokenA,address tokenB,uint256 liquidity,uint256 amountAMin,uint256 amountBMin,address to,uint256 deadline) returns (uint256 amountA,uint256 amountB)',
-                'function getAmountsOut(uint256 amountIn,address[] calldata path) view returns (uint256[] memory amounts)',
-                'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] calldata path,address to,uint256 deadline) returns (uint256[] memory amounts)'
+                'function removeLiquidity(address tokenA,address tokenB,uint256 liquidity,uint256 amountAMin,uint256 amountBMin,address to,uint256 deadline) returns (uint256 amountA,uint256 amountB)'
             ];
         }
 
@@ -388,23 +386,6 @@
             return tokenContract.approve(spender, amount);
         }
 
-        async getSwapQuote({ routerAddress, amountIn, path, provider = this.getProvider() }) {
-            if (!routerAddress || !amountIn || !Array.isArray(path) || path.length < 2 || !provider) {
-                throw new Error('Router, amount, path, and provider are required for swap quotes.');
-            }
-
-            const routerContract = this.createContract(routerAddress, this.getRouterAbi(), provider);
-            const amounts = await routerContract.getAmountsOut(this.toBigNumber(amountIn), path);
-            const amountOut = amounts[amounts.length - 1];
-
-            return {
-                path,
-                amounts,
-                amountIn: this.toBigNumber(amountIn),
-                amountOut: this.toBigNumber(amountOut)
-            };
-        }
-
         async removeLiquidity({ routerAddress, token0, token1, liquidityRaw, amount0Min, amount1Min, recipient, deadline, signer }) {
             if (!routerAddress || !token0 || !token1 || !liquidityRaw || !recipient || !deadline || !signer) {
                 throw new Error('Router, tokens, liquidity amount, recipient, deadline, and signer are required.');
@@ -417,21 +398,6 @@
                 this.toBigNumber(liquidityRaw),
                 this.toBigNumber(amount0Min),
                 this.toBigNumber(amount1Min),
-                recipient,
-                deadline
-            );
-        }
-
-        async swapExactTokensForTokens({ routerAddress, amountIn, amountOutMin, path, recipient, deadline, signer }) {
-            if (!routerAddress || !amountIn || !amountOutMin || !Array.isArray(path) || path.length < 2 || !recipient || !deadline || !signer) {
-                throw new Error('Router, amounts, path, recipient, deadline, and signer are required for token swaps.');
-            }
-
-            const routerContract = this.createContract(routerAddress, this.getRouterAbi(), signer);
-            return routerContract.swapExactTokensForTokens(
-                this.toBigNumber(amountIn),
-                this.toBigNumber(amountOutMin),
-                path,
                 recipient,
                 deadline
             );

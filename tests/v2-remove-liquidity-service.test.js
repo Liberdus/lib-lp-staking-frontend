@@ -127,8 +127,6 @@ async function loadService(contracts = {}) {
 function createFixtures({ factory = addresses.factory, routerFactory = addresses.factory, allowance = unit(0) } = {}) {
     const approve = vi.fn().mockResolvedValue({ hash: '0xapprove', wait: vi.fn() });
     const removeLiquidity = vi.fn().mockResolvedValue({ hash: '0xremove', wait: vi.fn() });
-    const getAmountsOut = vi.fn().mockResolvedValue([bn(unit(10)), bn(unit(9))]);
-    const swapExactTokensForTokens = vi.fn().mockResolvedValue({ hash: '0xswap', wait: vi.fn() });
 
     return {
         [addresses.lp]: {
@@ -154,14 +152,10 @@ function createFixtures({ factory = addresses.factory, routerFactory = addresses
         },
         [addresses.router]: {
             factory: vi.fn().mockResolvedValue(routerFactory),
-            removeLiquidity,
-            getAmountsOut,
-            swapExactTokensForTokens
+            removeLiquidity
         },
         approve,
-        removeLiquidity,
-        getAmountsOut,
-        swapExactTokensForTokens
+        removeLiquidity
     };
 }
 
@@ -276,35 +270,4 @@ describe('V2RemoveLiquidityService', () => {
         );
     });
 
-    it('quotes and swaps returned tokens through the matched V2 router', async () => {
-        const fixtures = createFixtures();
-        const V2RemoveLiquidityService = await loadService(fixtures);
-        const service = new V2RemoveLiquidityService();
-
-        const quote = await service.getSwapQuote({
-            routerAddress: addresses.router,
-            amountIn: bn(unit(10)),
-            path: [addresses.token0, addresses.token1],
-            provider: {}
-        });
-        const tx = await service.swapExactTokensForTokens({
-            routerAddress: addresses.router,
-            amountIn: bn(unit(10)),
-            amountOutMin: service.calculateMinAmount(quote.amountOut, 50),
-            path: [addresses.token0, addresses.token1],
-            recipient: addresses.user,
-            deadline: 1777306663,
-            signer: {}
-        });
-
-        expect(quote.amountOut.toString()).toBe(unit(9).toString());
-        expect(tx.hash).toBe('0xswap');
-        expect(fixtures.swapExactTokensForTokens).toHaveBeenCalledWith(
-            expect.objectContaining({ value: unit(10) }),
-            expect.objectContaining({ value: 8955000000000000000n }),
-            [addresses.token0, addresses.token1],
-            addresses.user,
-            1777306663
-        );
-    });
 });
