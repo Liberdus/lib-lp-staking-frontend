@@ -47,6 +47,7 @@ class StakingModalNew {
         // V2 remove-liquidity state
         this.removeLiquidityService = window.V2RemoveLiquidityService ? new window.V2RemoveLiquidityService() : null;
         this.removeLiquidityEnabled = false;
+        this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
         this.removeLiquidityPreviewError = '';
@@ -154,8 +155,12 @@ class StakingModalNew {
             this.updateStakeButton();
         }
 
-        if (action === 'unstake' || action === 'approveRemoveLiquidity' || action === 'removeLiquidity') {
+        if (action === 'unstake') {
             this.updateUnstakeButton();
+        }
+
+        if (action === 'approveRemoveLiquidity' || action === 'removeLiquidity') {
+            this.updateRemoveLiquidityButton();
         }
 
         if (action === 'claim') {
@@ -249,6 +254,10 @@ class StakingModalNew {
                             <span class="material-icons" aria-hidden="true">redeem</span>
                             <span class="tab-label">Claim</span>
                         </button>
+                        <button class="tab-button" aria-label="Remove LP" data-tab="remove-liquidity">
+                            <span class="material-icons" aria-hidden="true">swap_horiz</span>
+                            <span class="tab-label">Remove LP</span>
+                        </button>
                     </div>
                     
                     <div class="modal-body">
@@ -329,6 +338,16 @@ class StakingModalNew {
                 this.unstakeAmount = sanitizedValue;
                 this.updateSlider('unstake');
                 this.updateUnstakeUsdEstimate();
+            }
+
+            if (e.target.id === 'remove-liquidity-amount-input') {
+                const sanitizedValue = this.applyDecimalLimit(e.target.value, this.userBalanceDecimals);
+                if (sanitizedValue !== e.target.value) {
+                    e.target.value = sanitizedValue;
+                }
+                this.removeLiquidityAmount = sanitizedValue;
+                this.updateSlider('remove-liquidity');
+                this.updateRemoveLiquidityUsdEstimate();
                 this.resetRemoveLiquidityPreview();
                 this.debounceRemoveLiquidityPreview();
             }
@@ -472,6 +491,7 @@ class StakingModalNew {
         // Reset form inputs
         this.stakeAmount = '';
         this.unstakeAmount = '';
+        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -487,6 +507,7 @@ class StakingModalNew {
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.removeLiquidityEnabled = false;
+        this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
         this.removeLiquidityPreviewError = '';
@@ -538,7 +559,7 @@ class StakingModalNew {
      */
     async show(pair, initialTab = 0) {
         // Convert numeric tab index to string tab name
-        const tabNames = ['stake', 'unstake', 'claim', 'zap'];
+        const tabNames = ['stake', 'unstake', 'claim', 'zap', 'remove-liquidity'];
         const tabName = tabNames[initialTab] || 'stake';
 
         console.log(`🎯 Opening modal for ${pair.name}, tab: ${tabName} (index: ${initialTab})`);
@@ -744,11 +765,11 @@ class StakingModalNew {
     }
 
     getRemoveLiquidityAmountRaw() {
-        if (!this.unstakeAmount || parseFloat(this.unstakeAmount) <= 0) {
+        if (!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) <= 0) {
             return null;
         }
 
-        return window.ethers.utils.parseUnits(this.unstakeAmount.toString(), this.userStakedDecimals);
+        return window.ethers.utils.parseUnits(this.removeLiquidityAmount.toString(), this.userBalanceDecimals);
     }
 
     getRemoveLiquidityCustomSlippageError(value = this.removeLiquidityCustomSlippage) {
@@ -837,8 +858,8 @@ class StakingModalNew {
     canFetchRemoveLiquidityPreview() {
         return this.removeLiquidityEnabled
             && !!this.currentPair
-            && !!this.unstakeAmount
-            && parseFloat(this.unstakeAmount) > 0
+            && !!this.removeLiquidityAmount
+            && parseFloat(this.removeLiquidityAmount) > 0
             && !this.hasInvalidRemoveLiquidityCustomSlippage();
     }
 
@@ -2164,51 +2185,77 @@ class StakingModalNew {
         const unstakeUnits = window.ethers.utils.parseUnits(this.unstakeAmount || '0', this.userStakedDecimals);
         const hasSufficientStaked = stakedRaw.gte(unstakeUnits);
         const unstakePhase = this.actionPhases?.unstake || 'idle';
-        const approveRemoveLiquidityPhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
-        const removeLiquidityPhase = this.actionPhases?.removeLiquidity || 'idle';
-        const activeRemoveLiquidityPhase = approveRemoveLiquidityPhase !== 'idle'
-            ? { action: 'approveRemoveLiquidity', phase: approveRemoveLiquidityPhase }
-            : removeLiquidityPhase !== 'idle'
-                ? { action: 'removeLiquidity', phase: removeLiquidityPhase }
-                : null;
-        const hasValidRemoveLiquidityPreview = !this.removeLiquidityEnabled
-            || (this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported);
 
-        if (unstakePhase !== 'idle' || activeRemoveLiquidityPhase) {
+        if (unstakePhase !== 'idle') {
             unstakeButton.disabled = true;
             if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
             if (buttonText) {
-                let phaseLabel = this.getPhaseLabel(unstakePhase) || ' Processing Transaction...';
-                if (activeRemoveLiquidityPhase?.action === 'approveRemoveLiquidity') {
-                    phaseLabel = activeRemoveLiquidityPhase.phase === 'userApproval'
-                        ? ' Approve Router...'
-                        : ' Confirming Approval...';
-                } else if (activeRemoveLiquidityPhase?.action === 'removeLiquidity') {
-                    phaseLabel = activeRemoveLiquidityPhase.phase === 'userApproval'
-                        ? ' Remove Liquidity...'
-                        : ' Removing Liquidity...';
-                }
+                const phaseLabel = this.getPhaseLabel(unstakePhase) || ' Processing Transaction...';
                 buttonText.textContent = phaseLabel;
             }
             return;
         }
 
         const shouldDisable = this.isExecutingUnstake
-            || this.isExecutingRemoveLiquidity
             || !hasAmount
-            || !hasSufficientStaked
-            || !hasValidRemoveLiquidityPreview;
+            || !hasSufficientStaked;
         unstakeButton.disabled = shouldDisable;
         if (!hasSufficientStaked && hasAmount) {
             unstakeButton.title = 'Insufficient staked balance';
-        } else if (this.removeLiquidityEnabled && !hasValidRemoveLiquidityPreview) {
-            unstakeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported remove-liquidity preview.';
         } else {
-            unstakeButton.title = this.removeLiquidityEnabled ? 'Unstake and remove liquidity' : 'Unstake LP Tokens';
+            unstakeButton.title = 'Unstake LP Tokens';
         }
 
-        if (buttonIcon) buttonIcon.textContent = this.removeLiquidityEnabled ? 'swap_horiz' : 'remove';
-        if (buttonText) buttonText.textContent = this.removeLiquidityEnabled ? ' Unstake + Remove Liquidity' : ' Unstake LP Tokens';
+        if (buttonIcon) buttonIcon.textContent = 'remove';
+        if (buttonText) buttonText.textContent = ' Unstake LP Tokens';
+    }
+
+    updateRemoveLiquidityButton() {
+        const removeButton = document.querySelector('.modal-actions .btn-primary[onclick*="safeModalExecuteRemoveLiquidity"]');
+        if (!removeButton) return;
+
+        const buttonIcon = removeButton.querySelector('.material-icons');
+        const buttonText = removeButton.childNodes[removeButton.childNodes.length - 1];
+        const amount = parseFloat(this.removeLiquidityAmount) || 0;
+        const hasAmount = amount > 0;
+        const balanceRaw = this.userBalanceRaw || window.ethers.BigNumber.from(0);
+        const removeUnits = window.ethers.utils.parseUnits(this.removeLiquidityAmount || '0', this.userBalanceDecimals);
+        const hasSufficientBalance = balanceRaw.gte(removeUnits);
+        const hasValidPreview = this.removeLiquidityEnabled
+            && this.removeLiquidityPreviewStatus === 'ready'
+            && this.removeLiquidityPreview?.supported;
+        const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
+        const removePhase = this.actionPhases?.removeLiquidity || 'idle';
+        const activePhase = approvePhase !== 'idle' ? approvePhase : removePhase;
+
+        if (activePhase !== 'idle') {
+            removeButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) {
+                buttonText.textContent = approvePhase !== 'idle'
+                    ? (approvePhase === 'userApproval' ? ' Approve Router...' : ' Confirming Approval...')
+                    : (removePhase === 'userApproval' ? ' Remove Liquidity...' : ' Removing Liquidity...');
+            }
+            return;
+        }
+
+        const shouldDisable = this.isExecutingRemoveLiquidity
+            || !hasAmount
+            || !hasSufficientBalance
+            || !hasValidPreview;
+        removeButton.disabled = shouldDisable;
+        if (!hasSufficientBalance && hasAmount) {
+            removeButton.title = 'Insufficient LP token balance';
+        } else if (!this.removeLiquidityEnabled) {
+            removeButton.title = 'Confirm the remove-liquidity details first';
+        } else if (!hasValidPreview) {
+            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported remove-liquidity preview.';
+        } else {
+            removeButton.title = 'Remove LP liquidity';
+        }
+
+        if (buttonIcon) buttonIcon.textContent = 'swap_horiz';
+        if (buttonText) buttonText.textContent = ' Remove LP Liquidity';
     }
 
     /**
@@ -2405,6 +2452,7 @@ class StakingModalNew {
         // Clear state
         this.stakeAmount = '';
         this.unstakeAmount = '';
+        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -2418,6 +2466,7 @@ class StakingModalNew {
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
         this.removeLiquidityEnabled = false;
+        this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
         this.removeLiquidityPreviewError = '';
@@ -2429,8 +2478,8 @@ class StakingModalNew {
         this.needsApproval = false;
         this.resetActionStates(false);
         
-        // Clear DOM inputs and sliders for both stake and unstake
-        ['stake', 'unstake'].forEach(type => {
+        // Clear DOM inputs and sliders for amount-based tabs
+        ['stake', 'unstake', 'remove-liquidity'].forEach(type => {
             const input = document.getElementById(`${type}-amount-input`);
             const slider = document.getElementById(`${type}-slider`);
             if (input) input.value = '';
@@ -2438,6 +2487,7 @@ class StakingModalNew {
         });
         this.updateStakeUsdEstimate();
         this.updateUnstakeUsdEstimate();
+        this.updateRemoveLiquidityUsdEstimate();
 
         const zapInput = document.getElementById('zap-amount-input');
         if (zapInput) zapInput.value = '';
@@ -2503,6 +2553,9 @@ class StakingModalNew {
             case 'claim':
                 tabContent.innerHTML = this.renderClaimTab();
                 break;
+            case 'remove-liquidity':
+                tabContent.innerHTML = this.renderRemoveLiquidityTab();
+                break;
             case 'zap':
                 tabContent.innerHTML = this.renderZapTab();
                 break;
@@ -2516,6 +2569,7 @@ class StakingModalNew {
         // Update button states when input changes
         const stakeInput = document.getElementById('stake-amount-input');
         const unstakeInput = document.getElementById('unstake-amount-input');
+        const removeLiquidityInput = document.getElementById('remove-liquidity-amount-input');
 
         if (stakeInput) {
             stakeInput.addEventListener('input', () => {
@@ -2538,6 +2592,18 @@ class StakingModalNew {
                 }
                 this.unstakeAmount = sanitizedValue;
                 this.updateUnstakeUsdEstimate();
+                this.updateButtonStates();
+            });
+        }
+
+        if (removeLiquidityInput) {
+            removeLiquidityInput.addEventListener('input', () => {
+                const sanitizedValue = this.applyDecimalLimit(removeLiquidityInput.value, this.userBalanceDecimals);
+                if (sanitizedValue !== removeLiquidityInput.value) {
+                    removeLiquidityInput.value = sanitizedValue;
+                }
+                this.removeLiquidityAmount = sanitizedValue;
+                this.updateRemoveLiquidityUsdEstimate();
                 this.resetRemoveLiquidityPreview();
                 this.debounceRemoveLiquidityPreview();
                 this.updateButtonStates();
@@ -2552,6 +2618,7 @@ class StakingModalNew {
         this.updateStakeButton();
         this.updateUnstakeButton();
         this.updateClaimButton();
+        this.updateRemoveLiquidityButton();
         this.updateZapButton();
     }
 
@@ -2696,20 +2763,6 @@ class StakingModalNew {
                 </label>
             </div>
 
-            <div class="form-group">
-                <label class="checkbox-label remove-liquidity-checkbox-label">
-                    <input
-                        type="checkbox"
-                        id="remove-liquidity-checkbox"
-                        ${this.removeLiquidityEnabled ? 'checked' : ''}
-                    >
-                    <span class="checkmark"></span>
-                    Also remove liquidity and return pair tokens
-                </label>
-            </div>
-
-            ${this.removeLiquidityEnabled ? this.renderRemoveLiquidityControls() : ''}
-
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
                 <button class="btn btn-primary" onclick="safeModalExecuteUnstake()" ${!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0 ? 'disabled' : ''}>
@@ -2722,6 +2775,72 @@ class StakingModalNew {
 
     updateUnstakeUsdEstimate() {
         this.updateLpUsdEstimate('unstake-usd-estimate', this.unstakeAmount);
+    }
+
+    renderRemoveLiquidityTab() {
+        return `
+            <div class="balance-info">
+                <span class="balance-label">Available LP Tokens:</span>
+                <span class="balance-value">${this.userBalance} LP${this.renderInlineLpUsdEstimate(this.userBalance)}</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Amount of LP to Remove</label>
+                <input
+                    type="number"
+                    id="remove-liquidity-amount-input"
+                    class="form-input"
+                    placeholder="0.00"
+                    value="${this.removeLiquidityAmount}"
+                    min="0"
+                    inputmode="decimal"
+                >
+                ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
+                <div class="slider-container">
+                    <input
+                        type="range"
+                        class="slider amount-slider"
+                        id="remove-liquidity-slider"
+                        min="0"
+                        max="100"
+                        value="0"
+                        data-type="remove-liquidity"
+                    >
+                </div>
+                <div class="percentage-buttons">
+                    <button class="percentage-btn" data-percentage="25">25%</button>
+                    <button class="percentage-btn" data-percentage="50">50%</button>
+                    <button class="percentage-btn" data-percentage="75">75%</button>
+                    <button class="percentage-btn" data-percentage="100">MAX</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label remove-liquidity-checkbox-label">
+                    <input
+                        type="checkbox"
+                        id="remove-liquidity-checkbox"
+                        ${this.removeLiquidityEnabled ? 'checked' : ''}
+                    >
+                    <span class="checkmark"></span>
+                    Remove liquidity and return pair tokens
+                </label>
+            </div>
+
+            ${this.removeLiquidityEnabled ? this.renderRemoveLiquidityControls() : ''}
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
+                <button class="btn btn-primary" onclick="safeModalExecuteRemoveLiquidity()" ${!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0 ? 'disabled' : ''}>
+                    <span class="material-icons">swap_horiz</span>
+                    Remove LP Liquidity
+                </button>
+            </div>
+        `;
+    }
+
+    updateRemoveLiquidityUsdEstimate() {
+        this.updateLpUsdEstimate('remove-liquidity-usd-estimate', this.removeLiquidityAmount);
     }
 
     formatRemoveLiquidityTokenAmount(amount, token) {
@@ -2808,7 +2927,7 @@ class StakingModalNew {
             isError ? 'zap-quote-error' : '',
             !hasPreview && !isLoading && !isError ? 'zap-quote-placeholder' : ''
         ].filter(Boolean).join(' ');
-        let summary = this.unstakeAmount
+        let summary = this.removeLiquidityAmount
             ? 'Checking remove liquidity support...'
             : 'Enter an amount to preview pair token outputs.';
         let dexDisplay = pendingValue;
@@ -3203,10 +3322,14 @@ class StakingModalNew {
         
         // For 100% (MAX), use the exact original value to preserve precision
         if (percentage === 100) {
-            amount = this.currentTab === 'stake' ? this.userBalance : this.userStaked;
+            amount = this.currentTab === 'stake' || this.currentTab === 'remove-liquidity'
+                ? this.userBalance
+                : this.userStaked;
         } else {
             // For other percentages, calculate the amount
-            const maxAmount = this.currentTab === 'stake' ? parseFloat(this.userBalance) : parseFloat(this.userStaked);
+            const maxAmount = this.currentTab === 'stake' || this.currentTab === 'remove-liquidity'
+                ? parseFloat(this.userBalance)
+                : parseFloat(this.userStaked);
             amount = (maxAmount * percentage / 100).toFixed(6);
         }
 
@@ -3232,6 +3355,14 @@ class StakingModalNew {
 
             // Update button states
             this.updateUnstakeUsdEstimate();
+            this.updateButtonStates();
+        } else if (this.currentTab === 'remove-liquidity') {
+            this.removeLiquidityAmount = amount;
+            const input = document.getElementById('remove-liquidity-amount-input');
+            if (input) input.value = amount;
+            this.updateSlider('remove-liquidity');
+
+            this.updateRemoveLiquidityUsdEstimate();
             this.resetRemoveLiquidityPreview();
             this.debounceRemoveLiquidityPreview();
             this.updateButtonStates();
@@ -3247,8 +3378,14 @@ class StakingModalNew {
         const slider = document.getElementById(`${type}-slider`);
         if (!slider) return;
 
-        const amount = parseFloat(type === 'stake' ? this.stakeAmount : this.unstakeAmount) || 0;
-        const maxAmount = parseFloat(type === 'stake' ? this.userBalance : this.userStaked) || 1;
+        const amount = parseFloat(
+            type === 'stake'
+                ? this.stakeAmount
+                : type === 'remove-liquidity'
+                    ? this.removeLiquidityAmount
+                    : this.unstakeAmount
+        ) || 0;
+        const maxAmount = parseFloat(type === 'stake' || type === 'remove-liquidity' ? this.userBalance : this.userStaked) || 1;
         const percentage = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
 
         slider.value = percentage;
@@ -3262,10 +3399,10 @@ class StakingModalNew {
         // For 100% (MAX), use the exact original value to preserve precision
         // This prevents rounding issues when slider is dragged to max
         if (percentage === 100) {
-            amount = type === 'stake' ? this.userBalance : this.userStaked;
+            amount = type === 'stake' || type === 'remove-liquidity' ? this.userBalance : this.userStaked;
         } else {
             // For other percentages, calculate the amount
-            const maxAmount = parseFloat(type === 'stake' ? this.userBalance : this.userStaked) || 0;
+            const maxAmount = parseFloat(type === 'stake' || type === 'remove-liquidity' ? this.userBalance : this.userStaked) || 0;
             amount = (maxAmount * percentage / 100).toFixed(6);
         }
 
@@ -3281,6 +3418,12 @@ class StakingModalNew {
             const input = document.getElementById('unstake-amount-input');
             if (input) input.value = amount;
             this.updateUnstakeUsdEstimate();
+            this.updateButtonStates();
+        } else if (type === 'remove-liquidity') {
+            this.removeLiquidityAmount = amount;
+            const input = document.getElementById('remove-liquidity-amount-input');
+            if (input) input.value = amount;
+            this.updateRemoveLiquidityUsdEstimate();
             this.resetRemoveLiquidityPreview();
             this.debounceRemoveLiquidityPreview();
             this.updateButtonStates();
@@ -3556,7 +3699,7 @@ class StakingModalNew {
         }
     }
 
-    async executeRemoveLiquidityAfterUnstake(lpTokenAddress, liquidityRaw) {
+    async executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw) {
         const service = this.getRemoveLiquidityService();
         const provider = window.contractManager?.provider || window.walletManager?.provider;
 
@@ -3585,7 +3728,7 @@ class StakingModalNew {
             provider
         });
         if (lpBalance.lt(liquidityRaw)) {
-            throw new Error('The unstaked LP balance is not available yet. Your LP tokens remain in your wallet.');
+            throw new Error('Insufficient LP token balance.');
         }
 
         const allowance = await service.getAllowance({
@@ -3598,7 +3741,7 @@ class StakingModalNew {
         if (allowance.lt(liquidityRaw)) {
             this.pendingOperations.approveRemoveLiquidity = true;
             this.setActionPhase('approveRemoveLiquidity', 'userApproval');
-            window.notificationManager?.info('Approving router to spend unstaked LP tokens...');
+            window.notificationManager?.info('Approving router to spend LP tokens...');
 
             await window.contractManager.executeTransactionOnce(async () => {
                 const tx = await service.approveIfNeeded({
@@ -3640,6 +3783,81 @@ class StakingModalNew {
         }, 'removeLiquidity');
     }
 
+    async executeRemoveLiquidity() {
+        if (this.isExecutingRemoveLiquidity) {
+            console.log('⚠️ Remove liquidity already in progress, ignoring duplicate call');
+            return;
+        }
+
+        if (!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0) return;
+
+        try {
+            this.isExecutingRemoveLiquidity = true;
+            this.updateRemoveLiquidityButton();
+
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                window.notificationManager?.error('Contract manager not ready. Please connect your wallet first.');
+                return;
+            }
+
+            const slippageError = this.getRemoveLiquidityCustomSlippageError();
+            if (slippageError) {
+                this.updateRemoveLiquidityPreviewPanel();
+                this.updateRemoveLiquidityButton();
+                window.notificationManager?.error(slippageError);
+                return;
+            }
+
+            if (!this.removeLiquidityEnabled) {
+                window.notificationManager?.error('Confirm the remove-liquidity details before continuing.');
+                return;
+            }
+
+            if (!this.removeLiquidityPreview?.supported) {
+                await this.fetchRemoveLiquidityPreview({ force: true });
+            }
+
+            if (!this.removeLiquidityPreview?.supported) {
+                window.notificationManager?.error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
+                return;
+            }
+
+            window.notificationManager?.info('Removing LP liquidity...');
+            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+            const liquidityRaw = this.getRemoveLiquidityAmountRaw();
+            await this.executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw);
+            window.notificationManager?.success('Liquidity removed successfully!');
+
+            this.clearInputs();
+            this.close();
+
+            console.log('⏳ Waiting for blockchain state to update...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            console.log('🔄 Refreshing home page data after remove liquidity...');
+            if (window.homePage?.refreshData) {
+                await window.homePage.refreshData();
+            } else if (window.homePage?.loadData) {
+                await window.homePage.loadData();
+            }
+            console.log('✅ Home page data refreshed after remove liquidity');
+        } catch (error) {
+            console.error('❌ Remove liquidity failed:', error);
+            const errorMessage = error?.userMessage?.message || error?.message || 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
+            await this.loadUserBalances().catch(loadError => {
+                console.warn('Unable to refresh balances after remove-liquidity failure:', loadError.message);
+            });
+        } finally {
+            this.pendingOperations.approveRemoveLiquidity = false;
+            this.pendingOperations.removeLiquidity = false;
+            this.setActionPhase('approveRemoveLiquidity', 'idle');
+            this.setActionPhase('removeLiquidity', 'idle');
+            this.isExecutingRemoveLiquidity = false;
+            this.updateRemoveLiquidityButton();
+        }
+    }
+
     async executeUnstake() {
         // Guard against multiple simultaneous executions
         if (this.isExecutingUnstake) {
@@ -3649,12 +3867,9 @@ class StakingModalNew {
 
         if (!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0) return;
 
-        let unstakeSucceeded = false;
-
         try {
             // Set execution guard
             this.isExecutingUnstake = true;
-            this.isExecutingRemoveLiquidity = this.removeLiquidityEnabled;
             this.updateUnstakeButton();
             console.log('🔒 Unstake execution started, guard enabled');
 
@@ -3666,31 +3881,11 @@ class StakingModalNew {
                 return;
             }
 
-            if (this.removeLiquidityEnabled) {
-                const slippageError = this.getRemoveLiquidityCustomSlippageError();
-                if (slippageError) {
-                    this.updateRemoveLiquidityPreviewPanel();
-                    this.updateUnstakeButton();
-                    window.notificationManager?.error(slippageError);
-                    return;
-                }
-
-                if (!this.removeLiquidityPreview?.supported) {
-                    await this.fetchRemoveLiquidityPreview({ force: true });
-                }
-
-                if (!this.removeLiquidityPreview?.supported) {
-                    window.notificationManager?.error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
-                    return;
-                }
-            }
-
             if (window.notificationManager) {
-                window.notificationManager.info(this.removeLiquidityEnabled ? 'Unstaking LP tokens before removing liquidity...' : 'Unstaking LP tokens...');
+                window.notificationManager.info('Unstaking LP tokens...');
             }
 
             const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
-            const liquidityRaw = this.getRemoveLiquidityAmountRaw();
 
             // Execute real unstaking transaction
             this.pendingOperations.unstake = true;
@@ -3708,19 +3903,12 @@ class StakingModalNew {
             if (!result.success) {
                 throw result.error;
             }
-            unstakeSucceeded = true;
 
             if (window.notificationManager) {
-                window.notificationManager.success(this.removeLiquidityEnabled ? 'LP tokens unstaked. Continue in your wallet to remove liquidity.' : 'LP tokens unstaked successfully!');
+                window.notificationManager.success('LP tokens unstaked successfully!');
             }
 
             console.log('✅ Unstaking transaction successful:', result.hash);
-
-            if (this.removeLiquidityEnabled) {
-                await this.loadUserBalances();
-                await this.executeRemoveLiquidityAfterUnstake(lpTokenAddress, liquidityRaw);
-                window.notificationManager?.success('Liquidity removed successfully!');
-            }
             
             // Clear inputs after successful transaction
             this.clearInputs();
@@ -3743,30 +3931,13 @@ class StakingModalNew {
 
         } catch (error) {
             console.error('❌ Unstaking failed:', error);
-            const fallbackMessage = unstakeSucceeded && this.removeLiquidityEnabled
-                ? 'LP tokens were unstaked, but liquidity removal did not complete. Your LP tokens remain in your wallet.'
-                : 'Unstaking failed. Please try again.';
-            const errorMessage = error?.userMessage?.message || error?.message || '';
-            const message = unstakeSucceeded && this.removeLiquidityEnabled
-                ? `${fallbackMessage}${errorMessage ? ` ${errorMessage}` : ''}`
-                : (errorMessage || fallbackMessage);
-            window.notificationManager.error(message, {title: error?.userMessage?.title});
-            if (unstakeSucceeded && this.removeLiquidityEnabled) {
-                await this.loadUserBalances().catch(loadError => {
-                    console.warn('Unable to refresh balances after partial unstake flow:', loadError.message);
-                });
-                this.updateUnstakeButton();
-            }
+            const errorMessage = error?.userMessage?.message || error?.message || 'Unstaking failed. Please try again.';
+            window.notificationManager.error(errorMessage, {title: error?.userMessage?.title});
         } finally {
             // Always release the guard
             this.pendingOperations.unstake = false;
-            this.pendingOperations.approveRemoveLiquidity = false;
-            this.pendingOperations.removeLiquidity = false;
             this.setActionPhase('unstake', 'idle');
-            this.setActionPhase('approveRemoveLiquidity', 'idle');
-            this.setActionPhase('removeLiquidity', 'idle');
             this.isExecutingUnstake = false;
-            this.isExecutingRemoveLiquidity = false;
             this.updateUnstakeButton();
             console.log('🔓 Unstake execution finished, guard released');
         }
@@ -3950,6 +4121,19 @@ window.safeModalExecuteClaim = function() {
         }
     } catch (error) {
         console.error('❌ Error executing claim:', error);
+    }
+};
+
+window.safeModalExecuteRemoveLiquidity = function() {
+    try {
+        const modal = window.stakingModal || window.stakingModalNew || window.getStakingModal();
+        if (modal && typeof modal.executeRemoveLiquidity === 'function') {
+            modal.executeRemoveLiquidity();
+        } else {
+            console.warn('⚠️ Modal executeRemoveLiquidity method not available');
+        }
+    } catch (error) {
+        console.error('❌ Error executing remove liquidity:', error);
     }
 };
 
