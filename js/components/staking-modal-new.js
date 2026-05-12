@@ -1738,13 +1738,25 @@ class StakingModalNew {
             && (this.isNativeZapToken(address) || (!!wrappedNativeAddress && normalizedAddress === wrappedNativeAddress));
     }
 
-    getRemoveLiquidityActionTokenAmount(token, outputToken) {
+    parseZapUsdValue(value) {
+        const parsed = Number(String(value ?? '').replace(/[$,]/g, ''));
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    getRemoveLiquidityActionTokenCandidate(token, outputToken) {
         if (!token?.amount || !this.isRemoveLiquidityOutputTokenAddress(token.address, outputToken)) {
             return null;
         }
 
         const amount = String(token.amount);
-        return /^\d+$/.test(amount) ? amount : null;
+        if (!/^\d+$/.test(amount)) {
+            return null;
+        }
+
+        return {
+            amount,
+            amountUsd: this.parseZapUsdValue(token.amountUsd ?? token.amount_usd)
+        };
     }
 
     getRemoveLiquidityActionOutputAmount(outputToken) {
@@ -1754,11 +1766,22 @@ class StakingModalNew {
             return null;
         }
 
-        const amounts = [];
+        const finalUsdEntry = this.getRemoveLiquidityQuoteSummaryEntry([
+            'zapDetails.finalAmountUsd',
+            'amountOutUsd',
+            'receivedUsd',
+            'routeSummary.amountOutUsd'
+        ], null);
+        const finalUsd = this.parseZapUsdValue(finalUsdEntry.value);
+        if (finalUsd === null) {
+            return null;
+        }
+
+        const candidates = [];
         const addTokenAmount = token => {
-            const amount = this.getRemoveLiquidityActionTokenAmount(token, outputToken);
-            if (amount) {
-                amounts.push(amount);
+            const candidate = this.getRemoveLiquidityActionTokenCandidate(token, outputToken);
+            if (candidate) {
+                candidates.push(candidate);
             }
         };
         const addTokens = tokens => {
@@ -1783,11 +1806,11 @@ class StakingModalNew {
             addTokens(action?.refund?.tokens);
         });
 
-        if (!amounts.length) {
-            return null;
-        }
-
-        return amounts.reduce((total, amount) => total + BigInt(amount), 0n).toString();
+        const tolerance = Math.max(0.01, Math.abs(finalUsd) * 0.02);
+        const finalCandidate = candidates.find(candidate =>
+            candidate.amountUsd !== null && Math.abs(candidate.amountUsd - finalUsd) <= tolerance
+        );
+        return finalCandidate?.amount || null;
     }
 
     getRemoveLiquidityEstimatedOutputEntry(outputToken, fallback = 'N/A') {

@@ -1085,6 +1085,47 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('$0.4');
     });
 
+    it('does not double-count repeated Kyber action amounts for checked zap-out output', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const daiToken = {
+            address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
+            symbol: 'DAI',
+            name: 'Dai Token',
+            decimals: 18
+        };
+        const daiActionToken = {
+            address: daiToken.address,
+            amount: '394877000000000000',
+            amountUsd: '0.40'
+        };
+        modal.removeLiquidityOutputTokens = [daiToken];
+        modal.removeLiquidityOutputTokenAddress = daiToken.address;
+        modal.removeLiquiditySelectedOutputToken = daiToken;
+        modal.removeLiquidityPreview = {
+            supported: true,
+            zapOut: true,
+            outputToken: daiToken,
+            data: {
+                route: '0xout-route',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                zapDetails: {
+                    finalAmountUsd: '0.40',
+                    actions: [
+                        { aggregatorSwap: { swaps: [{ tokenOut: daiActionToken }] } },
+                        { refund: { tokens: [daiActionToken] } }
+                    ]
+                }
+            }
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('<dt>Estimated DAI</dt>');
+        expect(html).toContain('0.394877 DAI');
+        expect(html).not.toContain('0.789754 DAI');
+    });
+
     it('configured output token selection refreshes the zap-out quote', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
