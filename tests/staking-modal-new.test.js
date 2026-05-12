@@ -1514,6 +1514,31 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({ address: USDT_TOKEN_ADDRESS }));
     });
 
+    it('shows a readable zap-out error when Kyber reports zero position liquidity', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityZapOutEnabled = true;
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.removeLiquidityAmount = '1';
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.contractManager = { provider: {} };
+        modal.getKyberZapService().fetchOutQuote = vi.fn().mockRejectedValue(
+            new Error('remove liquidity = 1000000000000000000 > position liquidity = 0')
+        );
+
+        await modal.fetchRemoveLiquidityPreview({ force: true });
+
+        expect(modal.removeLiquidityPreviewError).toBe(
+            'Kyber could not find removable liquidity for this wallet and LP position. Refresh your balance or try a smaller amount.'
+        );
+        expect(modal.renderRemoveLiquidityPreviewPanel()).toContain(
+            'Kyber could not find removable liquidity for this wallet and LP position. Refresh your balance or try a smaller amount.'
+        );
+        expect(modal.renderRemoveLiquidityPreviewPanel()).not.toContain('1000000000000000000');
+    });
+
     it('build failures show errors and leave checked zap-out inputs intact', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });

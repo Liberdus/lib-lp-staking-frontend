@@ -816,6 +816,15 @@ class StakingModalNew {
         this.updateRemoveLiquidityButton();
     }
 
+    getRemoveLiquidityPreviewErrorMessage(error) {
+        const message = error?.message || String(error || '');
+        if (/remove liquidity\s*=\s*\d+\s*>\s*position liquidity\s*=\s*0/i.test(message)) {
+            return 'Refresh your balance or try a smaller amount.';
+        }
+
+        return message || 'Unable to preview remove liquidity.';
+    }
+
     getRemoveLiquidityAmountRaw() {
         if (!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) <= 0) {
             return null;
@@ -1056,7 +1065,7 @@ class StakingModalNew {
             console.error('Failed to preview remove liquidity:', error);
             this.removeLiquidityPreview = null;
             this.removeLiquidityPreviewStatus = 'error';
-            this.removeLiquidityPreviewError = error.message || 'Unable to preview remove liquidity.';
+            this.removeLiquidityPreviewError = this.getRemoveLiquidityPreviewErrorMessage(error);
         } finally {
             if (requestId === this.removeLiquidityPreviewRequestId) {
                 this.updateRemoveLiquidityPreviewPanel();
