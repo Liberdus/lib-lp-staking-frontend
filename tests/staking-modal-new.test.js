@@ -964,7 +964,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
-        expect(html).toContain('Remove liquidity and return pair tokens');
+        expect(html).toContain('Show pair-token return preview and settings');
         expect(html).toContain('LIB + USDT via Uniswap V2');
         expect(html).toContain('<dt>Minimum token0</dt>');
         expect(html).toContain('99.5 LIB');
@@ -979,7 +979,7 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderUnstakeTab();
 
         expect(html).not.toContain('id="remove-liquidity-checkbox"');
-        expect(html).not.toContain('Remove liquidity and return pair tokens');
+        expect(html).not.toContain('Show pair-token return preview and settings');
         expect(html).not.toContain('remove-liquidity-preview-panel');
     });
 
@@ -1028,6 +1028,63 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(removeButton.disabled).toBe(false);
         expect(removeButton.title).toBe('Remove LP liquidity');
+    });
+
+    it('enables the remove-liquidity action with a valid amount when details are closed', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
+        modal.removeLiquidityAmount = '1';
+        modal.removeLiquidityEnabled = false;
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        const removeButton = createElement({ classes: ['btn', 'btn-primary', 'remove-liquidity-action-btn'] });
+        removeButton.disabled = true;
+        removeButton.title = 'Confirm the remove-liquidity details first';
+        removeButton.childNodes = [{ textContent: 'swap_horiz' }, { textContent: ' Remove LP Liquidity' }];
+        removeButton.querySelector = vi.fn(() => removeButton.childNodes[0]);
+        globalThis.document.querySelector = vi.fn(selector => (
+            selector.includes('safeModalExecuteRemoveLiquidity') ? removeButton : null
+        ));
+
+        modal.updateRemoveLiquidityButton();
+
+        expect(removeButton.disabled).toBe(false);
+        expect(removeButton.title).toBe('Remove LP liquidity');
+    });
+
+    it('fetches a remove-liquidity preview on execute when details are closed', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const readyPreview = modal.removeLiquidityPreview;
+        modal.removeLiquidityEnabled = false;
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
+        modal.fetchRemoveLiquidityPreview = vi.fn(async () => {
+            modal.removeLiquidityPreview = readyPreview;
+            modal.removeLiquidityPreviewStatus = 'ready';
+        });
+        modal.executeRemoveLiquidityTransaction = vi.fn().mockResolvedValue({ success: true, hash: '0xremove' });
+        modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true)
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeRemoveLiquidity();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledWith({ force: true, requireDetailsOpen: false });
+        expect(modal.executeRemoveLiquidityTransaction).toHaveBeenCalledWith('0xlp', expect.objectContaining({ value: 1 }));
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalledWith('Confirm the remove-liquidity details before continuing.');
     });
 
     it('valid custom remove-liquidity slippage applies bps and refreshes the preview', async () => {
