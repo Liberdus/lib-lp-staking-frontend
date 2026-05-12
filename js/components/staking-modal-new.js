@@ -44,9 +44,9 @@ class StakingModalNew {
         this.zapCustomTokenAddress = '';
         this.zapCustomTokenError = '';
 
-        // V2 remove-liquidity state
+        // V2 remove-liquidity / Kyber zap-out state
         this.removeLiquidityService = window.V2RemoveLiquidityService ? new window.V2RemoveLiquidityService() : null;
-        this.convertLibToUsdtEnabled = false;
+        this.removeLiquidityZapOutEnabled = false;
         this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
@@ -57,6 +57,11 @@ class StakingModalNew {
         this.removeLiquidityDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
         this.removeLiquidityPreviewDebounceTimer = null;
         this.removeLiquidityPreviewRequestId = 0;
+        this.removeLiquidityOutputTokenAddress = '';
+        this.removeLiquidityOutputTokens = [];
+        this.removeLiquiditySelectedOutputToken = null;
+        this.removeLiquidityCustomOutputTokenAddress = '';
+        this.removeLiquidityCustomOutputTokenError = '';
 
         // Approval state
         this.needsApproval = false;
@@ -73,8 +78,8 @@ class StakingModalNew {
             zap: 'idle',
             approveRemoveLiquidity: 'idle',
             removeLiquidity: 'idle',
-            approveRemoveLiquidityConversion: 'idle',
-            convertRemoveLiquidityToken: 'idle'
+            approveRemoveLiquidityZapOut: 'idle',
+            zapOutLP: 'idle'
         };
         this.pendingOperations = {
             approve: false,
@@ -85,8 +90,8 @@ class StakingModalNew {
             zap: false,
             approveRemoveLiquidity: false,
             removeLiquidity: false,
-            approveRemoveLiquidityConversion: false,
-            convertRemoveLiquidityToken: false
+            approveRemoveLiquidityZapOut: false,
+            zapOutLP: false
         };
 
         // Execution guards
@@ -129,10 +134,10 @@ class StakingModalNew {
                 return 'approveRemoveLiquidity';
             case 'removeLiquidity':
                 return 'removeLiquidity';
-            case 'approveRemoveLiquidityConversion':
-                return 'approveRemoveLiquidityConversion';
-            case 'convertRemoveLiquidityToken':
-                return 'convertRemoveLiquidityToken';
+            case 'approveRemoveLiquidityZapOut':
+                return 'approveRemoveLiquidityZapOut';
+            case 'zapOutLP':
+                return 'zapOutLP';
             default:
                 return null;
         }
@@ -169,8 +174,8 @@ class StakingModalNew {
 
         if (action === 'approveRemoveLiquidity'
             || action === 'removeLiquidity'
-            || action === 'approveRemoveLiquidityConversion'
-            || action === 'convertRemoveLiquidityToken') {
+            || action === 'approveRemoveLiquidityZapOut'
+            || action === 'zapOutLP') {
             this.updateRemoveLiquidityButton();
         }
 
@@ -307,18 +312,29 @@ class StakingModalNew {
                 this.setRemoveLiquiditySlippage(button.dataset.slippage);
             }
 
+            if (e.target.closest('.remove-liquidity-output-token-option')) {
+                const button = e.target.closest('.remove-liquidity-output-token-option');
+                this.setRemoveLiquidityOutputToken(button.dataset.tokenAddress);
+            }
+
             if (e.target.closest('.zap-percentage-btn')) {
                 const button = e.target.closest('.zap-percentage-btn');
                 this.setZapAmountPercentage(parseInt(button.dataset.percentage, 10));
             }
 
-            if (e.target.closest('.zap-token-option')) {
+            if (e.target.closest('.zap-token-option') && !e.target.closest('.remove-liquidity-output-token-picker')) {
                 const button = e.target.closest('.zap-token-option');
                 this.setZapInputToken(button.dataset.tokenAddress);
             }
 
             if (!e.target.closest('.zap-token-picker')) {
                 document.querySelectorAll('.zap-token-picker[open]').forEach(menu => {
+                    menu.open = false;
+                });
+            }
+
+            if (!e.target.closest('.remove-liquidity-output-token-picker')) {
+                document.querySelectorAll('.remove-liquidity-output-token-picker[open]').forEach(menu => {
                     menu.open = false;
                 });
             }
@@ -400,6 +416,11 @@ class StakingModalNew {
                 }
             }
 
+            if (e.target.id === 'remove-liquidity-custom-output-token-input') {
+                this.removeLiquidityCustomOutputTokenAddress = e.target.value.trim();
+                this.removeLiquidityCustomOutputTokenError = '';
+            }
+
             if (e.target.id === 'remove-liquidity-deadline-input') {
                 const sanitizedValue = this.setRemoveLiquidityDeadlineInput(e.target.value);
                 if (sanitizedValue !== e.target.value) {
@@ -416,7 +437,7 @@ class StakingModalNew {
             }
 
             if (e.target.id === 'remove-liquidity-checkbox') {
-                this.convertLibToUsdtEnabled = e.target.checked;
+                this.removeLiquidityZapOutEnabled = e.target.checked;
                 this.resetRemoveLiquidityPreview();
                 this.renderTabContent();
                 this.debounceRemoveLiquidityPreview(0);
@@ -663,6 +684,21 @@ class StakingModalNew {
         return window.Formatter?.formatCurrency?.(estimate) || `$${estimate.toFixed(2)}`;
     }
 
+    formatUsdNumber(value) {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+            return String(value);
+        }
+
+        return window.Formatter?.formatCurrency?.(numericValue)?.replace(/^\$/, '')
+            || numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    formatUsdDisplay(value) {
+        const formatted = this.formatUsdNumber(value);
+        return String(formatted).startsWith('$') ? formatted : `$${formatted}`;
+    }
+
     renderInlineLpUsdEstimate(amount) {
         const estimate = this.formatLpUsdEstimate(amount);
         return estimate ? ` <span class="lp-usd-estimate">(${this.escapeHtml(estimate)})</span>` : '';
@@ -757,13 +793,15 @@ class StakingModalNew {
     }
 
     resetRemoveLiquidityFormState() {
-        this.convertLibToUsdtEnabled = false;
+        this.removeLiquidityZapOutEnabled = false;
         this.removeLiquidityAmount = '';
         this.removeLiquidityPreview = null;
         this.removeLiquidityPreviewStatus = 'idle';
         this.removeLiquidityPreviewError = '';
         this.removeLiquidityCustomSlippage = '';
         this.removeLiquidityCustomSlippageError = '';
+        this.removeLiquidityCustomOutputTokenAddress = '';
+        this.removeLiquidityCustomOutputTokenError = '';
         this.removeLiquidityPreviewRequestId += 1;
         this.clearRemoveLiquidityPreviewDebounce();
     }
@@ -877,99 +915,33 @@ class StakingModalNew {
     }
 
     canFetchRemoveLiquidityPreview() {
-        return this.convertLibToUsdtEnabled && this.canPrepareRemoveLiquidityPreview();
+        return this.removeLiquidityZapOutEnabled
+            && this.canPrepareRemoveLiquidityPreview()
+            && !!this.removeLiquiditySelectedOutputToken;
     }
 
-    getRemoveLiquidityConversionTokens(preview = this.removeLiquidityPreview) {
-        if (!preview?.supported) {
-            return null;
+    getRemoveLiquidityOutputTokenAddressForKyber(token = this.removeLiquiditySelectedOutputToken) {
+        if (!token) {
+            return '';
         }
 
-        const chainConfig = window.CONFIG?.DEX_REMOVE_LIQUIDITY?.[String(this.getRemoveLiquidityChainId())] || null;
-        const conversionConfig = chainConfig?.libToUsdtConversion || null;
-        const fromAddress = this.normalizeAddress(conversionConfig?.fromToken);
-        const toAddress = this.normalizeAddress(conversionConfig?.toToken);
-        if (!fromAddress || !toAddress) {
-            return null;
+        if (this.isNativeZapToken(token.address)) {
+            return window.CONFIG?.KYBER_ZAP?.NATIVE_TOKEN_ADDRESS || token.address;
         }
 
-        const tokens = [preview.token0, preview.token1];
-        const fromToken = tokens.find(token => this.normalizeAddress(token?.address) === fromAddress);
-        const toToken = tokens.find(token => this.normalizeAddress(token?.address) === toAddress);
-
-        if (!fromToken || !toToken || fromAddress === toAddress) {
-            return null;
-        }
-
-        return {
-            fromToken,
-            toToken,
-            path: [fromToken.address, toToken.address]
-        };
+        return token.address;
     }
 
-    normalizeAddress(address) {
-        return String(address || '').toLowerCase();
+    getRemoveLiquidityRouteData() {
+        return this.getKyberZapService().getRouteData(this.removeLiquidityPreview);
     }
 
-    async addRemoveLiquidityConversionPreview(preview, provider) {
-        if (!this.convertLibToUsdtEnabled || !preview?.supported) {
-            return preview;
-        }
+    getRemoveLiquidityRouteEncoded() {
+        return this.getKyberZapService().getRouteEncoded(this.removeLiquidityPreview);
+    }
 
-        const conversion = this.getRemoveLiquidityConversionTokens(preview);
-        if (!conversion) {
-            return {
-                ...preview,
-                conversion: {
-                    supported: false,
-                    reason: 'LIB to USDT conversion is only available for LIB/USDT pools.'
-                }
-            };
-        }
-
-        const service = this.getRemoveLiquidityService();
-        const quote = await service.getSwapQuote({
-            routerAddress: preview.adapter.routerAddress,
-            amountIn: conversion.fromToken.amount.raw,
-            path: conversion.path,
-            provider
-        });
-        const amountOutMin = service.calculateMinAmount(quote.amountOut, this.removeLiquiditySlippageBps);
-        const returnedTargetAmount = window.ethers.BigNumber.from(conversion.toToken.amount.raw);
-        const returnedTargetMinAmount = window.ethers.BigNumber.from(conversion.toToken.minAmount.raw);
-        const finalAmount = returnedTargetAmount.add(quote.amountOut);
-        const finalMinAmount = returnedTargetMinAmount.add(amountOutMin);
-
-        return {
-            ...preview,
-            conversion: {
-                supported: true,
-                fromToken: conversion.fromToken,
-                toToken: conversion.toToken,
-                path: conversion.path,
-                amountIn: {
-                    raw: quote.amountIn.toString(),
-                    formatted: service.formatUnits(quote.amountIn, conversion.fromToken.decimals)
-                },
-                amountOut: {
-                    raw: quote.amountOut.toString(),
-                    formatted: service.formatUnits(quote.amountOut, conversion.toToken.decimals)
-                },
-                minAmountOut: {
-                    raw: amountOutMin.toString(),
-                    formatted: service.formatUnits(amountOutMin, conversion.toToken.decimals)
-                },
-                finalAmount: {
-                    raw: finalAmount.toString(),
-                    formatted: service.formatUnits(finalAmount, conversion.toToken.decimals)
-                },
-                finalMinAmount: {
-                    raw: finalMinAmount.toString(),
-                    formatted: service.formatUnits(finalMinAmount, conversion.toToken.decimals)
-                }
-            }
-        };
+    getRemoveLiquidityRouterAddress(source = null) {
+        return this.getKyberZapService().getRouterAddress(source || this.getRemoveLiquidityRouteData());
     }
 
     debounceRemoveLiquidityPreview(delay = 400) {
@@ -1020,28 +992,61 @@ class StakingModalNew {
             this.updateRemoveLiquidityPreviewPanel();
             this.updateRemoveLiquidityButton();
 
-            const basePreview = await this.getRemoveLiquidityService().getPreview({
-                chainId,
-                lpTokenAddress,
-                liquidityRaw,
-                slippageBps: this.removeLiquiditySlippageBps,
-                provider
-            });
-            const preview = await this.addRemoveLiquidityConversionPreview(basePreview, provider);
+            let preview;
+            if (this.removeLiquidityZapOutEnabled) {
+                const networkConfig = this.getKyberZapNetworkConfig();
+                const outputToken = this.removeLiquiditySelectedOutputToken;
+                const tokenOutAddress = this.getRemoveLiquidityOutputTokenAddressForKyber(outputToken);
+
+                if (!networkConfig) {
+                    throw new Error('Zap out is not available on this network.');
+                }
+                if (!window.walletManager?.address) {
+                    throw new Error('Connect your wallet to preview zap out.');
+                }
+                if (!outputToken || !tokenOutAddress) {
+                    throw new Error('Select an output token to preview zap out.');
+                }
+
+                const payload = await this.getKyberZapService().fetchOutQuote({
+                    networkConfig,
+                    lpTokenAddress,
+                    walletAddress: window.walletManager.address,
+                    tokenOutAddress,
+                    liquidityRaw,
+                    slippageBps: this.removeLiquiditySlippageBps,
+                    platform: this.currentPair?.platform
+                });
+
+                preview = {
+                    ...payload,
+                    supported: true,
+                    zapOut: true,
+                    outputToken,
+                    liquidityRaw: liquidityRaw.toString(),
+                    slippageBps: this.removeLiquiditySlippageBps
+                };
+            } else {
+                preview = await this.getRemoveLiquidityService().getPreview({
+                    chainId,
+                    lpTokenAddress,
+                    liquidityRaw,
+                    slippageBps: this.removeLiquiditySlippageBps,
+                    provider
+                });
+            }
 
             if (requestId !== this.removeLiquidityPreviewRequestId) {
                 return;
             }
 
             this.removeLiquidityPreview = preview;
-            if (preview.supported && (!this.convertLibToUsdtEnabled || preview.conversion?.supported)) {
+            if (preview.supported) {
                 this.removeLiquidityPreviewStatus = 'ready';
                 this.removeLiquidityPreviewError = '';
             } else {
                 this.removeLiquidityPreviewStatus = 'error';
-                this.removeLiquidityPreviewError = preview.conversion?.reason
-                    || preview.reason
-                    || 'Remove liquidity is not supported for this pool.';
+                this.removeLiquidityPreviewError = preview.reason || 'Remove liquidity is not supported for this pool.';
             }
         } catch (error) {
             if (requestId !== this.removeLiquidityPreviewRequestId) {
@@ -1139,8 +1144,22 @@ class StakingModalNew {
             this.zapInputTokenAddress = this.zapInputTokens[0]?.address || 'native';
         }
         this.zapSelectedToken = this.zapInputTokens.find(token => token.address === this.zapInputTokenAddress) || this.zapInputTokens[0] || null;
+        this.syncRemoveLiquidityOutputTokens();
 
         await this.loadZapTokenBalances();
+    }
+
+    syncRemoveLiquidityOutputTokens() {
+        this.removeLiquidityOutputTokens = this.sortZapInputTokens([...(this.zapInputTokens || [])]);
+
+        if (!this.removeLiquidityOutputTokens.some(token => token.address === this.removeLiquidityOutputTokenAddress)) {
+            const usdtToken = this.removeLiquidityOutputTokens.find(token => String(token.symbol || '').toUpperCase() === 'USDT');
+            this.removeLiquidityOutputTokenAddress = usdtToken?.address || this.removeLiquidityOutputTokens[0]?.address || '';
+        }
+
+        this.removeLiquiditySelectedOutputToken = this.removeLiquidityOutputTokens.find(token => token.address === this.removeLiquidityOutputTokenAddress)
+            || this.removeLiquidityOutputTokens[0]
+            || null;
     }
 
     async loadZapTokenBalances() {
@@ -1244,6 +1263,96 @@ class StakingModalNew {
             this.zapCustomTokenError = 'Unable to load token details.';
             this.renderTabContent();
         }
+    }
+
+    setRemoveLiquidityOutputToken(address) {
+        if (address === 'custom') {
+            this.removeLiquidityOutputTokenAddress = 'custom';
+            this.removeLiquiditySelectedOutputToken = null;
+            this.resetRemoveLiquidityPreview();
+            this.removeLiquidityCustomOutputTokenError = '';
+            this.renderTabContent();
+            return;
+        }
+
+        this.removeLiquidityOutputTokenAddress = address;
+        this.removeLiquiditySelectedOutputToken = this.removeLiquidityOutputTokens.find(token => token.address === address) || null;
+        this.resetRemoveLiquidityPreview();
+        this.renderTabContent();
+        this.debounceRemoveLiquidityPreview(0);
+    }
+
+    async addRemoveLiquidityCustomOutputToken() {
+        if (!window.ethers?.utils?.isAddress?.(this.removeLiquidityCustomOutputTokenAddress)) {
+            this.removeLiquidityCustomOutputTokenError = 'Enter a valid token address.';
+            this.renderTabContent();
+            return;
+        }
+
+        try {
+            this.removeLiquidityCustomOutputTokenError = '';
+            const address = window.ethers.utils.getAddress(this.removeLiquidityCustomOutputTokenAddress);
+            const metadata = await this.getTokenMetadata(address);
+            const token = {
+                address,
+                symbol: metadata?.symbol || 'TOKEN',
+                name: metadata?.name || 'Token',
+                decimals: metadata?.decimals ?? 18,
+                iconUrl: '',
+                custom: true
+            };
+
+            const existingIndex = this.removeLiquidityOutputTokens.findIndex(existing =>
+                String(existing.address).toLowerCase() === address.toLowerCase()
+            );
+
+            if (existingIndex >= 0) {
+                this.removeLiquidityOutputTokens[existingIndex] = { ...this.removeLiquidityOutputTokens[existingIndex], ...token };
+            } else {
+                this.removeLiquidityOutputTokens.push(token);
+            }
+            this.removeLiquidityOutputTokens = this.sortZapInputTokens(this.removeLiquidityOutputTokens);
+
+            this.removeLiquidityOutputTokenAddress = token.address;
+            this.removeLiquiditySelectedOutputToken = token;
+            this.resetRemoveLiquidityPreview();
+            this.renderTabContent();
+            this.debounceRemoveLiquidityPreview(0);
+            this.loadRemoveLiquidityCustomOutputTokenIcon(address).catch(error => {
+                console.warn('Unable to load custom remove-liquidity output token icon:', error.message);
+            });
+        } catch (error) {
+            console.error('Failed to add custom remove-liquidity output token:', error);
+            this.removeLiquidityCustomOutputTokenError = 'Unable to load token details.';
+            this.renderTabContent();
+        }
+    }
+
+    async loadRemoveLiquidityCustomOutputTokenIcon(address) {
+        const tokenIndex = this.removeLiquidityOutputTokens.findIndex(existing =>
+            String(existing.address).toLowerCase() === String(address).toLowerCase()
+        );
+        if (tokenIndex < 0) {
+            return false;
+        }
+
+        const marketMetadata = await this.getTokenMarketMetadata(address);
+        const imageUrl = this.getSafeZapTokenIconUrl(marketMetadata?.imageUrl);
+        if (!imageUrl) {
+            return false;
+        }
+
+        this.removeLiquidityOutputTokens[tokenIndex] = {
+            ...this.removeLiquidityOutputTokens[tokenIndex],
+            iconUrl: imageUrl
+        };
+
+        if (String(this.removeLiquidityOutputTokenAddress).toLowerCase() === String(address).toLowerCase()) {
+            this.removeLiquiditySelectedOutputToken = this.removeLiquidityOutputTokens[tokenIndex];
+        }
+
+        this.renderTabContent();
+        return true;
     }
 
     async loadZapCustomTokenIcon(address) {
@@ -1601,6 +1710,17 @@ class StakingModalNew {
         return { value: fallback, path: null };
     }
 
+    getRemoveLiquidityQuoteSummaryEntry(paths, fallback = 'N/A') {
+        const data = this.getRemoveLiquidityRouteData();
+        for (const path of paths) {
+            const value = path.split('.').reduce((current, key) => current?.[key], data);
+            if (value !== undefined && value !== null && value !== '') {
+                return { value, path };
+            }
+        }
+        return { value: fallback, path: null };
+    }
+
     getZapHighSlippageBps() {
         return window.CONFIG?.KYBER_ZAP?.HIGH_SLIPPAGE_BPS || 300;
     }
@@ -1927,11 +2047,12 @@ class StakingModalNew {
             iconOptions.iconUrl = options.iconUrl;
         }
         const iconHtml = this.renderZapTokenIcon(token, iconOptions);
+        const rowClass = options.rowClass || 'zap-token-option';
 
         return `
             <button
                 type="button"
-                class="zap-token-option ${isSelected ? 'active' : ''}"
+                class="${this.escapeHtml(rowClass)} ${isSelected ? 'active' : ''}"
                 data-token-address="${this.escapeHtml(address)}"
                 role="option"
                 aria-selected="${isSelected ? 'true' : 'false'}"
@@ -2335,21 +2456,18 @@ class StakingModalNew {
         const hasSufficientBalance = balanceRaw.gte(removeUnits);
         const hasValidPreview = this.removeLiquidityPreviewStatus === 'ready'
             && this.removeLiquidityPreview?.supported;
-        const hasSupportedConversion = !this.convertLibToUsdtEnabled
-            || this.removeLiquidityPreview?.conversion?.supported;
-        const shouldWaitForOpenPreview = this.convertLibToUsdtEnabled
-            && (!hasValidPreview || !hasSupportedConversion);
+        const shouldWaitForOpenPreview = this.removeLiquidityZapOutEnabled && !hasValidPreview;
         const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
         const removePhase = this.actionPhases?.removeLiquidity || 'idle';
-        const approveConversionPhase = this.actionPhases?.approveRemoveLiquidityConversion || 'idle';
-        const convertPhase = this.actionPhases?.convertRemoveLiquidityToken || 'idle';
+        const approveZapOutPhase = this.actionPhases?.approveRemoveLiquidityZapOut || 'idle';
+        const zapOutPhase = this.actionPhases?.zapOutLP || 'idle';
         const activePhase = approvePhase !== 'idle'
             ? approvePhase
             : removePhase !== 'idle'
                 ? removePhase
-                : approveConversionPhase !== 'idle'
-                    ? approveConversionPhase
-                    : convertPhase;
+                : approveZapOutPhase !== 'idle'
+                    ? approveZapOutPhase
+                    : zapOutPhase;
 
         if (activePhase !== 'idle') {
             removeButton.disabled = true;
@@ -2359,10 +2477,10 @@ class StakingModalNew {
                     buttonText.textContent = approvePhase === 'userApproval' ? ' Approve LP...' : ' Confirming LP Approval...';
                 } else if (removePhase !== 'idle') {
                     buttonText.textContent = removePhase === 'userApproval' ? ' Remove Liquidity...' : ' Removing Liquidity...';
-                } else if (approveConversionPhase !== 'idle') {
-                    buttonText.textContent = approveConversionPhase === 'userApproval' ? ' Approve LIB...' : ' Confirming LIB Approval...';
+                } else if (approveZapOutPhase !== 'idle') {
+                    buttonText.textContent = approveZapOutPhase === 'userApproval' ? ' Approve LP...' : ' Confirming LP Approval...';
                 } else {
-                    buttonText.textContent = convertPhase === 'userApproval' ? ' Convert LIB...' : ' Converting LIB...';
+                    buttonText.textContent = zapOutPhase === 'userApproval' ? ' Zap Out...' : ' Zapping Out...';
                 }
             }
             return;
@@ -2376,17 +2494,17 @@ class StakingModalNew {
         if (!hasSufficientBalance && hasAmount) {
             removeButton.title = 'Insufficient LP token balance';
         } else if (shouldWaitForOpenPreview) {
-            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported LIB to USDT conversion preview.';
+            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported Kyber zap-out preview.';
         } else {
-            removeButton.title = this.convertLibToUsdtEnabled
-                ? 'Remove LP liquidity and convert LIB to USDT'
+            removeButton.title = this.removeLiquidityZapOutEnabled
+                ? 'Zap out LP liquidity to one token'
                 : 'Remove LP liquidity';
         }
 
         if (buttonIcon) buttonIcon.textContent = 'swap_horiz';
         if (buttonText) {
-            buttonText.textContent = this.convertLibToUsdtEnabled
-                ? ' Remove LP + Convert LIB'
+            buttonText.textContent = this.removeLiquidityZapOutEnabled
+                ? ' Zap Out LP'
                 : ' Remove LP Liquidity';
         }
     }
@@ -2944,20 +3062,20 @@ class StakingModalNew {
                     <input
                         type="checkbox"
                         id="remove-liquidity-checkbox"
-                        ${this.convertLibToUsdtEnabled ? 'checked' : ''}
+                        ${this.removeLiquidityZapOutEnabled ? 'checked' : ''}
                     >
                     <span class="checkmark"></span>
-                    Convert returned LIB to USDT after removing LP
+                    Zap out to one token with Kyber
                 </label>
             </div>
 
-            ${this.convertLibToUsdtEnabled ? this.renderRemoveLiquidityControls() : ''}
+            ${this.removeLiquidityZapOutEnabled ? this.renderRemoveLiquidityControls() : ''}
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
                 <button class="btn btn-primary remove-liquidity-action-btn" onclick="safeModalExecuteRemoveLiquidity()" ${!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0 ? 'disabled' : ''}>
                     <span class="material-icons">swap_horiz</span>
-                    ${this.convertLibToUsdtEnabled ? 'Remove LP + Convert LIB' : 'Remove LP Liquidity'}
+                    ${this.removeLiquidityZapOutEnabled ? 'Zap Out LP' : 'Remove LP Liquidity'}
                 </button>
             </div>
         `;
@@ -2979,6 +3097,7 @@ class StakingModalNew {
         const slippageOptions = [10, 50, 100];
         return `
             <div class="remove-liquidity-section">
+                ${this.renderRemoveLiquidityOutputTokenPicker()}
                 <div class="remove-liquidity-settings">
                     <div class="form-group">
                         <label class="form-label">Slippage</label>
@@ -3039,6 +3158,79 @@ class StakingModalNew {
         `;
     }
 
+    renderRemoveLiquidityOutputTokenPicker() {
+        const isCustomTokenMode = this.removeLiquidityOutputTokenAddress === 'custom';
+        const selectedToken = isCustomTokenMode ? null : (this.removeLiquiditySelectedOutputToken || this.removeLiquidityOutputTokens[0]);
+        const selectedPickerToken = isCustomTokenMode
+            ? { symbol: 'Custom', address: 'custom' }
+            : selectedToken;
+        const selectedPickerLabelParts = isCustomTokenMode
+            ? { symbol: 'Custom token', shortAddress: '', fullLabel: 'Custom token' }
+            : this.getZapTokenLabelParts(selectedToken);
+        const selectedPickerBalance = isCustomTokenMode ? 'Add by address' : (selectedToken?.name || selectedToken?.symbol || '--');
+        const tokenOptions = this.removeLiquidityOutputTokens.map(token => this.renderZapTokenPickerRow(
+            token,
+            selectedPickerToken?.address,
+            {
+                rowClass: 'zap-token-option remove-liquidity-output-token-option',
+                balanceLabel: token.name || token.symbol || '--'
+            }
+        )).join('') + this.renderZapTokenPickerRow(
+            { symbol: 'Custom', address: 'custom' },
+            selectedPickerToken?.address,
+            {
+                rowClass: 'zap-token-option remove-liquidity-output-token-option',
+                label: 'Custom token',
+                balanceLabel: 'Add by address',
+                iconText: '+',
+                iconClass: 'zap-token-icon-custom'
+            }
+        );
+
+        return `
+            <div class="form-group">
+                <label class="form-label">Output Token</label>
+                <details class="zap-token-picker remove-liquidity-output-token-picker">
+                    <summary class="zap-token-trigger">
+                        ${this.renderZapTokenIcon(selectedPickerToken, isCustomTokenMode ? {
+                            iconText: '+',
+                            iconClass: 'zap-token-icon-custom',
+                            iconUrl: ''
+                        } : {})}
+                        <span class="zap-token-option-text">
+                            <span class="zap-token-option-label">
+                                <span>${this.escapeHtml(selectedPickerLabelParts.symbol || 'Select token')}</span>${selectedPickerLabelParts.shortAddress ? ` <span class="zap-token-option-address">${this.escapeHtml(selectedPickerLabelParts.shortAddress)}</span>` : ''}
+                            </span>
+                            <span class="zap-token-option-balance">${this.escapeHtml(selectedPickerBalance || '--')}</span>
+                        </span>
+                        <span class="material-icons zap-token-expand" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <div class="zap-token-menu" role="listbox" aria-label="Zap-out output token">
+                        ${tokenOptions}
+                    </div>
+                </details>
+            </div>
+
+            ${isCustomTokenMode ? `
+                <div class="zap-custom-token-row">
+                    <input
+                        type="text"
+                        id="remove-liquidity-custom-output-token-input"
+                        class="form-input"
+                        placeholder="0x..."
+                        value="${this.escapeHtml(this.removeLiquidityCustomOutputTokenAddress)}"
+                        spellcheck="false"
+                    >
+                    <button class="btn btn-secondary zap-token-add-btn" onclick="safeModalAddRemoveLiquidityCustomOutputToken()">
+                        <span class="material-icons">add</span>
+                        Add
+                    </button>
+                </div>
+                ${this.removeLiquidityCustomOutputTokenError ? `<div class="zap-field-error">${this.escapeHtml(this.removeLiquidityCustomOutputTokenError)}</div>` : ''}
+            ` : ''}
+        `;
+    }
+
     renderRemoveLiquidityPreviewPanel() {
         const isLoading = this.removeLiquidityPreviewStatus === 'loading';
         const isError = this.removeLiquidityPreviewStatus === 'error';
@@ -3051,6 +3243,91 @@ class StakingModalNew {
             isError ? 'zap-quote-error' : '',
             !hasPreview && !isLoading && !isError ? 'zap-quote-placeholder' : ''
         ].filter(Boolean).join(' ');
+        const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
+        const deadlineDisplay = `${Number(this.removeLiquidityDeadlineMinutes) || 20} min`;
+
+        if (this.removeLiquidityZapOutEnabled) {
+            const outputToken = this.removeLiquiditySelectedOutputToken;
+            const outputSymbol = outputToken?.symbol || 'token';
+            let summary = this.removeLiquidityAmount
+                ? `Checking Kyber zap-out to ${outputSymbol}...`
+                : `Enter an amount to preview ${outputSymbol} output.`;
+            let routerDisplay = pendingValue;
+            let estimatedOutput = pendingValue;
+            let outputValue = pendingValue;
+            let priceImpactDisplay = pendingValue;
+
+            if (isLoading) {
+                summary = 'Loading Kyber zap-out route...';
+            } else if (isError) {
+                summary = this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
+                routerDisplay = 'Unsupported';
+            } else if (hasPreview) {
+                const routeData = this.getRemoveLiquidityRouteData();
+                const outputEntry = this.getRemoveLiquidityQuoteSummaryEntry([
+                    'zapDetails.finalAmount',
+                    'zapDetails.outputAmount',
+                    'outputAmount',
+                    'amountOut',
+                    'routeSummary.amountOut'
+                ], pendingValue);
+                const outputUsdEntry = this.getRemoveLiquidityQuoteSummaryEntry([
+                    'zapDetails.finalAmountUsd',
+                    'amountOutUsd',
+                    'receivedUsd',
+                    'routeSummary.amountOutUsd'
+                ], pendingValue);
+                const priceImpactEntry = this.getRemoveLiquidityQuoteSummaryEntry([
+                    'zapDetails.priceImpact',
+                    'zapDetails.priceImpactPcm',
+                    'priceImpact',
+                    'priceImpactPcm'
+                ], pendingValue);
+                routerDisplay = this.formatAddress(this.getRemoveLiquidityRouterAddress(routeData) || '');
+                estimatedOutput = outputEntry.value === pendingValue
+                    ? pendingValue
+                    : this.formatZapDisplayAmount(outputEntry.value, outputToken?.decimals ?? 18, outputSymbol);
+                outputValue = outputUsdEntry.value === pendingValue ? pendingValue : this.formatUsdDisplay(outputUsdEntry.value);
+                priceImpactDisplay = priceImpactEntry.value === pendingValue ? pendingValue : this.formatZapPercent(priceImpactEntry);
+                summary = `Kyber zap-out to ${outputSymbol}`;
+            }
+
+            const rows = [
+                this.renderZapQuoteRow('Route', 'Kyber ZaaS'),
+                this.renderZapQuoteRow('Kyber Router', routerDisplay || pendingValue),
+                this.renderZapQuoteRow('LP amount', this.removeLiquidityAmount ? `${this.removeLiquidityAmount} LP` : pendingValue),
+                this.renderZapQuoteRow('Output token', outputSymbol),
+                this.renderZapQuoteRow(`Estimated ${outputSymbol}`, estimatedOutput),
+                this.renderZapQuoteRow('Estimated value', outputValue),
+                this.renderZapQuoteRow('Price impact', priceImpactDisplay),
+                this.renderZapQuoteRow('Slippage', slippageDisplay),
+                this.renderZapQuoteRow('Deadline', deadlineDisplay)
+            ];
+
+            return `
+                <div class="${cardClass}">
+                    <div class="zap-quote-header">
+                        <div class="zap-route-summary">${this.escapeHtml(summary)}</div>
+                        <div class="zap-refresh-controls">
+                            <button
+                                type="button"
+                                class="zap-refresh-btn"
+                                onclick="safeModalFetchRemoveLiquidityPreview()"
+                                title="Refresh Kyber zap-out preview"
+                                aria-label="Refresh Kyber zap-out preview"
+                                ${!this.canFetchRemoveLiquidityPreview() || isLoading ? 'disabled' : ''}
+                            >
+                                <span class="material-icons">sync</span>
+                            </button>
+                        </div>
+                    </div>
+                    <dl class="zap-quote-list remove-liquidity-preview-list">
+                        ${rows.join('')}
+                    </dl>
+                </div>
+            `;
+        }
+
         let summary = this.removeLiquidityAmount
             ? 'Checking remove liquidity support...'
             : 'Enter an amount to preview pair token outputs.';
@@ -3059,9 +3336,6 @@ class StakingModalNew {
         let token1Display = pendingValue;
         let token0MinDisplay = pendingValue;
         let token1MinDisplay = pendingValue;
-        const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
-        const deadlineDisplay = `${Number(this.removeLiquidityDeadlineMinutes) || 20} min`;
-
         if (isLoading) {
             summary = 'Loading LP reserves...';
         } else if (isError) {
@@ -3088,59 +3362,6 @@ class StakingModalNew {
             this.renderZapQuoteRow('Slippage', slippageDisplay),
             this.renderZapQuoteRow('Deadline', deadlineDisplay)
         ];
-
-        if (this.convertLibToUsdtEnabled) {
-            const conversion = this.removeLiquidityPreview?.conversion;
-            const conversionFromSymbol = conversion?.fromToken?.symbol || 'LIB';
-            const conversionToSymbol = conversion?.toToken?.symbol || 'USDT';
-            rows = [
-                this.renderZapQuoteRow('DEX', dexDisplay),
-                this.renderZapQuoteRow('LP removal output', hasPreview ? `${token0Display} + ${token1Display}` : pendingValue),
-                this.renderZapQuoteRow(`${conversionFromSymbol} to convert`, pendingValue),
-                this.renderZapQuoteRow(`Estimated ${conversionToSymbol} from conversion`, pendingValue),
-                this.renderZapQuoteRow(`Estimated total ${conversionToSymbol}`, pendingValue),
-                this.renderZapQuoteRow(`Minimum total ${conversionToSymbol}`, pendingValue),
-                this.renderZapQuoteRow('Slippage', slippageDisplay),
-                this.renderZapQuoteRow('Deadline', deadlineDisplay)
-            ];
-
-            if (conversion?.supported) {
-                summary = `${conversion.fromToken.symbol} converts to ${conversion.toToken.symbol} after LP removal`;
-                rows = [
-                    this.renderZapQuoteRow('DEX', dexDisplay),
-                    this.renderZapQuoteRow('LP removal output', `${token0Display} + ${token1Display}`),
-                    this.renderZapQuoteRow(
-                        `${conversion.fromToken.symbol} to convert`,
-                        this.formatRemoveLiquidityTokenAmount(conversion.amountIn, conversion.fromToken)
-                    ),
-                    this.renderZapQuoteRow(
-                        `Estimated ${conversion.toToken.symbol} from conversion`,
-                        this.formatRemoveLiquidityTokenAmount(conversion.amountOut, conversion.toToken)
-                    ),
-                    this.renderZapQuoteRow(
-                        `Estimated total ${conversion.toToken.symbol}`,
-                        this.formatRemoveLiquidityTokenAmount(conversion.finalAmount, conversion.toToken)
-                    ),
-                    this.renderZapQuoteRow(
-                        `Minimum total ${conversion.toToken.symbol}`,
-                        this.formatRemoveLiquidityTokenAmount(conversion.finalMinAmount, conversion.toToken)
-                    ),
-                    this.renderZapQuoteRow('Slippage', slippageDisplay),
-                    this.renderZapQuoteRow('Deadline', deadlineDisplay)
-                ];
-            } else if (conversion?.reason) {
-                rows = [
-                    this.renderZapQuoteRow('DEX', dexDisplay),
-                    this.renderZapQuoteRow('Conversion', conversion.reason),
-                    this.renderZapQuoteRow('Slippage', slippageDisplay),
-                    this.renderZapQuoteRow('Deadline', deadlineDisplay)
-                ];
-            } else if (!hasPreview && !isError) {
-                summary = this.removeLiquidityAmount
-                    ? 'Checking LIB to USDT conversion...'
-                    : 'Enter an amount to preview final USDT output.';
-            }
-        }
 
         return `
             <div class="${cardClass}">
@@ -3876,64 +4097,98 @@ class StakingModalNew {
         }
     }
 
-    async executeRemoveLiquidityConversion({ service, preview, conversion, amountIn, userAddress, provider, signer }) {
-        const spender = preview.adapter.routerAddress;
-        const allowance = await service.getTokenAllowance({
-            tokenAddress: conversion.fromToken.address,
-            owner: userAddress,
-            spender,
-            provider
-        });
-
-        if (allowance.lt(amountIn)) {
-            this.pendingOperations.approveRemoveLiquidityConversion = true;
-            this.setActionPhase('approveRemoveLiquidityConversion', 'userApproval');
-            window.notificationManager?.info(`Approving ${conversion.fromToken.symbol} for conversion...`);
-
-            await window.contractManager.executeTransactionOnce(async () => {
-                const tx = await service.approveTokenIfNeeded({
-                    tokenAddress: conversion.fromToken.address,
-                    spender,
-                    amountRaw: amountIn,
-                    signer
-                });
-                if (!tx) {
-                    throw new Error(`${conversion.fromToken.symbol} allowance is already sufficient.`);
-                }
-                console.log(`✅ ${conversion.fromToken.symbol} conversion approval sent: ${tx.hash}`);
-                return tx;
-            }, 'approveRemoveLiquidityConversion');
-
-            this.pendingOperations.approveRemoveLiquidityConversion = false;
-            this.setActionPhase('approveRemoveLiquidityConversion', 'idle');
+    async approveRemoveLiquidityZapOutIfNeeded(lpTokenAddress, routerAddress, liquidityRaw) {
+        const provider = window.contractManager?.provider || window.walletManager?.provider;
+        const signer = window.contractManager?.signer;
+        if (!provider || !signer) {
+            throw new Error('Wallet signer is required for zap-out approval.');
         }
 
-        const quote = await service.getSwapQuote({
-            routerAddress: preview.adapter.routerAddress,
-            amountIn,
-            path: conversion.path,
-            provider
-        });
-        const amountOutMin = service.calculateMinAmount(quote.amountOut, this.removeLiquiditySlippageBps);
+        const userAddress = await signer.getAddress();
+        const erc20Abi = [
+            'function allowance(address owner,address spender) view returns (uint256)',
+            'function approve(address spender,uint256 amount) returns (bool)'
+        ];
+        const lpReadContract = new window.ethers.Contract(lpTokenAddress, erc20Abi, provider);
+        const allowance = await lpReadContract.allowance(userAddress, routerAddress);
+
+        if (allowance.gte(liquidityRaw)) {
+            return null;
+        }
+
+        this.pendingOperations.approveRemoveLiquidityZapOut = true;
+        this.setActionPhase('approveRemoveLiquidityZapOut', 'userApproval');
+        window.notificationManager?.info('Approving Kyber to spend LP tokens...');
+
+        const lpWithSigner = new window.ethers.Contract(lpTokenAddress, erc20Abi, signer);
+        const result = await window.contractManager.executeTransactionOnce(async () => {
+            const tx = await lpWithSigner.approve(routerAddress, liquidityRaw);
+            console.log(`✅ Kyber zap-out approval sent: ${tx.hash}`);
+            return tx;
+        }, 'approveRemoveLiquidityZapOut');
+
+        this.pendingOperations.approveRemoveLiquidityZapOut = false;
+        this.setActionPhase('approveRemoveLiquidityZapOut', 'idle');
+        return result;
+    }
+
+    async buildRemoveLiquidityZapOutRoute() {
+        const networkConfig = this.getKyberZapNetworkConfig();
+        const route = this.getRemoveLiquidityRouteEncoded();
         const deadlineSeconds = Math.floor(Date.now() / 1000) + (Number(this.removeLiquidityDeadlineMinutes) || 20) * 60;
 
-        this.pendingOperations.convertRemoveLiquidityToken = true;
-        this.setActionPhase('convertRemoveLiquidityToken', 'userApproval');
-        window.notificationManager?.info(`Converting ${conversion.fromToken.symbol} to ${conversion.toToken.symbol}...`);
+        return this.getKyberZapService().buildOutRoute({
+            networkConfig,
+            route,
+            sender: window.walletManager.address,
+            recipient: window.walletManager.address,
+            deadline: deadlineSeconds
+        });
+    }
+
+    getRemoveLiquidityZapOutTransactionRequest(buildData) {
+        const txData = buildData?.txData || buildData?.calldata || buildData?.callData || buildData?.transaction?.data || buildData?.data;
+        const to = this.getRemoveLiquidityRouterAddress(buildData);
+        const rawValue = buildData?.value || buildData?.txValue || buildData?.transaction?.value || '0';
+
+        if (!to || !txData) {
+            throw new Error('Kyber did not return zap-out transaction calldata.');
+        }
+
+        this.validateZapRouterAddress(to);
+
+        return {
+            to,
+            data: txData,
+            value: window.ethers.BigNumber.from(rawValue || '0')
+        };
+    }
+
+    async executeRemoveLiquidityZapOutTransaction(lpTokenAddress, liquidityRaw) {
+        await window.contractManager.ensureSigner();
+
+        if (!this.removeLiquidityPreview?.supported || !this.removeLiquidityPreview?.zapOut) {
+            await this.fetchRemoveLiquidityPreview({ force: true });
+        }
+
+        if (!this.removeLiquidityPreview?.supported || !this.removeLiquidityPreview?.zapOut) {
+            throw new Error(this.removeLiquidityPreviewError || 'Kyber zap-out is not supported for this pool.');
+        }
+
+        window.notificationManager?.info('Building Kyber zap-out transaction...');
+        const buildData = await this.buildRemoveLiquidityZapOutRoute();
+        const transactionRequest = this.getRemoveLiquidityZapOutTransactionRequest(buildData);
+        await this.approveRemoveLiquidityZapOutIfNeeded(lpTokenAddress, transactionRequest.to, liquidityRaw);
+
+        this.pendingOperations.zapOutLP = true;
+        this.setActionPhase('zapOutLP', 'userApproval');
+        window.notificationManager?.info('Zapping out LP tokens...');
 
         return await window.contractManager.executeTransactionOnce(async () => {
-            const tx = await service.swapExactTokensForTokens({
-                routerAddress: preview.adapter.routerAddress,
-                amountIn,
-                amountOutMin,
-                path: conversion.path,
-                recipient: userAddress,
-                deadline: deadlineSeconds,
-                signer
-            });
-            console.log(`✅ ${conversion.fromToken.symbol} conversion sent: ${tx.hash}`);
+            const tx = await window.contractManager.signer.sendTransaction(transactionRequest);
+            console.log(`✅ Kyber zap-out transaction sent: ${tx.hash}`);
             return tx;
-        }, 'convertRemoveLiquidityToken');
+        }, 'zapOutLP');
     }
 
     async executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw) {
@@ -3952,10 +4207,6 @@ class StakingModalNew {
         if (!preview?.supported) {
             throw new Error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
         }
-        const conversion = this.convertLibToUsdtEnabled ? preview.conversion : null;
-        if (this.convertLibToUsdtEnabled && !conversion?.supported) {
-            throw new Error(preview.conversion?.reason || 'LIB to USDT conversion is not supported for this pool.');
-        }
 
         await service.validateRouterFactory({
             routerAddress: preview.adapter.routerAddress,
@@ -3971,14 +4222,6 @@ class StakingModalNew {
         if (lpBalance.lt(liquidityRaw)) {
             throw new Error('Insufficient LP token balance.');
         }
-
-        const preConversionBalance = conversion
-            ? await service.getTokenBalance({
-                tokenAddress: conversion.fromToken.address,
-                owner: userAddress,
-                provider
-            })
-            : null;
 
         const allowance = await service.getAllowance({
             lpTokenAddress,
@@ -4031,38 +4274,6 @@ class StakingModalNew {
             return tx;
         }, 'removeLiquidity');
 
-        if (!conversion) {
-            return removeResult;
-        }
-
-        this.pendingOperations.removeLiquidity = false;
-        this.setActionPhase('removeLiquidity', 'idle');
-
-        try {
-            const postConversionBalance = await service.getTokenBalance({
-                tokenAddress: conversion.fromToken.address,
-                owner: userAddress,
-                provider
-            });
-            const actualAmountIn = postConversionBalance.sub(preConversionBalance);
-            if (actualAmountIn.lte(0)) {
-                throw new Error(`No ${conversion.fromToken.symbol} was received to convert.`);
-            }
-
-            await this.executeRemoveLiquidityConversion({
-                service,
-                preview,
-                conversion,
-                amountIn: actualAmountIn,
-                userAddress,
-                provider,
-                signer
-            });
-        } catch (error) {
-            error.removeLiquidityCompleted = true;
-            throw error;
-        }
-
         return removeResult;
     }
 
@@ -4103,10 +4314,14 @@ class StakingModalNew {
             window.notificationManager?.info('Removing LP liquidity...');
             const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
             const liquidityRaw = this.getRemoveLiquidityAmountRaw();
-            await this.executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw);
+            if (this.removeLiquidityZapOutEnabled) {
+                await this.executeRemoveLiquidityZapOutTransaction(lpTokenAddress, liquidityRaw);
+            } else {
+                await this.executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw);
+            }
             window.notificationManager?.success(
-                this.convertLibToUsdtEnabled
-                    ? 'Liquidity removed and LIB converted to USDT successfully!'
+                this.removeLiquidityZapOutEnabled
+                    ? 'LP tokens zapped out successfully!'
                     : 'Liquidity removed successfully!'
             );
 
@@ -4125,26 +4340,20 @@ class StakingModalNew {
             console.log('✅ Home page data refreshed after remove liquidity');
         } catch (error) {
             console.error('❌ Remove liquidity failed:', error);
-            const detailMessage = error?.userMessage?.message || error?.message || '';
-            const partialSuccessMessage = 'Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.';
-            const fallbackMessage = 'Remove liquidity failed. Your LP tokens remain in your wallet.';
-            const errorMessage = error?.removeLiquidityCompleted
-                ? (detailMessage ? `${partialSuccessMessage} Details: ${detailMessage}` : partialSuccessMessage)
-                : (detailMessage || fallbackMessage);
-            const errorTitle = error?.userMessage?.title || (error?.removeLiquidityCompleted ? 'Conversion failed' : undefined);
-            window.notificationManager?.error(errorMessage, {title: errorTitle});
+            const errorMessage = error?.userMessage?.message || error?.message || 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
             await this.loadUserBalances().catch(loadError => {
                 console.warn('Unable to refresh balances after remove-liquidity failure:', loadError.message);
             });
         } finally {
             this.pendingOperations.approveRemoveLiquidity = false;
             this.pendingOperations.removeLiquidity = false;
-            this.pendingOperations.approveRemoveLiquidityConversion = false;
-            this.pendingOperations.convertRemoveLiquidityToken = false;
+            this.pendingOperations.approveRemoveLiquidityZapOut = false;
+            this.pendingOperations.zapOutLP = false;
             this.setActionPhase('approveRemoveLiquidity', 'idle');
             this.setActionPhase('removeLiquidity', 'idle');
-            this.setActionPhase('approveRemoveLiquidityConversion', 'idle');
-            this.setActionPhase('convertRemoveLiquidityToken', 'idle');
+            this.setActionPhase('approveRemoveLiquidityZapOut', 'idle');
+            this.setActionPhase('zapOutLP', 'idle');
             this.isExecutingRemoveLiquidity = false;
             this.updateRemoveLiquidityButton();
         }
@@ -4465,6 +4674,19 @@ window.safeModalAddZapCustomToken = function() {
         }
     } catch (error) {
         console.error('❌ Error adding custom zap token:', error);
+    }
+};
+
+window.safeModalAddRemoveLiquidityCustomOutputToken = function() {
+    try {
+        const modal = window.stakingModal || window.stakingModalNew || window.getStakingModal();
+        if (modal && typeof modal.addRemoveLiquidityCustomOutputToken === 'function') {
+            modal.addRemoveLiquidityCustomOutputToken();
+        } else {
+            console.warn('⚠️ Modal addRemoveLiquidityCustomOutputToken method not available');
+        }
+    } catch (error) {
+        console.error('❌ Error adding custom remove-liquidity output token:', error);
     }
 };
 

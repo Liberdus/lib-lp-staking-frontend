@@ -142,6 +142,99 @@ describe('KyberZapService', () => {
         );
     });
 
+    it('builds Kyber zap-out quote URLs with pool, position, liquidity, token out, and slippage', async () => {
+        const KyberZapService = await loadKyberZapService();
+        globalThis.fetch = vi.fn().mockResolvedValue(createJsonResponse({
+            payload: { data: { route: '0xout' } }
+        }));
+        const service = new KyberZapService();
+
+        const quote = await service.fetchOutQuote({
+            networkConfig: { CHAIN: 'bsc', DEX: 'DEX_UNISWAPV2' },
+            lpTokenAddress: '0xlp',
+            walletAddress: '0xwallet',
+            tokenOutAddress: '0xouttoken',
+            liquidityRaw: { toString: () => '500' },
+            slippageBps: 75,
+            platform: null
+        });
+
+        expect(quote.data.route).toBe('0xout');
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            'https://zap-api.kyberswap.com/bsc/api/v1/out/route?dexFrom=DEX_UNISWAPV2&poolFrom.id=0xlp&positionFrom.id=0xwallet&liquidityOut=500&tokenOut=0xouttoken&slippage=75',
+            expect.objectContaining({
+                headers: expect.objectContaining({
+                    accept: 'application/json',
+                    'x-client-id': 'liberdus-lp-staking'
+                })
+            })
+        );
+    });
+
+    it('tries fallback DEX candidates for Kyber zap-out quotes', async () => {
+        const KyberZapService = await loadKyberZapService();
+        globalThis.fetch = vi.fn()
+            .mockResolvedValueOnce(createJsonResponse({
+                ok: false,
+                status: 400,
+                payload: { message: 'Pool does not belong to given dex id' }
+            }))
+            .mockResolvedValueOnce(createJsonResponse({
+                payload: { data: { route: '0xout' } }
+            }));
+        const service = new KyberZapService();
+
+        const quote = await service.fetchOutQuote({
+            networkConfig: {
+                CHAIN: 'bsc',
+                DEX: 'DEX_UNISWAPV2',
+                DEX_CANDIDATES: ['DEX_PANCAKESWAPV2']
+            },
+            lpTokenAddress: '0xlp',
+            walletAddress: '0xwallet',
+            tokenOutAddress: '0xouttoken',
+            liquidityRaw: { toString: () => '500' },
+            slippageBps: 75,
+            platform: null
+        });
+
+        expect(quote.data.route).toBe('0xout');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(globalThis.fetch.mock.calls[0][0]).toContain('dexFrom=DEX_UNISWAPV2');
+        expect(globalThis.fetch.mock.calls[1][0]).toContain('dexFrom=DEX_PANCAKESWAPV2');
+    });
+
+    it('builds Kyber zap-out routes through the out build endpoint', async () => {
+        const KyberZapService = await loadKyberZapService();
+        globalThis.fetch = vi.fn().mockResolvedValue(createJsonResponse({
+            payload: { data: { txData: '0xabcdef' } }
+        }));
+        const service = new KyberZapService();
+
+        const build = await service.buildOutRoute({
+            networkConfig: { CHAIN: 'bsc' },
+            route: '0xout',
+            sender: '0xsender',
+            recipient: '0xrecipient',
+            deadline: 1777306663
+        });
+
+        expect(build.txData).toBe('0xabcdef');
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            'https://zap-api.kyberswap.com/bsc/api/v1/out/route/build',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({
+                    sender: '0xsender',
+                    recipient: '0xrecipient',
+                    route: '0xout',
+                    deadline: 1777306663,
+                    source: 'liberdus-lp-staking'
+                })
+            })
+        );
+    });
+
     it('fetches and caches GeckoTerminal token market metadata', async () => {
         const KyberZapService = await loadKyberZapService();
         globalThis.fetch = vi.fn().mockResolvedValue(createJsonResponse({

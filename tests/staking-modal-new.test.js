@@ -123,6 +123,8 @@ async function loadStakingModalClass() {
             from: vi.fn(value => ({ value, toString: () => String(value) }))
         },
         utils: {
+            isAddress: vi.fn(value => /^0x[a-fA-F0-9]{40}$/.test(String(value))),
+            getAddress: vi.fn(value => String(value)),
             parseUnits: vi.fn(value => ({
                 value,
                 gte: other => Number(value) >= Number(other?.value ?? other),
@@ -231,7 +233,13 @@ function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
 function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp', address: '0xlp' };
     modal.removeLiquidityAmount = '1';
-    modal.convertLibToUsdtEnabled = convert;
+    modal.removeLiquidityZapOutEnabled = convert;
+    modal.removeLiquidityOutputTokens = [
+        { address: LIB_TOKEN_ADDRESS, symbol: 'LIB', name: 'Liberdus', decimals: 18 },
+        { address: USDT_TOKEN_ADDRESS, symbol: 'USDT', name: 'Tether USD', decimals: 18 }
+    ];
+    modal.removeLiquidityOutputTokenAddress = USDT_TOKEN_ADDRESS;
+    modal.removeLiquiditySelectedOutputToken = modal.removeLiquidityOutputTokens[1];
     modal.removeLiquidityPreviewStatus = 'ready';
     modal.removeLiquidityPreview = {
         supported: true,
@@ -257,16 +265,21 @@ function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     };
 
     if (convert) {
-        modal.removeLiquidityPreview.conversion = {
+        modal.removeLiquidityPreview = {
             supported: true,
-            fromToken: modal.removeLiquidityPreview.token0,
-            toToken: modal.removeLiquidityPreview.token1,
-            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS],
-            amountIn: { raw: '100000000000000000000', formatted: '100' },
-            amountOut: { raw: '90000000000000000000', formatted: '90' },
-            minAmountOut: { raw: '89550000000000000000', formatted: '89.55' },
-            finalAmount: { raw: '140000000000000000000', formatted: '140' },
-            finalMinAmount: { raw: '139300000000000000000', formatted: '139.3' }
+            zapOut: true,
+            outputToken: modal.removeLiquiditySelectedOutputToken,
+            liquidityRaw: '1',
+            slippageBps: 50,
+            data: {
+                route: '0xout-route',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                zapDetails: {
+                    finalAmount: '140000000000000000000',
+                    finalAmountUsd: '140',
+                    priceImpact: 1
+                }
+            }
         };
     }
 }
@@ -335,6 +348,7 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.safeModalFetchZapQuote;
         delete globalThis.safeModalExecuteZap;
         delete globalThis.safeModalAddZapCustomToken;
+        delete globalThis.safeModalAddRemoveLiquidityCustomOutputToken;
         delete globalThis.safeModalFetchRemoveLiquidityPreview;
     });
 
@@ -1008,51 +1022,86 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
-        expect(html).toContain('Convert returned LIB to USDT after removing LP');
-        expect(html).toContain('LIB converts to USDT after LP removal');
-        expect(html).toContain('<dt>LP removal output</dt>');
-        expect(html).toContain('100 LIB + 50 USDT');
-        expect(html).toContain('<dt>LIB to convert</dt>');
-        expect(html).toContain('<dt>Estimated USDT from conversion</dt>');
-        expect(html).toContain('90 USDT');
-        expect(html).toContain('<dt>Estimated total USDT</dt>');
+        expect(html).toContain('Zap out to one token with Kyber');
+        expect(html).toContain('<label class="form-label">Output Token</label>');
+        expect(html).toContain('remove-liquidity-output-token-picker');
+        expect(html).toContain('remove-liquidity-output-token-option');
+        expect(html).toContain('Custom token');
+        expect(html).toContain('Kyber zap-out to USDT');
+        expect(html).toContain('<dt>Route</dt>');
+        expect(html).toContain('<dt>Kyber Router</dt>');
+        expect(html).toContain('<dt>LP amount</dt>');
+        expect(html).toContain('<dt>Output token</dt>');
+        expect(html).toContain('<dt>Estimated USDT</dt>');
         expect(html).toContain('140 USDT');
-        expect(html).toContain('<dt>Minimum total USDT</dt>');
-        expect(html).toContain('139.3 USDT');
+        expect(html).toContain('<dt>Estimated value</dt>');
+        expect(html).toContain('$140');
         expect(html).not.toContain('<dt>Estimated token0</dt>');
         expect(html).not.toContain('<dt>Minimum token0</dt>');
     });
 
-    it('matches remove-liquidity conversion tokens by configured address', async () => {
+    it('configured output token selection refreshes the zap-out quote', async () => {
+        vi.useFakeTimers();
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityZapOutEnabled = true;
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.contractManager = { provider: {} };
+        const fetchOutQuote = vi.fn().mockResolvedValue({
+            data: {
+                route: '0xroute',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05'
+            }
+        });
+        modal.getKyberZapService().fetchOutQuote = fetchOutQuote;
 
-        const conversion = modal.getRemoveLiquidityConversionTokens(modal.removeLiquidityPreview);
+        modal.setRemoveLiquidityOutputToken(LIB_TOKEN_ADDRESS);
+        await vi.runAllTimersAsync();
 
-        expect(conversion).toEqual(expect.objectContaining({
-            fromToken: expect.objectContaining({ address: LIB_TOKEN_ADDRESS }),
-            toToken: expect.objectContaining({ address: USDT_TOKEN_ADDRESS }),
-            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS]
+        expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({ address: LIB_TOKEN_ADDRESS }));
+        expect(fetchOutQuote).toHaveBeenCalledWith(expect.objectContaining({
+            lpTokenAddress: '0xlp',
+            walletAddress: '0xwallet',
+            tokenOutAddress: LIB_TOKEN_ADDRESS,
+            liquidityRaw: expect.objectContaining({ value: '1' }),
+            slippageBps: 50
         }));
     });
 
-    it('rejects spoofed LIB and USDT symbols for remove-liquidity conversion', async () => {
+    it('custom output token can be added and used for zap-out quote', async () => {
+        vi.useFakeTimers();
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
-        modal.removeLiquidityPreview.token0 = {
-            ...modal.removeLiquidityPreview.token0,
+        modal.removeLiquidityZapOutEnabled = true;
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityCustomOutputTokenAddress = '0x1111111111111111111111111111111111111111';
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        modal.getTokenMetadata = vi.fn().mockResolvedValue({ symbol: 'ABC', name: 'ABC Token', decimals: 18 });
+        modal.loadRemoveLiquidityCustomOutputTokenIcon = vi.fn().mockResolvedValue(false);
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.contractManager = { provider: {} };
+        const fetchOutQuote = vi.fn().mockResolvedValue({
+            data: {
+                route: '0xroute',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05'
+            }
+        });
+        modal.getKyberZapService().fetchOutQuote = fetchOutQuote;
+
+        await modal.addRemoveLiquidityCustomOutputToken();
+        await vi.runAllTimersAsync();
+
+        expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({
             address: '0x1111111111111111111111111111111111111111',
-            symbol: 'LIB'
-        };
-        modal.removeLiquidityPreview.token1 = {
-            ...modal.removeLiquidityPreview.token1,
-            address: '0x2222222222222222222222222222222222222222',
-            symbol: 'USDT'
-        };
-
-        const conversion = modal.getRemoveLiquidityConversionTokens(modal.removeLiquidityPreview);
-
-        expect(conversion).toBeNull();
+            symbol: 'ABC',
+            custom: true
+        }));
+        expect(fetchOutQuote).toHaveBeenCalledWith(expect.objectContaining({
+            tokenOutAddress: '0x1111111111111111111111111111111111111111'
+        }));
     });
 
     it('keeps guided remove-liquidity controls out of the Unstake tab', async () => {
@@ -1063,26 +1112,21 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderUnstakeTab();
 
         expect(html).not.toContain('id="remove-liquidity-checkbox"');
-        expect(html).not.toContain('Convert returned LIB to USDT after removing LP');
+        expect(html).not.toContain('Zap out to one token with Kyber');
         expect(html).not.toContain('remove-liquidity-preview-panel');
     });
 
-    it('shows a blocking unsupported message for unknown remove-liquidity factories', async () => {
+    it('shows a blocking zap-out quote error when Kyber cannot route the checked flow', async () => {
         const modal = await createLoadedModal();
-        modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
-        modal.removeLiquidityAmount = '1';
-        modal.convertLibToUsdtEnabled = true;
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
         modal.removeLiquidityPreviewStatus = 'error';
-        modal.removeLiquidityPreviewError = 'This LP factory is not supported for guided remove liquidity.';
-        modal.removeLiquidityPreview = {
-            supported: false,
-            factoryAddress: '0x9999999999999999999999999999999999999999'
-        };
+        modal.removeLiquidityPreviewError = 'Kyber could not build a zap-out route for this LP.';
+        modal.removeLiquidityPreview = null;
 
         const html = modal.renderRemoveLiquidityTab();
 
-        expect(html).toContain('This LP factory is not supported for guided remove liquidity.');
-        expect(html).toContain('Unsupported factory 0x9999...9999');
+        expect(html).toContain('Kyber could not build a zap-out route for this LP.');
+        expect(html).toContain('<dd>Unsupported</dd>');
     });
 
     it('enables the remove-liquidity action after a supported preview loads', async () => {
@@ -1108,7 +1152,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
         modal.removeLiquidityAmount = '1';
-        modal.convertLibToUsdtEnabled = false;
+        modal.removeLiquidityZapOutEnabled = false;
         modal.userBalanceRaw = { gte: vi.fn(() => true) };
         const removeButton = registerRemoveLiquidityButton('Confirm the remove-liquidity details first');
 
@@ -1123,7 +1167,7 @@ describe('StakingModalNew zap cleanup', () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
         const readyPreview = modal.removeLiquidityPreview;
-        modal.convertLibToUsdtEnabled = false;
+        modal.removeLiquidityZapOutEnabled = false;
         modal.removeLiquidityPreview = null;
         modal.removeLiquidityPreviewStatus = 'idle';
         modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
@@ -1237,117 +1281,85 @@ describe('StakingModalNew zap cleanup', () => {
         expect(globalThis.notificationManager.success).toHaveBeenCalledWith('Liquidity removed successfully!');
     });
 
-    it('converts returned LIB to USDT when selected', async () => {
+    it('checked execute builds Kyber out route, approves LP to Kyber, and sends one zapOutLP transaction', async () => {
+        vi.useFakeTimers();
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
         const liquidityRaw = createAmount(5);
-        const service = {
-            validateRouterFactory: vi.fn().mockResolvedValue(true),
-            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
-            getAllowance: vi.fn().mockResolvedValue(createAmount(10)),
-            getTokenBalance: vi.fn()
-                .mockResolvedValueOnce(createAmount(2))
-                .mockResolvedValueOnce(createAmount(102)),
-            getTokenAllowance: vi.fn().mockResolvedValue(createAmount(0)),
-            approveTokenIfNeeded: vi.fn().mockResolvedValue({ hash: '0xapprove-lib' }),
-            getSwapQuote: vi.fn().mockResolvedValue({
-                amountIn: createAmount(100),
-                amountOut: createAmount(90),
-                path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS]
-            }),
-            calculateMinAmount: vi.fn().mockReturnValue(createAmount(89)),
-            approveIfNeeded: vi.fn(),
-            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' }),
-            swapExactTokensForTokens: vi.fn().mockResolvedValue({ hash: '0xswap' })
-        };
-        modal.removeLiquidityService = service;
-        globalThis.contractManager = {
-            provider: {},
-            ensureSigner: vi.fn().mockResolvedValue(undefined),
-            signer: {
-                provider: {},
-                getAddress: vi.fn().mockResolvedValue('0xuser')
-            },
-            executeTransactionOnce: vi.fn(async (operation) => {
-                const tx = await operation();
-                return { success: true, hash: tx.hash };
-            })
-        };
-        globalThis.walletManager = { provider: {} };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
-
-        await modal.executeRemoveLiquidityTransaction('0xlp', liquidityRaw);
-
-        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(1, expect.any(Function), 'removeLiquidity');
-        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(2, expect.any(Function), 'approveRemoveLiquidityConversion');
-        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(3, expect.any(Function), 'convertRemoveLiquidityToken');
-        expect(service.approveTokenIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
-            tokenAddress: LIB_TOKEN_ADDRESS,
-            spender: '0xrouter',
-            amountRaw: expect.objectContaining({ value: 100 })
-        }));
-        expect(service.swapExactTokensForTokens).toHaveBeenCalledWith(expect.objectContaining({
-            routerAddress: '0xrouter',
-            amountIn: expect.objectContaining({ value: 100 }),
-            amountOutMin: expect.objectContaining({ value: 89 }),
-            path: [LIB_TOKEN_ADDRESS, USDT_TOKEN_ADDRESS],
-            recipient: '0xuser'
-        }));
-    });
-
-    it('marks post-remove balance read failures as partial success', async () => {
-        const modal = await createLoadedModal();
-        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
-        const liquidityRaw = createAmount(5);
-        const service = {
-            validateRouterFactory: vi.fn().mockResolvedValue(true),
-            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
-            getAllowance: vi.fn().mockResolvedValue(createAmount(10)),
-            getTokenBalance: vi.fn()
-                .mockResolvedValueOnce(createAmount(2))
-                .mockRejectedValueOnce(new Error('Balance read failed')),
-            approveIfNeeded: vi.fn(),
-            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
-        };
-        modal.removeLiquidityService = service;
-        globalThis.contractManager = {
-            provider: {},
-            ensureSigner: vi.fn().mockResolvedValue(undefined),
-            signer: {
-                provider: {},
-                getAddress: vi.fn().mockResolvedValue('0xuser')
-            },
-            executeTransactionOnce: vi.fn(async (operation) => {
-                const tx = await operation();
-                return { success: true, hash: tx.hash };
-            })
-        };
-        globalThis.walletManager = { provider: {} };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
-
-        await expect(modal.executeRemoveLiquidityTransaction('0xlp', liquidityRaw))
-            .rejects.toMatchObject({
-                message: 'Balance read failed',
-                removeLiquidityCompleted: true
-            });
-    });
-
-    it('shows partial-success copy when conversion fails after liquidity was removed', async () => {
-        const modal = await createLoadedModal();
-        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
-        const failure = new Error('Swap reverted');
-        failure.removeLiquidityCompleted = true;
-        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
-        modal.executeRemoveLiquidityTransaction = vi.fn().mockRejectedValue(failure);
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => liquidityRaw);
         modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        const routerAddress = '0x0e97C887b61cCd952a53578B04763E7134429e05';
+        const buildOutRoute = vi.fn().mockResolvedValue({ txData: '0xzapdata', to: routerAddress, value: '0' });
+        const validateRouterAddress = vi.fn();
+        modal.getKyberZapService().buildOutRoute = buildOutRoute;
+        modal.getKyberZapService().validateRouterAddress = validateRouterAddress;
+        const approve = vi.fn().mockResolvedValue({ hash: '0xapprove-lp' });
+        const allowance = vi.fn().mockResolvedValue(createAmount(0));
+        const sendTransaction = vi.fn().mockResolvedValue({ hash: '0xzap' });
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                provider: {},
+                getAddress: vi.fn().mockResolvedValue('0xwallet'),
+                sendTransaction
+            },
+            executeTransactionOnce: vi.fn(async (operation) => {
+                const tx = await operation();
+                return { success: true, hash: tx.hash };
+            })
+        };
+        globalThis.ethers.Contract = vi.fn(function(address, abi, runner) {
+            return (
+            runner === globalThis.contractManager.signer
+                ? { approve }
+                : { allowance }
+            );
+        });
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeRemoveLiquidity();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(buildOutRoute).toHaveBeenCalledWith(expect.objectContaining({
+            route: '0xout-route',
+            sender: '0xwallet',
+            recipient: '0xwallet'
+        }));
+        expect(validateRouterAddress).toHaveBeenCalledWith(routerAddress, expect.any(Object));
+        expect(allowance).toHaveBeenCalledWith('0xwallet', routerAddress);
+        expect(approve).toHaveBeenCalledWith(routerAddress, liquidityRaw);
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(1, expect.any(Function), 'approveRemoveLiquidityZapOut');
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenNthCalledWith(2, expect.any(Function), 'zapOutLP');
+        expect(sendTransaction).toHaveBeenCalledWith(expect.objectContaining({
+            to: routerAddress,
+            data: '0xzapdata'
+        }));
+        expect(globalThis.notificationManager.success).toHaveBeenCalledWith('LP tokens zapped out successfully!');
+    });
+
+    it('unchecked execute still calls direct removeLiquidity and skips Kyber zap-out endpoints', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
+        modal.executeRemoveLiquidityTransaction = vi.fn().mockResolvedValue({ success: true, hash: '0xremove' });
+        modal.executeRemoveLiquidityZapOutTransaction = vi.fn();
+        modal.getKyberZapService().fetchOutQuote = vi.fn();
+        modal.getKyberZapService().buildOutRoute = vi.fn();
+        modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
         globalThis.contractManager = {
             isReady: vi.fn(() => true)
         };
@@ -1356,14 +1368,97 @@ describe('StakingModalNew zap cleanup', () => {
             success: vi.fn(),
             error: vi.fn()
         };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeRemoveLiquidity();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(modal.executeRemoveLiquidityTransaction).toHaveBeenCalledWith('0xlp', expect.objectContaining({ value: 1 }));
+        expect(modal.executeRemoveLiquidityZapOutTransaction).not.toHaveBeenCalled();
+        expect(modal.getKyberZapService().fetchOutQuote).not.toHaveBeenCalled();
+        expect(modal.getKyberZapService().buildOutRoute).not.toHaveBeenCalled();
+    });
+
+    it('router mismatch blocks checked zap-out before LP approval or transaction send', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.getKyberZapService().buildOutRoute = vi.fn().mockResolvedValue({
+            txData: '0xzapdata',
+            to: '0x1111111111111111111111111111111111111111'
+        });
+        const sendTransaction = vi.fn();
+        globalThis.ethers.Contract = vi.fn();
+        globalThis.contractManager = {
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                getAddress: vi.fn().mockResolvedValue('0xwallet'),
+                sendTransaction
+            },
+            executeTransactionOnce: vi.fn()
+        };
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+
+        await expect(modal.executeRemoveLiquidityZapOutTransaction('0xlp', createAmount(5)))
+            .rejects.toThrow('Kyber returned an unexpected zap router');
+
+        expect(globalThis.ethers.Contract).not.toHaveBeenCalled();
+        expect(globalThis.contractManager.executeTransactionOnce).not.toHaveBeenCalled();
+        expect(sendTransaction).not.toHaveBeenCalled();
+    });
+
+    it('quote failures show errors and leave remove-liquidity inputs intact', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityZapOutEnabled = true;
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.removeLiquidityAmount = '2';
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.contractManager = { provider: {} };
+        modal.getKyberZapService().fetchOutQuote = vi.fn().mockRejectedValue(new Error('Kyber quote failed'));
+
+        await modal.fetchRemoveLiquidityPreview({ force: true });
+
+        expect(modal.removeLiquidityPreviewStatus).toBe('error');
+        expect(modal.removeLiquidityPreviewError).toBe('Kyber quote failed');
+        expect(modal.removeLiquidityAmount).toBe('2');
+        expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({ address: USDT_TOKEN_ADDRESS }));
+    });
+
+    it('build failures show errors and leave checked zap-out inputs intact', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.getRemoveLiquidityAmountRaw = vi.fn(() => createAmount(1));
+        modal.loadUserBalances = vi.fn().mockResolvedValue(undefined);
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        modal.getKyberZapService().buildOutRoute = vi.fn().mockRejectedValue(new Error('Kyber build failed'));
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                getAddress: vi.fn().mockResolvedValue('0xwallet'),
+                sendTransaction: vi.fn()
+            }
+        };
+        globalThis.walletManager = { address: '0xwallet', provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
 
         await modal.executeRemoveLiquidity();
 
-        expect(globalThis.notificationManager.error).toHaveBeenCalledWith(
-            expect.stringContaining('Liquidity was removed, but LIB conversion failed. Your returned tokens remain in your wallet.'),
-            { title: 'Conversion failed' }
-        );
-        expect(globalThis.notificationManager.error.mock.calls[0][0]).toContain('Details: Swap reverted');
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Kyber build failed', { title: undefined });
+        expect(modal.removeLiquidityAmount).toBe('1');
+        expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({ address: USDT_TOKEN_ADDRESS }));
+        expect(modal.clearInputs).not.toHaveBeenCalled();
+        expect(modal.close).not.toHaveBeenCalled();
     });
 
     it('approves the router when needed before removing liquidity', async () => {
