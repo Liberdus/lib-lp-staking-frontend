@@ -3356,7 +3356,7 @@ class StakingModalNew {
                             title="Maximum output movement allowed before the transaction reverts."
                         >Max slippage:</span>
                         <strong>${slippageDisplay}</strong>
-                        <span class="material-icons" aria-hidden="true">${this.removeLiquiditySettingsOpen ? 'expand_less' : 'expand_more'}</span>
+                        <span class="material-icons" aria-hidden="true">settings</span>
                     </button>
                 </div>
                 ${settingsPanel}
@@ -3811,7 +3811,10 @@ class StakingModalNew {
     }
 
     renderZapQuoteRow(label, value, riskClass = '', title = '') {
-        const titleAttribute = title ? ` title="${this.escapeHtml(title)}"` : '';
+        const escapedTitle = this.escapeHtml(title);
+        const titleAttribute = title
+            ? ` title="${escapedTitle}" data-tooltip="${escapedTitle}" tabindex="0" role="button" aria-label="${this.escapeHtml(`${label}: ${title}`)}"`
+            : '';
         return `
                     <div class="zap-quote-row${riskClass ? ` ${riskClass}` : ''}">
                         <dt${titleAttribute}>${this.escapeHtml(label)}</dt>
