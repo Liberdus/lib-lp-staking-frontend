@@ -1143,6 +1143,54 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('Price impact');
     });
 
+    it('renders Kyber Zap Fee when checked remove-liquidity route returns a protocol fee', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const daiToken = {
+            address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
+            symbol: 'DAI',
+            name: 'Dai Token',
+            decimals: 18
+        };
+        modal.removeLiquidityOutputTokens = [daiToken];
+        modal.removeLiquidityOutputTokenAddress = daiToken.address;
+        modal.removeLiquiditySelectedOutputToken = daiToken;
+        modal.removeLiquidityPreview = {
+            supported: true,
+            zapOut: true,
+            outputToken: daiToken,
+            data: {
+                route: '0xout-route',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                zapDetails: {
+                    finalAmount: '394877000000000000',
+                    protocolFee: {
+                        tokens: [{
+                            address: daiToken.address,
+                            amount: '2500000000000000',
+                            symbol: 'DAI',
+                            decimals: 18
+                        }]
+                    }
+                }
+            }
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('Kyber Zap Fee');
+        expect(html).toContain('0.0025 DAI');
+    });
+
+    it('does not render Kyber Zap Fee for unchecked remove liquidity', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: false });
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).not.toContain('Kyber Zap Fee');
+    });
+
     it('does not double-count repeated Kyber action amounts for checked zap-out output', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
