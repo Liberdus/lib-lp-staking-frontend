@@ -1069,7 +1069,6 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderRemoveLiquidityTab();
 
         expect(html).toContain('aria-expanded="true"');
-        expect(html).toContain('0.05%');
         expect(html).toContain('0.1%');
         expect(html).toContain('0.5%');
         expect(html).toContain('1.0%');
@@ -1180,6 +1179,56 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('Kyber Zap Fee');
         expect(html).toContain('0.0025 DAI');
+    });
+
+    it('renders every Kyber zap-out protocol fee token returned by the route', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        const wbnbToken = {
+            address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+            symbol: 'WBNB',
+            name: 'Wrapped BNB',
+            decimals: 18
+        };
+        modal.removeLiquidityOutputTokens = [
+            { address: USDT_TOKEN_ADDRESS, symbol: 'USDT', name: 'Tether USD', decimals: 18 },
+            { address: LIB_TOKEN_ADDRESS, symbol: 'LIB', name: 'Liberdus', decimals: 18 },
+            wbnbToken
+        ];
+        modal.removeLiquidityOutputTokenAddress = wbnbToken.address;
+        modal.removeLiquiditySelectedOutputToken = wbnbToken;
+        modal.removeLiquidityPreview = {
+            supported: true,
+            zapOut: true,
+            outputToken: wbnbToken,
+            data: {
+                route: '0xout-route',
+                routerAddress: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                zapDetails: {
+                    finalAmount: '294841419648257',
+                    actions: [{
+                        type: 'ACTION_TYPE_PROTOCOL_FEE',
+                        protocolFee: {
+                            tokens: [
+                                {
+                                    address: USDT_TOKEN_ADDRESS,
+                                    amount: '248488902181974'
+                                },
+                                {
+                                    address: LIB_TOKEN_ADDRESS,
+                                    amount: '25305065600541886'
+                                }
+                            ]
+                        }
+                    }]
+                }
+            }
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('Kyber Zap Fee');
+        expect(html).toContain('0.000248 USDT + 0.025305 LIB');
     });
 
     it('does not render Kyber Zap Fee for unchecked remove liquidity', async () => {

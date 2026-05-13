@@ -1050,9 +1050,16 @@
         grid-template-columns: 1fr;
     }
 
-    .remove-liquidity-settings-panel,
-    .remove-liquidity-slippage-row {
+    .remove-liquidity-settings-panel {
         grid-template-columns: 1fr;
+    }
+
+    .remove-liquidity-slippage-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .remove-liquidity-custom-slippage {
+        grid-column: 1 / -1;
     }
 
     .remove-liquidity-deadline-row {

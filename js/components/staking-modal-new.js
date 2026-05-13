@@ -1069,6 +1069,12 @@ class StakingModalNew {
                     slippageBps: this.removeLiquiditySlippageBps,
                     platform: this.currentPair?.platform
                 });
+                this.logRemoveLiquidityZapOutFeeDebug({
+                    payload,
+                    outputToken,
+                    tokenOutAddress,
+                    liquidityRaw
+                });
 
                 preview = {
                     ...payload,
@@ -1976,6 +1982,22 @@ class StakingModalNew {
         return this.formatZapDisplayAmount(value, decimals, symbol);
     }
 
+    formatZapFeeDetailsDisplay(feeDetails) {
+        const details = Array.isArray(feeDetails) ? feeDetails : (feeDetails ? [feeDetails] : []);
+        if (!details.length) {
+            return 'N/A';
+        }
+
+        const nonZeroDetails = details.filter(detail => !this.isZeroZapAmount(detail?.amount));
+        if (!nonZeroDetails.length) {
+            return 'None';
+        }
+
+        return nonZeroDetails
+            .map(detail => this.formatZapFeeDisplay(detail.amount, detail.decimals, detail.symbol))
+            .join(' + ');
+    }
+
     getZapTokenByAddress(address) {
         if (!address) {
             return null;
@@ -1992,7 +2014,7 @@ class StakingModalNew {
         }) || null;
     }
 
-    getKyberProtocolFeeDetails(data, fallbackToken = null, tokenResolver = () => null) {
+    getKyberProtocolFeeDetailsList(data, fallbackToken = null, tokenResolver = () => null) {
         const protocolFeeSources = [];
         const addProtocolFeeSource = (source) => {
             if (source && typeof source === 'object') {
@@ -2010,39 +2032,55 @@ class StakingModalNew {
         }
 
         for (const source of protocolFeeSources) {
-            const tokenFee = Array.isArray(source?.tokens)
-                ? (source.tokens.find(token => !this.isZeroZapAmount(token?.amount)) || source.tokens[0])
-                : null;
-            const amount = tokenFee?.amount ?? source?.amount ?? null;
+            if (Array.isArray(source?.tokens) && source.tokens.length) {
+                const tokenDetails = source.tokens
+                    .filter(token => token?.amount !== null && token?.amount !== undefined)
+                    .map(token => {
+                        const knownToken = tokenResolver(token?.address);
+                        return {
+                            amount: token.amount,
+                            symbol: token?.symbol || knownToken?.symbol || this.formatAddress(token?.address) || '',
+                            decimals: Number(token?.decimals ?? knownToken?.decimals ?? 18) || 18
+                        };
+                    });
 
-            if (amount !== null && amount !== undefined) {
-                const knownToken = tokenResolver(tokenFee?.address);
-                return {
-                    amount,
-                    symbol: tokenFee?.symbol || knownToken?.symbol || fallbackToken?.symbol || '',
-                    decimals: Number(tokenFee?.decimals ?? knownToken?.decimals ?? fallbackToken?.decimals ?? 18) || 18
-                };
+                if (tokenDetails.length) {
+                    return tokenDetails;
+                }
+            }
+
+            if (source?.amount !== null && source?.amount !== undefined) {
+                return [{
+                    amount: source.amount,
+                    symbol: fallbackToken?.symbol || '',
+                    decimals: fallbackToken?.decimals ?? 18
+                }];
             }
         }
 
         const fallbackAmount = this.getRouteSummaryEntry(data, ['zapDetails.feeAmount', 'fee'], null).value;
         if (fallbackAmount !== null && fallbackAmount !== undefined) {
-            return {
+            return [{
                 amount: fallbackAmount,
                 symbol: fallbackToken?.symbol || '',
                 decimals: fallbackToken?.decimals ?? 18
-            };
+            }];
         }
 
         if (data?.protocolFee !== null && data?.protocolFee !== undefined && typeof data.protocolFee !== 'object') {
-            return {
+            return [{
                 amount: data.protocolFee,
                 symbol: fallbackToken?.symbol || '',
                 decimals: fallbackToken?.decimals ?? 18
-            };
+            }];
         }
 
         return null;
+    }
+
+    getKyberProtocolFeeDetails(data, fallbackToken = null, tokenResolver = () => null) {
+        const feeDetails = this.getKyberProtocolFeeDetailsList(data, fallbackToken, tokenResolver);
+        return Array.isArray(feeDetails) ? feeDetails[0] || null : feeDetails;
     }
 
     getZapProtocolFeeDetails(data = this.getZapRouteData()) {
@@ -2054,11 +2092,105 @@ class StakingModalNew {
     }
 
     getRemoveLiquidityProtocolFeeDetails(data = this.getRemoveLiquidityRouteData()) {
-        return this.getKyberProtocolFeeDetails(
+        return this.getKyberProtocolFeeDetailsList(
             data,
             this.removeLiquiditySelectedOutputToken,
             address => this.getRemoveLiquidityOutputTokenByAddress(address)
         );
+    }
+
+    getKyberProtocolFeeSources(data) {
+        const protocolFeeSources = [];
+        const addProtocolFeeSource = (path, source) => {
+            if (source && typeof source === 'object') {
+                protocolFeeSources.push({ path, source });
+            }
+        };
+
+        addProtocolFeeSource('zapDetails.protocolFee', data?.zapDetails?.protocolFee);
+        addProtocolFeeSource('protocolFee', data?.protocolFee);
+
+        if (Array.isArray(data?.zapDetails?.actions)) {
+            data.zapDetails.actions.forEach((action, index) => {
+                addProtocolFeeSource(`zapDetails.actions[${index}].protocolFee`, action?.protocolFee);
+            });
+        }
+
+        return protocolFeeSources;
+    }
+
+    getKyberZapActionDebugSummary(data) {
+        const actions = Array.isArray(data?.zapDetails?.actions) ? data.zapDetails.actions : [];
+        const summarizeToken = token => token ? {
+            address: token.address ?? null,
+            symbol: token.symbol ?? null,
+            decimals: token.decimals ?? null,
+            amount: token.amount ?? null,
+            amountUsd: token.amountUsd ?? token.amount_usd ?? null
+        } : null;
+        const summarizeTokens = tokens => Array.isArray(tokens)
+            ? tokens.map(summarizeToken).filter(Boolean)
+            : [];
+        const summarizeSwap = swap => ({
+            tokenIn: summarizeToken(swap?.tokenIn),
+            tokenOut: summarizeToken(swap?.tokenOut)
+        });
+
+        return actions.map((action, index) => ({
+            index,
+            type: action?.type ?? null,
+            keys: action && typeof action === 'object' ? Object.keys(action) : [],
+            removeLiquidityTokens: summarizeTokens(action?.removeLiquidity?.tokens),
+            removeLiquidityToken0: summarizeToken(action?.removeLiquidity?.token0),
+            removeLiquidityToken1: summarizeToken(action?.removeLiquidity?.token1),
+            protocolFeeTokens: summarizeTokens(action?.protocolFee?.tokens),
+            aggregatorSwaps: Array.isArray(action?.aggregatorSwap?.swaps)
+                ? action.aggregatorSwap.swaps.map(summarizeSwap)
+                : [],
+            poolSwaps: Array.isArray(action?.poolSwap?.swaps)
+                ? action.poolSwap.swaps.map(summarizeSwap)
+                : [],
+            refundTokens: summarizeTokens(action?.refund?.tokens)
+        }));
+    }
+
+    logRemoveLiquidityZapOutFeeDebug({ payload, outputToken, tokenOutAddress, liquidityRaw }) {
+        const data = this.getKyberZapService().getRouteData(payload);
+        const feeSources = this.getKyberProtocolFeeSources(data);
+        const protocolFeeTokenRows = feeSources.flatMap(({ path, source }) => (
+            Array.isArray(source?.tokens)
+                ? source.tokens.map(token => ({
+                    path,
+                    address: token?.address ?? null,
+                    symbol: token?.symbol ?? null,
+                    decimals: token?.decimals ?? null,
+                    amount: token?.amount ?? null,
+                    amountUsd: token?.amountUsd ?? token?.amount_usd ?? null
+                }))
+                : [{
+                    path,
+                    address: null,
+                    symbol: null,
+                    decimals: null,
+                    amount: source?.amount ?? null,
+                    amountUsd: null
+                }]
+        ));
+
+        console.info('[Kyber zap-out fee debug]', {
+            selectedOutputToken: outputToken ? {
+                address: outputToken.address,
+                symbol: outputToken.symbol,
+                decimals: outputToken.decimals
+            } : null,
+            tokenOutAddress,
+            liquidityRaw: liquidityRaw?.toString?.() || String(liquidityRaw || ''),
+            displayedFeeDetails: this.getRemoveLiquidityProtocolFeeDetails(data),
+            protocolFeeTokenRows,
+            actionSummary: this.getKyberZapActionDebugSummary(data),
+            routeKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+            zapDetailsKeys: data?.zapDetails && typeof data.zapDetails === 'object' ? Object.keys(data.zapDetails) : []
+        });
     }
 
     formatZapBalanceDisplay(balance, token) {
@@ -3302,7 +3434,7 @@ class StakingModalNew {
     }
 
     renderRemoveLiquidityControls() {
-        const slippageOptions = [5, 10, 50, 100];
+        const slippageOptions = [10, 50, 100];
         const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
         const settingsPanel = this.removeLiquiditySettingsOpen ? `
                 <div class="remove-liquidity-settings-panel">
@@ -3517,8 +3649,7 @@ class StakingModalNew {
                     ? pendingValue
                     : this.formatRemoveLiquidityMinOutputAmount(outputEntry.value, outputToken, pendingValue);
                 priceImpactDisplay = priceImpactEntry.value === pendingValue ? pendingValue : this.formatZapPercent(priceImpactEntry);
-                const feeDetails = this.getRemoveLiquidityProtocolFeeDetails(data);
-                feeDisplay = feeDetails ? this.formatZapFeeDisplay(feeDetails.amount, feeDetails.decimals, feeDetails.symbol) : 'N/A';
+                feeDisplay = this.formatZapFeeDetailsDisplay(this.getRemoveLiquidityProtocolFeeDetails(data));
                 summary = `Kyber zap-out to ${outputSymbol}`;
             }
 
@@ -3916,7 +4047,7 @@ class StakingModalNew {
                 ? lpAmountDisplay
                 : `${lpAmountDisplay} (${lpUsdEstimate})`;
             const feeDetails = this.getZapProtocolFeeDetails(data);
-            feeDisplay = feeDetails ? this.formatZapFeeDisplay(feeDetails.amount, feeDetails.decimals, feeDetails.symbol) : 'N/A';
+            feeDisplay = this.formatZapFeeDetailsDisplay(feeDetails);
             const priceImpact = this.getZapQuoteSummaryEntry([
                 'zapDetails.priceImpact',
                 'zapDetails.priceImpactPcm',
@@ -4036,6 +4167,7 @@ class StakingModalNew {
             this.updateSlider('remove-liquidity');
 
             this.updateRemoveLiquidityUsdEstimate();
+            this.updateRemoveLiquidityBalanceError();
             this.resetRemoveLiquidityPreview();
             this.debounceRemoveLiquidityPreview();
             this.updateButtonStates();
@@ -4097,6 +4229,7 @@ class StakingModalNew {
             const input = document.getElementById('remove-liquidity-amount-input');
             if (input) input.value = amount;
             this.updateRemoveLiquidityUsdEstimate();
+            this.updateRemoveLiquidityBalanceError();
             this.resetRemoveLiquidityPreview();
             this.debounceRemoveLiquidityPreview();
             this.updateButtonStates();
