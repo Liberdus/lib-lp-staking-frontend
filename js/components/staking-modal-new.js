@@ -933,7 +933,7 @@ class StakingModalNew {
     setRemoveLiquidityDeadlineInput(value) {
         const digitsOnly = String(value ?? '').replace(/[^0-9]/g, '');
         if (!digitsOnly) {
-            this.removeLiquidityDeadlineMinutes = 1;
+            this.removeLiquidityDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
             this.updateRemoveLiquidityPreviewPanel();
             return '';
         }

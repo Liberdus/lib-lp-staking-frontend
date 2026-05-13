@@ -1455,6 +1455,18 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledTimes(1);
     });
 
+    it('keeps the configured remove-liquidity deadline when the input is cleared', async () => {
+        const modal = await createLoadedModal();
+        modal.removeLiquidityDeadlineMinutes = 45;
+        modal.updateRemoveLiquidityPreviewPanel = vi.fn();
+
+        const sanitizedValue = modal.setRemoveLiquidityDeadlineInput('');
+
+        expect(sanitizedValue).toBe('');
+        expect(modal.removeLiquidityDeadlineMinutes).toBe(20);
+        expect(modal.updateRemoveLiquidityPreviewPanel).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps executeUnstake focused on unstaking only', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
