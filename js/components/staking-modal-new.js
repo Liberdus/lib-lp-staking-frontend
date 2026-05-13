@@ -3268,8 +3268,11 @@ class StakingModalNew {
         }
 
         try {
-            const slippageBps = BigInt(Math.trunc(Number(this.removeLiquiditySlippageBps) || 0));
-            const minAmount = (BigInt(valueText) * (10000n - slippageBps)) / 10000n;
+            const service = this.getRemoveLiquidityService();
+            const minAmount = service.calculateMinAmount(
+                service.toBigNumber(valueText),
+                this.removeLiquiditySlippageBps
+            );
             return this.formatZapDisplayAmount(minAmount.toString(), token.decimals ?? 18, token.symbol || '');
         } catch (error) {
             return fallback;

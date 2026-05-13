@@ -116,7 +116,7 @@ async function loadStakingModalClass() {
     };
     globalThis.ethers = {
         BigNumber: {
-            from: vi.fn(value => ({ value, toString: () => String(value) }))
+            from: vi.fn(value => createAmount(value))
         },
         utils: {
             isAddress: vi.fn(value => /^0x[a-fA-F0-9]{40}$/.test(String(value))),
@@ -229,6 +229,8 @@ function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
 function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp', address: '0xlp' };
     modal.removeLiquidityAmount = '1';
+    modal.userBalance = '10';
+    modal.userBalanceRaw = createAmount(10);
     modal.removeLiquidityZapOutEnabled = convert;
     modal.removeLiquidityOutputTokens = [
         { address: LIB_TOKEN_ADDRESS, symbol: 'LIB', name: 'Liberdus', decimals: 18 },
@@ -297,6 +299,8 @@ function registerRemoveLiquidityButton(title = 'Wait for a supported remove-liqu
 function createAmount(value) {
     return {
         value,
+        mul: other => createAmount(Number(value) * Number(other?.value ?? other)),
+        div: other => createAmount(Number(value) / Number(other?.value ?? other)),
         lt: other => Number(value) < Number(other?.value ?? other),
         lte: other => Number(value) <= Number(other?.value ?? other),
         gte: other => Number(value) >= Number(other?.value ?? other),
