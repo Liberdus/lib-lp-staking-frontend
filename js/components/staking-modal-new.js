@@ -375,6 +375,7 @@ class StakingModalNew {
                 this.removeLiquidityAmount = sanitizedValue;
                 this.updateSlider('remove-liquidity');
                 this.updateRemoveLiquidityUsdEstimate();
+                this.updateRemoveLiquidityBalanceError();
                 this.resetRemoveLiquidityPreview();
                 this.debounceRemoveLiquidityPreview();
             }
@@ -818,8 +819,8 @@ class StakingModalNew {
 
     getRemoveLiquidityPreviewErrorMessage(error) {
         const message = error?.message || String(error || '');
-        if (/remove liquidity\s*=\s*\d+\s*>\s*position liquidity\s*=\s*0/i.test(message)) {
-            return 'Refresh your balance or try a smaller amount.';
+        if (/remove liquidity\s*=\s*\d+\s*>\s*position liquidity\s*=\s*\d+/i.test(message)) {
+            return 'Amount exceeds your available LP balance.';
         }
 
         return message || 'Unable to preview remove liquidity.';
@@ -831,6 +832,37 @@ class StakingModalNew {
         }
 
         return window.ethers.utils.parseUnits(this.removeLiquidityAmount.toString(), this.userBalanceDecimals);
+    }
+
+    getRemoveLiquidityBalanceError() {
+        if (!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) <= 0) {
+            return '';
+        }
+
+        try {
+            const liquidityRaw = this.getRemoveLiquidityAmountRaw();
+            const balanceRaw = this.userBalanceRaw || window.ethers?.BigNumber?.from?.(0);
+            if (liquidityRaw && balanceRaw?.gte && !balanceRaw.gte(liquidityRaw)) {
+                return `Amount exceeds available LP balance (${this.userBalance || '0'} LP).`;
+            }
+        } catch (error) {
+            const amount = parseFloat(this.removeLiquidityAmount);
+            const balance = parseFloat(this.userBalance);
+            if (Number.isFinite(amount) && Number.isFinite(balance) && amount > balance) {
+                return `Amount exceeds available LP balance (${this.userBalance || '0'} LP).`;
+            }
+        }
+
+        return '';
+    }
+
+    updateRemoveLiquidityBalanceError() {
+        const errorElement = document.getElementById('remove-liquidity-balance-error');
+        if (!errorElement) return;
+
+        const balanceError = this.getRemoveLiquidityBalanceError();
+        errorElement.textContent = balanceError;
+        errorElement.hidden = !balanceError;
     }
 
     getRemoveLiquidityCustomSlippageError(value = this.removeLiquidityCustomSlippage) {
@@ -920,13 +952,13 @@ class StakingModalNew {
         return !!this.currentPair
             && !!this.removeLiquidityAmount
             && parseFloat(this.removeLiquidityAmount) > 0
+            && !this.getRemoveLiquidityBalanceError()
             && !this.hasInvalidRemoveLiquidityCustomSlippage();
     }
 
     canFetchRemoveLiquidityPreview() {
-        return this.removeLiquidityZapOutEnabled
-            && this.canPrepareRemoveLiquidityPreview()
-            && !!this.removeLiquiditySelectedOutputToken;
+        return this.canPrepareRemoveLiquidityPreview()
+            && (!this.removeLiquidityZapOutEnabled || !!this.removeLiquiditySelectedOutputToken);
     }
 
     getRemoveLiquidityOutputTokenAddressForKyber(token = this.removeLiquiditySelectedOutputToken) {
@@ -2575,7 +2607,7 @@ class StakingModalNew {
         const hasSufficientBalance = balanceRaw.gte(removeUnits);
         const hasValidPreview = this.removeLiquidityPreviewStatus === 'ready'
             && this.removeLiquidityPreview?.supported;
-        const shouldWaitForOpenPreview = this.removeLiquidityZapOutEnabled && !hasValidPreview;
+        const shouldWaitForPreview = hasAmount && !hasValidPreview;
         const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
         const removePhase = this.actionPhases?.removeLiquidity || 'idle';
         const approveZapOutPhase = this.actionPhases?.approveRemoveLiquidityZapOut || 'idle';
@@ -2608,12 +2640,16 @@ class StakingModalNew {
         const shouldDisable = this.isExecutingRemoveLiquidity
             || !hasAmount
             || !hasSufficientBalance
-            || shouldWaitForOpenPreview;
+            || shouldWaitForPreview;
         removeButton.disabled = shouldDisable;
         if (!hasSufficientBalance && hasAmount) {
             removeButton.title = 'Insufficient LP token balance';
-        } else if (shouldWaitForOpenPreview) {
-            removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported Kyber zap-out preview.';
+        } else if (shouldWaitForPreview) {
+            removeButton.title = this.removeLiquidityPreviewError || (
+                this.removeLiquidityZapOutEnabled
+                    ? 'Wait for a supported Kyber zap-out preview.'
+                    : 'Wait for a supported remove-liquidity preview.'
+            );
         } else {
             removeButton.title = this.removeLiquidityZapOutEnabled
                 ? 'Zap out LP liquidity to one token'
@@ -3139,6 +3175,7 @@ class StakingModalNew {
     }
 
     renderRemoveLiquidityTab() {
+        const balanceError = this.getRemoveLiquidityBalanceError();
         return `
             <div class="balance-info">
                 <span class="balance-label">Available LP Tokens:</span>
@@ -3157,6 +3194,7 @@ class StakingModalNew {
                     inputmode="decimal"
                 >
                 ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
+                <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error" aria-live="polite" ${balanceError ? '' : 'hidden'}>${this.escapeHtml(balanceError)}</div>
                 <div class="slider-container">
                     <input
                         type="range"
@@ -3188,7 +3226,7 @@ class StakingModalNew {
                 </label>
             </div>
 
-            ${this.removeLiquidityZapOutEnabled ? this.renderRemoveLiquidityControls() : ''}
+            ${this.renderRemoveLiquidityControls()}
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
@@ -3216,7 +3254,7 @@ class StakingModalNew {
         const slippageOptions = [10, 50, 100];
         return `
             <div class="remove-liquidity-section">
-                ${this.renderRemoveLiquidityOutputTokenPicker()}
+                ${this.removeLiquidityZapOutEnabled ? this.renderRemoveLiquidityOutputTokenPicker() : ''}
                 <div class="remove-liquidity-settings">
                     <div class="form-group">
                         <label class="form-label">Slippage</label>
@@ -3351,8 +3389,9 @@ class StakingModalNew {
     }
 
     renderRemoveLiquidityPreviewPanel() {
+        const balanceError = this.getRemoveLiquidityBalanceError();
         const isLoading = this.removeLiquidityPreviewStatus === 'loading';
-        const isError = this.removeLiquidityPreviewStatus === 'error';
+        const isError = this.removeLiquidityPreviewStatus === 'error' || !!balanceError;
         const hasPreview = this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported;
         const pendingValue = isLoading ? '...' : '-';
         const cardClass = [
@@ -3379,7 +3418,7 @@ class StakingModalNew {
             if (isLoading) {
                 summary = 'Loading Kyber zap-out route...';
             } else if (isError) {
-                summary = this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
+                summary = balanceError || this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
                 routerDisplay = 'Unsupported';
             } else if (hasPreview) {
                 const routeData = this.getRemoveLiquidityRouteData();
@@ -3452,7 +3491,7 @@ class StakingModalNew {
         if (isLoading) {
             summary = 'Loading LP reserves...';
         } else if (isError) {
-            summary = this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.';
+            summary = balanceError || this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.';
             dexDisplay = this.removeLiquidityPreview?.factoryAddress
                 ? `Unsupported factory ${this.formatAddress(this.removeLiquidityPreview.factoryAddress)}`
                 : 'Unsupported';
@@ -3468,10 +3507,10 @@ class StakingModalNew {
 
         let rows = [
             this.renderZapQuoteRow('DEX', dexDisplay),
-            this.renderZapQuoteRow('Estimated token0', token0Display),
-            this.renderZapQuoteRow('Estimated token1', token1Display),
-            this.renderZapQuoteRow('Minimum token0', token0MinDisplay),
-            this.renderZapQuoteRow('Minimum token1', token1MinDisplay),
+            this.renderZapQuoteRow(`Estimated ${this.removeLiquidityPreview?.token0?.symbol || 'token0'}`, token0Display),
+            this.renderZapQuoteRow(`Estimated ${this.removeLiquidityPreview?.token1?.symbol || 'token1'}`, token1Display),
+            this.renderZapQuoteRow(`Minimum ${this.removeLiquidityPreview?.token0?.symbol || 'token0'}`, token0MinDisplay),
+            this.renderZapQuoteRow(`Minimum ${this.removeLiquidityPreview?.token1?.symbol || 'token1'}`, token1MinDisplay),
             this.renderZapQuoteRow('Slippage', slippageDisplay),
             this.renderZapQuoteRow('Deadline', deadlineDisplay)
         ];

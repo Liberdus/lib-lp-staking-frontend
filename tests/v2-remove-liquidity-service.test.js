@@ -82,7 +82,9 @@ const addresses = {
     token0: '0x2222222222222222222222222222222222222222',
     token1: '0x3333333333333333333333333333333333333333',
     factory: '0x8909dc15e40173ff4699343b6eb8132c65e18ec6',
+    factory97: '0x5555555555555555555555555555555555555555',
     router: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
+    router97: '0x6666666666666666666666666666666666666666',
     unknownFactory: '0x9999999999999999999999999999999999999999',
     user: '0x4444444444444444444444444444444444444444'
 };
@@ -99,6 +101,16 @@ async function loadService(contracts = {}) {
                         name: 'Uniswap V2',
                         type: 'uniswapV2',
                         router: addresses.router
+                    }
+                }
+            },
+            97: {
+                wrappedNative: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+                factories: {
+                    [addresses.factory97]: {
+                        name: 'PancakeSwap V2',
+                        type: 'uniswapV2',
+                        router: addresses.router97
                     }
                 }
             }
@@ -152,6 +164,10 @@ function createFixtures({ factory = addresses.factory, routerFactory = addresses
         },
         [addresses.router]: {
             factory: vi.fn().mockResolvedValue(routerFactory),
+            removeLiquidity
+        },
+        [addresses.router97]: {
+            factory: vi.fn().mockResolvedValue(addresses.factory97),
             removeLiquidity
         },
         approve,
@@ -208,6 +224,32 @@ describe('V2RemoveLiquidityService', () => {
         expect(adapter.supported).toBe(false);
         expect(adapter.factoryAddress).toBe(addresses.unknownFactory);
         expect(adapter.reason).toContain('not supported');
+    });
+
+    it('keeps pair metadata cache entries separate by chain', async () => {
+        const fixtures = createFixtures();
+        fixtures[addresses.lp].factory
+            .mockResolvedValueOnce(addresses.factory)
+            .mockResolvedValueOnce(addresses.factory97);
+        const V2RemoveLiquidityService = await loadService(fixtures);
+        const service = new V2RemoveLiquidityService();
+
+        const mainnetAdapter = await service.getMatchedAdapter({
+            chainId: 56,
+            lpTokenAddress: addresses.lp,
+            provider: {}
+        });
+        const testnetAdapter = await service.getMatchedAdapter({
+            chainId: 97,
+            lpTokenAddress: addresses.lp,
+            provider: {}
+        });
+
+        expect(mainnetAdapter.supported).toBe(true);
+        expect(mainnetAdapter.factoryAddress).toBe(addresses.factory);
+        expect(testnetAdapter.supported).toBe(true);
+        expect(testnetAdapter.factoryAddress).toBe(addresses.factory97);
+        expect(fixtures[addresses.lp].factory).toHaveBeenCalledTimes(2);
     });
 
     it('rejects configured routers whose factory does not match the LP factory', async () => {

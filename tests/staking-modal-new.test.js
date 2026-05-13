@@ -1036,6 +1036,46 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Minimum token0</dt>');
     });
 
+    it('renders direct remove-liquidity preview and safeguards when conversion is unchecked', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('Convert to one preferred token');
+        expect(html).not.toContain('remove-liquidity-output-token-picker');
+        expect(html).not.toContain('<label class="form-label">Output Token</label>');
+        expect(html).toContain('LIB + USDT via Uniswap V2');
+        expect(html).toContain('<dt>DEX</dt>');
+        expect(html).toContain('<dt>Estimated LIB</dt>');
+        expect(html).toContain('100 LIB');
+        expect(html).toContain('<dt>Estimated USDT</dt>');
+        expect(html).toContain('50 USDT');
+        expect(html).toContain('<dt>Minimum LIB</dt>');
+        expect(html).toContain('99.5 LIB');
+        expect(html).toContain('<dt>Minimum USDT</dt>');
+        expect(html).toContain('49.75 USDT');
+        expect(html).toContain('<dt>Slippage</dt>');
+        expect(html).toContain('<dt>Deadline</dt>');
+        expect(html).not.toContain('<dt>Kyber Router</dt>');
+    });
+
+    it('shows a readable over-balance warning on unchecked remove liquidity', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityAmount = '2';
+        modal.userBalance = '1.0';
+        modal.userBalanceRaw = { gte: vi.fn(() => false) };
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('id="remove-liquidity-balance-error"');
+        expect(html).toContain('Amount exceeds available LP balance (1.0 LP).');
+        expect(html).toContain('<dd>Unsupported</dd>');
+        expect(html).not.toContain('remove liquidity = 2000000000000000000');
+        expect(modal.canFetchRemoveLiquidityPreview()).toBe(false);
+    });
+
     it('derives checked remove-liquidity output amount from Kyber zap-out actions', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
@@ -1230,18 +1270,18 @@ describe('StakingModalNew zap cleanup', () => {
         expect(removeButton.title).toBe('Remove LP liquidity');
     });
 
-    it('enables the remove-liquidity action with a valid amount when details are closed', async () => {
+    it('keeps the direct remove-liquidity action disabled until a preview loads', async () => {
         const modal = await createLoadedModal();
         modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
         modal.removeLiquidityAmount = '1';
         modal.removeLiquidityZapOutEnabled = false;
         modal.userBalanceRaw = { gte: vi.fn(() => true) };
-        const removeButton = registerRemoveLiquidityButton('Confirm the remove-liquidity details first');
+        const removeButton = registerRemoveLiquidityButton();
 
         modal.updateRemoveLiquidityButton();
 
-        expect(removeButton.disabled).toBe(false);
-        expect(removeButton.title).toBe('Remove LP liquidity');
+        expect(removeButton.disabled).toBe(true);
+        expect(removeButton.title).toBe('Wait for a supported remove-liquidity preview.');
     });
 
     it('fetches a remove-liquidity preview on execute when details are closed', async () => {
@@ -1510,7 +1550,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.removeLiquiditySelectedOutputToken).toEqual(expect.objectContaining({ address: USDT_TOKEN_ADDRESS }));
     });
 
-    it('shows a readable zap-out error when Kyber reports zero position liquidity', async () => {
+    it('shows a readable zap-out error when Kyber reports insufficient position liquidity', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
         modal.removeLiquidityZapOutEnabled = true;
@@ -1526,8 +1566,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         await modal.fetchRemoveLiquidityPreview({ force: true });
 
-        expect(modal.removeLiquidityPreviewError).toBe('Refresh your balance or try a smaller amount.');
-        expect(modal.renderRemoveLiquidityPreviewPanel()).toContain('Refresh your balance or try a smaller amount.');
+        expect(modal.removeLiquidityPreviewError).toBe('Amount exceeds your available LP balance.');
+        expect(modal.renderRemoveLiquidityPreviewPanel()).toContain('Amount exceeds your available LP balance.');
         expect(modal.renderRemoveLiquidityPreviewPanel()).not.toContain('1000000000000000000');
     });
 

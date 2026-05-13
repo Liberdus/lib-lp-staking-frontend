@@ -58,6 +58,12 @@
             return typeof address === 'string' ? address.toLowerCase() : '';
         }
 
+        getPairMetaCacheKey(lpTokenAddress, chainId = this.getCurrentChainId()) {
+            const parsedChainId = typeof chainId === 'string' ? Number(chainId) : chainId;
+            const chainKey = Number.isFinite(parsedChainId) ? String(parsedChainId) : 'unknown';
+            return `${chainKey}:${this.normalizeAddress(lpTokenAddress)}`;
+        }
+
         toBigNumber(value) {
             const ethers = this.getEthers();
             return ethers.BigNumber?.from ? ethers.BigNumber.from(value) : BigInt(value);
@@ -108,12 +114,12 @@
             return new ethers.Contract(address, abi, runner);
         }
 
-        async readPairMeta(lpTokenAddress, provider = this.getProvider()) {
+        async readPairMeta(lpTokenAddress, provider = this.getProvider(), chainId = this.getCurrentChainId()) {
             if (!lpTokenAddress || !provider) {
                 throw new Error('LP token address and provider are required.');
             }
 
-            const cacheKey = this.normalizeAddress(lpTokenAddress);
+            const cacheKey = this.getPairMetaCacheKey(lpTokenAddress, chainId);
             if (this.pairMetaCache.has(cacheKey)) {
                 return this.pairMetaCache.get(cacheKey);
             }
@@ -170,7 +176,7 @@
                 };
             }
 
-            const pairMeta = await this.readPairMeta(lpTokenAddress, provider);
+            const pairMeta = await this.readPairMeta(lpTokenAddress, provider, resolvedChainId);
             const factoryKey = this.normalizeAddress(pairMeta.factoryAddress);
             const factoryConfig = chainConfig.factories?.[factoryKey] || null;
 
