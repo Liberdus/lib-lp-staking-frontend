@@ -671,29 +671,6 @@
     align-items: center;
 }
 
-.remove-liquidity-slippage-btn {
-    min-height: 36px;
-    padding: 0 var(--spacing-1);
-    border: 1px solid var(--divider);
-    border-radius: var(--border-radius);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.remove-liquidity-slippage-btn:hover {
-    border-color: var(--primary-main);
-    color: var(--primary-main);
-}
-
-.remove-liquidity-slippage-btn.active {
-    background: var(--primary-main);
-    border-color: var(--primary-main);
-    color: white;
-}
-
 .remove-liquidity-custom-slippage {
     min-height: 36px;
     padding: 0 var(--spacing-1);

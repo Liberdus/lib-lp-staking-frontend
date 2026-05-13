@@ -3320,7 +3320,7 @@ class StakingModalNew {
                             ${slippageOptions.map(option => `
                                 <button
                                     type="button"
-                                    class="remove-liquidity-slippage-btn ${this.removeLiquiditySlippageBps === option && !this.removeLiquidityCustomSlippage ? 'active' : ''}"
+                                    class="zap-slippage-btn remove-liquidity-slippage-btn ${this.removeLiquiditySlippageBps === option && !this.removeLiquidityCustomSlippage ? 'active' : ''}"
                                     data-slippage="${option}"
                                 >
                                     ${(option / 100).toFixed(option < 10 ? 2 : 1)}%
@@ -3328,7 +3328,7 @@ class StakingModalNew {
                             `).join('')}
                             <button
                                 type="button"
-                                class="remove-liquidity-slippage-btn ${this.isRemoveLiquidityCustomSlippageActive() ? 'active' : ''}"
+                                class="zap-slippage-btn remove-liquidity-slippage-btn ${this.isRemoveLiquidityCustomSlippageActive() ? 'active' : ''}"
                                 data-slippage="custom"
                             >
                                 Custom
@@ -3558,28 +3558,7 @@ class StakingModalNew {
                 )
             );
 
-            return `
-                <div class="${cardClass}">
-                    <div class="zap-quote-header">
-                        <div class="zap-route-summary">${this.escapeHtml(summary)}</div>
-                        <div class="zap-refresh-controls">
-                            <button
-                                type="button"
-                                class="zap-refresh-btn"
-                                onclick="safeModalFetchRemoveLiquidityPreview()"
-                                title="Refresh Kyber zap-out preview"
-                                aria-label="Refresh Kyber zap-out preview"
-                                ${!this.canFetchRemoveLiquidityPreview() || isLoading ? 'disabled' : ''}
-                            >
-                                <span class="material-icons">sync</span>
-                            </button>
-                        </div>
-                    </div>
-                    <dl class="zap-quote-list remove-liquidity-preview-list">
-                        ${rows.join('')}
-                    </dl>
-                </div>
-            `;
+            return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh Kyber zap-out preview');
         }
 
         let summary = this.removeLiquidityAmount
@@ -3634,6 +3613,10 @@ class StakingModalNew {
             )
         ];
 
+        return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh remove-liquidity preview');
+    }
+
+    renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, refreshLabel) {
         return `
             <div class="${cardClass}">
                 <div class="zap-quote-header">
@@ -3643,8 +3626,8 @@ class StakingModalNew {
                             type="button"
                             class="zap-refresh-btn"
                             onclick="safeModalFetchRemoveLiquidityPreview()"
-                            title="Refresh remove-liquidity preview"
-                            aria-label="Refresh remove-liquidity preview"
+                            title="${refreshLabel}"
+                            aria-label="${refreshLabel}"
                             ${!this.canFetchRemoveLiquidityPreview() || isLoading ? 'disabled' : ''}
                         >
                             <span class="material-icons">sync</span>
@@ -4375,6 +4358,7 @@ class StakingModalNew {
     }
 
     async approveRemoveLiquidityZapOutIfNeeded(lpTokenAddress, routerAddress, liquidityRaw) {
+        const service = this.getRemoveLiquidityService();
         const provider = window.contractManager?.provider || window.walletManager?.provider;
         const signer = window.contractManager?.signer;
         if (!provider || !signer) {
@@ -4382,13 +4366,12 @@ class StakingModalNew {
         }
 
         const userAddress = await signer.getAddress();
-        const erc20Abi = [
-            'function allowance(address owner,address spender) view returns (uint256)',
-            'function approve(address spender,uint256 amount) returns (bool)'
-        ];
-        const lpReadContract = new window.ethers.Contract(lpTokenAddress, erc20Abi, provider);
-        const allowance = await lpReadContract.allowance(userAddress, routerAddress);
-
+        const allowance = await service.getAllowance({
+            lpTokenAddress,
+            owner: userAddress,
+            spender: routerAddress,
+            provider
+        });
         if (allowance.gte(liquidityRaw)) {
             return null;
         }
@@ -4397,6 +4380,7 @@ class StakingModalNew {
         this.setActionPhase('approveRemoveLiquidityZapOut', 'userApproval');
         window.notificationManager?.info('Approving Kyber to spend LP tokens...');
 
+        const erc20Abi = ['function approve(address spender,uint256 amount) returns (bool)'];
         const lpWithSigner = new window.ethers.Contract(lpTokenAddress, erc20Abi, signer);
         const result = await window.contractManager.executeTransactionOnce(async () => {
             const tx = await lpWithSigner.approve(routerAddress, liquidityRaw);
