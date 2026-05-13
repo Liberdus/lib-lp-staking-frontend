@@ -690,21 +690,6 @@ class StakingModalNew {
         return window.Formatter?.formatCurrency?.(estimate) || `$${estimate.toFixed(2)}`;
     }
 
-    formatUsdNumber(value) {
-        const numericValue = Number(value);
-        if (!Number.isFinite(numericValue)) {
-            return String(value);
-        }
-
-        return window.Formatter?.formatCurrency?.(numericValue)?.replace(/^\$/, '')
-            || numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    }
-
-    formatUsdDisplay(value) {
-        const formatted = this.formatUsdNumber(value);
-        return String(formatted).startsWith('$') ? formatted : `$${formatted}`;
-    }
-
     renderInlineLpUsdEstimate(amount) {
         const estimate = this.formatLpUsdEstimate(amount);
         return estimate ? ` <span class="lp-usd-estimate">(${this.escapeHtml(estimate)})</span>` : '';
@@ -1069,13 +1054,6 @@ class StakingModalNew {
                     slippageBps: this.removeLiquiditySlippageBps,
                     platform: this.currentPair?.platform
                 });
-                this.logRemoveLiquidityZapOutFeeDebug({
-                    payload,
-                    outputToken,
-                    tokenOutAddress,
-                    liquidityRaw
-                });
-
                 preview = {
                     ...payload,
                     supported: true,
@@ -2099,100 +2077,6 @@ class StakingModalNew {
         );
     }
 
-    getKyberProtocolFeeSources(data) {
-        const protocolFeeSources = [];
-        const addProtocolFeeSource = (path, source) => {
-            if (source && typeof source === 'object') {
-                protocolFeeSources.push({ path, source });
-            }
-        };
-
-        addProtocolFeeSource('zapDetails.protocolFee', data?.zapDetails?.protocolFee);
-        addProtocolFeeSource('protocolFee', data?.protocolFee);
-
-        if (Array.isArray(data?.zapDetails?.actions)) {
-            data.zapDetails.actions.forEach((action, index) => {
-                addProtocolFeeSource(`zapDetails.actions[${index}].protocolFee`, action?.protocolFee);
-            });
-        }
-
-        return protocolFeeSources;
-    }
-
-    getKyberZapActionDebugSummary(data) {
-        const actions = Array.isArray(data?.zapDetails?.actions) ? data.zapDetails.actions : [];
-        const summarizeToken = token => token ? {
-            address: token.address ?? null,
-            symbol: token.symbol ?? null,
-            decimals: token.decimals ?? null,
-            amount: token.amount ?? null,
-            amountUsd: token.amountUsd ?? token.amount_usd ?? null
-        } : null;
-        const summarizeTokens = tokens => Array.isArray(tokens)
-            ? tokens.map(summarizeToken).filter(Boolean)
-            : [];
-        const summarizeSwap = swap => ({
-            tokenIn: summarizeToken(swap?.tokenIn),
-            tokenOut: summarizeToken(swap?.tokenOut)
-        });
-
-        return actions.map((action, index) => ({
-            index,
-            type: action?.type ?? null,
-            keys: action && typeof action === 'object' ? Object.keys(action) : [],
-            removeLiquidityTokens: summarizeTokens(action?.removeLiquidity?.tokens),
-            removeLiquidityToken0: summarizeToken(action?.removeLiquidity?.token0),
-            removeLiquidityToken1: summarizeToken(action?.removeLiquidity?.token1),
-            protocolFeeTokens: summarizeTokens(action?.protocolFee?.tokens),
-            aggregatorSwaps: Array.isArray(action?.aggregatorSwap?.swaps)
-                ? action.aggregatorSwap.swaps.map(summarizeSwap)
-                : [],
-            poolSwaps: Array.isArray(action?.poolSwap?.swaps)
-                ? action.poolSwap.swaps.map(summarizeSwap)
-                : [],
-            refundTokens: summarizeTokens(action?.refund?.tokens)
-        }));
-    }
-
-    logRemoveLiquidityZapOutFeeDebug({ payload, outputToken, tokenOutAddress, liquidityRaw }) {
-        const data = this.getKyberZapService().getRouteData(payload);
-        const feeSources = this.getKyberProtocolFeeSources(data);
-        const protocolFeeTokenRows = feeSources.flatMap(({ path, source }) => (
-            Array.isArray(source?.tokens)
-                ? source.tokens.map(token => ({
-                    path,
-                    address: token?.address ?? null,
-                    symbol: token?.symbol ?? null,
-                    decimals: token?.decimals ?? null,
-                    amount: token?.amount ?? null,
-                    amountUsd: token?.amountUsd ?? token?.amount_usd ?? null
-                }))
-                : [{
-                    path,
-                    address: null,
-                    symbol: null,
-                    decimals: null,
-                    amount: source?.amount ?? null,
-                    amountUsd: null
-                }]
-        ));
-
-        console.info('[Kyber zap-out fee debug]', {
-            selectedOutputToken: outputToken ? {
-                address: outputToken.address,
-                symbol: outputToken.symbol,
-                decimals: outputToken.decimals
-            } : null,
-            tokenOutAddress,
-            liquidityRaw: liquidityRaw?.toString?.() || String(liquidityRaw || ''),
-            displayedFeeDetails: this.getRemoveLiquidityProtocolFeeDetails(data),
-            protocolFeeTokenRows,
-            actionSummary: this.getKyberZapActionDebugSummary(data),
-            routeKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-            zapDetailsKeys: data?.zapDetails && typeof data.zapDetails === 'object' ? Object.keys(data.zapDetails) : []
-        });
-    }
-
     formatZapBalanceDisplay(balance, token) {
         if (!balance || !token) {
             return '';
@@ -3131,7 +3015,6 @@ class StakingModalNew {
         // Update button states when input changes
         const stakeInput = document.getElementById('stake-amount-input');
         const unstakeInput = document.getElementById('unstake-amount-input');
-        const removeLiquidityInput = document.getElementById('remove-liquidity-amount-input');
 
         if (stakeInput) {
             stakeInput.addEventListener('input', () => {
@@ -3154,20 +3037,6 @@ class StakingModalNew {
                 }
                 this.unstakeAmount = sanitizedValue;
                 this.updateUnstakeUsdEstimate();
-                this.updateButtonStates();
-            });
-        }
-
-        if (removeLiquidityInput) {
-            removeLiquidityInput.addEventListener('input', () => {
-                const sanitizedValue = this.applyDecimalLimit(removeLiquidityInput.value, this.userBalanceDecimals);
-                if (sanitizedValue !== removeLiquidityInput.value) {
-                    removeLiquidityInput.value = sanitizedValue;
-                }
-                this.removeLiquidityAmount = sanitizedValue;
-                this.updateRemoveLiquidityUsdEstimate();
-                this.resetRemoveLiquidityPreview();
-                this.debounceRemoveLiquidityPreview();
                 this.updateButtonStates();
             });
         }
