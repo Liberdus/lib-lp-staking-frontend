@@ -55,6 +55,7 @@ class StakingModalNew {
         this.removeLiquidityCustomSlippage = '';
         this.removeLiquidityCustomSlippageError = '';
         this.removeLiquidityDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
+        this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityPreviewDebounceTimer = null;
         this.removeLiquidityPreviewRequestId = 0;
         this.removeLiquidityOutputTokenAddress = '';
@@ -305,6 +306,10 @@ class StakingModalNew {
             if (e.target.closest('.zap-slippage-btn')) {
                 const button = e.target.closest('.zap-slippage-btn');
                 this.setZapSlippage(button.dataset.slippage);
+            }
+
+            if (e.target.closest('.remove-liquidity-settings-toggle')) {
+                this.toggleRemoveLiquiditySettings();
             }
 
             if (e.target.closest('.remove-liquidity-slippage-btn')) {
@@ -801,6 +806,7 @@ class StakingModalNew {
         this.removeLiquidityPreviewError = '';
         this.removeLiquidityCustomSlippage = '';
         this.removeLiquidityCustomSlippageError = '';
+        this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityCustomOutputTokenAddress = '';
         this.removeLiquidityCustomOutputTokenError = '';
         this.removeLiquidityPreviewRequestId += 1;
@@ -884,6 +890,11 @@ class StakingModalNew {
 
     isRemoveLiquidityCustomSlippageActive() {
         return !!this.removeLiquidityCustomSlippage && !this.hasInvalidRemoveLiquidityCustomSlippage();
+    }
+
+    toggleRemoveLiquiditySettings() {
+        this.removeLiquiditySettingsOpen = !this.removeLiquiditySettingsOpen;
+        this.renderTabContent();
     }
 
     setRemoveLiquiditySlippage(value) {
@@ -3250,14 +3261,31 @@ class StakingModalNew {
         return this.formatZapDisplayAmount(amount.raw ?? amount.formatted, token.decimals ?? 18, token.symbol || '');
     }
 
+    formatRemoveLiquidityMinOutputAmount(value, token, fallback = '-') {
+        const valueText = String(value ?? '');
+        if (!/^\d+$/.test(valueText) || !token) {
+            return fallback;
+        }
+
+        try {
+            const slippageBps = BigInt(Math.trunc(Number(this.removeLiquiditySlippageBps) || 0));
+            const minAmount = (BigInt(valueText) * (10000n - slippageBps)) / 10000n;
+            return this.formatZapDisplayAmount(minAmount.toString(), token.decimals ?? 18, token.symbol || '');
+        } catch (error) {
+            return fallback;
+        }
+    }
+
     renderRemoveLiquidityControls() {
-        const slippageOptions = [10, 50, 100];
-        return `
-            <div class="remove-liquidity-section">
-                ${this.removeLiquidityZapOutEnabled ? this.renderRemoveLiquidityOutputTokenPicker() : ''}
-                <div class="remove-liquidity-settings">
+        const slippageOptions = [5, 10, 50, 100];
+        const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
+        const settingsPanel = this.removeLiquiditySettingsOpen ? `
+                <div class="remove-liquidity-settings-panel">
                     <div class="form-group">
-                        <label class="form-label">Slippage</label>
+                        <label
+                            class="form-label"
+                            title="Maximum output movement allowed before the transaction reverts."
+                        >Max Slippage</label>
                         <div class="remove-liquidity-slippage-row">
                             ${slippageOptions.map(option => `
                                 <button
@@ -3265,7 +3293,7 @@ class StakingModalNew {
                                     class="remove-liquidity-slippage-btn ${this.removeLiquiditySlippageBps === option && !this.removeLiquidityCustomSlippage ? 'active' : ''}"
                                     data-slippage="${option}"
                                 >
-                                    ${(option / 100).toFixed(1)}%
+                                    ${(option / 100).toFixed(option < 10 ? 2 : 1)}%
                                 </button>
                             `).join('')}
                             <button
@@ -3279,7 +3307,7 @@ class StakingModalNew {
                                 type="number"
                                 id="remove-liquidity-custom-slippage-input"
                                 class="form-input remove-liquidity-custom-slippage"
-                                placeholder="${(this.removeLiquiditySlippageBps / 100).toFixed(2)}%"
+                                placeholder="${slippageDisplay}"
                                 value="${this.escapeHtml(this.removeLiquidityCustomSlippage)}"
                                 min="0.01"
                                 max="100"
@@ -3291,7 +3319,11 @@ class StakingModalNew {
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="remove-liquidity-deadline-input">Deadline</label>
+                        <label
+                            class="form-label"
+                            for="remove-liquidity-deadline-input"
+                            title="Latest time this transaction can execute before it reverts."
+                        >Transaction time limit</label>
                         <div class="remove-liquidity-deadline-row">
                             <input
                                 type="number"
@@ -3307,6 +3339,27 @@ class StakingModalNew {
                         </div>
                     </div>
                 </div>
+        ` : '';
+
+        return `
+            <div class="remove-liquidity-section">
+                ${this.removeLiquidityZapOutEnabled ? this.renderRemoveLiquidityOutputTokenPicker() : ''}
+                <div class="remove-liquidity-settings-summary">
+                    <button
+                        type="button"
+                        class="remove-liquidity-settings-toggle"
+                        aria-expanded="${this.removeLiquiditySettingsOpen ? 'true' : 'false'}"
+                        title="Adjust max slippage and transaction time limit"
+                    >
+                        <span
+                            class="remove-liquidity-settings-label"
+                            title="Maximum output movement allowed before the transaction reverts."
+                        >Max slippage:</span>
+                        <strong>${slippageDisplay}</strong>
+                        <span class="material-icons" aria-hidden="true">${this.removeLiquiditySettingsOpen ? 'expand_less' : 'expand_more'}</span>
+                    </button>
+                </div>
+                ${settingsPanel}
 
                 <div id="remove-liquidity-preview-panel">
                     ${this.renderRemoveLiquidityPreviewPanel()}
@@ -3401,60 +3454,67 @@ class StakingModalNew {
             isError ? 'zap-quote-error' : '',
             !hasPreview && !isLoading && !isError ? 'zap-quote-placeholder' : ''
         ].filter(Boolean).join(' ');
-        const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
-        const deadlineDisplay = `${Number(this.removeLiquidityDeadlineMinutes) || 20} min`;
-
         if (this.removeLiquidityZapOutEnabled) {
             const outputToken = this.removeLiquiditySelectedOutputToken;
             const outputSymbol = outputToken?.symbol || 'token';
             let summary = this.removeLiquidityAmount
                 ? `Checking Kyber zap-out to ${outputSymbol}...`
                 : `Enter an amount to preview ${outputSymbol} output.`;
-            let routerDisplay = pendingValue;
             let estimatedOutput = pendingValue;
-            let outputValue = pendingValue;
+            let minimumReceivedDisplay = pendingValue;
             let priceImpactDisplay = pendingValue;
 
             if (isLoading) {
                 summary = 'Loading Kyber zap-out route...';
             } else if (isError) {
                 summary = balanceError || this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
-                routerDisplay = 'Unsupported';
             } else if (hasPreview) {
-                const routeData = this.getRemoveLiquidityRouteData();
                 const outputEntry = this.getRemoveLiquidityEstimatedOutputEntry(outputToken, pendingValue);
-                const outputUsdEntry = this.getRemoveLiquidityQuoteSummaryEntry([
-                    'zapDetails.finalAmountUsd',
-                    'amountOutUsd',
-                    'receivedUsd',
-                    'routeSummary.amountOutUsd'
-                ], pendingValue);
                 const priceImpactEntry = this.getRemoveLiquidityQuoteSummaryEntry([
                     'zapDetails.priceImpact',
                     'zapDetails.priceImpactPcm',
                     'priceImpact',
                     'priceImpactPcm'
                 ], pendingValue);
-                routerDisplay = this.formatAddress(this.getRemoveLiquidityRouterAddress(routeData) || '');
                 estimatedOutput = outputEntry.value === pendingValue
                     ? pendingValue
                     : this.formatZapDisplayAmount(outputEntry.value, outputToken?.decimals ?? 18, outputSymbol);
-                outputValue = outputUsdEntry.value === pendingValue ? pendingValue : this.formatUsdDisplay(outputUsdEntry.value);
+                minimumReceivedDisplay = outputEntry.value === pendingValue
+                    ? pendingValue
+                    : this.formatRemoveLiquidityMinOutputAmount(outputEntry.value, outputToken, pendingValue);
                 priceImpactDisplay = priceImpactEntry.value === pendingValue ? pendingValue : this.formatZapPercent(priceImpactEntry);
                 summary = `Kyber zap-out to ${outputSymbol}`;
             }
 
-            const rows = [
-                this.renderZapQuoteRow('Route', 'Kyber ZaaS'),
-                this.renderZapQuoteRow('Kyber Router', routerDisplay || pendingValue),
-                this.renderZapQuoteRow('LP amount', this.removeLiquidityAmount ? `${this.removeLiquidityAmount} LP` : pendingValue),
-                this.renderZapQuoteRow('Output token', outputSymbol),
-                this.renderZapQuoteRow(`Estimated ${outputSymbol}`, estimatedOutput),
-                this.renderZapQuoteRow('Estimated value', outputValue),
-                this.renderZapQuoteRow('Price impact', priceImpactDisplay),
-                this.renderZapQuoteRow('Slippage', slippageDisplay),
-                this.renderZapQuoteRow('Deadline', deadlineDisplay)
-            ];
+            const rows = [];
+            if (isError) {
+                rows.push(this.renderZapQuoteRow(
+                    'Route',
+                    'Unsupported',
+                    '',
+                    'Routing status for this LP position.'
+                ));
+            }
+            rows.push(
+                this.renderZapQuoteRow(
+                    `Estimated ${outputSymbol}`,
+                    estimatedOutput,
+                    '',
+                    'Expected output token amount from the latest Kyber route.'
+                ),
+                this.renderZapQuoteRow(
+                    'Minimum received',
+                    minimumReceivedDisplay,
+                    '',
+                    'Transaction reverts if the final output is below this value after max slippage.'
+                ),
+                this.renderZapQuoteRow(
+                    'Price impact',
+                    priceImpactDisplay,
+                    '',
+                    'Estimated effect of the route on execution price.'
+                )
+            );
 
             return `
                 <div class="${cardClass}">
@@ -3505,14 +3565,31 @@ class StakingModalNew {
             summary = `${preview.token0.symbol} + ${preview.token1.symbol} via ${dexDisplay}`;
         }
 
+        const estimatedPairDisplay = hasPreview
+            ? `${token0Display} + ${token1Display}`
+            : pendingValue;
+        const minimumPairDisplay = hasPreview
+            ? `${token0MinDisplay} + ${token1MinDisplay}`
+            : pendingValue;
         let rows = [
-            this.renderZapQuoteRow('DEX', dexDisplay),
-            this.renderZapQuoteRow(`Estimated ${this.removeLiquidityPreview?.token0?.symbol || 'token0'}`, token0Display),
-            this.renderZapQuoteRow(`Estimated ${this.removeLiquidityPreview?.token1?.symbol || 'token1'}`, token1Display),
-            this.renderZapQuoteRow(`Minimum ${this.removeLiquidityPreview?.token0?.symbol || 'token0'}`, token0MinDisplay),
-            this.renderZapQuoteRow(`Minimum ${this.removeLiquidityPreview?.token1?.symbol || 'token1'}`, token1MinDisplay),
-            this.renderZapQuoteRow('Slippage', slippageDisplay),
-            this.renderZapQuoteRow('Deadline', deadlineDisplay)
+            this.renderZapQuoteRow(
+                'You receive',
+                estimatedPairDisplay,
+                '',
+                'Estimated pair token amounts returned by burning the selected LP amount.'
+            ),
+            this.renderZapQuoteRow(
+                'Minimum received',
+                minimumPairDisplay,
+                '',
+                'Transaction reverts if either token output is below this value after max slippage.'
+            ),
+            this.renderZapQuoteRow(
+                'DEX',
+                dexDisplay,
+                '',
+                'Router/factory selected for this LP position.'
+            )
         ];
 
         return `
@@ -3733,10 +3810,11 @@ class StakingModalNew {
         `;
     }
 
-    renderZapQuoteRow(label, value, riskClass = '') {
+    renderZapQuoteRow(label, value, riskClass = '', title = '') {
+        const titleAttribute = title ? ` title="${this.escapeHtml(title)}"` : '';
         return `
                     <div class="zap-quote-row${riskClass ? ` ${riskClass}` : ''}">
-                        <dt>${this.escapeHtml(label)}</dt>
+                        <dt${titleAttribute}>${this.escapeHtml(label)}</dt>
                         <dd>${this.escapeHtml(value)}</dd>
                     </div>
         `;

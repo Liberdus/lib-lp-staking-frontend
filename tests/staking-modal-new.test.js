@@ -1024,16 +1024,17 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('remove-liquidity-output-token-option');
         expect(html).toContain('Custom token');
         expect(html).toContain('Kyber zap-out to USDT');
-        expect(html).toContain('<dt>Route</dt>');
-        expect(html).toContain('<dt>Kyber Router</dt>');
-        expect(html).toContain('<dt>LP amount</dt>');
-        expect(html).toContain('<dt>Output token</dt>');
-        expect(html).toContain('<dt>Estimated USDT</dt>');
+        expect(html).toContain('remove-liquidity-settings-toggle');
+        expect(html).toContain('Max slippage:');
+        expect(html).not.toContain('id="remove-liquidity-deadline-input"');
+        expect(html).toContain('Estimated USDT');
         expect(html).toContain('140 USDT');
-        expect(html).toContain('<dt>Estimated value</dt>');
-        expect(html).toContain('$140');
+        expect(html).toContain('Minimum received');
+        expect(html).toContain('139.3 USDT');
+        expect(html).toContain('Price impact');
         expect(html).not.toContain('<dt>Estimated token0</dt>');
         expect(html).not.toContain('<dt>Minimum token0</dt>');
+        expect(html).not.toContain('<dt>Kyber Router</dt>');
     });
 
     it('renders direct remove-liquidity preview and safeguards when conversion is unchecked', async () => {
@@ -1046,18 +1047,31 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('remove-liquidity-output-token-picker');
         expect(html).not.toContain('<label class="form-label">Output Token</label>');
         expect(html).toContain('LIB + USDT via Uniswap V2');
-        expect(html).toContain('<dt>DEX</dt>');
-        expect(html).toContain('<dt>Estimated LIB</dt>');
-        expect(html).toContain('100 LIB');
-        expect(html).toContain('<dt>Estimated USDT</dt>');
-        expect(html).toContain('50 USDT');
-        expect(html).toContain('<dt>Minimum LIB</dt>');
-        expect(html).toContain('99.5 LIB');
-        expect(html).toContain('<dt>Minimum USDT</dt>');
-        expect(html).toContain('49.75 USDT');
-        expect(html).toContain('<dt>Slippage</dt>');
-        expect(html).toContain('<dt>Deadline</dt>');
+        expect(html).toContain('Max slippage:');
+        expect(html).toContain('You receive');
+        expect(html).toContain('100 LIB + 50 USDT');
+        expect(html).toContain('Minimum received');
+        expect(html).toContain('99.5 LIB + 49.75 USDT');
+        expect(html).toContain('DEX');
+        expect(html).not.toContain('id="remove-liquidity-deadline-input"');
         expect(html).not.toContain('<dt>Kyber Router</dt>');
+    });
+
+    it('opens remove-liquidity slippage and deadline controls from the compact dropdown', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquiditySettingsOpen = true;
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('aria-expanded="true"');
+        expect(html).toContain('0.05%');
+        expect(html).toContain('0.1%');
+        expect(html).toContain('0.5%');
+        expect(html).toContain('1.0%');
+        expect(html).toContain('Custom');
+        expect(html).toContain('id="remove-liquidity-deadline-input"');
+        expect(html).toContain('Transaction time limit');
     });
 
     it('shows a readable over-balance warning on unchecked remove liquidity', async () => {
@@ -1115,10 +1129,10 @@ describe('StakingModalNew zap cleanup', () => {
 
         const html = modal.renderRemoveLiquidityPreviewPanel();
 
-        expect(html).toContain('<dt>Estimated BNB</dt>');
+        expect(html).toContain('Estimated BNB');
         expect(html).toContain('0.00123 BNB');
-        expect(html).toContain('<dt>Estimated value</dt>');
-        expect(html).toContain('$0.4');
+        expect(html).toContain('Minimum received');
+        expect(html).toContain('Price impact');
     });
 
     it('does not double-count repeated Kyber action amounts for checked zap-out output', async () => {
@@ -1157,7 +1171,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         const html = modal.renderRemoveLiquidityPreviewPanel();
 
-        expect(html).toContain('<dt>Estimated DAI</dt>');
+        expect(html).toContain('Estimated DAI');
         expect(html).toContain('0.394877 DAI');
         expect(html).not.toContain('0.789754 DAI');
     });

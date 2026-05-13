@@ -624,11 +624,45 @@
     margin-top: calc(var(--spacing-2) * -1);
 }
 
-.remove-liquidity-settings {
+.remove-liquidity-settings-summary {
+    margin-bottom: var(--spacing-1);
+}
+
+.remove-liquidity-settings-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.remove-liquidity-settings-toggle:hover {
+    color: var(--primary-main);
+}
+
+.remove-liquidity-settings-toggle .material-icons {
+    font-size: 17px;
+}
+
+.remove-liquidity-settings-label {
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-normal);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
+.remove-liquidity-settings-panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(120px, 160px);
     gap: var(--spacing-2);
     align-items: start;
+    margin-bottom: var(--spacing-2);
 }
 
 .remove-liquidity-slippage-row {
@@ -680,7 +714,7 @@
 }
 
 .remove-liquidity-preview-list {
-    min-height: 158px;
+    min-height: 74px;
 }
 
 .zap-quote-card {
@@ -971,7 +1005,7 @@
         grid-template-columns: 1fr;
     }
 
-    .remove-liquidity-settings,
+    .remove-liquidity-settings-panel,
     .remove-liquidity-slippage-row {
         grid-template-columns: 1fr;
     }
