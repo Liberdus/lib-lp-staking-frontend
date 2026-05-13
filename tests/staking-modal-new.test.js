@@ -1723,4 +1723,50 @@ describe('StakingModalNew zap cleanup', () => {
             recipient: '0xuser'
         }));
     });
+
+    it('continues removing liquidity when approval becomes sufficient before approval transaction', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const liquidityRaw = createAmount(5);
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createAmount(10)),
+            getAllowance: vi.fn().mockResolvedValue(createAmount(1)),
+            approveIfNeeded: vi.fn().mockResolvedValue(null),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
+        };
+        modal.removeLiquidityService = service;
+        globalThis.contractManager = {
+            provider: {},
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            signer: {
+                provider: {},
+                getAddress: vi.fn().mockResolvedValue('0xuser')
+            },
+            executeTransactionOnce: vi.fn(async (operation) => {
+                const tx = await operation();
+                return { success: true, hash: tx.hash };
+            })
+        };
+        globalThis.walletManager = { provider: {} };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeRemoveLiquidityTransaction('0xlp', liquidityRaw);
+
+        expect(service.approveIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
+            lpTokenAddress: '0xlp',
+            spender: '0xrouter',
+            liquidityRaw
+        }));
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenCalledTimes(1);
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenCalledWith(expect.any(Function), 'removeLiquidity');
+        expect(service.removeLiquidity).toHaveBeenCalledWith(expect.objectContaining({
+            routerAddress: '0xrouter',
+            recipient: '0xuser'
+        }));
+    });
 });

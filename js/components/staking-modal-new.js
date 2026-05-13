@@ -4510,19 +4510,19 @@ class StakingModalNew {
             this.setActionPhase('approveRemoveLiquidity', 'userApproval');
             window.notificationManager?.info('Approving router to spend LP tokens...');
 
-            await window.contractManager.executeTransactionOnce(async () => {
-                const tx = await service.approveIfNeeded({
-                    lpTokenAddress,
-                    spender: preview.adapter.routerAddress,
-                    liquidityRaw,
-                    signer
-                });
-                if (!tx) {
-                    throw new Error('Router allowance is already sufficient.');
-                }
-                console.log(`✅ Remove-liquidity approval sent: ${tx.hash}`);
-                return tx;
-            }, 'approveRemoveLiquidity');
+            const approvalTx = await service.approveIfNeeded({
+                lpTokenAddress,
+                spender: preview.adapter.routerAddress,
+                liquidityRaw,
+                signer
+            });
+
+            if (approvalTx) {
+                await window.contractManager.executeTransactionOnce(async () => {
+                    console.log(`✅ Remove-liquidity approval sent: ${approvalTx.hash}`);
+                    return approvalTx;
+                }, 'approveRemoveLiquidity');
+            }
 
             this.pendingOperations.approveRemoveLiquidity = false;
             this.setActionPhase('approveRemoveLiquidity', 'idle');
