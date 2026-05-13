@@ -654,8 +654,6 @@
 .remove-liquidity-settings-label {
     color: var(--text-secondary);
     font-weight: var(--font-weight-normal);
-    text-decoration: underline dotted;
-    text-underline-offset: 3px;
 }
 
 .remove-liquidity-settings-panel {
@@ -859,26 +857,31 @@
     font-size: 12px;
 }
 
-.remove-liquidity-preview-list .zap-quote-row dt[title] {
+.remove-liquidity-preview-list .zap-quote-row dt[data-tooltip],
+.remove-liquidity-settings-panel .form-label[data-tooltip] {
     position: relative;
     cursor: help;
     text-decoration: underline dotted;
     text-underline-offset: 3px;
 }
 
-.remove-liquidity-preview-list .zap-quote-row dt[title]:focus {
+.remove-liquidity-preview-list .zap-quote-row dt[data-tooltip]:focus,
+.remove-liquidity-settings-panel .form-label[data-tooltip]:focus {
     outline: none;
     color: var(--primary-main);
 }
 
-.remove-liquidity-preview-list .zap-quote-row dt[title]:focus-visible {
+.remove-liquidity-preview-list .zap-quote-row dt[data-tooltip]:focus-visible,
+.remove-liquidity-settings-panel .form-label[data-tooltip]:focus-visible {
     outline: 2px solid var(--primary-main);
     outline-offset: 3px;
     border-radius: 3px;
 }
 
-.remove-liquidity-preview-list .zap-quote-row dt[title]:focus::after,
-.remove-liquidity-preview-list .zap-quote-row dt[title]:active::after {
+.remove-liquidity-preview-list .zap-quote-row dt[data-tooltip]:focus::after,
+.remove-liquidity-preview-list .zap-quote-row dt[data-tooltip]:active::after,
+.remove-liquidity-settings-panel .form-label[data-tooltip]:focus::after,
+.remove-liquidity-settings-panel .form-label[data-tooltip]:active::after {
     content: attr(data-tooltip);
     position: absolute;
     left: 0;

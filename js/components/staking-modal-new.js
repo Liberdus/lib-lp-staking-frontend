@@ -3288,6 +3288,10 @@ class StakingModalNew {
                         <label
                             class="form-label"
                             title="Maximum output movement allowed before the transaction reverts."
+                            data-tooltip="Maximum output movement allowed before the transaction reverts."
+                            tabindex="0"
+                            role="button"
+                            aria-label="Max Slippage: Maximum output movement allowed before the transaction reverts."
                         >Max Slippage</label>
                         <div class="remove-liquidity-slippage-row">
                             ${slippageOptions.map(option => `
@@ -3326,6 +3330,10 @@ class StakingModalNew {
                             class="form-label"
                             for="remove-liquidity-deadline-input"
                             title="Latest time this transaction can execute before it reverts."
+                            data-tooltip="Latest time this transaction can execute before it reverts."
+                            tabindex="0"
+                            role="button"
+                            aria-label="Transaction time limit: Latest time this transaction can execute before it reverts."
                         >Transaction time limit</label>
                         <div class="remove-liquidity-deadline-row">
                             <input
@@ -3356,7 +3364,6 @@ class StakingModalNew {
                     >
                         <span
                             class="remove-liquidity-settings-label"
-                            title="Maximum output movement allowed before the transaction reverts."
                         >Max slippage:</span>
                         <strong>${slippageDisplay}</strong>
                         <span class="material-icons" aria-hidden="true">settings</span>

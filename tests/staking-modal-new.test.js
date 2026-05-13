@@ -1076,6 +1076,10 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('Custom');
         expect(html).toContain('id="remove-liquidity-deadline-input"');
         expect(html).toContain('Transaction time limit');
+        expect(html).toContain('data-tooltip="Maximum output movement allowed before the transaction reverts."');
+        expect(html).toContain('data-tooltip="Latest time this transaction can execute before it reverts."');
+        expect(html).toContain('aria-label="Max Slippage: Maximum output movement allowed before the transaction reverts."');
+        expect(html).not.toContain('class="remove-liquidity-settings-label"\n                            title=');
     });
 
     it('shows a readable over-balance warning on unchecked remove liquidity', async () => {
