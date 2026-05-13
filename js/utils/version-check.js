@@ -175,6 +175,11 @@
             
             // JavaScript - Root
             `${basePath}js/master-initializer.js`,
+
+            // JavaScript - Services
+            `${basePath}js/services/kyber-zap-rate-limiter.js`,
+            `${basePath}js/services/kyber-zap-service.js`,
+            `${basePath}js/services/v2-remove-liquidity-service.js`,
             
             // JavaScript - Utils (only existing files)
             `${basePath}js/utils/admin-test.js`,
@@ -202,6 +207,7 @@
             `${basePath}css/base.css`,
             `${basePath}css/components.css`,
             `${basePath}css/network-indicator-selector.css`,
+            `${basePath}css/staking-modal.css`,
             `${basePath}css/theme-toggle.css`,
             `${basePath}css/wallet-popup.css`
         ];
