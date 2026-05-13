@@ -64,6 +64,12 @@
             return `${chainKey}:${this.normalizeAddress(lpTokenAddress)}`;
         }
 
+        getTokenMetaCacheKey(address, chainId = this.getCurrentChainId()) {
+            const parsedChainId = typeof chainId === 'string' ? Number(chainId) : chainId;
+            const chainKey = Number.isFinite(parsedChainId) ? String(parsedChainId) : 'unknown';
+            return `${chainKey}:${this.normalizeAddress(address)}`;
+        }
+
         toBigNumber(value) {
             const ethers = this.getEthers();
             return ethers.BigNumber?.from ? ethers.BigNumber.from(value) : BigInt(value);
@@ -207,10 +213,10 @@
             };
         }
 
-        async getTokenMetadata(address, provider = this.getProvider()) {
-            const normalized = this.normalizeAddress(address);
-            if (this.tokenMetaCache.has(normalized)) {
-                return this.tokenMetaCache.get(normalized);
+        async getTokenMetadata(address, provider = this.getProvider(), chainId = this.getCurrentChainId()) {
+            const cacheKey = this.getTokenMetaCacheKey(address, chainId);
+            if (this.tokenMetaCache.has(cacheKey)) {
+                return this.tokenMetaCache.get(cacheKey);
             }
 
             const tokenContract = this.createContract(address, this.getErc20Abi(), provider);
@@ -227,7 +233,7 @@
                 decimals: Number(decimals) || 18
             };
 
-            this.tokenMetaCache.set(normalized, metadata);
+            this.tokenMetaCache.set(cacheKey, metadata);
             return metadata;
         }
 
@@ -270,8 +276,8 @@
             const amount0Min = this.calculateMinAmount(amount0, slippageBps);
             const amount1Min = this.calculateMinAmount(amount1, slippageBps);
             const [token0Meta, token1Meta] = await Promise.all([
-                this.getTokenMetadata(adapter.pairMeta.token0Address, provider),
-                this.getTokenMetadata(adapter.pairMeta.token1Address, provider)
+                this.getTokenMetadata(adapter.pairMeta.token0Address, provider, adapter.chainId),
+                this.getTokenMetadata(adapter.pairMeta.token1Address, provider, adapter.chainId)
             ]);
 
             return {

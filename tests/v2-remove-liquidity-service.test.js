@@ -252,6 +252,55 @@ describe('V2RemoveLiquidityService', () => {
         expect(fixtures[addresses.lp].factory).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps token metadata cache entries separate by chain', async () => {
+        const fixtures = createFixtures();
+        fixtures[addresses.lp].factory
+            .mockResolvedValueOnce(addresses.factory)
+            .mockResolvedValueOnce(addresses.factory97);
+        fixtures[addresses.token0].symbol
+            .mockResolvedValueOnce('LIB')
+            .mockResolvedValueOnce('TLIB');
+        fixtures[addresses.token0].name
+            .mockResolvedValueOnce('Liberdus')
+            .mockResolvedValueOnce('Test Liberdus');
+        fixtures[addresses.token0].decimals
+            .mockResolvedValueOnce(18)
+            .mockResolvedValueOnce(6);
+        fixtures[addresses.token1].symbol
+            .mockResolvedValueOnce('USDT')
+            .mockResolvedValueOnce('TUSDT');
+        fixtures[addresses.token1].name
+            .mockResolvedValueOnce('Tether USD')
+            .mockResolvedValueOnce('Test Tether USD');
+        fixtures[addresses.token1].decimals
+            .mockResolvedValueOnce(18)
+            .mockResolvedValueOnce(6);
+        const V2RemoveLiquidityService = await loadService(fixtures);
+        const service = new V2RemoveLiquidityService();
+
+        const mainnetPreview = await service.getPreview({
+            chainId: 56,
+            lpTokenAddress: addresses.lp,
+            liquidityRaw: bn(unit(10)),
+            provider: {}
+        });
+        const testnetPreview = await service.getPreview({
+            chainId: 97,
+            lpTokenAddress: addresses.lp,
+            liquidityRaw: bn(unit(10)),
+            provider: {}
+        });
+
+        expect(mainnetPreview.token0.symbol).toBe('LIB');
+        expect(mainnetPreview.token0.decimals).toBe(18);
+        expect(testnetPreview.token0.symbol).toBe('TLIB');
+        expect(testnetPreview.token0.decimals).toBe(6);
+        expect(testnetPreview.token1.symbol).toBe('TUSDT');
+        expect(testnetPreview.token1.decimals).toBe(6);
+        expect(fixtures[addresses.token0].symbol).toHaveBeenCalledTimes(2);
+        expect(fixtures[addresses.token1].symbol).toHaveBeenCalledTimes(2);
+    });
+
     it('rejects configured routers whose factory does not match the LP factory', async () => {
         const fixtures = createFixtures({ routerFactory: addresses.unknownFactory });
         const V2RemoveLiquidityService = await loadService(fixtures);
