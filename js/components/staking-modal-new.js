@@ -299,8 +299,9 @@ class StakingModalNew {
             }
 
             // Percentage buttons
-            if (e.target.closest('.percentage-btn, .remove-liquidity-percentage-btn')) {
-                const percentage = parseInt(e.target.closest('.percentage-btn, .remove-liquidity-percentage-btn').dataset.percentage);
+            const percentageButton = e.target.closest('.percentage-btn, .remove-liquidity-percentage-btn');
+            if (percentageButton) {
+                const percentage = parseInt(percentageButton.dataset.percentage);
                 this.setPercentage(percentage);
             }
 
@@ -323,7 +324,7 @@ class StakingModalNew {
                 this.setRemoveLiquidityOutputToken(button.dataset.tokenAddress);
             }
 
-            if (e.target.closest('.zap-percentage-btn')) {
+            if (e.target.closest('.zap-percentage-btn') && !e.target.closest('.remove-liquidity-percentage-btn')) {
                 const button = e.target.closest('.zap-percentage-btn');
                 this.setZapAmountPercentage(parseInt(button.dataset.percentage, 10));
             }
@@ -702,12 +703,10 @@ class StakingModalNew {
         return estimate ? ` <span class="lp-usd-estimate">(${this.escapeHtml(estimate)})</span>` : '';
     }
 
-    renderLpUsdEstimateElement(id, amount, { preserveSpace = false } = {}) {
+    renderLpUsdEstimateElement(id, amount) {
         const estimate = this.formatLpUsdEstimate(amount);
-        const hiddenAttribute = estimate || preserveSpace ? '' : ' hidden';
-        const emptyClass = !estimate && preserveSpace ? ' lp-usd-estimate-empty' : '';
-        const ariaHiddenAttribute = !estimate && preserveSpace ? ' aria-hidden="true"' : '';
-        return `<div id="${id}" class="lp-usd-estimate${emptyClass}" aria-live="polite"${ariaHiddenAttribute}${hiddenAttribute}>${this.escapeHtml(estimate)}</div>`;
+        const hiddenAttribute = estimate ? '' : ' hidden';
+        return `<div id="${id}" class="lp-usd-estimate" aria-live="polite"${hiddenAttribute}>${this.escapeHtml(estimate)}</div>`;
     }
 
     getZapLpAmountForUsdEstimate(amount) {
@@ -865,13 +864,6 @@ class StakingModalNew {
         errorElement.textContent = balanceError;
         errorElement.hidden = false;
         errorElement.classList.toggle('zap-balance-error-empty', !balanceError);
-        if (errorElement.setAttribute && errorElement.removeAttribute) {
-            if (balanceError) {
-                errorElement.removeAttribute('aria-hidden');
-            } else {
-                errorElement.setAttribute('aria-hidden', 'true');
-            }
-        }
     }
 
     getRemoveLiquidityCustomSlippageError(value = this.removeLiquidityCustomSlippage) {
@@ -3259,7 +3251,6 @@ class StakingModalNew {
             Math.abs(removeLiquidityPercentage - percentage) < 0.001
         );
         const balanceErrorClass = balanceError ? '' : ' zap-balance-error-empty';
-        const balanceErrorAriaHidden = balanceError ? '' : ' aria-hidden="true"';
 
         return `
             <div class="balance-info">
@@ -3287,7 +3278,7 @@ class StakingModalNew {
                     inputmode="decimal"
                 >
                 <div class="remove-liquidity-meta-row">
-                    ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount, { preserveSpace: true })}
+                    ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
                     <label class="checkbox-label remove-liquidity-checkbox-label">
                         <input
                             type="checkbox"
@@ -3297,7 +3288,7 @@ class StakingModalNew {
                         <span class="checkmark"></span>
                         Convert to one preferred token
                     </label>
-                    <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error${balanceErrorClass}" aria-live="polite"${balanceErrorAriaHidden}>${this.escapeHtml(balanceError)}</div>
+                    <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error${balanceErrorClass}" aria-live="polite">${this.escapeHtml(balanceError)}</div>
                 </div>
             </div>
 
@@ -3314,7 +3305,7 @@ class StakingModalNew {
     }
 
     updateRemoveLiquidityUsdEstimate() {
-        this.updateLpUsdEstimate('remove-liquidity-usd-estimate', this.removeLiquidityAmount, { preserveSpace: true });
+        this.updateLpUsdEstimate('remove-liquidity-usd-estimate', this.removeLiquidityAmount);
     }
 
     formatRemoveLiquidityTokenAmount(amount, token) {
@@ -3726,20 +3717,12 @@ class StakingModalNew {
         }
     }
 
-    updateLpUsdEstimate(elementId, amount, { preserveSpace = false } = {}) {
+    updateLpUsdEstimate(elementId, amount) {
         const estimateElement = document.getElementById(elementId);
         if (estimateElement) {
             const estimate = this.formatLpUsdEstimate(amount);
             estimateElement.textContent = estimate;
-            estimateElement.hidden = !estimate && !preserveSpace;
-            estimateElement.classList.toggle('lp-usd-estimate-empty', !estimate && preserveSpace);
-            if (estimateElement.setAttribute && estimateElement.removeAttribute) {
-                if (!estimate && preserveSpace) {
-                    estimateElement.setAttribute('aria-hidden', 'true');
-                } else {
-                    estimateElement.removeAttribute('aria-hidden');
-                }
-            }
+            estimateElement.hidden = !estimate;
         }
     }
 
