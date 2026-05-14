@@ -54,6 +54,7 @@ class StakingModalNew {
         this.removeLiquiditySlippageBps = window.CONFIG?.KYBER_ZAP?.DEFAULT_SLIPPAGE_BPS || 50;
         this.removeLiquidityCustomSlippage = '';
         this.removeLiquidityCustomSlippageError = '';
+        this.removeLiquidityCustomSlippageSelected = false;
         this.removeLiquidityDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
         this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityPreviewDebounceTimer = null;
@@ -303,7 +304,7 @@ class StakingModalNew {
                 this.setPercentage(percentage);
             }
 
-            if (e.target.closest('.zap-slippage-btn')) {
+            if (e.target.closest('.zap-slippage-btn') && !e.target.closest('.remove-liquidity-slippage-btn')) {
                 const button = e.target.closest('.zap-slippage-btn');
                 this.setZapSlippage(button.dataset.slippage);
             }
@@ -342,6 +343,12 @@ class StakingModalNew {
                 document.querySelectorAll('.remove-liquidity-output-token-picker[open]').forEach(menu => {
                     menu.open = false;
                 });
+            }
+        });
+
+        document.addEventListener('focusin', (e) => {
+            if (e.target.id === 'remove-liquidity-custom-slippage-input') {
+                this.selectRemoveLiquidityCustomSlippage();
             }
         });
 
@@ -791,6 +798,7 @@ class StakingModalNew {
         this.removeLiquidityPreviewError = '';
         this.removeLiquidityCustomSlippage = '';
         this.removeLiquidityCustomSlippageError = '';
+        this.removeLiquidityCustomSlippageSelected = false;
         this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityCustomOutputTokenAddress = '';
         this.removeLiquidityCustomOutputTokenError = '';
@@ -874,7 +882,24 @@ class StakingModalNew {
     }
 
     isRemoveLiquidityCustomSlippageActive() {
-        return !!this.removeLiquidityCustomSlippage && !this.hasInvalidRemoveLiquidityCustomSlippage();
+        return (this.removeLiquidityCustomSlippageSelected || !!this.removeLiquidityCustomSlippage)
+            && !this.hasInvalidRemoveLiquidityCustomSlippage();
+    }
+
+    updateRemoveLiquiditySlippageButtonState() {
+        document.querySelectorAll('.remove-liquidity-slippage-btn').forEach(button => {
+            const isCustom = button.dataset?.slippage === 'custom';
+            const isPreset = Number(button.dataset?.slippage) === this.removeLiquiditySlippageBps;
+            const isActive = isCustom
+                ? this.isRemoveLiquidityCustomSlippageActive()
+                : isPreset && !this.removeLiquidityCustomSlippageSelected && !this.removeLiquidityCustomSlippage;
+            button.classList.toggle('active', isActive);
+        });
+    }
+
+    selectRemoveLiquidityCustomSlippage() {
+        this.removeLiquidityCustomSlippageSelected = true;
+        this.updateRemoveLiquiditySlippageButtonState();
     }
 
     toggleRemoveLiquiditySettings() {
@@ -884,6 +909,8 @@ class StakingModalNew {
 
     setRemoveLiquiditySlippage(value) {
         if (value === 'custom') {
+            this.removeLiquidityCustomSlippageSelected = true;
+            this.renderTabContent();
             const customInput = document.getElementById('remove-liquidity-custom-slippage-input');
             if (customInput) customInput.focus();
             return;
@@ -894,6 +921,7 @@ class StakingModalNew {
             this.removeLiquiditySlippageBps = parsed;
             this.removeLiquidityCustomSlippage = '';
             this.removeLiquidityCustomSlippageError = '';
+            this.removeLiquidityCustomSlippageSelected = false;
             this.resetRemoveLiquidityPreview();
             this.renderTabContent();
             this.debounceRemoveLiquidityPreview(0);
@@ -903,7 +931,9 @@ class StakingModalNew {
     setRemoveLiquidityCustomSlippageInput(value) {
         const sanitizedValue = this.applyDecimalLimit(String(value ?? ''), 2);
         this.removeLiquidityCustomSlippage = sanitizedValue;
+        this.removeLiquidityCustomSlippageSelected = true;
         this.removeLiquidityCustomSlippageError = this.getRemoveLiquidityCustomSlippageError(sanitizedValue);
+        this.updateRemoveLiquiditySlippageButtonState();
 
         if (this.removeLiquidityCustomSlippageError) {
             this.resetRemoveLiquidityPreview({
@@ -3329,7 +3359,7 @@ class StakingModalNew {
                             ${slippageOptions.map(option => `
                                 <button
                                     type="button"
-                                    class="zap-slippage-btn remove-liquidity-slippage-btn ${this.removeLiquiditySlippageBps === option && !this.removeLiquidityCustomSlippage ? 'active' : ''}"
+                                    class="zap-slippage-btn remove-liquidity-slippage-btn ${this.removeLiquiditySlippageBps === option && !this.removeLiquidityCustomSlippageSelected && !this.removeLiquidityCustomSlippage ? 'active' : ''}"
                                     data-slippage="${option}"
                                 >
                                     ${(option / 100).toFixed(option < 10 ? 2 : 1)}%

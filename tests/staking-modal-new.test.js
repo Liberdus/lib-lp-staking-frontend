@@ -50,8 +50,9 @@ function createDocumentMock() {
         getElementById: vi.fn(id => elements.get(id) || null),
         querySelector: vi.fn(() => null),
         querySelectorAll: vi.fn(selector => {
-            if (selector === '.zap-percentage-btn') {
-                return allElements.filter(element => element.classList.contains('zap-percentage-btn'));
+            if (selector.startsWith('.') && !selector.includes(' ')) {
+                const className = selector.slice(1).split('[')[0];
+                return allElements.filter(element => element.classList.contains(className));
             }
 
             return [];
@@ -1092,6 +1093,45 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('data-tooltip="Latest time this transaction can execute before it reverts."');
         expect(html).toContain('aria-label="Max Slippage: Maximum output movement allowed before the transaction reverts."');
         expect(html).not.toContain('class="remove-liquidity-settings-label"\n                            title=');
+    });
+
+    it('highlights custom remove-liquidity slippage when selected before typing a value', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquiditySettingsOpen = true;
+
+        modal.setRemoveLiquiditySlippage('custom');
+        const html = modal.renderRemoveLiquidityTab();
+        const slippageButtons = [...html.matchAll(/<button[\s\S]*?class="([^"]*)"[\s\S]*?data-slippage="([^"]+)"[\s\S]*?>/g)]
+            .filter(([, className]) => className.includes('remove-liquidity-slippage-btn'));
+        const defaultButton = slippageButtons.find(([, , value]) => value === '50');
+        const customButton = slippageButtons.find(([, , value]) => value === 'custom');
+
+        expect(modal.removeLiquidityCustomSlippageSelected).toBe(true);
+        expect(defaultButton?.[1]).not.toContain('active');
+        expect(customButton?.[1]).toContain('active');
+    });
+
+    it('highlights custom remove-liquidity slippage when the input is focused', async () => {
+        const modal = await createLoadedModal();
+        const defaultButton = document.registerElement(createElement({
+            classes: ['zap-slippage-btn', 'remove-liquidity-slippage-btn', 'active']
+        }));
+        defaultButton.dataset.slippage = '50';
+        const customButton = document.registerElement(createElement({
+            classes: ['zap-slippage-btn', 'remove-liquidity-slippage-btn']
+        }));
+        customButton.dataset.slippage = 'custom';
+        const customInput = document.registerElement(createElement({
+            id: 'remove-liquidity-custom-slippage-input'
+        }));
+        const focusHandler = document.addEventListener.mock.calls.find(([eventName]) => eventName === 'focusin')?.[1];
+
+        focusHandler({ target: customInput });
+
+        expect(modal.removeLiquidityCustomSlippageSelected).toBe(true);
+        expect(defaultButton.classList.contains('active')).toBe(false);
+        expect(customButton.classList.contains('active')).toBe(true);
     });
 
     it('shows a readable over-balance warning on unchecked remove liquidity', async () => {
