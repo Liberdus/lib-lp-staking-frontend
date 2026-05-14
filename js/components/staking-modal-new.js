@@ -793,10 +793,8 @@ class StakingModalNew {
     }
 
     stopRemoveLiquidityPreviewAutoRefresh() {
-        if (this.removeLiquidityPreviewRefreshTimer) {
-            clearInterval(this.removeLiquidityPreviewRefreshTimer);
-            this.removeLiquidityPreviewRefreshTimer = null;
-        }
+        clearInterval(this.removeLiquidityPreviewRefreshTimer);
+        this.removeLiquidityPreviewRefreshTimer = null;
     }
 
     resetRemoveLiquidityFormState() {
@@ -1058,11 +1056,15 @@ class StakingModalNew {
         }, delay);
     }
 
-    syncRemoveLiquidityPreviewAutoRefresh() {
-        if (this.isOpen
+    canAutoRefreshRemoveLiquidityPreview() {
+        return this.isOpen
             && this.currentTab === 'remove-liquidity'
             && this.removeLiquidityZapOutEnabled
-            && this.canFetchRemoveLiquidityPreview()) {
+            && this.canFetchRemoveLiquidityPreview();
+    }
+
+    syncRemoveLiquidityPreviewAutoRefresh() {
+        if (this.canAutoRefreshRemoveLiquidityPreview()) {
             this.startRemoveLiquidityPreviewAutoRefresh();
         } else {
             this.stopRemoveLiquidityPreviewAutoRefresh();
@@ -1076,11 +1078,7 @@ class StakingModalNew {
 
         const refreshMs = (this.zapQuoteRefreshSeconds || 10) * 1000;
         this.removeLiquidityPreviewRefreshTimer = setInterval(() => {
-            if (!this.isOpen
-                || this.currentTab !== 'remove-liquidity'
-                || this.isExecutingRemoveLiquidity
-                || !this.removeLiquidityZapOutEnabled
-                || !this.canFetchRemoveLiquidityPreview()) {
+            if (this.isExecutingRemoveLiquidity || !this.canAutoRefreshRemoveLiquidityPreview()) {
                 this.stopRemoveLiquidityPreviewAutoRefresh();
                 return;
             }
