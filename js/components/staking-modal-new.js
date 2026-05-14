@@ -59,6 +59,7 @@ class StakingModalNew {
         this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityPreviewDebounceTimer = null;
         this.removeLiquidityPreviewRefreshTimer = null;
+        this.removeLiquidityPreviewCountdown = 10;
         this.removeLiquidityPreviewRequestId = 0;
         this.removeLiquidityOutputTokenAddress = '';
         this.removeLiquidityOutputTokens = [];
@@ -795,6 +796,7 @@ class StakingModalNew {
     stopRemoveLiquidityPreviewAutoRefresh() {
         clearInterval(this.removeLiquidityPreviewRefreshTimer);
         this.removeLiquidityPreviewRefreshTimer = null;
+        this.resetRemoveLiquidityPreviewCountdown();
     }
 
     resetRemoveLiquidityFormState() {
@@ -1073,10 +1075,11 @@ class StakingModalNew {
 
     startRemoveLiquidityPreviewAutoRefresh() {
         if (this.removeLiquidityPreviewRefreshTimer) {
+            this.updateRemoveLiquidityPreviewCountdownDisplay();
             return;
         }
 
-        const refreshMs = (this.zapQuoteRefreshSeconds || 10) * 1000;
+        this.resetRemoveLiquidityPreviewCountdown();
         this.removeLiquidityPreviewRefreshTimer = setInterval(() => {
             if (this.isExecutingRemoveLiquidity || !this.canAutoRefreshRemoveLiquidityPreview()) {
                 this.stopRemoveLiquidityPreviewAutoRefresh();
@@ -1084,11 +1087,32 @@ class StakingModalNew {
             }
 
             if (this.removeLiquidityPreviewStatus === 'loading') {
+                this.updateRemoveLiquidityPreviewCountdownDisplay();
                 return;
             }
 
-            this.fetchRemoveLiquidityPreview({ force: true });
-        }, refreshMs);
+            this.removeLiquidityPreviewCountdown = Math.max(0, this.removeLiquidityPreviewCountdown - 1);
+            this.updateRemoveLiquidityPreviewCountdownDisplay();
+
+            if (this.removeLiquidityPreviewCountdown === 0) {
+                this.resetRemoveLiquidityPreviewCountdown();
+                this.fetchRemoveLiquidityPreview({ force: true });
+            }
+        }, 1000);
+    }
+
+    resetRemoveLiquidityPreviewCountdown(seconds = this.zapQuoteRefreshSeconds) {
+        this.removeLiquidityPreviewCountdown = seconds;
+        this.updateRemoveLiquidityPreviewCountdownDisplay();
+    }
+
+    updateRemoveLiquidityPreviewCountdownDisplay() {
+        const countdown = document.getElementById('remove-liquidity-preview-countdown');
+        if (countdown) {
+            countdown.textContent = this.canAutoRefreshRemoveLiquidityPreview()
+                ? `${this.removeLiquidityPreviewCountdown}s`
+                : '--';
+        }
     }
 
     async fetchRemoveLiquidityPreview({ force = false } = {}) {
@@ -3753,11 +3777,18 @@ class StakingModalNew {
     }
 
     renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, refreshLabel, warningMessages = []) {
+        const countdownDisplay = this.canAutoRefreshRemoveLiquidityPreview()
+            ? `${this.removeLiquidityPreviewCountdown}s`
+            : '--';
+
         return `
             <div class="${cardClass}">
                 <div class="zap-quote-header">
                     <div class="zap-route-summary">${this.escapeHtml(summary)}</div>
                     <div class="zap-refresh-controls">
+                        ${this.removeLiquidityZapOutEnabled ? `
+                            <span id="remove-liquidity-preview-countdown" class="zap-quote-countdown">${this.escapeHtml(countdownDisplay)}</span>
+                        ` : ''}
                         <button
                             type="button"
                             class="zap-refresh-btn"
