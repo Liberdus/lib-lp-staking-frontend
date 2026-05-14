@@ -58,6 +58,7 @@ class StakingModalNew {
         this.removeLiquidityDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
         this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityPreviewDebounceTimer = null;
+        this.removeLiquidityPreviewRefreshTimer = null;
         this.removeLiquidityPreviewRequestId = 0;
         this.removeLiquidityOutputTokenAddress = '';
         this.removeLiquidityOutputTokens = [];
@@ -791,6 +792,13 @@ class StakingModalNew {
         }
     }
 
+    stopRemoveLiquidityPreviewAutoRefresh() {
+        if (this.removeLiquidityPreviewRefreshTimer) {
+            clearInterval(this.removeLiquidityPreviewRefreshTimer);
+            this.removeLiquidityPreviewRefreshTimer = null;
+        }
+    }
+
     resetRemoveLiquidityFormState() {
         this.removeLiquidityZapOutEnabled = false;
         this.removeLiquidityAmount = '';
@@ -805,6 +813,7 @@ class StakingModalNew {
         this.removeLiquidityCustomOutputTokenError = '';
         this.removeLiquidityPreviewRequestId += 1;
         this.clearRemoveLiquidityPreviewDebounce();
+        this.stopRemoveLiquidityPreviewAutoRefresh();
     }
 
     resetRemoveLiquidityPreview({ status = 'idle', error = '' } = {}) {
@@ -813,6 +822,7 @@ class StakingModalNew {
         this.removeLiquidityPreviewError = error;
         this.removeLiquidityPreviewRequestId += 1;
         this.clearRemoveLiquidityPreviewDebounce();
+        this.syncRemoveLiquidityPreviewAutoRefresh();
         this.updateRemoveLiquidityPreviewPanel();
         this.updateRemoveLiquidityButton();
     }
@@ -1036,18 +1046,56 @@ class StakingModalNew {
         this.clearRemoveLiquidityPreviewDebounce();
 
         if (!this.canFetchRemoveLiquidityPreview()) {
+            this.stopRemoveLiquidityPreviewAutoRefresh();
             this.updateRemoveLiquidityPreviewPanel();
             this.updateRemoveLiquidityButton();
             return;
         }
 
+        this.syncRemoveLiquidityPreviewAutoRefresh();
         this.removeLiquidityPreviewDebounceTimer = setTimeout(() => {
             this.fetchRemoveLiquidityPreview();
         }, delay);
     }
 
+    syncRemoveLiquidityPreviewAutoRefresh() {
+        if (this.isOpen
+            && this.currentTab === 'remove-liquidity'
+            && this.removeLiquidityZapOutEnabled
+            && this.canFetchRemoveLiquidityPreview()) {
+            this.startRemoveLiquidityPreviewAutoRefresh();
+        } else {
+            this.stopRemoveLiquidityPreviewAutoRefresh();
+        }
+    }
+
+    startRemoveLiquidityPreviewAutoRefresh() {
+        if (this.removeLiquidityPreviewRefreshTimer) {
+            return;
+        }
+
+        const refreshMs = (this.zapQuoteRefreshSeconds || 10) * 1000;
+        this.removeLiquidityPreviewRefreshTimer = setInterval(() => {
+            if (!this.isOpen
+                || this.currentTab !== 'remove-liquidity'
+                || this.isExecutingRemoveLiquidity
+                || !this.removeLiquidityZapOutEnabled
+                || !this.canFetchRemoveLiquidityPreview()) {
+                this.stopRemoveLiquidityPreviewAutoRefresh();
+                return;
+            }
+
+            if (this.removeLiquidityPreviewStatus === 'loading') {
+                return;
+            }
+
+            this.fetchRemoveLiquidityPreview({ force: true });
+        }, refreshMs);
+    }
+
     async fetchRemoveLiquidityPreview({ force = false } = {}) {
         if (!this.canPrepareRemoveLiquidityPreview()) {
+            this.stopRemoveLiquidityPreviewAutoRefresh();
             this.updateRemoveLiquidityPreviewPanel();
             this.updateRemoveLiquidityButton();
             return;
@@ -1148,6 +1196,7 @@ class StakingModalNew {
             if (requestId === this.removeLiquidityPreviewRequestId) {
                 this.updateRemoveLiquidityPreviewPanel();
                 this.updateRemoveLiquidityButton();
+                this.syncRemoveLiquidityPreviewAutoRefresh();
             }
         }
     }
@@ -3027,6 +3076,7 @@ class StakingModalNew {
     switchTab(tab) {
         this.currentTab = tab;
         this.syncZapQuoteAutoRefresh();
+        this.syncRemoveLiquidityPreviewAutoRefresh();
 
         // Update tab buttons
         document.querySelectorAll('.tab-button').forEach(btn => {

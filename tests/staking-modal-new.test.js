@@ -1251,6 +1251,68 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('Unsupported</dd>');
     });
 
+    it('auto-refreshes checked remove-liquidity zap-out previews', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledWith({ force: true });
+        modal.stopRemoveLiquidityPreviewAutoRefresh();
+    });
+
+    it('does not auto-refresh direct remove-liquidity previews', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+        expect(modal.fetchRemoveLiquidityPreview).not.toHaveBeenCalled();
+    });
+
+    it('stops remove-liquidity zap-out auto-refresh when leaving the flow', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+
+        modal.currentTab = 'zap';
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+    });
+
+    it('stops remove-liquidity zap-out auto-refresh when the form resets', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+
+        modal.resetRemoveLiquidityFormState();
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+    });
+
     it('derives checked remove-liquidity output amount from Kyber zap-out actions', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
