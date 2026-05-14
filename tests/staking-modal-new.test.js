@@ -1020,6 +1020,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('10 LP <span class="lp-usd-estimate">($100.00)</span>');
         expect(html).toContain('id="remove-liquidity-amount-input"');
+        expect(html).toContain('remove-liquidity-meta-row');
         expect(html).toContain('id="remove-liquidity-usd-estimate"');
         expect(html).toContain('id="remove-liquidity-checkbox"');
         expect(html).toContain('remove-liquidity-action-btn');
@@ -1042,7 +1043,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Kyber Router</dt>');
     });
 
-    it('renders remove-liquidity slider and preset state from the saved amount', async () => {
+    it('renders remove-liquidity compact percentage buttons from the saved amount', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
         modal.userBalance = '5';
@@ -1050,9 +1051,10 @@ describe('StakingModalNew zap cleanup', () => {
 
         const html = modal.renderRemoveLiquidityTab();
 
-        expect(html).toContain('id="remove-liquidity-slider"');
-        expect(html).toContain('value="50"');
-        expect(html).toContain('<button class="percentage-btn active" data-percentage="50">50%</button>');
+        expect(html).toContain('zap-label-row zap-amount-label-row');
+        expect(html).toContain('zap-percentage-buttons');
+        expect(html).not.toContain('id="remove-liquidity-slider"');
+        expect(html).toContain('class="zap-percentage-btn remove-liquidity-percentage-btn active" data-percentage="50"');
     });
 
     it('renders direct remove-liquidity preview and safeguards when conversion is unchecked', async () => {

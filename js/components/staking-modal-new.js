@@ -299,8 +299,8 @@ class StakingModalNew {
             }
 
             // Percentage buttons
-            if (e.target.closest('.percentage-btn')) {
-                const percentage = parseInt(e.target.closest('.percentage-btn').dataset.percentage);
+            if (e.target.closest('.percentage-btn, .remove-liquidity-percentage-btn')) {
+                const percentage = parseInt(e.target.closest('.percentage-btn, .remove-liquidity-percentage-btn').dataset.percentage);
                 this.setPercentage(percentage);
             }
 
@@ -3255,8 +3255,16 @@ class StakingModalNew {
                 <span class="balance-value">${this.userBalance} LP${this.renderInlineLpUsdEstimate(this.userBalance)}</span>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Amount of LP to Remove</label>
+            <div class="form-group remove-liquidity-amount-group">
+                <div class="zap-label-row zap-amount-label-row">
+                    <label class="form-label">Amount of LP to Remove</label>
+                    <div class="zap-percentage-buttons">
+                        <button type="button" class="zap-percentage-btn remove-liquidity-percentage-btn${activeRemoveLiquidityPercentage === 25 ? ' active' : ''}" data-percentage="25">25%</button>
+                        <button type="button" class="zap-percentage-btn remove-liquidity-percentage-btn${activeRemoveLiquidityPercentage === 50 ? ' active' : ''}" data-percentage="50">50%</button>
+                        <button type="button" class="zap-percentage-btn remove-liquidity-percentage-btn${activeRemoveLiquidityPercentage === 75 ? ' active' : ''}" data-percentage="75">75%</button>
+                        <button type="button" class="zap-percentage-btn remove-liquidity-percentage-btn${activeRemoveLiquidityPercentage === 100 ? ' active' : ''}" data-percentage="100">MAX</button>
+                    </div>
+                </div>
                 <input
                     type="number"
                     id="remove-liquidity-amount-input"
@@ -3266,37 +3274,19 @@ class StakingModalNew {
                     min="0"
                     inputmode="decimal"
                 >
-                ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
+                <div class="remove-liquidity-meta-row">
+                    ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
+                    <label class="checkbox-label remove-liquidity-checkbox-label">
+                        <input
+                            type="checkbox"
+                            id="remove-liquidity-checkbox"
+                            ${this.removeLiquidityZapOutEnabled ? 'checked' : ''}
+                        >
+                        <span class="checkmark"></span>
+                        Convert to one preferred token
+                    </label>
+                </div>
                 <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error" aria-live="polite" ${balanceError ? '' : 'hidden'}>${this.escapeHtml(balanceError)}</div>
-                <div class="slider-container">
-                    <input
-                        type="range"
-                        class="slider amount-slider"
-                        id="remove-liquidity-slider"
-                        min="0"
-                        max="100"
-                        value="${removeLiquidityPercentage}"
-                        data-type="remove-liquidity"
-                    >
-                </div>
-                <div class="percentage-buttons">
-                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 25 ? ' active' : ''}" data-percentage="25">25%</button>
-                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 50 ? ' active' : ''}" data-percentage="50">50%</button>
-                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 75 ? ' active' : ''}" data-percentage="75">75%</button>
-                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 100 ? ' active' : ''}" data-percentage="100">MAX</button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="checkbox-label remove-liquidity-checkbox-label">
-                    <input
-                        type="checkbox"
-                        id="remove-liquidity-checkbox"
-                        ${this.removeLiquidityZapOutEnabled ? 'checked' : ''}
-                    >
-                    <span class="checkmark"></span>
-                    Convert to one preferred token
-                </label>
             </div>
 
             ${this.renderRemoveLiquidityControls()}
@@ -4102,7 +4092,7 @@ class StakingModalNew {
         }
 
         // Update percentage button states
-        document.querySelectorAll('.percentage-btn').forEach(btn => {
+        document.querySelectorAll('.percentage-btn, .remove-liquidity-percentage-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.percentage) === percentage);
         });
     }

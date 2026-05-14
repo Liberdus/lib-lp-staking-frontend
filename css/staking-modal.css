@@ -621,6 +621,28 @@
     justify-content: flex-start;
 }
 
+.remove-liquidity-amount-group {
+    margin-bottom: 0;
+}
+
+.remove-liquidity-meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-top: 6px;
+}
+
+.remove-liquidity-meta-row .lp-usd-estimate {
+    margin-top: 0;
+}
+
+.remove-liquidity-meta-row .remove-liquidity-checkbox-label {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
 .remove-liquidity-section {
     margin-top: calc(var(--spacing-2) * -1);
 }
