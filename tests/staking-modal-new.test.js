@@ -262,6 +262,8 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">bolt</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
+        expect(modalContainer.innerHTML).toContain('aria-label="Remove LP"');
+        expect(modalContainer.innerHTML).toContain('<span class="tab-label">Remove LP</span>');
     });
 
     it('derives LP USD estimates from pair TVL data', async () => {
@@ -373,6 +375,26 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderClaimTab();
 
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+    });
+
+    it('renders a disabled Remove LP tab shell with LP balance and amount controls', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 2000, tvl: 100 };
+        modal.userBalance = '4';
+        modal.removeLiquidityAmount = '1.5';
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+        expect(html).toContain('id="remove-liquidity-amount-input"');
+        expect(html).toContain('id="remove-liquidity-usd-estimate"');
+        expect(html).toContain('$30.00');
+        expect(html).toContain('id="remove-liquidity-slider"');
+        expect(html).toContain('data-type="remove-liquidity"');
+        expect(html).toContain('Remove LP Liquidity');
+        expect(html).toContain('disabled title="Remove LP execution is added in a later PR"');
+        expect(html).not.toContain('remove-liquidity-checkbox');
+        expect(html).not.toContain('remove-liquidity-preview');
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {

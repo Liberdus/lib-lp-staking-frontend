@@ -106,7 +106,7 @@
 /* Modal Tabs */
 .modal-tabs {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     border-bottom: 1px solid var(--divider);
 }
 
@@ -850,6 +850,15 @@
     flex: 1;
     padding: var(--spacing-2);
     font-size: var(--font-size);
+}
+
+.remove-liquidity-action-btn,
+.remove-liquidity-action-btn:not(:disabled):hover {
+    box-shadow: none;
+}
+
+.remove-liquidity-action-btn:disabled {
+    opacity: 0.5;
 }
 
 /* Responsive */

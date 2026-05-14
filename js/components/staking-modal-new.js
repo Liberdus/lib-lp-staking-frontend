@@ -10,6 +10,7 @@ class StakingModalNew {
         this.currentTab = 'stake';
         this.stakeAmount = '';
         this.unstakeAmount = '';
+        this.removeLiquidityAmount = '';
         this.userBalance = '0.00';
         this.userStaked = '0.00';
         this.pendingRewards = '0.00';
@@ -227,6 +228,10 @@ class StakingModalNew {
                             <span class="material-icons" aria-hidden="true">redeem</span>
                             <span class="tab-label">Claim</span>
                         </button>
+                        <button class="tab-button" aria-label="Remove LP" data-tab="remove-liquidity">
+                            <span class="material-icons" aria-hidden="true">swap_horiz</span>
+                            <span class="tab-label">Remove LP</span>
+                        </button>
                     </div>
                     
                     <div class="modal-body">
@@ -422,6 +427,7 @@ class StakingModalNew {
         // Reset form inputs
         this.stakeAmount = '';
         this.unstakeAmount = '';
+        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -479,7 +485,7 @@ class StakingModalNew {
      */
     async show(pair, initialTab = 0) {
         // Convert numeric tab index to string tab name
-        const tabNames = ['stake', 'unstake', 'claim', 'zap'];
+        const tabNames = ['stake', 'unstake', 'claim', 'zap', 'remove-liquidity'];
         const tabName = tabNames[initialTab] || 'stake';
 
         console.log(`🎯 Opening modal for ${pair.name}, tab: ${tabName} (index: ${initialTab})`);
@@ -2095,6 +2101,7 @@ class StakingModalNew {
         // Clear state
         this.stakeAmount = '';
         this.unstakeAmount = '';
+        this.removeLiquidityAmount = '';
         this.zapInputAmount = '';
         this.zapQuote = null;
         this.zapQuoteStatus = 'idle';
@@ -2111,8 +2118,8 @@ class StakingModalNew {
         this.needsApproval = false;
         this.resetActionStates(false);
         
-        // Clear DOM inputs and sliders for both stake and unstake
-        ['stake', 'unstake'].forEach(type => {
+        // Clear DOM inputs and sliders for LP amount tabs
+        ['stake', 'unstake', 'remove-liquidity'].forEach(type => {
             const input = document.getElementById(`${type}-amount-input`);
             const slider = document.getElementById(`${type}-slider`);
             if (input) input.value = '';
@@ -2120,6 +2127,7 @@ class StakingModalNew {
         });
         this.updateStakeUsdEstimate();
         this.updateUnstakeUsdEstimate();
+        this.updateRemoveLiquidityUsdEstimate();
 
         const zapInput = document.getElementById('zap-amount-input');
         if (zapInput) zapInput.value = '';
@@ -2184,6 +2192,9 @@ class StakingModalNew {
                 break;
             case 'claim':
                 tabContent.innerHTML = this.renderClaimTab();
+                break;
+            case 'remove-liquidity':
+                tabContent.innerHTML = this.renderRemoveLiquidityTab();
                 break;
             case 'zap':
                 tabContent.innerHTML = this.renderZapTab();
@@ -2429,6 +2440,58 @@ class StakingModalNew {
                 </button>
             </div>
         `;
+    }
+
+    renderRemoveLiquidityTab() {
+        return `
+            <div class="balance-info">
+                <span class="balance-label">Available LP Tokens:</span>
+                <span class="balance-value">${this.escapeHtml(this.userBalance)} LP${this.renderInlineLpUsdEstimate(this.userBalance)}</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Amount of LP to Remove</label>
+                <input
+                    type="number"
+                    id="remove-liquidity-amount-input"
+                    class="form-input"
+                    placeholder="0.00"
+                    value="${this.escapeHtml(this.removeLiquidityAmount)}"
+                    min="0"
+                    inputmode="decimal"
+                >
+                ${this.renderLpUsdEstimateElement('remove-liquidity-usd-estimate', this.removeLiquidityAmount)}
+                <div class="slider-container">
+                    <input
+                        type="range"
+                        class="slider amount-slider"
+                        id="remove-liquidity-slider"
+                        min="0"
+                        max="100"
+                        value="0"
+                        data-type="remove-liquidity"
+                    >
+                </div>
+                <div class="percentage-buttons">
+                    <button class="percentage-btn" data-percentage="25">25%</button>
+                    <button class="percentage-btn" data-percentage="50">50%</button>
+                    <button class="percentage-btn" data-percentage="75">75%</button>
+                    <button class="percentage-btn" data-percentage="100">MAX</button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
+                <button class="btn btn-primary remove-liquidity-action-btn" disabled title="Remove LP execution is added in a later PR">
+                    <span class="material-icons">swap_horiz</span>
+                    Remove LP Liquidity
+                </button>
+            </div>
+        `;
+    }
+
+    updateRemoveLiquidityUsdEstimate() {
+        this.updateLpUsdEstimate('remove-liquidity-usd-estimate', this.removeLiquidityAmount);
     }
 
     renderZapTab() {
