@@ -643,6 +643,10 @@
     white-space: nowrap;
 }
 
+.remove-liquidity-amount-group .zap-balance-error {
+    margin-bottom: var(--spacing-2);
+}
+
 .remove-liquidity-section {
     margin-top: calc(var(--spacing-2) * -1);
 }
