@@ -702,7 +702,46 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.zapCustomSlippage).toBe('');
         expect(modal.zapCustomSlippageError).toBe('');
+        expect(modal.zapCustomSlippageSelected).toBe(false);
         expect(modal.hasInvalidZapCustomSlippage()).toBe(false);
+    });
+
+    it('highlights custom zap slippage when selected before typing a value', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal);
+
+        modal.setZapSlippage('custom');
+        const html = modal.renderZapTab();
+        const slippageButtons = [...html.matchAll(/<button[\s\S]*?class="([^"]*)"[\s\S]*?data-slippage="([^"]+)"[\s\S]*?>/g)]
+            .filter(([, className]) => className.includes('zap-slippage-btn'));
+        const defaultButton = slippageButtons.find(([, , value]) => value === '50');
+        const customButton = slippageButtons.find(([, , value]) => value === 'custom');
+
+        expect(modal.zapCustomSlippageSelected).toBe(true);
+        expect(defaultButton?.[1]).not.toContain('active');
+        expect(customButton?.[1]).toContain('active');
+    });
+
+    it('highlights custom zap slippage when the input is focused', async () => {
+        const modal = await createLoadedModal();
+        const defaultButton = document.registerElement(createElement({
+            classes: ['zap-slippage-btn', 'active']
+        }));
+        defaultButton.dataset.slippage = '50';
+        const customButton = document.registerElement(createElement({
+            classes: ['zap-slippage-btn']
+        }));
+        customButton.dataset.slippage = 'custom';
+        const customInput = document.registerElement(createElement({
+            id: 'zap-custom-slippage-input'
+        }));
+        const focusHandler = document.addEventListener.mock.calls.find(([eventName]) => eventName === 'focusin')?.[1];
+
+        focusHandler({ target: customInput });
+
+        expect(modal.zapCustomSlippageSelected).toBe(true);
+        expect(defaultButton.classList.contains('active')).toBe(false);
+        expect(customButton.classList.contains('active')).toBe(true);
     });
 
     it('valid custom zap slippage applies bps and refreshes quotes', async () => {

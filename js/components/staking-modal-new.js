@@ -30,6 +30,7 @@ class StakingModalNew {
         this.zapSlippageBps = window.CONFIG?.KYBER_ZAP?.DEFAULT_SLIPPAGE_BPS || 50;
         this.zapCustomSlippage = '';
         this.zapCustomSlippageError = '';
+        this.zapCustomSlippageSelected = false;
         this.zapDeadlineMinutes = window.CONFIG?.KYBER_ZAP?.DEFAULT_DEADLINE_MINUTES || 20;
         this.zapQuoteDebounceTimer = null;
         this.zapQuoteRequestId = 0;
@@ -348,6 +349,10 @@ class StakingModalNew {
         });
 
         document.addEventListener('focusin', (e) => {
+            if (e.target.id === 'zap-custom-slippage-input') {
+                this.selectZapCustomSlippage();
+            }
+
             if (e.target.id === 'remove-liquidity-custom-slippage-input') {
                 this.selectRemoveLiquidityCustomSlippage();
             }
@@ -1471,6 +1476,7 @@ class StakingModalNew {
 
     setZapSlippage(value) {
         if (value === 'custom') {
+            this.selectZapCustomSlippage();
             const customInput = document.getElementById('zap-custom-slippage-input');
             if (customInput) customInput.focus();
         } else {
@@ -1479,6 +1485,7 @@ class StakingModalNew {
                 this.zapSlippageBps = parsed;
                 this.zapCustomSlippage = '';
                 this.zapCustomSlippageError = '';
+                this.zapCustomSlippageSelected = false;
                 this.resetZapQuoteState();
                 this.renderTabContent();
                 this.debounceZapQuote();
@@ -1504,13 +1511,36 @@ class StakingModalNew {
     }
 
     isZapCustomSlippageActive() {
-        return !!this.zapCustomSlippage && !this.hasInvalidZapCustomSlippage();
+        return (this.zapCustomSlippageSelected || !!this.zapCustomSlippage)
+            && !this.hasInvalidZapCustomSlippage();
+    }
+
+    updateZapSlippageButtonState() {
+        document.querySelectorAll('.zap-slippage-btn').forEach(button => {
+            if (button.classList.contains('remove-liquidity-slippage-btn')) {
+                return;
+            }
+
+            const isCustom = button.dataset?.slippage === 'custom';
+            const isPreset = Number(button.dataset?.slippage) === this.zapSlippageBps;
+            const isActive = isCustom
+                ? this.isZapCustomSlippageActive()
+                : isPreset && !this.zapCustomSlippageSelected && !this.zapCustomSlippage;
+            button.classList.toggle('active', isActive);
+        });
+    }
+
+    selectZapCustomSlippage() {
+        this.zapCustomSlippageSelected = true;
+        this.updateZapSlippageButtonState();
     }
 
     setZapCustomSlippageInput(value) {
         const sanitizedValue = this.applyDecimalLimit(String(value ?? ''), 2);
         this.zapCustomSlippage = sanitizedValue;
+        this.zapCustomSlippageSelected = true;
         this.zapCustomSlippageError = this.getZapCustomSlippageError(sanitizedValue);
+        this.updateZapSlippageButtonState();
         this.updateCustomSlippageFieldError(
             'zap-custom-slippage-input',
             'zap-custom-slippage-error',
@@ -2969,6 +2999,7 @@ class StakingModalNew {
         this.zapQuoteInFlightKey = '';
         this.zapCustomSlippage = '';
         this.zapCustomSlippageError = '';
+        this.zapCustomSlippageSelected = false;
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
@@ -3896,7 +3927,7 @@ class StakingModalNew {
                 <label class="form-label">Slippage</label>
                 <div class="zap-slippage-row">
                     ${slippageOptions.map(option => `
-                        <button class="zap-slippage-btn ${this.zapSlippageBps === option && !this.zapCustomSlippage ? 'active' : ''}" data-slippage="${option}">
+                        <button class="zap-slippage-btn ${this.zapSlippageBps === option && !this.zapCustomSlippageSelected && !this.zapCustomSlippage ? 'active' : ''}" data-slippage="${option}">
                             ${(option / 100).toFixed(1)}%
                         </button>
                     `).join('')}
