@@ -1069,7 +1069,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('100 LIB + 50 USDT');
         expect(html).toContain('Minimum received');
         expect(html).toContain('99.5 LIB + 49.75 USDT');
-        expect(html).toContain('DEX');
+        expect(html).not.toContain('<dt>DEX</dt>');
         expect(html).not.toContain('id="remove-liquidity-deadline-input"');
         expect(html).not.toContain('<dt>Kyber Router</dt>');
     });
@@ -1105,7 +1105,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(html).toContain('id="remove-liquidity-balance-error"');
         expect(html).toContain('Amount exceeds available LP balance (1.0 LP).');
-        expect(html).toContain('<dd>Unsupported</dd>');
+        expect(html).not.toContain('aria-label="DEX:');
         expect(html).not.toContain('remove liquidity = 2000000000000000000');
         expect(modal.canFetchRemoveLiquidityPreview()).toBe(false);
     });

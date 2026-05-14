@@ -3613,12 +3613,6 @@ class StakingModalNew {
                 minimumPairDisplay,
                 '',
                 'Transaction reverts if either token output is below this value after max slippage.'
-            ),
-            this.renderZapQuoteRow(
-                'DEX',
-                dexDisplay,
-                '',
-                'Router/factory selected for this LP position.'
             )
         ];
 
