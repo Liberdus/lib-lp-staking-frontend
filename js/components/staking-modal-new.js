@@ -3508,6 +3508,10 @@ class StakingModalNew {
             let minimumReceivedDisplay = pendingValue;
             let priceImpactDisplay = pendingValue;
             let feeDisplay = pendingValue;
+            let priceImpactRiskClass = '';
+            let slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
+            let slippageRiskClass = this.isHighZapSlippage(this.removeLiquiditySlippageBps) ? 'zap-risk-high' : '';
+            const warningMessages = [];
 
             if (isLoading) {
                 summary = 'Loading Kyber zap-out route...';
@@ -3531,6 +3535,16 @@ class StakingModalNew {
                     ? pendingValue
                     : this.formatRemoveLiquidityMinOutputAmount(outputEntry.value, outputToken, pendingValue);
                 priceImpactDisplay = priceImpactEntry.value === pendingValue ? pendingValue : this.formatZapPercent(priceImpactEntry);
+                priceImpactRiskClass = this.isHighZapPriceImpact(priceImpactEntry.value, priceImpactEntry.path) ? 'zap-risk-high' : '';
+                if (priceImpactRiskClass) {
+                    warningMessages.push('High price impact. You may receive significantly less LP value than expected.');
+                }
+                const suggestedSlippage = data?.suggestedSlippage || data?.slippage || this.removeLiquiditySlippageBps;
+                slippageDisplay = `${(Number(suggestedSlippage) / 100).toFixed(2)}%`;
+                slippageRiskClass = this.isHighZapSlippage(suggestedSlippage) ? 'zap-risk-high' : '';
+                if (slippageRiskClass) {
+                    warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
+                }
                 feeDisplay = this.formatZapFeeDetailsDisplay(this.getRemoveLiquidityProtocolFeeDetails(data));
                 summary = `Kyber zap-out to ${outputSymbol}`;
             }
@@ -3566,12 +3580,18 @@ class StakingModalNew {
                 this.renderZapQuoteRow(
                     'Price impact',
                     priceImpactDisplay,
-                    '',
+                    priceImpactRiskClass,
                     'Estimated effect of the route on execution price.'
+                ),
+                this.renderZapQuoteRow(
+                    'Slippage',
+                    slippageDisplay,
+                    slippageRiskClass,
+                    'Maximum output movement allowed before the transaction reverts.'
                 )
             );
 
-            return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh Kyber zap-out preview');
+            return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh Kyber zap-out preview', warningMessages);
         }
 
         let summary = this.removeLiquidityAmount
@@ -3623,7 +3643,7 @@ class StakingModalNew {
         return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh remove-liquidity preview');
     }
 
-    renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, refreshLabel) {
+    renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, refreshLabel, warningMessages = []) {
         return `
             <div class="${cardClass}">
                 <div class="zap-quote-header">
@@ -3644,6 +3664,14 @@ class StakingModalNew {
                 <dl class="zap-quote-list remove-liquidity-preview-list">
                     ${rows.join('')}
                 </dl>
+                ${warningMessages.length ? `
+                    <div class="zap-risk-warning" role="alert">
+                        <span class="material-icons" aria-hidden="true">warning</span>
+                        <div>
+                            ${warningMessages.map(message => `<div>${this.escapeHtml(message)}</div>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `;
     }

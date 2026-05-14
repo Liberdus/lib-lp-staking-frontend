@@ -1218,6 +1218,21 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('0.0025 DAI');
     });
 
+    it('flags high price impact and slippage in checked remove-liquidity zap-out previews', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.removeLiquiditySlippageBps = 10000;
+        modal.removeLiquidityPreview.data.zapDetails.priceImpact = 15.42;
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html.match(/zap-quote-row zap-risk-high/g)).toHaveLength(2);
+        expect(html).toContain('15.42%');
+        expect(html).toContain('100.00%');
+        expect(html).toContain('High price impact. You may receive significantly less LP value than expected.');
+        expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
+    });
+
     it('renders every Kyber zap-out protocol fee token returned by the route', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
