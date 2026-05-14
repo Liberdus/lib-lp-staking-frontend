@@ -879,6 +879,35 @@ class StakingModalNew {
         return '';
     }
 
+    updateCustomSlippageFieldError(inputId, errorId, errorMessage) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.setAttribute?.('aria-invalid', errorMessage ? 'true' : 'false');
+        if (errorMessage) {
+            input.setAttribute?.('aria-describedby', errorId);
+        } else {
+            input.removeAttribute?.('aria-describedby');
+        }
+
+        let errorElement = document.getElementById(errorId);
+        if (!errorMessage) {
+            errorElement?.remove?.();
+            return;
+        }
+
+        if (!errorElement && typeof document.createElement === 'function') {
+            errorElement = document.createElement('div');
+            errorElement.id = errorId;
+            errorElement.className = 'zap-field-error';
+            input.closest?.('.form-group')?.appendChild?.(errorElement);
+        }
+
+        if (errorElement) {
+            errorElement.textContent = errorMessage;
+        }
+    }
+
     hasInvalidRemoveLiquidityCustomSlippage() {
         return !!this.getRemoveLiquidityCustomSlippageError();
     }
@@ -936,6 +965,11 @@ class StakingModalNew {
         this.removeLiquidityCustomSlippageSelected = true;
         this.removeLiquidityCustomSlippageError = this.getRemoveLiquidityCustomSlippageError(sanitizedValue);
         this.updateRemoveLiquiditySlippageButtonState();
+        this.updateCustomSlippageFieldError(
+            'remove-liquidity-custom-slippage-input',
+            'remove-liquidity-custom-slippage-error',
+            this.removeLiquidityCustomSlippageError
+        );
 
         if (this.removeLiquidityCustomSlippageError) {
             this.resetRemoveLiquidityPreview();
@@ -1489,6 +1523,11 @@ class StakingModalNew {
         const sanitizedValue = this.applyDecimalLimit(String(value ?? ''), 2);
         this.zapCustomSlippage = sanitizedValue;
         this.zapCustomSlippageError = this.getZapCustomSlippageError(sanitizedValue);
+        this.updateCustomSlippageFieldError(
+            'zap-custom-slippage-input',
+            'zap-custom-slippage-error',
+            this.zapCustomSlippageError
+        );
 
         if (this.zapCustomSlippageError) {
             this.resetZapQuoteState();
@@ -3369,9 +3408,10 @@ class StakingModalNew {
                                 max="100"
                                 step="0.01"
                                 aria-invalid="${this.removeLiquidityCustomSlippageError ? 'true' : 'false'}"
+                                ${this.removeLiquidityCustomSlippageError ? 'aria-describedby="remove-liquidity-custom-slippage-error"' : ''}
                             >
                         </div>
-                        ${this.removeLiquidityCustomSlippageError ? `<div class="zap-field-error">${this.escapeHtml(this.removeLiquidityCustomSlippageError)}</div>` : ''}
+                        ${this.removeLiquidityCustomSlippageError ? `<div id="remove-liquidity-custom-slippage-error" class="zap-field-error">${this.escapeHtml(this.removeLiquidityCustomSlippageError)}</div>` : ''}
                     </div>
 
                     <div class="form-group">
@@ -3502,6 +3542,7 @@ class StakingModalNew {
 
     renderRemoveLiquidityPreviewPanel() {
         const balanceError = this.getRemoveLiquidityBalanceError();
+        const invalidCustomSlippage = this.hasInvalidRemoveLiquidityCustomSlippage();
         const isLoading = this.removeLiquidityPreviewStatus === 'loading';
         const hasPreview = this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported;
         const isError = this.removeLiquidityPreviewStatus === 'error' || !!balanceError;
@@ -3531,6 +3572,8 @@ class StakingModalNew {
 
             if (isLoading) {
                 summary = 'Loading Kyber zap-out route...';
+            } else if (invalidCustomSlippage) {
+                summary = `Enter a valid custom slippage to preview ${outputSymbol} output.`;
             } else if (isPositionBalanceError) {
                 summary = 'Kyber cannot quote more LP than your available balance.';
             } else if (isError) {
@@ -3558,11 +3601,11 @@ class StakingModalNew {
                 const suggestedSlippage = data?.suggestedSlippage || data?.slippage || this.removeLiquiditySlippageBps;
                 slippageDisplay = `${(Number(suggestedSlippage) / 100).toFixed(2)}%`;
                 slippageRiskClass = this.isHighZapSlippage(suggestedSlippage) ? 'zap-risk-high' : '';
-                if (slippageRiskClass) {
-                    warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
-                }
                 feeDisplay = this.formatZapFeeDetailsDisplay(this.getRemoveLiquidityProtocolFeeDetails(data));
                 summary = `Kyber zap-out to ${outputSymbol}`;
+            }
+            if (slippageRiskClass) {
+                warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
             }
 
             const rows = [];
@@ -3623,6 +3666,8 @@ class StakingModalNew {
         const warningMessages = [];
         if (isLoading) {
             summary = 'Loading LP reserves...';
+        } else if (invalidCustomSlippage) {
+            summary = 'Enter a valid custom slippage to preview remove liquidity.';
         } else if (isError) {
             summary = balanceError || this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.';
             dexDisplay = this.removeLiquidityPreview?.factoryAddress
@@ -3636,9 +3681,9 @@ class StakingModalNew {
             token0MinDisplay = this.formatRemoveLiquidityTokenAmount(preview.token0.minAmount, preview.token0);
             token1MinDisplay = this.formatRemoveLiquidityTokenAmount(preview.token1.minAmount, preview.token1);
             summary = `${preview.token0.symbol} + ${preview.token1.symbol} via ${dexDisplay}`;
-            if (slippageRiskClass) {
-                warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
-            }
+        }
+        if (slippageRiskClass) {
+            warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
         }
 
         const estimatedPairDisplay = hasPreview
@@ -3912,6 +3957,7 @@ class StakingModalNew {
     }
 
     renderZapQuotePanel() {
+        const invalidCustomSlippage = this.hasInvalidZapCustomSlippage();
         const isLoading = this.zapQuoteStatus === 'loading';
         const isError = this.zapQuoteStatus === 'error';
         const hasQuote = this.zapQuoteStatus === 'ready' && !!this.zapQuote;
@@ -3946,6 +3992,8 @@ class StakingModalNew {
 
         if (isLoading) {
             routeSummary = 'Fetching quote...';
+        } else if (invalidCustomSlippage) {
+            routeSummary = 'Enter a valid custom slippage to preview the LP route.';
         } else if (isError) {
             routeSummary = this.zapQuoteError || 'Unable to fetch a zap quote.';
         } else if (hasQuote) {
@@ -3977,10 +4025,10 @@ class StakingModalNew {
             const suggestedSlippage = data?.suggestedSlippage || data?.slippage || this.zapSlippageBps;
             slippageDisplay = `${(Number(suggestedSlippage) / 100).toFixed(2)}%`;
             slippageRiskClass = this.isHighZapSlippage(suggestedSlippage) ? 'zap-risk-high' : '';
-            if (slippageRiskClass) {
-                warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
-            }
             routeSummary = this.getZapRouteSummary();
+        }
+        if (slippageRiskClass) {
+            warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
         }
 
         const quoteRows = [

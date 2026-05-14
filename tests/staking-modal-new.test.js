@@ -950,6 +950,20 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
     });
 
+    it('shows the high slippage warning while the zap quote is waiting to refresh', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyZapQuote(modal);
+        modal.zapQuoteStatus = 'idle';
+        modal.zapQuote = null;
+        modal.zapSlippageBps = 500;
+
+        const html = modal.renderZapQuotePanel();
+
+        expect(html).toContain('zap-quote-row zap-risk-high');
+        expect(html).toContain('5.00%');
+        expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
+    });
+
     it('highlights very high price impact in the zap quote panel', async () => {
         const modal = await createLoadedModal();
         arrangeReadyZapQuote(modal, {
@@ -1107,6 +1121,20 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('Price impact');
     });
 
+    it('shows the high slippage warning while remove-liquidity preview is waiting to refresh', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquidityPreviewStatus = 'idle';
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquiditySlippageBps = 500;
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('zap-quote-row zap-risk-high');
+        expect(html).toContain('5.00%');
+        expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
+    });
+
     it('opens remove-liquidity slippage and deadline controls from the compact dropdown', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);
@@ -1176,6 +1204,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modal.removeLiquidityCustomSlippageError).toBe('Enter a custom slippage between 0.01% and 100%.');
         expect(modal.removeLiquidityPreviewError).toBe('');
+        expect(html).toContain('Enter a valid custom slippage to preview remove liquidity.');
+        expect(html).not.toContain('Checking remove liquidity support...');
         expect(html.match(/Enter a custom slippage between 0\.01% and 100%\./g)).toHaveLength(1);
     });
 
