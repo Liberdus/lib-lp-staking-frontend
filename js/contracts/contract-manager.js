@@ -760,12 +760,21 @@ class ContractManager {
                     "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, uint256 proposedTime, bool rejected)",
                     "function stake(address lpToken, uint256 amount) external",
                     "function unstake(address lpToken, uint256 amount, bool claimRewards) external",
+                    "function unstakeTo(address lpToken, uint256 amount, bool shouldClaimRewards, address receiver) external",
                     "function claimRewards(address lpToken) external",
+                    "function claimRewardsTo(address lpToken, address receiver) external",
 
                     // Admin role functions
                     "function hasRole(bytes32 role, address account) external view returns (bool)",
+                    "function ADMIN_ROLE() external view returns (bytes32)",
                     "function grantRole(bytes32 role, address account) external",
                     "function revokeRole(bytes32 role, address account) external",
+
+                    // Standard Ownable2Step functions
+                    "function owner() external view returns (address)",
+                    "function pendingOwner() external view returns (address)",
+                    "function transferOwnership(address newOwner) external",
+                    "function acceptOwnership() external",
 
                     // Multi-signature proposal functions
                     "function proposeSetHourlyRewardRate(uint256 newRate) external returns (uint256)",
@@ -781,8 +790,6 @@ class ContractManager {
                     "function rejectAction(uint256 actionId) external",
                     "function isActionExpired(uint256 actionId) external view returns (bool)",
                     "function getSigners() external view returns (address[])",
-                    "function hasApproved(uint256 actionId, address signer) external view returns (bool)",
-                    "function hasRejected(uint256 actionId, address signer) external view returns (bool)",
 
                     // Utility functions
                     "function cleanupExpiredActions() external"
@@ -2507,9 +2514,41 @@ class ContractManager {
         return false;
     }
 
-    async hasOwnerApproverRole(address = null) {
+    async getOwner() {
         if (!this.stakingContract) {
-            console.warn('⚠️ Staking contract not initialized - owner role check skipped');
+            console.warn('Staking contract not initialized - owner lookup skipped');
+            return null;
+        }
+
+        try {
+            return await this.executeWithRetry(async () => {
+                return await this.stakingContract.owner();
+            }, 'getOwner');
+        } catch (error) {
+            console.warn(`Owner lookup failed gracefully: ${error.message}`);
+            return null;
+        }
+    }
+
+    async getPendingOwner() {
+        if (!this.stakingContract) {
+            console.warn('Staking contract not initialized - pending owner lookup skipped');
+            return ethers.constants.AddressZero;
+        }
+
+        try {
+            return await this.executeWithRetry(async () => {
+                return await this.stakingContract.pendingOwner();
+            }, 'getPendingOwner');
+        } catch (error) {
+            console.warn(`Pending owner lookup failed gracefully: ${error.message}`);
+            return ethers.constants.AddressZero;
+        }
+    }
+
+    async isOwner(address = null) {
+        if (!this.stakingContract) {
+            console.warn('Staking contract not initialized - owner check skipped');
             return false;
         }
 
@@ -2519,12 +2558,109 @@ class ContractManager {
                 if (!userAddress) {
                     throw new Error('No address provided and no signer available');
                 }
-                const OWNER_ROLE = await this.stakingContract.OWNER_APPROVER_ROLE();
-                return await this.stakingContract.hasRole(OWNER_ROLE, userAddress);
-            }, 'hasOwnerApproverRole');
+
+                const ownerAddress = await this.stakingContract.owner();
+                return ownerAddress.toLowerCase() === userAddress.toLowerCase();
+            }, 'isOwner');
         } catch (error) {
-            console.warn(`⚠️ Owner approver role check failed gracefully: ${error.message}`);
+            console.warn(`Owner check failed gracefully: ${error.message}`);
             return false;
+        }
+    }
+
+    async isPendingOwner(address = null) {
+        if (!this.stakingContract) {
+            console.warn('Staking contract not initialized - pending owner check skipped');
+            return false;
+        }
+
+        try {
+            return await this.executeWithRetry(async () => {
+                const userAddress = address || (this.signer ? await this.signer.getAddress() : null);
+                if (!userAddress) {
+                    throw new Error('No address provided and no signer available');
+                }
+
+                const pendingOwnerAddress = await this.stakingContract.pendingOwner();
+                const zeroAddress = ethers.constants.AddressZero.toLowerCase();
+                return pendingOwnerAddress.toLowerCase() !== zeroAddress &&
+                    pendingOwnerAddress.toLowerCase() === userAddress.toLowerCase();
+            }, 'isPendingOwner');
+        } catch (error) {
+            console.warn(`Pending owner check failed gracefully: ${error.message}`);
+            return false;
+        }
+    }
+
+    async transferOwnership(newOwner) {
+        try {
+            newOwner = this.validateAndChecksumAddress(newOwner, 'New Owner Address');
+
+            await this.ensureSigner();
+
+            if (!this.stakingContract || typeof this.stakingContract.transferOwnership !== 'function') {
+                return {
+                    success: false,
+                    error: new Error('transferOwnership function is not available on the deployed contract.')
+                };
+            }
+
+            const result = await this.executeTransactionOnce(async () => {
+                const contractWithSigner = this.stakingContract.connect(this.signer);
+                const tx = await contractWithSigner.transferOwnership(newOwner);
+
+                console.log('Ownership transfer transaction sent:', tx.hash);
+                return tx;
+            }, 'transferOwnership');
+
+            return {
+                success: true,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed?.toString?.() || result.gasUsed,
+                message: 'Ownership transfer started'
+            };
+        } catch (error) {
+            console.error('Failed to transfer ownership:', error);
+            return {
+                success: false,
+                error
+            };
+        }
+    }
+
+    async acceptOwnership() {
+        try {
+            await this.ensureSigner();
+
+            if (!this.stakingContract || typeof this.stakingContract.acceptOwnership !== 'function') {
+                return {
+                    success: false,
+                    error: new Error('acceptOwnership function is not available on the deployed contract.')
+                };
+            }
+
+            const result = await this.executeTransactionOnce(async () => {
+                const contractWithSigner = this.stakingContract.connect(this.signer);
+                const tx = await contractWithSigner.acceptOwnership();
+
+                console.log('Accept ownership transaction sent:', tx.hash);
+                return tx;
+            }, 'acceptOwnership');
+
+            return {
+                success: true,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed?.toString?.() || result.gasUsed,
+                message: 'Ownership accepted'
+            };
+        } catch (error) {
+            console.error('Failed to accept ownership:', error);
+            return {
+                success: false,
+                error
+            };
         }
     }
 
