@@ -863,7 +863,15 @@ class StakingModalNew {
 
         const balanceError = this.getRemoveLiquidityBalanceError();
         errorElement.textContent = balanceError;
-        errorElement.hidden = !balanceError;
+        errorElement.hidden = false;
+        errorElement.classList.toggle('zap-balance-error-empty', !balanceError);
+        if (errorElement.setAttribute && errorElement.removeAttribute) {
+            if (balanceError) {
+                errorElement.removeAttribute('aria-hidden');
+            } else {
+                errorElement.setAttribute('aria-hidden', 'true');
+            }
+        }
     }
 
     getRemoveLiquidityCustomSlippageError(value = this.removeLiquidityCustomSlippage) {
@@ -3250,6 +3258,8 @@ class StakingModalNew {
         const activeRemoveLiquidityPercentage = [25, 50, 75, 100].find(percentage =>
             Math.abs(removeLiquidityPercentage - percentage) < 0.001
         );
+        const balanceErrorClass = balanceError ? '' : ' zap-balance-error-empty';
+        const balanceErrorAriaHidden = balanceError ? '' : ' aria-hidden="true"';
 
         return `
             <div class="balance-info">
@@ -3287,7 +3297,7 @@ class StakingModalNew {
                         <span class="checkmark"></span>
                         Convert to one preferred token
                     </label>
-                    <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error" aria-live="polite" ${balanceError ? '' : 'hidden'}>${this.escapeHtml(balanceError)}</div>
+                    <div id="remove-liquidity-balance-error" class="zap-field-error zap-balance-error${balanceErrorClass}" aria-live="polite"${balanceErrorAriaHidden}>${this.escapeHtml(balanceError)}</div>
                 </div>
             </div>
 

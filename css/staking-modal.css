@@ -655,10 +655,15 @@
     grid-column: 1 / -1;
     margin-top: 0;
     margin-bottom: var(--spacing-2);
+    min-height: 16px;
+}
+
+.remove-liquidity-meta-row .zap-balance-error-empty {
+    visibility: hidden;
 }
 
 .remove-liquidity-section {
-    margin-top: calc(var(--spacing-2) * -1);
+    margin-top: 0;
 }
 
 .remove-liquidity-settings-summary {
@@ -1087,5 +1092,20 @@
 
     .tab-label {
         display: none;
+    }
+
+    .remove-liquidity-meta-row .remove-liquidity-checkbox-label {
+        gap: 6px;
+        font-size: 13px;
+    }
+
+    .remove-liquidity-meta-row .checkmark {
+        width: 18px;
+        height: 18px;
+    }
+
+    .remove-liquidity-meta-row .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+        left: 5px;
+        top: 1px;
     }
 }
