@@ -59,7 +59,7 @@ class StakingModalNew {
         this.removeLiquiditySettingsOpen = false;
         this.removeLiquidityPreviewDebounceTimer = null;
         this.removeLiquidityPreviewRefreshTimer = null;
-        this.removeLiquidityPreviewCountdown = 10;
+        this.removeLiquidityPreviewCountdown = this.zapQuoteRefreshSeconds;
         this.removeLiquidityPreviewRequestId = 0;
         this.removeLiquidityOutputTokenAddress = '';
         this.removeLiquidityOutputTokens = [];
