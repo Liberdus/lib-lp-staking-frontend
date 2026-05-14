@@ -1476,8 +1476,7 @@ class StakingModalNew {
 
     setZapSlippage(value) {
         if (value === 'custom') {
-            this.zapCustomSlippageSelected = true;
-            this.updateZapSlippageButtonState();
+            this.selectZapCustomSlippage();
             const customInput = document.getElementById('zap-custom-slippage-input');
             if (customInput) customInput.focus();
         } else {
