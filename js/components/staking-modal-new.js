@@ -890,15 +890,7 @@ class StakingModalNew {
             input.removeAttribute?.('aria-describedby');
         }
 
-        let errorElement = document.getElementById(errorId);
-        if (!errorElement && typeof document.createElement === 'function') {
-            errorElement = document.createElement('div');
-            errorElement.id = errorId;
-            errorElement.className = 'zap-field-error custom-slippage-error';
-            errorElement.setAttribute?.('aria-live', 'polite');
-            input.closest?.('.form-group')?.appendChild?.(errorElement);
-        }
-
+        const errorElement = document.getElementById(errorId);
         if (errorElement) {
             errorElement.textContent = errorMessage;
         }
