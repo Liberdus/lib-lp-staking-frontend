@@ -594,6 +594,14 @@
     margin-bottom: var(--spacing-2);
 }
 
+.custom-slippage-error {
+    min-height: 16px;
+    line-height: 16px;
+    margin-top: var(--spacing-1);
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
+}
+
 .zap-balance-error {
     margin-top: 4px;
     margin-bottom: 0;

@@ -891,15 +891,11 @@ class StakingModalNew {
         }
 
         let errorElement = document.getElementById(errorId);
-        if (!errorMessage) {
-            errorElement?.remove?.();
-            return;
-        }
-
         if (!errorElement && typeof document.createElement === 'function') {
             errorElement = document.createElement('div');
             errorElement.id = errorId;
-            errorElement.className = 'zap-field-error';
+            errorElement.className = 'zap-field-error custom-slippage-error';
+            errorElement.setAttribute?.('aria-live', 'polite');
             input.closest?.('.form-group')?.appendChild?.(errorElement);
         }
 
@@ -3411,7 +3407,7 @@ class StakingModalNew {
                                 ${this.removeLiquidityCustomSlippageError ? 'aria-describedby="remove-liquidity-custom-slippage-error"' : ''}
                             >
                         </div>
-                        ${this.removeLiquidityCustomSlippageError ? `<div id="remove-liquidity-custom-slippage-error" class="zap-field-error">${this.escapeHtml(this.removeLiquidityCustomSlippageError)}</div>` : ''}
+                        <div id="remove-liquidity-custom-slippage-error" class="zap-field-error custom-slippage-error" aria-live="polite">${this.escapeHtml(this.removeLiquidityCustomSlippageError)}</div>
                     </div>
 
                     <div class="form-group">
@@ -3926,7 +3922,7 @@ class StakingModalNew {
                         ${this.zapCustomSlippageError ? 'aria-describedby="zap-custom-slippage-error"' : ''}
                     >
                 </div>
-                ${this.zapCustomSlippageError ? `<div id="zap-custom-slippage-error" class="zap-field-error">${this.escapeHtml(this.zapCustomSlippageError)}</div>` : ''}
+                <div id="zap-custom-slippage-error" class="zap-field-error custom-slippage-error" aria-live="polite">${this.escapeHtml(this.zapCustomSlippageError)}</div>
             </div>
 
             <div id="zap-quote-panel">
