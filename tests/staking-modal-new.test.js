@@ -264,6 +264,19 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
     });
 
+    it('hides create LP and stake tabs in migration mode', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        globalThis.CONFIG.MIGRATION = { ENABLED: true };
+        const modalContainer = document.registerElement(createElement({ id: 'modal-container' }));
+
+        new StakingModalNew();
+
+        expect(modalContainer.innerHTML).not.toContain('aria-label="Create LP"');
+        expect(modalContainer.innerHTML).not.toContain('aria-label="Stake"');
+        expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
+        expect(modalContainer.innerHTML).toContain('<span class="tab-label">Claim</span>');
+    });
+
     it('derives LP USD estimates from pair TVL data', async () => {
         const modal = await createLoadedModal();
         modal.currentPair = { tvlUsd: 500, tvl: 100 };

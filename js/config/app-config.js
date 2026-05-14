@@ -99,6 +99,15 @@ window.CONFIG = {
         DEBOUNCE_DELAY: 500 // 500ms
     },
 
+    // Old farm migration branch settings
+    MIGRATION: {
+        ENABLED: true,
+        OLD_FARM_LABEL: 'Farm 1.0',
+        NEW_FARM_LABEL: 'Farm 2.0',
+        NEW_FARM_URL: 'https://your-new-farm-url-here',
+        SUPPORT_URL: 'https://liberdus.com/discord/help/'
+    },
+
     // Support Links
     SUPPORT: {
         DISCORD_URL: 'https://liberdus.com/discord/',

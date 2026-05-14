@@ -181,26 +181,108 @@ class HomePage {
     }
 
     showWalletRequiredToast() {
-        window.notificationManager?.warning('Please connect your wallet to stake token.');
+        const isMigrationMode = this.isMigrationMode?.() || false;
+        const message = isMigrationMode
+            ? 'Please connect your wallet to migrate your Farm 1.0 position.'
+            : 'Please connect your wallet to stake token.';
+        window.notificationManager?.warning(message);
     }
 
     render() {
         const container = document.getElementById('content-container');
         if (!container) return;
 
+        let content = '';
         if (this.loading) {
-            container.innerHTML = this.renderSkeleton();
+            content = this.renderSkeleton();
         } else if (this.error) {
-            container.innerHTML = this.renderError();
+            content = this.renderError();
         } else {
-            container.innerHTML = this.renderHomepage();
+            content = this.renderHomepage();
         }
+
+        container.innerHTML = this.isMigrationMode()
+            ? this.renderMigrationPage(content)
+            : content;
 
         this.attachRetryHandler();
     }
 
     renderHomepage() {
         return this.renderTable();
+    }
+
+    isMigrationMode() {
+        return Boolean(window.CONFIG?.MIGRATION?.ENABLED);
+    }
+
+    getMigrationConfig() {
+        return window.CONFIG?.MIGRATION || {};
+    }
+
+    getNewFarmUrl() {
+        return String(this.getMigrationConfig().NEW_FARM_URL || '').trim();
+    }
+
+    renderMigrationPage(content) {
+        return `
+            ${this.renderMigrationNotice()}
+            ${content}
+        `;
+    }
+
+    renderMigrationNotice() {
+        const config = this.getMigrationConfig();
+        const newFarmUrl = this.getNewFarmUrl();
+        const supportUrl = String(config.SUPPORT_URL || window.CONFIG?.SUPPORT?.DISCORD_HELP_URL || '').trim();
+        const oldFarmLabel = config.OLD_FARM_LABEL || 'Farm 1.0';
+        const newFarmLabel = config.NEW_FARM_LABEL || 'Farm 2.0';
+        const newFarmAction = newFarmUrl
+            ? `<a class="btn btn-primary migration-action" href="${newFarmUrl}" target="_blank" rel="noopener noreferrer">
+                    <span class="material-icons" aria-hidden="true">open_in_new</span>
+                    Open ${newFarmLabel}
+               </a>`
+            : `<span class="migration-action-muted">${newFarmLabel} link will be added before deployment</span>`;
+        const supportAction = supportUrl
+            ? `<a class="btn btn-secondary migration-action" href="${supportUrl}" target="_blank" rel="noopener noreferrer">
+                    <span class="material-icons" aria-hidden="true">support_agent</span>
+                    Support
+               </a>`
+            : '';
+
+        return `
+            <section class="migration-notice" aria-labelledby="migration-title">
+                <div class="migration-notice-header">
+                    <span class="material-icons migration-notice-icon" aria-hidden="true">moving</span>
+                    <div>
+                        <h2 id="migration-title">Move your LP from ${oldFarmLabel} to ${newFarmLabel}</h2>
+                        <p>
+                            New staking deposits are paused on this page. Use ${oldFarmLabel} to unstake your LP tokens and claim LIB rewards, then stake your LP on ${newFarmLabel}.
+                        </p>
+                    </div>
+                </div>
+
+                <ol class="migration-steps" aria-label="Migration steps">
+                    <li>
+                        <span class="migration-step-number">1</span>
+                        <span>Unstake from ${oldFarmLabel} with rewards claimed.</span>
+                    </li>
+                    <li>
+                        <span class="migration-step-number">2</span>
+                        <span>Open ${newFarmLabel} after your LP tokens are back in your wallet.</span>
+                    </li>
+                    <li>
+                        <span class="migration-step-number">3</span>
+                        <span>Stake your LP tokens on ${newFarmLabel} and confirm any wallet prompts.</span>
+                    </li>
+                </ol>
+
+                <div class="migration-actions">
+                    ${newFarmAction}
+                    ${supportAction}
+                </div>
+            </section>
+        `;
     }
 
     attachRetryHandler() {
@@ -348,10 +430,16 @@ class HomePage {
         if (displayPairs.length === 0) {
             const networkName = window.networkSelector?.getCurrentNetworkName?.() || 'this network';
             const hasConfiguredContract = !!window.networkSelector?.getStakingContractAddress?.()?.trim();
-            const emptyStateTitle = hasConfiguredContract ? 'No Staking Pairs Available' : 'Staking Not Deployed Yet';
-            const emptyStateMessage = hasConfiguredContract
-                ? 'There are currently no staking pairs configured in the contract. Please check back later.'
-                : `Liberdus LP Staking is not deployed on ${networkName} yet. Please check back after the contract is deployed.`;
+            const isMigrationMode = this.isMigrationMode?.() || false;
+            const oldFarmLabel = this.getMigrationConfig?.().OLD_FARM_LABEL || 'Farm 1.0';
+            const emptyStateTitle = isMigrationMode
+                ? `No ${oldFarmLabel} Position Found`
+                : (hasConfiguredContract ? 'No Staking Pairs Available' : 'Staking Not Deployed Yet');
+            const emptyStateMessage = isMigrationMode
+                ? `Connect the wallet that used ${oldFarmLabel}, then refresh. If no positions appear, this wallet has no LP left to migrate on this network.`
+                : (hasConfiguredContract
+                    ? 'There are currently no staking pairs configured in the contract. Please check back later.'
+                    : `Liberdus LP Staking is not deployed on ${networkName} yet. Please check back after the contract is deployed.`);
 
             // Show "no data" row when there are no pairs to display (after filtering)
             tbodyContent = `
@@ -427,6 +515,12 @@ class HomePage {
     }
 
     shouldDisplayPair(pair) {
+        if (this.isMigrationMode?.()) {
+            return this.isWalletConnected()
+                ? Boolean(pair.hasUserPosition)
+                : true;
+        }
+
         if (pair.hasNonZeroWeight) {
             return true;
         }
@@ -449,6 +543,13 @@ class HomePage {
         const platformHtml = platformUrl
             ? `<a href="${platformUrl}" target="_blank" rel="noopener noreferrer" class="platform-link" title="View pool on ${platform}" style="font-size: 12px; color: var(--text-secondary); display: inline-block;">${platform}</a>`
             : `<span style="font-size: 12px; color: var(--text-secondary);">${platform}</span>`;
+        const isMigrationMode = this.isMigrationMode?.() || false;
+        const oldFarmLabel = this.getMigrationConfig?.().OLD_FARM_LABEL || 'Farm 1.0';
+        const shareButtonTitle = isMigrationMode ? `Unstake from ${oldFarmLabel}` : 'Stake or Unstake';
+        const shareButtonIcon = isMigrationMode ? 'logout' : 'share';
+        const shareButtonLabel = isMigrationMode ? `Unstake ${userShares}%` : `${userShares}%`;
+        const shareButtonTab = isMigrationMode ? '1' : '0';
+        const earningsButtonTitle = isMigrationMode ? `Claim ${oldFarmLabel} rewards` : 'Claim reward';
         
         return `
             <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
@@ -473,11 +574,11 @@ class HomePage {
                     <button class="btn btn-primary btn-small btn-share"
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
-                            data-tab="0"
-                            title="Stake or Unstake"
+                            data-tab="${shareButtonTab}"
+                            title="${shareButtonTitle}"
                             style="min-width: 100px;">
-                        <span class="material-icons" style="font-size: 16px;">share</span>
-                        ${userShares}%
+                        <span class="material-icons" style="font-size: 16px;">${shareButtonIcon}</span>
+                        ${shareButtonLabel}
                     </button>
                 </td>
                 <td class="staking-cell staking-cell--reward" data-label="My Reward">
@@ -485,7 +586,7 @@ class HomePage {
                             data-pair-id="${pair.id}"
                             data-pair-address="${pair.address}"
                             data-tab="2"
-                            title="Claim reward"
+                            title="${earningsButtonTitle}"
                             style="min-width: 120px;">
                         <span class="material-icons" style="font-size: 16px;">redeem</span>
                         ${userEarnings} LIB
@@ -529,11 +630,15 @@ class HomePage {
                         return; // Don't open modal
                     }
                     
-                    this.openStakingModal(pairId);
+                    if (this.isMigrationMode?.()) {
+                        this.openStakingModal(pairId, 'unstake');
+                    } else {
+                        this.openStakingModal(pairId);
+                    }
                 }
             }
 
-            // Handle Share button click (open modal on Stake tab)
+            // Handle Share button click (open modal on Stake/Unstake tab)
             if (e.target.closest('.btn-share')) {
                 e.stopPropagation();
                 if (!this.isWalletConnected()) {
@@ -544,7 +649,7 @@ class HomePage {
                 const button = e.target.closest('.btn-share');
                 const pairId = button.dataset.pairId;
                 const tab = parseInt(button.dataset.tab) || 0;
-                this.openStakingModal(pairId, tab === 0 ? 'stake' : 'unstake');
+                this.openStakingModal(pairId, this.isMigrationMode?.() ? 'unstake' : (tab === 0 ? 'stake' : 'unstake'));
             }
 
             // Handle Earnings button click (open modal on Claim tab)

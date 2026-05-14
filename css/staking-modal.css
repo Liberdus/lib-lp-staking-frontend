@@ -514,6 +514,27 @@
     line-height: 1;
 }
 
+.migration-modal-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    margin-bottom: var(--spacing-2);
+    padding: 12px;
+    border: 1px solid rgba(255, 152, 0, 0.35);
+    border-radius: var(--border-radius);
+    background: rgba(255, 152, 0, 0.08);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+.migration-modal-note .material-icons {
+    color: var(--warning-main);
+    font-size: 20px;
+    line-height: 1;
+}
+
 .zap-label-row {
     display: flex;
     align-items: center;

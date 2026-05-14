@@ -211,14 +211,16 @@ class StakingModalNew {
                     </div>
                     
                     <div class="modal-tabs">
-                        <button class="tab-button active" aria-label="Create LP" data-tab="zap">
-                            <span class="material-icons" aria-hidden="true">bolt</span>
-                            <span class="tab-label">Create LP</span>
-                        </button>
-                        <button class="tab-button" aria-label="Stake" data-tab="stake">
-                            <span class="material-icons" aria-hidden="true">add</span>
-                            <span class="tab-label">Stake</span>
-                        </button>
+                        ${this.isMigrationMode() ? '' : `
+                            <button class="tab-button active" aria-label="Create LP" data-tab="zap">
+                                <span class="material-icons" aria-hidden="true">bolt</span>
+                                <span class="tab-label">Create LP</span>
+                            </button>
+                            <button class="tab-button" aria-label="Stake" data-tab="stake">
+                                <span class="material-icons" aria-hidden="true">add</span>
+                                <span class="tab-label">Stake</span>
+                            </button>
+                        `}
                         <button class="tab-button" aria-label="Unstake" data-tab="unstake">
                             <span class="material-icons" aria-hidden="true">remove</span>
                             <span class="tab-label">Unstake</span>
@@ -340,6 +342,7 @@ class StakingModalNew {
             if (e.target.id === 'claim-rewards-checkbox') {
                 this.claimRewardsOnUnstake = e.target.checked;
                 console.log('Claim rewards on unstake:', this.claimRewardsOnUnstake);
+                this.updateUnstakeButton();
             }
         });
 
@@ -409,7 +412,19 @@ class StakingModalNew {
         return decimalPart ? `${integerPart}.${decimalPart}` : `${integerPart}.`;
     }
 
+    isMigrationMode() {
+        return Boolean(window.CONFIG?.MIGRATION?.ENABLED);
+    }
+
+    getMigrationConfig() {
+        return window.CONFIG?.MIGRATION || {};
+    }
+
     async open(pair, tab = 'stake') {
+        if (this.isMigrationMode() && (tab === 'stake' || tab === 'zap')) {
+            tab = 'unstake';
+        }
+
         this.currentPair = pair;
         this.currentTab = tab;
         this.isOpen = true;
@@ -480,7 +495,10 @@ class StakingModalNew {
     async show(pair, initialTab = 0) {
         // Convert numeric tab index to string tab name
         const tabNames = ['stake', 'unstake', 'claim', 'zap'];
-        const tabName = tabNames[initialTab] || 'stake';
+        let tabName = tabNames[initialTab] || 'stake';
+        if (this.isMigrationMode() && (tabName === 'stake' || tabName === 'zap')) {
+            tabName = 'unstake';
+        }
 
         console.log(`🎯 Opening modal for ${pair.name}, tab: ${tabName} (index: ${initialTab})`);
 
@@ -1893,12 +1911,17 @@ class StakingModalNew {
 
         const shouldDisable = this.isExecutingUnstake || !hasAmount || !hasSufficientStaked;
         unstakeButton.disabled = shouldDisable;
+        const oldFarmLabel = this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0';
         unstakeButton.title = (!hasSufficientStaked && hasAmount)
             ? 'Insufficient staked balance'
-            : 'Unstake LP Tokens';
+            : (this.isMigrationMode() ? `Unstake from ${oldFarmLabel}` : 'Unstake LP Tokens');
 
         if (buttonIcon) buttonIcon.textContent = 'remove';
-        if (buttonText) buttonText.textContent = ' Unstake LP Tokens';
+        if (buttonText) {
+            buttonText.textContent = this.isMigrationMode() && this.claimRewardsOnUnstake
+                ? ' Unstake and Claim'
+                : ' Unstake LP Tokens';
+        }
     }
 
     /**
@@ -2158,6 +2181,10 @@ class StakingModalNew {
     }
 
     switchTab(tab) {
+        if (this.isMigrationMode() && (tab === 'stake' || tab === 'zap')) {
+            tab = 'unstake';
+        }
+
         this.currentTab = tab;
         this.syncZapQuoteAutoRefresh();
 
@@ -2322,7 +2349,22 @@ class StakingModalNew {
     }
 
     renderUnstakeTab() {
+        const config = this.getMigrationConfig();
+        const oldFarmLabel = config.OLD_FARM_LABEL || 'Farm 1.0';
+        const newFarmLabel = config.NEW_FARM_LABEL || 'Farm 2.0';
+        const migrationNote = this.isMigrationMode()
+            ? `<div class="migration-modal-note" role="status">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Unstake your ${oldFarmLabel} LP tokens and keep "Claim reward tokens" checked, then move to ${newFarmLabel}.</span>
+               </div>`
+            : '';
+        const actionLabel = this.isMigrationMode() && this.claimRewardsOnUnstake
+            ? 'Unstake and Claim'
+            : 'Unstake LP Tokens';
+
         return `
+            ${migrationNote}
+
             <div class="balance-info">
                 <span class="balance-label">Staked LP Tokens:</span>
                 <span class="balance-value">${this.userStaked} LP${this.renderInlineLpUsdEstimate(this.userStaked)}</span>
@@ -2380,7 +2422,7 @@ class StakingModalNew {
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
                 <button class="btn btn-primary" onclick="safeModalExecuteUnstake()" ${!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0 ? 'disabled' : ''}>
                     <span class="material-icons">remove</span>
-                    Unstake LP Tokens
+                    ${actionLabel}
                 </button>
             </div>
         `;
@@ -2400,7 +2442,19 @@ class StakingModalNew {
     }
 
     renderClaimTab() {
+        const config = this.getMigrationConfig();
+        const oldFarmLabel = config.OLD_FARM_LABEL || 'Farm 1.0';
+        const newFarmLabel = config.NEW_FARM_LABEL || 'Farm 2.0';
+        const migrationNote = this.isMigrationMode()
+            ? `<div class="migration-modal-note" role="status">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Claim any ${oldFarmLabel} rewards before staking on ${newFarmLabel}.</span>
+               </div>`
+            : '';
+
         return `
+            ${migrationNote}
+
             <div class="balance-info">
                 <span class="balance-label">Pending Rewards:</span>
                 <span class="balance-value success-text">${this.pendingRewards} LIB</span>
@@ -2870,6 +2924,11 @@ class StakingModalNew {
     }
 
     async executeZap() {
+        if (this.isMigrationMode()) {
+            window.notificationManager?.warning(`Create LP is disabled on the ${this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0'} migration page.`);
+            return;
+        }
+
         if (this.isExecutingZap) {
             console.log('⚠️ Zap already in progress, ignoring duplicate call');
             return;
@@ -2958,6 +3017,11 @@ class StakingModalNew {
     }
 
     async executeStake() {
+        if (this.isMigrationMode()) {
+            window.notificationManager?.warning(`New staking is disabled on the ${this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0'} migration page.`);
+            return;
+        }
+
         // Guard against multiple simultaneous executions
         if (this.isExecutingStake) {
             console.log('⚠️ Stake already in progress, ignoring duplicate call');

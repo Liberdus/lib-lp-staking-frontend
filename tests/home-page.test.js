@@ -156,6 +156,28 @@ describe('HomePage.renderPairRow', () => {
         expect(output).toContain('btn-earnings');
         expect(output).not.toContain('disabled');
     });
+
+    it('labels the primary row action as unstake in migration mode', async () => {
+        const homePagePrototype = await loadHomePage();
+        const output = homePagePrototype.renderPairRow.call(
+            {
+                isMigrationMode: () => true,
+                formatTvlDisplay: () => '$1.2K'
+            },
+            {
+                id: '1',
+                address: '0x123',
+                name: 'LIB/BNB',
+                platform: 'PancakeSwap',
+                userShares: '3.50',
+                userEarnings: '1.2345'
+            }
+        );
+
+        expect(output).toContain('title="Unstake from Farm 1.0"');
+        expect(output).toContain('data-tab="1"');
+        expect(output).toContain('Unstake 3.50%');
+    });
 });
 
 describe('HomePage table action clicks', () => {
@@ -269,5 +291,23 @@ describe('HomePage table action clicks', () => {
 
         expect(globalThis.notificationManager.warning).not.toHaveBeenCalled();
         expect(openStakingModal).toHaveBeenCalledWith('1');
+    });
+
+    it('opens connected row clicks on the unstake tab in migration mode', async () => {
+        const homePagePrototype = await loadHomePage();
+        const openStakingModal = vi.fn();
+        const event = {
+            target: createRowTarget()
+        };
+
+        homePagePrototype.attachEventListeners.call({
+            isWalletConnected: () => true,
+            isMigrationMode: () => true,
+            showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+            openStakingModal
+        });
+        clickHandler(event);
+
+        expect(openStakingModal).toHaveBeenCalledWith('1', 'unstake');
     });
 });
