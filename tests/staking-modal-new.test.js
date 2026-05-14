@@ -1075,6 +1075,20 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Kyber Router</dt>');
     });
 
+    it('flags high slippage in unchecked remove-liquidity previews', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquiditySlippageBps = 10000;
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('zap-quote-row zap-risk-high');
+        expect(html).toContain('Slippage');
+        expect(html).toContain('100.00%');
+        expect(html).toContain('High slippage tolerance. This transaction may execute at a much worse rate.');
+        expect(html).not.toContain('Price impact');
+    });
+
     it('opens remove-liquidity slippage and deadline controls from the compact dropdown', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);

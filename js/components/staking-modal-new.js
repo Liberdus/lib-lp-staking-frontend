@@ -3632,6 +3632,9 @@ class StakingModalNew {
         let token1Display = pendingValue;
         let token0MinDisplay = pendingValue;
         let token1MinDisplay = pendingValue;
+        const slippageDisplay = `${(Number(this.removeLiquiditySlippageBps) / 100).toFixed(2)}%`;
+        const slippageRiskClass = this.isHighZapSlippage(this.removeLiquiditySlippageBps) ? 'zap-risk-high' : '';
+        const warningMessages = [];
         if (isLoading) {
             summary = 'Loading LP reserves...';
         } else if (isError) {
@@ -3647,6 +3650,9 @@ class StakingModalNew {
             token0MinDisplay = this.formatRemoveLiquidityTokenAmount(preview.token0.minAmount, preview.token0);
             token1MinDisplay = this.formatRemoveLiquidityTokenAmount(preview.token1.minAmount, preview.token1);
             summary = `${preview.token0.symbol} + ${preview.token1.symbol} via ${dexDisplay}`;
+            if (slippageRiskClass) {
+                warningMessages.push('High slippage tolerance. This transaction may execute at a much worse rate.');
+            }
         }
 
         const estimatedPairDisplay = hasPreview
@@ -3667,10 +3673,16 @@ class StakingModalNew {
                 minimumPairDisplay,
                 '',
                 'Transaction reverts if either token output is below this value after max slippage.'
+            ),
+            this.renderZapQuoteRow(
+                'Slippage',
+                slippageDisplay,
+                slippageRiskClass,
+                'Maximum output movement allowed before the transaction reverts.'
             )
         ];
 
-        return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh remove-liquidity preview');
+        return this.renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, 'Refresh remove-liquidity preview', warningMessages);
     }
 
     renderRemoveLiquidityPreviewCard(cardClass, summary, rows, isLoading, refreshLabel, warningMessages = []) {
