@@ -1361,27 +1361,32 @@ class HomePage {
                 }
             }
 
-            // Check if user has the owner approver role (with timeout and error handling)
-            if (typeof window.contractManager?.hasOwnerApproverRole === 'function') {
+            // Check if user is the contract owner or pending owner (with timeout and error handling)
+            if (typeof window.contractManager?.isOwner === 'function') {
                 try {
                     let timeoutId;
                     const timeoutPromise = new Promise((_, reject) => {
-                        timeoutId = setTimeout(() => reject(new Error('Owner approver role check timeout')), 5000);
+                        timeoutId = setTimeout(() => reject(new Error('Ownership check timeout')), 5000);
                     });
 
-                    const hasOwnerRole = await Promise.race([
-                        window.contractManager.hasOwnerApproverRole(userAddress),
+                    const hasOwnershipAccess = await Promise.race([
+                        Promise.all([
+                            window.contractManager.isOwner(userAddress),
+                            typeof window.contractManager.isPendingOwner === 'function'
+                                ? window.contractManager.isPendingOwner(userAddress)
+                                : Promise.resolve(false)
+                        ]).then(([isOwner, isPendingOwner]) => isOwner || isPendingOwner),
                         timeoutPromise
                     ]);
 
                     clearTimeout(timeoutId);
 
-                    if (hasOwnerRole) {
+                    if (hasOwnershipAccess) {
                         this.showAdminButton();
                         return;
                     }
-                } catch (ownerRoleError) {
-                    console.warn('⚠️ Owner approver role check failed:', ownerRoleError.message);
+                } catch (ownerError) {
+                    console.warn('Ownership check failed:', ownerError.message);
                 }
             }
 
