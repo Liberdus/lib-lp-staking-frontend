@@ -1041,6 +1041,19 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('<dt>Kyber Router</dt>');
     });
 
+    it('renders remove-liquidity slider and preset state from the saved amount', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.userBalance = '5';
+        modal.removeLiquidityAmount = '2.5';
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('id="remove-liquidity-slider"');
+        expect(html).toContain('value="50"');
+        expect(html).toContain('<button class="percentage-btn active" data-percentage="50">50%</button>');
+    });
+
     it('renders direct remove-liquidity preview and safeguards when conversion is unchecked', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);

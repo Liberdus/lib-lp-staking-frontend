@@ -3210,6 +3210,15 @@ class StakingModalNew {
 
     renderRemoveLiquidityTab() {
         const balanceError = this.getRemoveLiquidityBalanceError();
+        const removeLiquidityAmount = parseFloat(this.removeLiquidityAmount) || 0;
+        const removeLiquidityMax = parseFloat(this.userBalance) || 0;
+        const removeLiquidityPercentage = removeLiquidityMax > 0
+            ? Math.min(100, Math.max(0, (removeLiquidityAmount / removeLiquidityMax) * 100))
+            : 0;
+        const activeRemoveLiquidityPercentage = [25, 50, 75, 100].find(percentage =>
+            Math.abs(removeLiquidityPercentage - percentage) < 0.001
+        );
+
         return `
             <div class="balance-info">
                 <span class="balance-label">Available LP Tokens:</span>
@@ -3236,15 +3245,15 @@ class StakingModalNew {
                         id="remove-liquidity-slider"
                         min="0"
                         max="100"
-                        value="0"
+                        value="${removeLiquidityPercentage}"
                         data-type="remove-liquidity"
                     >
                 </div>
                 <div class="percentage-buttons">
-                    <button class="percentage-btn" data-percentage="25">25%</button>
-                    <button class="percentage-btn" data-percentage="50">50%</button>
-                    <button class="percentage-btn" data-percentage="75">75%</button>
-                    <button class="percentage-btn" data-percentage="100">MAX</button>
+                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 25 ? ' active' : ''}" data-percentage="25">25%</button>
+                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 50 ? ' active' : ''}" data-percentage="50">50%</button>
+                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 75 ? ' active' : ''}" data-percentage="75">75%</button>
+                    <button class="percentage-btn${activeRemoveLiquidityPercentage === 100 ? ' active' : ''}" data-percentage="100">MAX</button>
                 </div>
             </div>
 
