@@ -238,6 +238,8 @@ describe('StakingModalNew zap cleanup', () => {
         delete globalThis.safeModalFetchZapQuote;
         delete globalThis.safeModalExecuteZap;
         delete globalThis.safeModalAddZapCustomToken;
+        delete globalThis.safeModalExecuteRemoveLiquidity;
+        delete globalThis.safeModalFetchRemoveLiquidityPreview;
     });
 
     it('clearInputs removes active zap percentage button state', async () => {
@@ -377,7 +379,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
     });
 
-    it('renders a disabled Remove LP tab shell with LP balance and amount controls', async () => {
+    it('renders a Remove LP tab with LP balance, amount controls, and preview panel', async () => {
         const modal = await createLoadedModal();
         modal.currentPair = { tvlUsd: 2000, tvl: 100 };
         modal.userBalance = '4';
@@ -391,10 +393,112 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('$30.00');
         expect(html).toContain('id="remove-liquidity-slider"');
         expect(html).toContain('data-type="remove-liquidity"');
+        expect(html).toContain('Max slippage:');
+        expect(html).toContain('id="remove-liquidity-preview-panel"');
         expect(html).toContain('Remove LP Liquidity');
-        expect(html).toContain('disabled title="Remove LP execution is added in a later PR"');
+        expect(html).toContain('disabled title="Remove LP execution is added in the next PR."');
         expect(html).not.toContain('remove-liquidity-checkbox');
-        expect(html).not.toContain('remove-liquidity-preview');
+    });
+
+    it('renders V2 remove-liquidity preview rows for pair tokens and minimum outputs', async () => {
+        const modal = await createLoadedModal();
+        modal.removeLiquidityAmount = '1';
+        modal.userBalance = '10';
+        modal.removeLiquidityPreviewStatus = 'ready';
+        modal.removeLiquidityPreview = {
+            supported: true,
+            adapter: { name: 'Uniswap V2' },
+            token0: {
+                symbol: 'LIB',
+                decimals: 18,
+                amount: { raw: '1000000000000000000' },
+                minAmount: { raw: '995000000000000000' }
+            },
+            token1: {
+                symbol: 'USDT',
+                decimals: 18,
+                amount: { raw: '2000000000000000000' },
+                minAmount: { raw: '1990000000000000000' }
+            }
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('LIB + USDT via Uniswap V2');
+        expect(html).toContain('1 LIB + 2 USDT');
+        expect(html).toContain('0.995 LIB + 1.99 USDT');
+        expect(html).toContain('Uniswap V2');
+    });
+
+    it('shows unsupported remove-liquidity factories in the preview panel', async () => {
+        const modal = await createLoadedModal();
+        modal.removeLiquidityAmount = '1';
+        modal.userBalance = '10';
+        modal.removeLiquidityPreviewStatus = 'error';
+        modal.removeLiquidityPreviewError = 'This LP factory is not supported for guided remove liquidity.';
+        modal.removeLiquidityPreview = {
+            supported: false,
+            factoryAddress: '0x1234567890123456789012345678901234567890'
+        };
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('This LP factory is not supported for guided remove liquidity.');
+        expect(html).toContain('Unsupported factory 0x1234...7890');
+    });
+
+    it('fetches a V2 remove-liquidity preview for the selected LP amount', async () => {
+        const modal = await createLoadedModal();
+        const preview = {
+            supported: true,
+            adapter: { name: 'Uniswap V2' },
+            token0: { symbol: 'LIB', decimals: 18, amount: { raw: '1' }, minAmount: { raw: '1' } },
+            token1: { symbol: 'USDT', decimals: 18, amount: { raw: '1' }, minAmount: { raw: '1' } }
+        };
+        modal.currentPair = { lpToken: '0xlp' };
+        modal.removeLiquidityAmount = '1';
+        modal.userBalanceRaw = { gte: vi.fn(() => true) };
+        modal.userBalanceDecimals = 18;
+        modal.removeLiquidityService = {
+            getPreview: vi.fn().mockResolvedValue(preview)
+        };
+        modal.updateRemoveLiquidityPreviewPanel = vi.fn();
+        modal.updateRemoveLiquidityButton = vi.fn();
+        globalThis.networkSelector = { getCurrentChainId: vi.fn(() => 56) };
+        globalThis.contractManager = { provider: { name: 'provider' } };
+
+        await modal.fetchRemoveLiquidityPreview({ force: true });
+
+        expect(modal.removeLiquidityService.getPreview).toHaveBeenCalledWith(expect.objectContaining({
+            chainId: 56,
+            lpTokenAddress: '0xlp',
+            slippageBps: 50,
+            provider: globalThis.contractManager.provider
+        }));
+        expect(modal.removeLiquidityPreview).toBe(preview);
+        expect(modal.removeLiquidityPreviewStatus).toBe('ready');
+    });
+
+    it('updates remove-liquidity slippage, deadline, and amount controls', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { tvlUsd: 100, tvl: 10 };
+        modal.userBalance = '4';
+        modal.currentTab = 'remove-liquidity';
+        const estimateElement = document.registerElement(createElement({ id: 'remove-liquidity-usd-estimate' }));
+        const inputElement = document.registerElement(createElement({ id: 'remove-liquidity-amount-input' }));
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+
+        modal.setRemoveLiquiditySlippage('100');
+        modal.setPercentage(50);
+        modal.updateAmountFromSlider({ dataset: { type: 'remove-liquidity' }, value: '25' });
+        const deadlineValue = modal.setRemoveLiquidityDeadlineInput('45');
+
+        expect(modal.removeLiquiditySlippageBps).toBe(100);
+        expect(modal.removeLiquidityAmount).toBe('1.000000');
+        expect(inputElement.value).toBe('1.000000');
+        expect(estimateElement.textContent).toBe('$10.00');
+        expect(deadlineValue).toBe('45');
+        expect(modal.removeLiquidityDeadlineMinutes).toBe(45);
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {

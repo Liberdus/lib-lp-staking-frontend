@@ -616,6 +616,94 @@
     padding: 0 var(--spacing-1);
 }
 
+.remove-liquidity-section {
+    margin-top: calc(var(--spacing-2) * -1);
+}
+
+.remove-liquidity-settings-summary {
+    margin-bottom: var(--spacing-1);
+}
+
+.remove-liquidity-settings-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.remove-liquidity-settings-toggle:hover {
+    color: var(--primary-main);
+}
+
+.remove-liquidity-settings-toggle .material-icons {
+    font-size: 17px;
+}
+
+.remove-liquidity-settings-label {
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-normal);
+}
+
+.remove-liquidity-settings-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 160px);
+    gap: var(--spacing-2);
+    align-items: start;
+    margin-bottom: var(--spacing-2);
+}
+
+.remove-liquidity-slippage-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(58px, 1fr)) minmax(88px, 1fr);
+    gap: var(--spacing-1);
+    align-items: center;
+}
+
+.remove-liquidity-slippage-btn {
+    min-height: 36px;
+    border: 1px solid var(--divider);
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.remove-liquidity-slippage-btn:hover,
+.remove-liquidity-slippage-btn.active {
+    border-color: var(--primary-main);
+    background: rgba(25, 118, 210, 0.08);
+    color: var(--primary-main);
+}
+
+.remove-liquidity-custom-slippage {
+    min-height: 36px;
+    padding: 0 var(--spacing-1);
+}
+
+.remove-liquidity-deadline-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spacing-1);
+    align-items: center;
+}
+
+.remove-liquidity-deadline-unit {
+    color: var(--text-secondary);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.remove-liquidity-preview-list {
+    min-height: 74px;
+}
+
 .zap-quote-card {
     margin-top: 10px;
     margin-bottom: 10px;
@@ -623,6 +711,10 @@
     background: var(--action-hover);
     border: 1px solid var(--divider);
     border-radius: var(--border-radius);
+}
+
+.remove-liquidity-preview-card {
+    margin-top: 0;
 }
 
 .zap-empty-state {
@@ -898,6 +990,22 @@
 
     .zap-custom-token-row {
         grid-template-columns: 1fr;
+    }
+
+    .remove-liquidity-settings-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .remove-liquidity-slippage-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .remove-liquidity-custom-slippage {
+        grid-column: 1 / -1;
+    }
+
+    .remove-liquidity-deadline-row {
+        grid-template-columns: minmax(0, 1fr) auto;
     }
 }
 
