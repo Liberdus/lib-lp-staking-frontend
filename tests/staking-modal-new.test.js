@@ -202,6 +202,46 @@ function arrangeReadyZapQuote(modal, data = { route: '0xroute' }) {
     modal.zapQuote = { data };
 }
 
+function createComparableAmount(value) {
+    return {
+        value,
+        gte: other => Number(value) >= Number(other?.value ?? other),
+        lt: other => Number(value) < Number(other?.value ?? other),
+        toString: () => String(value)
+    };
+}
+
+function arrangeReadyRemoveLiquidityPreview(modal) {
+    modal.currentPair = { name: 'LIB/USDT', lpToken: '0xlp' };
+    modal.removeLiquidityAmount = '1';
+    modal.userBalance = '2';
+    modal.userBalanceRaw = createComparableAmount(2);
+    modal.userBalanceDecimals = 18;
+    modal.removeLiquidityPreviewStatus = 'ready';
+    modal.removeLiquidityPreview = {
+        supported: true,
+        adapter: {
+            name: 'Uniswap V2',
+            routerAddress: '0xrouter',
+            factoryAddress: '0xfactory'
+        },
+        token0: {
+            address: '0xlib',
+            symbol: 'LIB',
+            decimals: 18,
+            amount: { raw: '1000000000000000000' },
+            minAmount: { raw: '995000000000000000' }
+        },
+        token1: {
+            address: '0xusdt',
+            symbol: 'USDT',
+            decimals: 18,
+            amount: { raw: '2000000000000000000' },
+            minAmount: { raw: '1990000000000000000' }
+        }
+    };
+}
+
 describe('StakingModalNew zap cleanup', () => {
     beforeEach(() => {
         vi.useRealTimers();
@@ -396,7 +436,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('Max slippage:');
         expect(html).toContain('id="remove-liquidity-preview-panel"');
         expect(html).toContain('Remove LP Liquidity');
-        expect(html).toContain('disabled title="Remove LP execution is added in the next PR."');
+        expect(html).toContain('onclick="safeModalExecuteRemoveLiquidity()"');
         expect(html).not.toContain('remove-liquidity-checkbox');
     });
 
@@ -499,6 +539,113 @@ describe('StakingModalNew zap cleanup', () => {
         expect(estimateElement.textContent).toBe('$10.00');
         expect(deadlineValue).toBe('45');
         expect(modal.removeLiquidityDeadlineMinutes).toBe(45);
+    });
+
+    it('enables the Remove LP button only after a supported preview is ready', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const button = {
+            disabled: true,
+            title: '',
+            querySelector: vi.fn(() => null),
+            childNodes: []
+        };
+        document.querySelector = vi.fn(() => button);
+
+        modal.updateRemoveLiquidityButton();
+
+        expect(button.disabled).toBe(false);
+        expect(button.title).toBe('Remove LP liquidity');
+    });
+
+    it('executes plain V2 remove liquidity with approval when allowance is insufficient', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-05-13T12:00:00Z'));
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.close = vi.fn();
+        modal.clearInputs = vi.fn();
+        modal.updateRemoveLiquidityButton = vi.fn();
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createComparableAmount(2)),
+            getAllowance: vi.fn().mockResolvedValue(createComparableAmount(0)),
+            approveIfNeeded: vi.fn().mockResolvedValue({ hash: '0xapprove' }),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
+        };
+        modal.removeLiquidityService = service;
+        const signer = { getAddress: vi.fn().mockResolvedValue('0xuser') };
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            provider: { name: 'provider' },
+            signer,
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            executeTransactionOnce: vi.fn(async operation => {
+                await operation();
+                return { success: true, hash: '0xreceipt' };
+            })
+        };
+        globalThis.notificationManager = { info: vi.fn(), success: vi.fn(), error: vi.fn() };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const promise = modal.executeRemoveLiquidity();
+        await vi.runAllTimersAsync();
+        await promise;
+
+        expect(service.approveIfNeeded).toHaveBeenCalledWith(expect.objectContaining({
+            lpTokenAddress: '0xlp',
+            spender: '0xrouter',
+            signer
+        }));
+        expect(service.removeLiquidity).toHaveBeenCalledWith(expect.objectContaining({
+            routerAddress: '0xrouter',
+            token0: '0xlib',
+            token1: '0xusdt',
+            amount0Min: '995000000000000000',
+            amount1Min: '1990000000000000000',
+            recipient: '0xuser',
+            deadline: 1778674800
+        }));
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenCalledWith(expect.any(Function), 'approveRemoveLiquidity');
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenCalledWith(expect.any(Function), 'removeLiquidity');
+        expect(globalThis.notificationManager.success).toHaveBeenCalledWith('Liquidity removed successfully!');
+        expect(globalThis.homePage.refreshData).toHaveBeenCalled();
+    });
+
+    it('skips Remove LP approval when allowance is sufficient', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.close = vi.fn();
+        modal.clearInputs = vi.fn();
+        modal.updateRemoveLiquidityButton = vi.fn();
+        const service = {
+            validateRouterFactory: vi.fn().mockResolvedValue(true),
+            getBalance: vi.fn().mockResolvedValue(createComparableAmount(2)),
+            getAllowance: vi.fn().mockResolvedValue(createComparableAmount(2)),
+            approveIfNeeded: vi.fn(),
+            removeLiquidity: vi.fn().mockResolvedValue({ hash: '0xremove' })
+        };
+        modal.removeLiquidityService = service;
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            provider: { name: 'provider' },
+            signer: { getAddress: vi.fn().mockResolvedValue('0xuser') },
+            ensureSigner: vi.fn().mockResolvedValue(undefined),
+            executeTransactionOnce: vi.fn(async operation => {
+                await operation();
+                return { success: true, hash: '0xreceipt' };
+            })
+        };
+        globalThis.notificationManager = { info: vi.fn(), success: vi.fn(), error: vi.fn() };
+
+        const promise = modal.executeRemoveLiquidity();
+        await vi.runAllTimersAsync();
+        await promise;
+
+        expect(service.approveIfNeeded).not.toHaveBeenCalled();
+        expect(service.removeLiquidity).toHaveBeenCalled();
+        expect(globalThis.contractManager.executeTransactionOnce).toHaveBeenCalledTimes(1);
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {

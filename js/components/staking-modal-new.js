@@ -68,7 +68,9 @@ class StakingModalNew {
             unstake: 'idle',
             claim: 'idle',
             approveZap: 'idle',
-            zap: 'idle'
+            zap: 'idle',
+            approveRemoveLiquidity: 'idle',
+            removeLiquidity: 'idle'
         };
         this.pendingOperations = {
             approve: false,
@@ -76,7 +78,9 @@ class StakingModalNew {
             unstake: false,
             claim: false,
             approveZap: false,
-            zap: false
+            zap: false,
+            approveRemoveLiquidity: false,
+            removeLiquidity: false
         };
 
         // Execution guards
@@ -115,6 +119,10 @@ class StakingModalNew {
                 return 'approveZap';
             case 'zapIntoLP':
                 return 'zap';
+            case 'approveRemoveLiquidity':
+                return 'approveRemoveLiquidity';
+            case 'removeLiquidity':
+                return 'removeLiquidity';
             default:
                 return null;
         }
@@ -155,6 +163,10 @@ class StakingModalNew {
 
         if (action === 'approveZap' || action === 'zap') {
             this.updateZapButton();
+        }
+
+        if (action === 'approveRemoveLiquidity' || action === 'removeLiquidity') {
+            this.updateRemoveLiquidityButton();
         }
     }
 
@@ -2304,22 +2316,43 @@ class StakingModalNew {
         const removeButton = document.querySelector('.modal-actions .btn-primary[onclick*="safeModalExecuteRemoveLiquidity"]');
         if (!removeButton) return;
 
+        const buttonIcon = removeButton.querySelector('.material-icons');
+        const buttonText = removeButton.childNodes[removeButton.childNodes.length - 1];
         const amount = parseFloat(this.removeLiquidityAmount) || 0;
         const hasAmount = amount > 0;
+        const balanceRaw = this.userBalanceRaw || window.ethers.BigNumber.from(0);
+        const removeUnits = window.ethers.utils.parseUnits(this.removeLiquidityAmount || '0', this.userBalanceDecimals);
+        const hasSufficientBalance = balanceRaw.gte(removeUnits);
         const hasValidPreview = this.removeLiquidityPreviewStatus === 'ready'
             && this.removeLiquidityPreview?.supported;
-        const balanceError = this.getRemoveLiquidityBalanceError();
+        const approvePhase = this.actionPhases?.approveRemoveLiquidity || 'idle';
+        const removePhase = this.actionPhases?.removeLiquidity || 'idle';
+        const activePhase = approvePhase !== 'idle' ? approvePhase : removePhase;
 
-        removeButton.disabled = true;
-        if (balanceError && hasAmount) {
-            removeButton.title = balanceError;
+        if (activePhase !== 'idle') {
+            removeButton.disabled = true;
+            if (buttonIcon) buttonIcon.textContent = 'hourglass_empty';
+            if (buttonText) buttonText.textContent = this.getPhaseLabel(activePhase) || ' Processing Transaction...';
+            return;
+        }
+
+        const shouldDisable = this.isExecutingRemoveLiquidity
+            || !hasAmount
+            || !hasSufficientBalance
+            || !hasValidPreview;
+        removeButton.disabled = shouldDisable;
+        if (!hasSufficientBalance && hasAmount) {
+            removeButton.title = 'Insufficient LP token balance.';
         } else if (!hasAmount) {
             removeButton.title = 'Enter an LP amount to preview removal.';
         } else if (!hasValidPreview) {
             removeButton.title = this.removeLiquidityPreviewError || 'Wait for a supported remove-liquidity preview.';
         } else {
-            removeButton.title = 'Remove LP execution is added in the next PR.';
+            removeButton.title = 'Remove LP liquidity';
         }
+
+        if (buttonIcon) buttonIcon.textContent = 'swap_horiz';
+        if (buttonText) buttonText.textContent = ' Remove LP Liquidity';
     }
 
     /**
@@ -2834,7 +2867,7 @@ class StakingModalNew {
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
-                <button class="btn btn-primary remove-liquidity-action-btn" onclick="safeModalExecuteRemoveLiquidity()" disabled title="Remove LP execution is added in the next PR.">
+                <button class="btn btn-primary remove-liquidity-action-btn" onclick="safeModalExecuteRemoveLiquidity()" ${!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0 ? 'disabled' : ''}>
                     <span class="material-icons">swap_horiz</span>
                     Remove LP Liquidity
                 </button>
@@ -3574,6 +3607,157 @@ class StakingModalNew {
             this.isExecutingZap = false;
             this.updateZapButton();
             this.syncZapQuoteAutoRefresh();
+        }
+    }
+
+    async executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw) {
+        const service = this.getRemoveLiquidityService();
+        const provider = window.contractManager?.provider || window.walletManager?.provider;
+
+        await window.contractManager.ensureSigner();
+        const signer = window.contractManager.signer;
+        const userAddress = await signer.getAddress();
+
+        if (!this.removeLiquidityPreview?.supported) {
+            await this.fetchRemoveLiquidityPreview({ force: true });
+        }
+
+        const preview = this.removeLiquidityPreview;
+        if (!preview?.supported) {
+            throw new Error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
+        }
+
+        await service.validateRouterFactory({
+            routerAddress: preview.adapter.routerAddress,
+            factoryAddress: preview.adapter.factoryAddress,
+            provider
+        });
+
+        const lpBalance = await service.getBalance({
+            lpTokenAddress,
+            owner: userAddress,
+            provider
+        });
+        if (lpBalance.lt(liquidityRaw)) {
+            throw new Error('Insufficient LP token balance.');
+        }
+
+        const allowance = await service.getAllowance({
+            lpTokenAddress,
+            owner: userAddress,
+            spender: preview.adapter.routerAddress,
+            provider
+        });
+
+        if (allowance.lt(liquidityRaw)) {
+            this.pendingOperations.approveRemoveLiquidity = true;
+            this.setActionPhase('approveRemoveLiquidity', 'userApproval');
+            window.notificationManager?.info('Approving router to spend LP tokens...');
+
+            const approvalTx = await service.approveIfNeeded({
+                lpTokenAddress,
+                spender: preview.adapter.routerAddress,
+                liquidityRaw,
+                signer
+            });
+
+            if (approvalTx) {
+                await window.contractManager.executeTransactionOnce(async () => {
+                    console.log(`✅ Remove-liquidity approval sent: ${approvalTx.hash}`);
+                    return approvalTx;
+                }, 'approveRemoveLiquidity');
+            }
+
+            this.pendingOperations.approveRemoveLiquidity = false;
+            this.setActionPhase('approveRemoveLiquidity', 'idle');
+        }
+
+        const deadlineSeconds = Math.floor(Date.now() / 1000) + (Number(this.removeLiquidityDeadlineMinutes) || 20) * 60;
+        this.pendingOperations.removeLiquidity = true;
+        this.setActionPhase('removeLiquidity', 'userApproval');
+        window.notificationManager?.info('Removing liquidity...');
+
+        return window.contractManager.executeTransactionOnce(async () => {
+            const tx = await service.removeLiquidity({
+                routerAddress: preview.adapter.routerAddress,
+                token0: preview.token0.address,
+                token1: preview.token1.address,
+                liquidityRaw,
+                amount0Min: preview.token0.minAmount.raw,
+                amount1Min: preview.token1.minAmount.raw,
+                recipient: userAddress,
+                deadline: deadlineSeconds,
+                signer
+            });
+            console.log(`✅ Remove liquidity transaction sent: ${tx.hash}`);
+            return tx;
+        }, 'removeLiquidity');
+    }
+
+    async executeRemoveLiquidity() {
+        if (this.isExecutingRemoveLiquidity) {
+            console.log('⚠️ Remove liquidity already in progress, ignoring duplicate call');
+            return;
+        }
+
+        if (!this.removeLiquidityAmount || parseFloat(this.removeLiquidityAmount) === 0) return;
+
+        try {
+            this.isExecutingRemoveLiquidity = true;
+            this.updateRemoveLiquidityButton();
+
+            if (!window.contractManager || !window.contractManager.isReady()) {
+                window.notificationManager?.error('Contract manager not ready. Please connect your wallet first.');
+                return;
+            }
+
+            const slippageError = this.getRemoveLiquidityCustomSlippageError();
+            if (slippageError) {
+                this.updateRemoveLiquidityPreviewPanel();
+                this.updateRemoveLiquidityButton();
+                window.notificationManager?.error(slippageError);
+                return;
+            }
+
+            if (!this.removeLiquidityPreview?.supported) {
+                await this.fetchRemoveLiquidityPreview({ force: true });
+            }
+
+            if (!this.removeLiquidityPreview?.supported) {
+                window.notificationManager?.error(this.removeLiquidityPreviewError || 'Remove liquidity is not supported for this pool.');
+                return;
+            }
+
+            window.notificationManager?.info('Removing LP liquidity...');
+            const lpTokenAddress = this.currentPair.lpToken || this.currentPair.address;
+            const liquidityRaw = this.getRemoveLiquidityAmountRaw();
+            await this.executeRemoveLiquidityTransaction(lpTokenAddress, liquidityRaw);
+            window.notificationManager?.success('Liquidity removed successfully!');
+
+            this.clearInputs();
+            this.close();
+
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (window.homePage?.refreshData) {
+                await window.homePage.refreshData();
+            } else if (window.homePage?.loadData) {
+                await window.homePage.loadData();
+            }
+        } catch (error) {
+            console.error('❌ Remove liquidity failed:', error);
+            const errorMessage = error?.userMessage?.message || error?.message || 'Remove liquidity failed. Your LP tokens remain in your wallet.';
+            window.notificationManager?.error(errorMessage, {title: error?.userMessage?.title});
+            await this.loadUserBalances().catch(loadError => {
+                console.warn('Unable to refresh balances after remove-liquidity failure:', loadError.message);
+            });
+        } finally {
+            this.pendingOperations.approveRemoveLiquidity = false;
+            this.pendingOperations.removeLiquidity = false;
+            this.setActionPhase('approveRemoveLiquidity', 'idle');
+            this.setActionPhase('removeLiquidity', 'idle');
+            this.isExecutingRemoveLiquidity = false;
+            this.updateRemoveLiquidityButton();
         }
     }
 
