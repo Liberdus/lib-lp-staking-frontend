@@ -3486,8 +3486,9 @@ class StakingModalNew {
     renderRemoveLiquidityPreviewPanel() {
         const balanceError = this.getRemoveLiquidityBalanceError();
         const isLoading = this.removeLiquidityPreviewStatus === 'loading';
-        const isError = this.removeLiquidityPreviewStatus === 'error' || !!balanceError;
         const hasPreview = this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported;
+        const showBalanceAsWarning = this.removeLiquidityZapOutEnabled && !!balanceError;
+        const isError = this.removeLiquidityPreviewStatus === 'error' || (!!balanceError && !showBalanceAsWarning);
         const pendingValue = isLoading ? '...' : '-';
         const cardClass = [
             'zap-quote-card',
@@ -3499,6 +3500,7 @@ class StakingModalNew {
         if (this.removeLiquidityZapOutEnabled) {
             const outputToken = this.removeLiquiditySelectedOutputToken;
             const outputSymbol = outputToken?.symbol || 'token';
+            const isPositionBalanceError = !!balanceError;
             let summary = this.removeLiquidityAmount
                 ? `Checking Kyber zap-out to ${outputSymbol}...`
                 : `Enter an amount to preview ${outputSymbol} output.`;
@@ -3509,8 +3511,10 @@ class StakingModalNew {
 
             if (isLoading) {
                 summary = 'Loading Kyber zap-out route...';
+            } else if (isPositionBalanceError) {
+                summary = 'Kyber cannot quote more LP than your available balance.';
             } else if (isError) {
-                summary = balanceError || this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
+                summary = this.removeLiquidityPreviewError || 'Unable to fetch a Kyber zap-out preview.';
             } else if (hasPreview) {
                 const data = this.getRemoveLiquidityRouteData();
                 const outputEntry = this.getRemoveLiquidityEstimatedOutputEntry(outputToken, pendingValue);
@@ -3532,12 +3536,12 @@ class StakingModalNew {
             }
 
             const rows = [];
-            if (isError) {
+            if (isError || isPositionBalanceError) {
                 rows.push(this.renderZapQuoteRow(
-                    'Route',
-                    'Unsupported',
+                    'Kyber quote',
+                    isPositionBalanceError ? 'Unavailable above LP balance' : 'Unsupported',
                     '',
-                    'Routing status for this LP position.'
+                    'Kyber zap-out requires the selected wallet position to hold the requested LP amount.'
                 ));
             }
             rows.push(
@@ -4563,6 +4567,13 @@ class StakingModalNew {
                 this.updateRemoveLiquidityPreviewPanel();
                 this.updateRemoveLiquidityButton();
                 window.notificationManager?.error(slippageError);
+                return;
+            }
+            const balanceError = this.getRemoveLiquidityBalanceError();
+            if (balanceError) {
+                this.updateRemoveLiquidityPreviewPanel();
+                this.updateRemoveLiquidityButton();
+                window.notificationManager?.error(balanceError);
                 return;
             }
 

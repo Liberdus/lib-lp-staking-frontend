@@ -1110,6 +1110,30 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.canFetchRemoveLiquidityPreview()).toBe(false);
     });
 
+    it('shows a clear checked zap-out message above the LP balance without calling Kyber', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.removeLiquidityZapOutEnabled = true;
+        modal.removeLiquidityAmount = '2';
+        modal.userBalance = '1.0';
+        modal.userBalanceRaw = { gte: vi.fn(() => false) };
+        modal.removeLiquidityPreview = null;
+        modal.removeLiquidityPreviewStatus = 'idle';
+        const fetchOutQuote = vi.fn();
+        modal.getKyberZapService().fetchOutQuote = fetchOutQuote;
+
+        await modal.fetchRemoveLiquidityPreview({ force: true });
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(fetchOutQuote).not.toHaveBeenCalled();
+        expect(html).toContain('Amount exceeds available LP balance (1.0 LP).');
+        expect(html).toContain('Kyber cannot quote more LP than your available balance.');
+        expect(html).toContain('Kyber quote');
+        expect(html).toContain('Unavailable above LP balance');
+        expect(html).not.toContain('Route</dt>');
+        expect(html).not.toContain('Unsupported</dd>');
+    });
+
     it('derives checked remove-liquidity output amount from Kyber zap-out actions', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
@@ -1612,6 +1636,28 @@ describe('StakingModalNew zap cleanup', () => {
             data: '0xzapdata'
         }));
         expect(globalThis.notificationManager.success).toHaveBeenCalledWith('LP tokens zapped out successfully!');
+    });
+
+    it('blocks checked zap-out execution when the amount exceeds the LP balance', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.removeLiquidityAmount = '2';
+        modal.userBalance = '1.0';
+        modal.userBalanceRaw = { gte: vi.fn(() => false) };
+        modal.executeRemoveLiquidityZapOutTransaction = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true)
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeRemoveLiquidity();
+
+        expect(modal.executeRemoveLiquidityZapOutTransaction).not.toHaveBeenCalled();
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Amount exceeds available LP balance (1.0 LP).');
     });
 
     it('unchecked execute still calls direct removeLiquidity and skips Kyber zap-out endpoints', async () => {
