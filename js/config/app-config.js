@@ -198,6 +198,26 @@ window.CONFIG = {
         }
     },
 
+    // Explicit V2 DEX allowlist for guided remove-liquidity flows.
+    // Routers are intentionally configured here because they cannot be safely discovered from LP pairs.
+    DEX_REMOVE_LIQUIDITY: {
+        56: {
+            wrappedNative: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+            factories: {
+                '0x8909dc15e40173ff4699343b6eb8132c65e18ec6': {
+                    name: 'Uniswap V2',
+                    type: 'uniswapV2',
+                    router: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24'
+                },
+                '0xca143ce32fe78f1f7019d7d551a6402fc5350c73': {
+                    name: 'PancakeSwap V2',
+                    type: 'uniswapV2',
+                    router: '0x10ed43c718714eb63d5aa57b78b54704e256024e'
+                }
+            }
+        }
+    },
+
     // Platform Configuration
     PLATFORMS: {
         // Available platforms for dropdown (matches contract values)

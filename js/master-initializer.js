@@ -170,6 +170,7 @@ class MasterInitializer {
             'js/components/home-page.js',
             'js/services/kyber-zap-rate-limiter.js',
             'js/services/kyber-zap-service.js',
+            'js/services/v2-remove-liquidity-service.js',
             'js/components/staking-modal-new.js'
         ];
         console.log('Loading homepage UI components');
