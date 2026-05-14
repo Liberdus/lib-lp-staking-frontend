@@ -1491,10 +1491,7 @@ class StakingModalNew {
         this.zapCustomSlippageError = this.getZapCustomSlippageError(sanitizedValue);
 
         if (this.zapCustomSlippageError) {
-            this.resetZapQuoteState({
-                status: 'error',
-                error: this.zapCustomSlippageError
-            });
+            this.resetZapQuoteState();
             this.stopZapQuoteAutoRefresh();
             this.updateZapQuotePanel();
             this.updateZapButton();

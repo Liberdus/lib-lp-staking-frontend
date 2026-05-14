@@ -669,12 +669,28 @@ describe('StakingModalNew zap cleanup', () => {
         expect(sanitizedValue).toBe('0');
         expect(modal.zapSlippageBps).toBe(50);
         expect(modal.zapQuote).toBeNull();
-        expect(modal.zapQuoteStatus).toBe('error');
-        expect(modal.zapQuoteError).toContain('Enter a custom slippage');
+        expect(modal.zapQuoteStatus).toBe('idle');
+        expect(modal.zapQuoteError).toBe('');
         expect(modal.canFetchZapQuote()).toBe(false);
         expect(customButton).not.toContain('active');
         expect(html).toContain('aria-invalid="true"');
         expect(html).toContain('zap-custom-slippage-error');
+        expect(html.match(/Enter a custom slippage between 0\.01% and 100%\./g)).toHaveLength(1);
+    });
+
+    it('does not carry the Create LP custom slippage error into Remove LP', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const modal = new StakingModalNew();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        const tabContent = document.registerElement(createElement({ id: 'tab-content' }));
+
+        modal.setZapCustomSlippageInput('101');
+        modal.currentTab = 'remove-liquidity';
+        modal.renderTabContent();
+
+        expect(modal.zapCustomSlippageError).toBe('Enter a custom slippage between 0.01% and 100%.');
+        expect(tabContent.innerHTML).not.toContain('zap-custom-slippage-error');
+        expect(tabContent.innerHTML).not.toContain('id="zap-custom-slippage-error"');
     });
 
     it('clearInputs resets invalid custom zap slippage state', async () => {
