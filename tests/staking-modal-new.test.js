@@ -1150,6 +1150,19 @@ describe('StakingModalNew zap cleanup', () => {
         expect(customButton.classList.contains('active')).toBe(true);
     });
 
+    it('keeps invalid remove-liquidity custom slippage as a field error only', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.removeLiquiditySettingsOpen = true;
+
+        modal.setRemoveLiquidityCustomSlippageInput('101');
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(modal.removeLiquidityCustomSlippageError).toBe('Enter a custom slippage between 0.01% and 100%.');
+        expect(modal.removeLiquidityPreviewError).toBe('');
+        expect(html.match(/Enter a custom slippage between 0\.01% and 100%\./g)).toHaveLength(1);
+    });
+
     it('shows a readable over-balance warning on unchecked remove liquidity', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal);

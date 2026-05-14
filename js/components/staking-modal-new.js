@@ -938,10 +938,7 @@ class StakingModalNew {
         this.updateRemoveLiquiditySlippageButtonState();
 
         if (this.removeLiquidityCustomSlippageError) {
-            this.resetRemoveLiquidityPreview({
-                status: 'error',
-                error: this.removeLiquidityCustomSlippageError
-            });
+            this.resetRemoveLiquidityPreview();
             return sanitizedValue;
         }
 

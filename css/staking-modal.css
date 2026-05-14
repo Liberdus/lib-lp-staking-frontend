@@ -644,6 +644,8 @@
 
 .remove-liquidity-meta-row .remove-liquidity-checkbox-label {
     flex: 0 0 auto;
+    grid-column: 2;
+    justify-self: end;
     margin: 0;
     white-space: nowrap;
 }
