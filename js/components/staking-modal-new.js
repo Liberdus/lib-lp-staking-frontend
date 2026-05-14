@@ -3517,8 +3517,7 @@ class StakingModalNew {
         const balanceError = this.getRemoveLiquidityBalanceError();
         const isLoading = this.removeLiquidityPreviewStatus === 'loading';
         const hasPreview = this.removeLiquidityPreviewStatus === 'ready' && this.removeLiquidityPreview?.supported;
-        const showBalanceAsWarning = this.removeLiquidityZapOutEnabled && !!balanceError;
-        const isError = this.removeLiquidityPreviewStatus === 'error' || (!!balanceError && !showBalanceAsWarning);
+        const isError = this.removeLiquidityPreviewStatus === 'error' || !!balanceError;
         const pendingValue = isLoading ? '...' : '-';
         const cardClass = [
             'zap-quote-card',

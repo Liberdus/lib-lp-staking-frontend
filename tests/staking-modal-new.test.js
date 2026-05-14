@@ -1181,9 +1181,11 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(fetchOutQuote).not.toHaveBeenCalled();
         expect(html).toContain('Amount exceeds available LP balance (1.0 LP).');
+        expect(html).toContain('zap-quote-card remove-liquidity-preview-card zap-quote-error');
         expect(html).toContain('Kyber cannot quote more LP than your available balance.');
         expect(html).toContain('Kyber quote');
         expect(html).toContain('Unavailable above LP balance');
+        expect(html).not.toContain('zap-quote-placeholder');
         expect(html).not.toContain('Route</dt>');
         expect(html).not.toContain('Unsupported</dd>');
     });
