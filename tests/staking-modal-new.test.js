@@ -1290,6 +1290,97 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).not.toContain('Unsupported</dd>');
     });
 
+    it('auto-refreshes checked remove-liquidity zap-out previews', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+        const countdown = document.registerElement(createElement({ id: 'remove-liquidity-preview-countdown' }));
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        await vi.advanceTimersByTimeAsync(1000);
+
+        expect(countdown.textContent).toBe('9s');
+        expect(modal.fetchRemoveLiquidityPreview).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(9000);
+
+        expect(countdown.textContent).toBe('10s');
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+        expect(modal.fetchRemoveLiquidityPreview).toHaveBeenCalledWith({ force: true });
+        modal.stopRemoveLiquidityPreviewAutoRefresh();
+    });
+
+    it('renders a countdown for checked remove-liquidity zap-out previews', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).toContain('id="remove-liquidity-preview-countdown"');
+        expect(html).toContain('10s');
+    });
+
+    it('does not render a countdown for direct remove-liquidity previews', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        const html = modal.renderRemoveLiquidityPreviewPanel();
+
+        expect(html).not.toContain('remove-liquidity-preview-countdown');
+    });
+
+    it('does not auto-refresh direct remove-liquidity previews', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+        modal.fetchRemoveLiquidityPreview = vi.fn();
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+        expect(modal.fetchRemoveLiquidityPreview).not.toHaveBeenCalled();
+    });
+
+    it('stops remove-liquidity zap-out auto-refresh when leaving the flow', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+
+        modal.currentTab = 'zap';
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+    });
+
+    it('stops remove-liquidity zap-out auto-refresh when the form resets', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
+        modal.isOpen = true;
+        modal.currentTab = 'remove-liquidity';
+
+        modal.syncRemoveLiquidityPreviewAutoRefresh();
+        expect(modal.removeLiquidityPreviewRefreshTimer).not.toBeNull();
+
+        modal.resetRemoveLiquidityFormState();
+
+        expect(modal.removeLiquidityPreviewRefreshTimer).toBeNull();
+    });
+
     it('derives checked remove-liquidity output amount from Kyber zap-out actions', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
