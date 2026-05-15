@@ -1066,7 +1066,6 @@ class StakingModalNew {
     canAutoRefreshRemoveLiquidityPreview() {
         return this.isOpen
             && this.currentTab === 'remove-liquidity'
-            && this.removeLiquidityZapOutEnabled
             && this.canFetchRemoveLiquidityPreview();
     }
 
@@ -3817,9 +3816,7 @@ class StakingModalNew {
                 <div class="zap-quote-header">
                     <div class="zap-route-summary">${this.escapeHtml(summary)}</div>
                     <div class="zap-refresh-controls">
-                        ${this.removeLiquidityZapOutEnabled ? `
-                            <span id="remove-liquidity-preview-countdown" class="zap-quote-countdown">${this.escapeHtml(countdownDisplay)}</span>
-                        ` : ''}
+                        <span id="remove-liquidity-preview-countdown" class="zap-quote-countdown">${this.escapeHtml(countdownDisplay)}</span>
                         <button
                             type="button"
                             class="zap-refresh-btn"
