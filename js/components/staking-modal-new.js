@@ -195,6 +195,9 @@ class StakingModalNew {
         const modalTitle = this.isMigrationMode()
             ? `${this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0'} Position`
             : 'Staking';
+        const modalTabsClass = this.isMigrationMode()
+            ? 'modal-tabs modal-tabs-migration'
+            : 'modal-tabs';
 
         // Create modal HTML matching React version exactly
         const modalHTML = `
@@ -213,7 +216,7 @@ class StakingModalNew {
                         </button>
                     </div>
                     
-                    <div class="modal-tabs">
+                    <div class="${modalTabsClass}">
                         ${this.isMigrationMode() ? '' : `
                             <button class="tab-button active" aria-label="Create LP" data-tab="zap">
                                 <span class="material-icons" aria-hidden="true">bolt</span>

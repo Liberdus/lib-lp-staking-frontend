@@ -272,6 +272,7 @@ describe('StakingModalNew zap cleanup', () => {
         new StakingModalNew();
 
         expect(modalContainer.innerHTML).toContain('<h2 class="modal-title">Farm 1.0 Position</h2>');
+        expect(modalContainer.innerHTML).toContain('class="modal-tabs modal-tabs-migration"');
         expect(modalContainer.innerHTML).not.toContain('aria-label="Create LP"');
         expect(modalContainer.innerHTML).not.toContain('aria-label="Stake"');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');

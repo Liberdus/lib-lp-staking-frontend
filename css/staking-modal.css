@@ -110,6 +110,10 @@
     border-bottom: 1px solid var(--divider);
 }
 
+.modal-tabs-migration {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .tab-button {
     display: flex;
     align-items: center;
