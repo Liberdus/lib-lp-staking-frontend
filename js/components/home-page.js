@@ -278,8 +278,8 @@ class HomePage {
                 </ol>
 
                 <div class="migration-actions">
-                    ${newFarmAction}
                     ${supportAction}
+                    ${newFarmAction}
                 </div>
             </section>
         `;

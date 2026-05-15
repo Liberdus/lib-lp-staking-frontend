@@ -146,6 +146,7 @@ body {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--spacing-2);
 }
 
@@ -501,6 +502,7 @@ body {
     .migration-actions {
         align-items: stretch;
         flex-direction: column;
+        justify-content: flex-start;
     }
 
     .migration-actions .btn,
