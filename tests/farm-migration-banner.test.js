@@ -9,22 +9,6 @@ async function loadFarmMigrationBanner() {
     return globalThis.FarmMigrationBanner;
 }
 
-function createMockBigNumber(value) {
-    const normalizedValue = BigInt(value?.toString?.() || value || 0);
-
-    return {
-        add(other) {
-            return createMockBigNumber(normalizedValue + BigInt(other.toString()));
-        },
-        gt(other) {
-            return normalizedValue > BigInt(other.toString());
-        },
-        toString() {
-            return normalizedValue.toString();
-        }
-    };
-}
-
 describe('FarmMigrationBanner.render', () => {
     beforeEach(() => {
         vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -149,69 +133,42 @@ describe('FarmMigrationBanner.checkPosition', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         delete globalThis.CONFIG;
-        delete globalThis.ethers;
-        delete globalThis.networkSelector;
-        delete globalThis.walletManager;
         delete globalThis.FarmMigrationBanner;
         delete globalThis.window;
     });
 
     it('marks a connected wallet as having migration work when old stake or rewards exist', async () => {
         const FarmMigrationBanner = await loadFarmMigrationBanner();
-        const getUserStakeInfo = vi.fn()
-            .mockResolvedValueOnce({
-                amount: createMockBigNumber('0'),
-                pendingRewards: createMockBigNumber('5')
-            });
-        const getPairs = vi.fn().mockResolvedValue([
-            { lpToken: '0xlp1' }
-        ]);
-        const Contract = vi.fn(function MockContract() {
-            return { getPairs, getUserStakeInfo };
-        });
         const requestRender = vi.fn();
+        const checker = {
+            getCurrentNetworkKey: vi.fn().mockReturnValue('BSC_MAINNET'),
+            getConnectedWalletAddress: vi.fn().mockResolvedValue('0xwallet'),
+            fetchPosition: vi.fn().mockResolvedValue({
+                hasPosition: true,
+                stakeAmountRaw: '0',
+                pendingRewardsRaw: '5'
+            })
+        };
 
         globalThis.CONFIG = {
             FARM_MIGRATION: {
                 ENABLED: true,
-                POSITION_CHECK_ENABLED: true,
-                OLD_FARM_CONTRACTS: {
-                    BSC_MAINNET: '0xoldfarm'
-                },
-                LEGACY_LP_TOKENS: {}
-            },
-            NETWORKS: {
-                BSC_MAINNET: {
-                    RPC_URL: 'https://rpc.example',
-                    CHAIN_ID: 56
-                }
-            },
-            API: { RPC_TIMEOUT: 12000 }
-        };
-        globalThis.ethers = {
-            BigNumber: { from: createMockBigNumber },
-            Contract,
-            providers: {
-                JsonRpcProvider: vi.fn(function MockJsonRpcProvider() {
-                    return { provider: true };
-                })
+                POSITION_CHECK_ENABLED: true
             }
         };
-        globalThis.networkSelector = {
-            getSelectedNetworkKey: vi.fn().mockReturnValue('BSC_MAINNET')
-        };
-        globalThis.walletManager = {
-            currentAccount: '0xwallet'
-        };
         const banner = new FarmMigrationBanner({
+            checker,
             isWalletConnected: vi.fn().mockReturnValue(true),
             requestRender
         });
 
         await banner.checkPosition({ force: true });
 
-        expect(Contract).toHaveBeenCalledWith('0xoldfarm', expect.any(Array), expect.any(Object));
-        expect(getUserStakeInfo).toHaveBeenCalledWith('0xwallet', '0xlp1');
+        expect(checker.fetchPosition).toHaveBeenCalledWith(
+            expect.objectContaining({ enabled: true, positionCheckEnabled: true }),
+            '0xwallet',
+            'BSC_MAINNET'
+        );
         expect(banner.status.checked).toBe(true);
         expect(banner.status.hasPosition).toBe(true);
         expect(banner.status.pendingRewardsRaw).toBe('5');
@@ -220,17 +177,22 @@ describe('FarmMigrationBanner.checkPosition', () => {
 
     it('does not check old farm positions when no wallet is connected', async () => {
         const FarmMigrationBanner = await loadFarmMigrationBanner();
+        const checker = {
+            getCurrentNetworkKey: vi.fn().mockReturnValue('BSC_MAINNET'),
+            getConnectedWalletAddress: vi.fn().mockResolvedValue(null),
+            fetchPosition: vi.fn()
+        };
         globalThis.CONFIG = {
             FARM_MIGRATION: {
                 ENABLED: true,
                 POSITION_CHECK_ENABLED: true
             }
         };
-        globalThis.walletManager = {};
-        const banner = new FarmMigrationBanner();
+        const banner = new FarmMigrationBanner({ checker });
 
         await banner.checkPosition({ force: true });
 
+        expect(checker.fetchPosition).not.toHaveBeenCalled();
         expect(banner.status.checked).toBe(false);
         expect(banner.status.hasPosition).toBe(false);
     });

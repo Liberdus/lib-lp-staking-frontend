@@ -1,9 +1,10 @@
 /**
- * Farm 1.0 migration banner and read-only position check.
+ * Farm 1.0 migration banner.
  * This keeps temporary migration UI isolated from the main staking page.
  */
 class FarmMigrationBanner {
-    constructor({ isWalletConnected, requestRender } = {}) {
+    constructor({ checker, isWalletConnected, requestRender } = {}) {
+        this.checker = checker || (window.FarmMigrationChecker ? new window.FarmMigrationChecker() : null);
         this.isWalletConnected = typeof isWalletConnected === 'function'
             ? isWalletConnected
             : () => false;
@@ -107,143 +108,19 @@ class FarmMigrationBanner {
         `;
     }
 
-    getCurrentNetworkKey() {
-        return window.networkSelector?.getSelectedNetworkKey?.() || null;
-    }
-
-    getConnectedWalletAddress() {
-        return window.walletManager?.currentAccount ||
-            window.walletManager?.getAddress?.() ||
-            window.walletManager?.address ||
-            null;
-    }
-
-    getOldFarmContractAddress(config, networkKey) {
-        if (!networkKey) {
-            return null;
-        }
-
-        return config.oldFarmContracts?.[networkKey] || null;
-    }
-
-    getLegacyLpTokens(config, networkKey) {
-        const configuredTokens = config.legacyLpTokens?.[networkKey];
-
-        if (!Array.isArray(configuredTokens)) {
-            return [];
-        }
-
-        return configuredTokens.filter(Boolean);
-    }
-
-    createProvider(networkKey) {
-        const ethers = window.ethers;
-        const networkConfig = window.CONFIG?.NETWORKS?.[networkKey];
-        const rpcUrl = networkConfig?.RPC_URL || networkConfig?.FALLBACK_RPCS?.[0];
-
-        if (!ethers?.providers?.JsonRpcProvider || !rpcUrl) {
-            return window.contractManager?.provider || window.walletManager?.provider || null;
-        }
-
-        const staticNetwork = networkConfig?.CHAIN_ID
-            ? { chainId: networkConfig.CHAIN_ID, name: networkKey.toLowerCase() }
-            : undefined;
-
-        return new ethers.providers.JsonRpcProvider({
-            url: rpcUrl,
-            timeout: window.CONFIG?.API?.RPC_TIMEOUT || 12000
-        }, staticNetwork);
-    }
-
-    getStakingAbi() {
-        return window.CONFIG?.ABIS?.STAKING_CONTRACT || [
-            'function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[])',
-            'function getUserStakeInfo(address user, address lpToken) external view returns (uint256 amount, uint256 pendingRewards, uint256 lastRewardTime)'
-        ];
-    }
-
-    getPairAddress(pair) {
-        return pair?.lpToken || pair?.[0] || null;
-    }
-
-    getUniqueLpTokens(pairs, legacyTokens) {
-        const tokens = new Set();
-
-        if (Array.isArray(pairs)) {
-            pairs.forEach((pair) => {
-                const pairAddress = this.getPairAddress(pair);
-
-                if (pairAddress) {
-                    tokens.add(pairAddress);
-                }
-            });
-        }
-
-        legacyTokens.forEach((token) => tokens.add(token));
-
-        return [...tokens];
-    }
-
-    normalizeBigNumber(value) {
-        const ethers = window.ethers;
-
-        if (ethers?.BigNumber?.from) {
-            return ethers.BigNumber.from(value || 0);
-        }
-
-        const numericValue = BigInt(value?.toString?.() || value || 0);
-
-        return {
-            add: (other) => this.normalizeBigNumber(numericValue + BigInt(other?.toString?.() || other || 0)),
-            gt: (other) => numericValue > BigInt(other?.toString?.() || other || 0),
-            toString: () => numericValue.toString()
-        };
-    }
-
-    async fetchPosition(config, walletAddress, networkKey) {
-        const ethers = window.ethers;
-        const oldFarmAddress = this.getOldFarmContractAddress(config, networkKey);
-
-        if (!ethers?.Contract || !oldFarmAddress) {
-            return { hasPosition: false, stakeAmountRaw: '0', pendingRewardsRaw: '0' };
-        }
-
-        const provider = this.createProvider(networkKey);
-        if (!provider) {
-            return { hasPosition: false, stakeAmountRaw: '0', pendingRewardsRaw: '0' };
-        }
-
-        const oldFarmContract = new ethers.Contract(oldFarmAddress, this.getStakingAbi(), provider);
-        const pairs = await oldFarmContract.getPairs();
-        const lpTokens = this.getUniqueLpTokens(pairs, this.getLegacyLpTokens(config, networkKey));
-        let totalStake = this.normalizeBigNumber(0);
-        let totalRewards = this.normalizeBigNumber(0);
-
-        await Promise.all(lpTokens.map(async (lpToken) => {
-            try {
-                const stakeInfo = await oldFarmContract.getUserStakeInfo(walletAddress, lpToken);
-                const amount = this.normalizeBigNumber(stakeInfo?.amount || stakeInfo?.[0] || 0);
-                const pendingRewards = this.normalizeBigNumber(stakeInfo?.pendingRewards || stakeInfo?.[1] || 0);
-                totalStake = totalStake.add(amount);
-                totalRewards = totalRewards.add(pendingRewards);
-            } catch (error) {
-                console.warn('Failed to check Farm 1.0 position for LP token:', lpToken, error);
-            }
-        }));
-
-        return {
-            hasPosition: totalStake.gt(0) || totalRewards.gt(0),
-            stakeAmountRaw: totalStake.toString(),
-            pendingRewardsRaw: totalRewards.toString()
-        };
-    }
-
     async checkPosition({ force = false } = {}) {
         const config = this.getConfig();
-        const walletAddress = this.getConnectedWalletAddress();
-        const networkKey = this.getCurrentNetworkKey();
+        const checker = this.checker;
 
-        if (!config.enabled || !config.positionCheckEnabled || !walletAddress) {
+        if (!config.enabled || !config.positionCheckEnabled || !checker) {
+            this.status = this.createStatus();
+            this.requestRender();
+            return;
+        }
+
+        const networkKey = checker.getCurrentNetworkKey();
+        const walletAddress = await checker.getConnectedWalletAddress();
+        if (!walletAddress) {
             this.status = this.createStatus();
             this.requestRender();
             return;
@@ -268,7 +145,7 @@ class FarmMigrationBanner {
         this.requestRender();
 
         try {
-            const result = await this.fetchPosition(config, walletAddress, networkKey);
+            const result = await checker.fetchPosition(config, walletAddress, networkKey);
             if (nonce !== this.checkNonce) {
                 return;
             }

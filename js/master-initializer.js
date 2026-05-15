@@ -168,6 +168,7 @@ class MasterInitializer {
 
         const uiScripts = [
             'js/components/wallet-popup.js',
+            'js/services/farm-migration-checker.js',
             'js/components/farm-migration-banner.js',
             'js/components/home-page.js',
             'js/services/kyber-zap-rate-limiter.js',
