@@ -193,6 +193,9 @@
 }
 
 .recipient-override {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     margin-bottom: var(--spacing-3);
 }
 
@@ -201,10 +204,20 @@
 }
 
 .recipient-toggle {
+    align-self: flex-end;
     width: auto;
     min-height: 40px;
     padding: var(--spacing-1) var(--spacing-2);
     gap: var(--spacing-1);
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-secondary);
+}
+
+.recipient-toggle:hover {
+    background: var(--action-hover);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
 }
 
 .recipient-toggle .material-icons {
@@ -240,10 +253,6 @@
 
 .recipient-clear-button:hover {
     text-decoration: underline;
-}
-
-.recipient-error {
-    margin-top: var(--spacing-1);
 }
 
 /* Slider Styles */
@@ -646,6 +655,11 @@
     font-size: 12px;
     margin-top: calc(var(--spacing-2) * -1);
     margin-bottom: var(--spacing-2);
+}
+
+.zap-field-error.recipient-error {
+    margin-top: var(--spacing-1);
+    margin-bottom: 0;
 }
 
 .custom-slippage-error {
