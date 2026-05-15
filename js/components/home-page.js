@@ -19,6 +19,12 @@ class HomePage {
         this.lastNetworkId = null;
         this.refreshDebounceTimer = null; // Prevent overlapping refreshes during rapid network changes
         this.isAdmin = false; // Track admin status
+        this.farmMigrationBanner = window.FarmMigrationBanner
+            ? new window.FarmMigrationBanner({
+                isWalletConnected: () => this.isWalletConnected(),
+                requestRender: () => this.render()
+            })
+            : null;
         // OPTIMIZATION: Simple caching for contract data that doesn't change frequently
         this.cache = {
             hourlyRewardRate: { value: null, timestamp: 0, ttl: 300000 }, // 5 minutes
@@ -55,6 +61,7 @@ class HomePage {
             console.log('🏠 HomePage: ContractManager is ready, loading data...');
             this.updateFooter();
             this.loadData().catch(() => {});
+            this.checkFarmMigrationPosition().catch(() => {});
             // Auto-refresh disabled - manual refresh only
         });
 
@@ -89,6 +96,7 @@ class HomePage {
             window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             this.updateFooter();
             this.refreshDataAfterWalletChange();
+            this.checkFarmMigrationPosition({ force: true }).catch(() => {});
             this.checkAdminAccess();
         });
 
@@ -96,6 +104,7 @@ class HomePage {
             console.log('🏠 HomePage: Wallet disconnected, refreshing data...');
             window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             this.updateFooter();
+            this.resetFarmMigrationStatus();
             this.refreshDataAfterWalletChange();
             this.hideAdminButton();
         });
@@ -106,6 +115,7 @@ class HomePage {
                 console.log('🏠 HomePage: Accounts changed:', accounts);
                 this.updateFooter();
                 this.refreshDataAfterWalletChange();
+                this.checkFarmMigrationPosition({ force: true }).catch(() => {});
                 this.checkAdminAccess();
             });
 
@@ -115,6 +125,7 @@ class HomePage {
                 // Only update the network indicator to re-check permissions
                 window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
                 this.updateFooter();
+                this.checkFarmMigrationPosition({ force: true }).catch(() => {});
             });
 
             // Re-check permissions when page regains focus (in case permissions were removed in another tab)
@@ -157,6 +168,7 @@ class HomePage {
             console.log('🏠 HomePage: ContractManager already ready, loading data immediately...');
             this.updateFooter();
             await this.loadData().catch(() => {});
+            await this.checkFarmMigrationPosition().catch(() => {});
             this.checkAdminAccess();
             // Auto-refresh disabled - manual refresh only
         } else {
@@ -188,12 +200,14 @@ class HomePage {
         const container = document.getElementById('content-container');
         if (!container) return;
 
+        const migrationBanner = this.renderFarmMigrationBanner();
+
         if (this.loading) {
-            container.innerHTML = this.renderSkeleton();
+            container.innerHTML = migrationBanner + this.renderSkeleton();
         } else if (this.error) {
-            container.innerHTML = this.renderError();
+            container.innerHTML = migrationBanner + this.renderError();
         } else {
-            container.innerHTML = this.renderHomepage();
+            container.innerHTML = migrationBanner + this.renderHomepage();
         }
 
         this.attachRetryHandler();
@@ -201,6 +215,18 @@ class HomePage {
 
     renderHomepage() {
         return this.renderTable();
+    }
+
+    renderFarmMigrationBanner() {
+        return this.farmMigrationBanner?.render() || '';
+    }
+
+    resetFarmMigrationStatus() {
+        this.farmMigrationBanner?.reset();
+    }
+
+    async checkFarmMigrationPosition(options) {
+        await this.farmMigrationBanner?.checkPosition(options);
     }
 
     attachRetryHandler() {
@@ -1274,6 +1300,7 @@ class HomePage {
                 try {
                     await window.contractManager.initialize();
                     this.loadDataWhenReady();
+                    this.checkFarmMigrationPosition({ force: true }).catch(() => {});
                 } catch (error) {
                     console.error('❌ Error refreshing contract data:', error);
                     this.loading = false;
