@@ -108,6 +108,10 @@ class StakingModalNew {
 
         // Claim rewards on unstake
         this.claimRewardsOnUnstake = true;
+        this.unstakeRecipientEnabled = false;
+        this.unstakeRecipientAddress = '';
+        this.claimRecipientEnabled = false;
+        this.claimRecipientAddress = '';
 
         this.transactionPhaseHandler = this.handleTransactionPhase.bind(this);
         if (typeof window !== 'undefined') {
@@ -317,6 +321,16 @@ class StakingModalNew {
                 this.toggleRemoveLiquiditySettings();
             }
 
+            if (e.target.closest('.recipient-toggle')) {
+                const button = e.target.closest('.recipient-toggle');
+                this.toggleRecipientOverride(button.dataset.recipientAction);
+            }
+
+            if (e.target.closest('.recipient-clear-button')) {
+                const button = e.target.closest('.recipient-clear-button');
+                this.clearRecipientOverride(button.dataset.recipientAction);
+            }
+
             if (e.target.closest('.remove-liquidity-slippage-btn')) {
                 const button = e.target.closest('.remove-liquidity-slippage-btn');
                 this.setRemoveLiquiditySlippage(button.dataset.slippage);
@@ -385,6 +399,16 @@ class StakingModalNew {
                 this.unstakeAmount = sanitizedValue;
                 this.updateSlider('unstake');
                 this.updateUnstakeUsdEstimate();
+            }
+
+            if (e.target.id === 'unstake-recipient-input') {
+                this.unstakeRecipientAddress = e.target.value.trim();
+                this.updateRecipientDestination('unstake');
+            }
+
+            if (e.target.id === 'claim-recipient-input') {
+                this.claimRecipientAddress = e.target.value.trim();
+                this.updateRecipientDestination('claim');
             }
 
             if (e.target.id === 'remove-liquidity-amount-input') {
@@ -746,6 +770,110 @@ class StakingModalNew {
     formatAddress(address) {
         const value = String(address || '');
         return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+    }
+
+    getConnectedWalletDisplay() {
+        return window.walletManager?.address
+            ? `Connected wallet (${this.formatAddress(window.walletManager.address)})`
+            : 'Connected wallet';
+    }
+
+    getRecipientState(action) {
+        if (action === 'claim') {
+            return {
+                enabled: this.claimRecipientEnabled,
+                address: this.claimRecipientAddress,
+                inputId: 'claim-recipient-input'
+            };
+        }
+
+        return {
+            enabled: this.unstakeRecipientEnabled,
+            address: this.unstakeRecipientAddress,
+            inputId: 'unstake-recipient-input'
+        };
+    }
+
+    getRecipientDestinationLabel(action) {
+        const state = this.getRecipientState(action);
+        if (!state.enabled) {
+            return this.getConnectedWalletDisplay();
+        }
+
+        return state.address ? this.formatAddress(state.address) : 'Custom recipient';
+    }
+
+    updateRecipientDestination(action) {
+        const destination = document.getElementById(`${action}-recipient-destination`);
+        if (destination) {
+            destination.textContent = this.getRecipientDestinationLabel(action);
+        }
+    }
+
+    toggleRecipientOverride(action) {
+        if (action === 'claim') {
+            this.claimRecipientEnabled = !this.claimRecipientEnabled;
+            if (!this.claimRecipientEnabled) {
+                this.claimRecipientAddress = '';
+            }
+        } else {
+            this.unstakeRecipientEnabled = !this.unstakeRecipientEnabled;
+            if (!this.unstakeRecipientEnabled) {
+                this.unstakeRecipientAddress = '';
+            }
+        }
+
+        this.renderTabContent();
+    }
+
+    clearRecipientOverride(action) {
+        if (action === 'claim') {
+            this.claimRecipientEnabled = false;
+            this.claimRecipientAddress = '';
+        } else {
+            this.unstakeRecipientEnabled = false;
+            this.unstakeRecipientAddress = '';
+        }
+
+        this.renderTabContent();
+    }
+
+    renderRecipientOverride(action) {
+        const state = this.getRecipientState(action);
+        const destination = this.escapeHtml(this.getRecipientDestinationLabel(action));
+        const toggleLabel = state.enabled ? 'Send to connected wallet' : 'Send to another wallet';
+        const recipientField = state.enabled ? `
+            <div class="form-group recipient-field">
+                <div class="recipient-field-header">
+                    <label class="form-label" for="${state.inputId}">Recipient Address</label>
+                    <button type="button" class="recipient-clear-button" data-recipient-action="${action}">Clear</button>
+                </div>
+                <input
+                    type="text"
+                    id="${state.inputId}"
+                    class="form-input"
+                    placeholder="0x..."
+                    value="${this.escapeHtml(state.address)}"
+                    autocomplete="off"
+                    spellcheck="false"
+                    inputmode="text"
+                >
+            </div>
+        ` : '';
+
+        return `
+            <div class="recipient-override">
+                <div class="balance-info recipient-destination">
+                    <span class="balance-label">Receiving wallet:</span>
+                    <span id="${action}-recipient-destination" class="balance-value">${destination}</span>
+                </div>
+                <button type="button" class="btn btn-secondary recipient-toggle" data-recipient-action="${action}">
+                    <span class="material-icons">${state.enabled ? 'undo' : 'account_balance_wallet'}</span>
+                    ${toggleLabel}
+                </button>
+                ${recipientField}
+            </div>
+        `;
     }
 
     isNativeZapToken(address) {
@@ -3070,6 +3198,10 @@ class StakingModalNew {
         this.zapCustomSlippage = '';
         this.zapCustomSlippageError = '';
         this.zapCustomSlippageSelected = false;
+        this.unstakeRecipientEnabled = false;
+        this.unstakeRecipientAddress = '';
+        this.claimRecipientEnabled = false;
+        this.claimRecipientAddress = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
@@ -3348,6 +3480,8 @@ class StakingModalNew {
                     Claim reward tokens
                 </label>
             </div>
+
+            ${this.renderRecipientOverride('unstake')}
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
@@ -3881,6 +4015,8 @@ class StakingModalNew {
                 <span class="material-icons" style="font-size: 48px; color: var(--success-main);">redeem</span>
                 <p>Claim your earned rewards</p>
             </div>
+
+            ${this.renderRecipientOverride('claim')}
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>

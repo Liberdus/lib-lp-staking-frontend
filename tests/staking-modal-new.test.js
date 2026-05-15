@@ -449,6 +449,23 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('$30.00');
     });
 
+    it('keeps the unstake recipient field hidden until the override is enabled', async () => {
+        const modal = await createLoadedModal();
+
+        const defaultHtml = modal.renderUnstakeTab();
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
+        const overrideHtml = modal.renderUnstakeTab();
+
+        expect(defaultHtml).toContain('Send to another wallet');
+        expect(defaultHtml).toContain('Receiving wallet:');
+        expect(defaultHtml).toContain('Connected wallet');
+        expect(defaultHtml).not.toContain('id="unstake-recipient-input"');
+        expect(overrideHtml).toContain('id="unstake-recipient-input"');
+        expect(overrideHtml).toContain('0x2222222222222222222222222222222222222222');
+        expect(overrideHtml).toContain('Send to connected wallet');
+    });
+
     it('updates unstake input USD estimates from the slider path', async () => {
         const modal = await createLoadedModal();
         modal.currentPair = { tvlUsd: 2000, tvl: 100 };
@@ -487,6 +504,40 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderClaimTab();
 
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+    });
+
+    it('keeps the claim recipient field hidden until the override is enabled', async () => {
+        const modal = await createLoadedModal();
+
+        const defaultHtml = modal.renderClaimTab();
+        modal.claimRecipientEnabled = true;
+        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
+        const overrideHtml = modal.renderClaimTab();
+
+        expect(defaultHtml).toContain('Send to another wallet');
+        expect(defaultHtml).toContain('Connected wallet');
+        expect(defaultHtml).not.toContain('id="claim-recipient-input"');
+        expect(overrideHtml).toContain('id="claim-recipient-input"');
+        expect(overrideHtml).toContain('0x3333333333333333333333333333333333333333');
+        expect(overrideHtml).toContain('Send to connected wallet');
+    });
+
+    it('toggles and clears recipient override state', async () => {
+        const modal = await createLoadedModal();
+
+        modal.toggleRecipientOverride('unstake');
+        expect(modal.unstakeRecipientEnabled).toBe(true);
+
+        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
+        modal.toggleRecipientOverride('unstake');
+        expect(modal.unstakeRecipientEnabled).toBe(false);
+        expect(modal.unstakeRecipientAddress).toBe('');
+
+        modal.claimRecipientEnabled = true;
+        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
+        modal.clearRecipientOverride('claim');
+        expect(modal.claimRecipientEnabled).toBe(false);
+        expect(modal.claimRecipientAddress).toBe('');
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
