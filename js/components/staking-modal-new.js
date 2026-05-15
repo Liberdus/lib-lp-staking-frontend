@@ -323,16 +323,6 @@ class StakingModalNew {
                 this.toggleRemoveLiquiditySettings();
             }
 
-            if (e.target.closest('.recipient-toggle')) {
-                const button = e.target.closest('.recipient-toggle');
-                this.toggleRecipientOverride(button.dataset.recipientAction);
-            }
-
-            if (e.target.closest('.recipient-clear-button')) {
-                const button = e.target.closest('.recipient-clear-button');
-                this.clearRecipientOverride(button.dataset.recipientAction);
-            }
-
             if (e.target.closest('.remove-liquidity-slippage-btn')) {
                 const button = e.target.closest('.remove-liquidity-slippage-btn');
                 this.setRemoveLiquiditySlippage(button.dataset.slippage);
@@ -479,6 +469,15 @@ class StakingModalNew {
             if (e.target.id === 'claim-rewards-checkbox') {
                 this.claimRewardsOnUnstake = e.target.checked;
                 console.log('Claim rewards on unstake:', this.claimRewardsOnUnstake);
+                if (!this.claimRewardsOnUnstake) {
+                    this.clearRecipientOverride('unstake');
+                } else {
+                    this.renderTabContent();
+                }
+            }
+
+            if (e.target.classList?.contains('recipient-checkbox')) {
+                this.setRecipientOverride(e.target.dataset.recipientAction, e.target.checked);
             }
 
             if (e.target.id === 'remove-liquidity-checkbox') {
@@ -778,19 +777,25 @@ class StakingModalNew {
             : 'Connected wallet';
     }
 
+    isRecipientOverrideAvailable(action) {
+        return action !== 'unstake' || this.claimRewardsOnUnstake;
+    }
+
     getRecipientState(action) {
         const prefix = action === 'claim' ? 'claim' : 'unstake';
         const enabledKey = `${prefix}RecipientEnabled`;
         const addressKey = `${prefix}RecipientAddress`;
         const errorKey = `${prefix}RecipientError`;
+        const enabled = this.isRecipientOverrideAvailable(action) && this[enabledKey];
 
         return {
             enabledKey,
             addressKey,
             errorKey,
+            checkboxId: `${prefix}-recipient-checkbox`,
             inputId: `${prefix}-recipient-input`,
             errorId: `${prefix}-recipient-error`,
-            enabled: this[enabledKey],
+            enabled,
             address: this[addressKey],
             error: this[errorKey]
         };
@@ -858,12 +863,15 @@ class StakingModalNew {
         }
     }
 
-    toggleRecipientOverride(action) {
+    setRecipientOverride(action, enabled) {
+        if (!this.isRecipientOverrideAvailable(action)) {
+            return;
+        }
+
         const state = this.getRecipientState(action);
-        const enabled = !state.enabled;
-        this[state.enabledKey] = enabled;
+        this[state.enabledKey] = Boolean(enabled);
         this[state.errorKey] = '';
-        if (!enabled) {
+        if (!this[state.enabledKey]) {
             this[state.addressKey] = '';
         }
 
@@ -899,17 +907,17 @@ class StakingModalNew {
     }
 
     renderRecipientOverride(action) {
+        if (!this.isRecipientOverrideAvailable(action)) {
+            return '';
+        }
+
         const state = this.getRecipientState(action);
         const destination = this.escapeHtml(this.getRecipientDestinationLabel(action));
-        const toggleLabel = state.enabled ? 'Send to connected wallet' : 'Send to another wallet';
         const error = this.escapeHtml(state.error);
         const errorAttributes = state.error ? '' : ' hidden';
         const recipientField = state.enabled ? `
             <div class="form-group recipient-field">
-                <div class="recipient-field-header">
-                    <label class="form-label" for="${state.inputId}">Recipient Address</label>
-                    <button type="button" class="recipient-clear-button" data-recipient-action="${action}">Clear</button>
-                </div>
+                <label class="form-label" for="${state.inputId}">Recipient Address</label>
                 <input
                     type="text"
                     id="${state.inputId}"
@@ -928,14 +936,21 @@ class StakingModalNew {
 
         return `
             <div class="recipient-override">
-                <div class="balance-info recipient-destination">
+                <label class="checkbox-label recipient-checkbox-label" for="${state.checkboxId}">
+                    <input
+                        type="checkbox"
+                        id="${state.checkboxId}"
+                        class="recipient-checkbox"
+                        data-recipient-action="${action}"
+                        ${state.enabled ? 'checked' : ''}
+                    >
+                    <span class="checkmark"></span>
+                    Send to another wallet
+                </label>
+                ${state.enabled ? `<div class="balance-info recipient-destination">
                     <span class="balance-label">Receiving wallet:</span>
                     <span id="${action}-recipient-destination" class="balance-value">${destination}</span>
-                </div>
-                <button type="button" class="btn btn-secondary recipient-toggle" data-recipient-action="${action}">
-                    <span class="material-icons">${state.enabled ? 'undo' : 'account_balance_wallet'}</span>
-                    ${toggleLabel}
-                </button>
+                </div>` : ''}
                 ${recipientField}
             </div>
         `;

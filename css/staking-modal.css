@@ -200,59 +200,18 @@
 }
 
 .recipient-destination {
+    margin-top: var(--spacing-2);
     margin-bottom: var(--spacing-2);
 }
 
-.recipient-toggle {
-    align-self: flex-end;
-    width: auto;
-    min-height: 40px;
-    padding: var(--spacing-1) var(--spacing-2);
-    gap: var(--spacing-1);
-    background: #4a5568;
-    color: #fff;
-    border: 1px solid #64748b;
-}
-
-.recipient-toggle:hover {
-    background: #64748b;
-    color: #fff;
-    border-color: #94a3b8;
-}
-
-.recipient-toggle .material-icons {
-    font-size: 18px;
+.recipient-checkbox-label {
+    justify-content: flex-end;
+    margin: 0;
 }
 
 .recipient-field {
     margin-top: var(--spacing-2);
     margin-bottom: 0;
-}
-
-.recipient-field-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-1);
-}
-
-.recipient-field-header .form-label {
-    margin-bottom: 0;
-}
-
-.recipient-clear-button {
-    border: 0;
-    background: transparent;
-    color: var(--primary-main);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    padding: 0;
-}
-
-.recipient-clear-button:hover {
-    text-decoration: underline;
 }
 
 /* Slider Styles */

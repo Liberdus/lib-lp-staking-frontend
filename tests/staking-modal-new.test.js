@@ -471,7 +471,7 @@ describe('StakingModalNew zap cleanup', () => {
     it.each([
         ['unstake', 'renderUnstakeTab', 'unstakeRecipientEnabled', 'unstakeRecipientAddress', UNSTAKE_RECIPIENT_ADDRESS],
         ['claim', 'renderClaimTab', 'claimRecipientEnabled', 'claimRecipientAddress', CLAIM_RECIPIENT_ADDRESS]
-    ])('keeps the %s recipient field hidden until the override is enabled', async (
+    ])('keeps the %s recipient field hidden until the recipient checkbox is enabled', async (
         action,
         renderMethod,
         enabledKey,
@@ -486,11 +486,11 @@ describe('StakingModalNew zap cleanup', () => {
         const overrideHtml = modal[renderMethod]();
 
         expect(defaultHtml).toContain('Send to another wallet');
-        expect(defaultHtml).toContain('Connected wallet');
+        expect(defaultHtml).toContain(`id="${action}-recipient-checkbox"`);
         expect(defaultHtml).not.toContain(`id="${action}-recipient-input"`);
         expect(overrideHtml).toContain(`id="${action}-recipient-input"`);
         expect(overrideHtml).toContain(recipientAddress);
-        expect(overrideHtml).toContain('Send to connected wallet');
+        expect(overrideHtml).toContain('Receiving wallet:');
     });
 
     it('updates unstake input USD estimates from the slider path', async () => {
@@ -533,14 +533,14 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
     });
 
-    it('toggles and clears recipient override state', async () => {
+    it('sets and clears recipient override state from checkbox selection', async () => {
         const modal = await createLoadedModal();
 
-        modal.toggleRecipientOverride('unstake');
+        modal.setRecipientOverride('unstake', true);
         expect(modal.unstakeRecipientEnabled).toBe(true);
 
         modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
-        modal.toggleRecipientOverride('unstake');
+        modal.setRecipientOverride('unstake', false);
         expect(modal.unstakeRecipientEnabled).toBe(false);
         expect(modal.unstakeRecipientAddress).toBe('');
 
@@ -549,6 +549,19 @@ describe('StakingModalNew zap cleanup', () => {
         modal.clearRecipientOverride('claim');
         expect(modal.claimRecipientEnabled).toBe(false);
         expect(modal.claimRecipientAddress).toBe('');
+    });
+
+    it('hides and ignores the unstake recipient override when rewards are not claimed', async () => {
+        const modal = await createLoadedModal();
+        modal.claimRewardsOnUnstake = false;
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).not.toContain('id="unstake-recipient-checkbox"');
+        expect(html).not.toContain('id="unstake-recipient-input"');
+        expect(modal.getValidatedRecipient('unstake')).toEqual({ success: true, address: null });
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
@@ -1894,6 +1907,25 @@ describe('StakingModalNew zap cleanup', () => {
             true,
             UNSTAKE_RECIPIENT_ADDRESS
         );
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
+    });
+
+    it('keeps unstake on the default recipient path when reward claiming is disabled', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.unstakeAmount = '1';
+        modal.claimRewardsOnUnstake = false;
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
+            unstake: vi.fn(async () => ({ success: true, hash: '0xunstake' }))
+        });
+
+        const executePromise = modal.executeUnstake();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.unstake).toHaveBeenCalledWith('0xlp', '1', false);
         expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
     });
 
