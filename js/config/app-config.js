@@ -104,7 +104,7 @@ window.CONFIG = {
         ENABLED: true,
         OLD_FARM_LABEL: 'Farm 1.0',
         NEW_FARM_LABEL: 'Farm 2.0',
-        NEW_FARM_URL: 'https://your-new-farm-url-here',
+        NEW_FARM_URL: 'https://liberdus.com/farm/',
         SUPPORT_URL: 'https://liberdus.com/discord/help/'
     },
 
