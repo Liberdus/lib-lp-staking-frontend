@@ -209,15 +209,15 @@
     min-height: 40px;
     padding: var(--spacing-1) var(--spacing-2);
     gap: var(--spacing-1);
-    background: var(--background-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-secondary);
+    background: #4a5568;
+    color: #fff;
+    border: 1px solid #64748b;
 }
 
 .recipient-toggle:hover {
-    background: var(--action-hover);
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
+    background: #64748b;
+    color: #fff;
+    border-color: #94a3b8;
 }
 
 .recipient-toggle .material-icons {

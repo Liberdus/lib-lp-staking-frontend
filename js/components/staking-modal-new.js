@@ -779,22 +779,20 @@ class StakingModalNew {
     }
 
     getRecipientState(action) {
-        if (action === 'claim') {
-            return {
-                enabled: this.claimRecipientEnabled,
-                address: this.claimRecipientAddress,
-                error: this.claimRecipientError,
-                inputId: 'claim-recipient-input',
-                errorId: 'claim-recipient-error'
-            };
-        }
+        const prefix = action === 'claim' ? 'claim' : 'unstake';
+        const enabledKey = `${prefix}RecipientEnabled`;
+        const addressKey = `${prefix}RecipientAddress`;
+        const errorKey = `${prefix}RecipientError`;
 
         return {
-            enabled: this.unstakeRecipientEnabled,
-            address: this.unstakeRecipientAddress,
-            error: this.unstakeRecipientError,
-            inputId: 'unstake-recipient-input',
-            errorId: 'unstake-recipient-error'
+            enabledKey,
+            addressKey,
+            errorKey,
+            inputId: `${prefix}-recipient-input`,
+            errorId: `${prefix}-recipient-error`,
+            enabled: this[enabledKey],
+            address: this[addressKey],
+            error: this[errorKey]
         };
     }
 
@@ -815,11 +813,8 @@ class StakingModalNew {
     }
 
     setRecipientError(action, error) {
-        if (action === 'claim') {
-            this.claimRecipientError = error;
-        } else {
-            this.unstakeRecipientError = error;
-        }
+        const state = this.getRecipientState(action);
+        this[state.errorKey] = error;
     }
 
     updateRecipientError(action) {
@@ -849,11 +844,8 @@ class StakingModalNew {
     }
 
     setRecipientAddress(action, value) {
-        if (action === 'claim') {
-            this.claimRecipientAddress = String(value || '').trim();
-        } else {
-            this.unstakeRecipientAddress = String(value || '').trim();
-        }
+        const state = this.getRecipientState(action);
+        this[state.addressKey] = String(value || '').trim();
 
         this.setRecipientError(action, this.getRecipientValidationError(action));
         this.updateRecipientDestination(action);
@@ -867,33 +859,22 @@ class StakingModalNew {
     }
 
     toggleRecipientOverride(action) {
-        if (action === 'claim') {
-            this.claimRecipientEnabled = !this.claimRecipientEnabled;
-            if (!this.claimRecipientEnabled) {
-                this.claimRecipientAddress = '';
-            }
-            this.claimRecipientError = '';
-        } else {
-            this.unstakeRecipientEnabled = !this.unstakeRecipientEnabled;
-            if (!this.unstakeRecipientEnabled) {
-                this.unstakeRecipientAddress = '';
-            }
-            this.unstakeRecipientError = '';
+        const state = this.getRecipientState(action);
+        const enabled = !state.enabled;
+        this[state.enabledKey] = enabled;
+        this[state.errorKey] = '';
+        if (!enabled) {
+            this[state.addressKey] = '';
         }
 
         this.renderTabContent();
     }
 
     clearRecipientOverride(action) {
-        if (action === 'claim') {
-            this.claimRecipientEnabled = false;
-            this.claimRecipientAddress = '';
-            this.claimRecipientError = '';
-        } else {
-            this.unstakeRecipientEnabled = false;
-            this.unstakeRecipientAddress = '';
-            this.unstakeRecipientError = '';
-        }
+        const state = this.getRecipientState(action);
+        this[state.enabledKey] = false;
+        this[state.addressKey] = '';
+        this[state.errorKey] = '';
 
         this.renderTabContent();
     }
@@ -911,17 +892,10 @@ class StakingModalNew {
             return { success: false, error: validationError };
         }
 
-        try {
-            const address = window.contractManager?.validateAndChecksumAddress
-                ? window.contractManager.validateAndChecksumAddress(state.address, 'Recipient Address')
-                : window.ethers.utils.getAddress(state.address);
-            return { success: true, address };
-        } catch (error) {
-            const message = error?.message || 'Enter a valid recipient address.';
-            this.setRecipientError(action, message);
-            this.renderTabContent();
-            return { success: false, error: message };
-        }
+        return {
+            success: true,
+            address: window.contractManager.validateAndChecksumAddress(state.address, 'Recipient Address')
+        };
     }
 
     renderRecipientOverride(action) {

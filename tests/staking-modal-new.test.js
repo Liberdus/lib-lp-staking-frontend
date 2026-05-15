@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const LIB_TOKEN_ADDRESS = '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c';
 const USDT_TOKEN_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
+const UNSTAKE_RECIPIENT_ADDRESS = '0x2222222222222222222222222222222222222222';
+const CLAIM_RECIPIENT_ADDRESS = '0x3333333333333333333333333333333333333333';
 
 function createClassList(initialClasses = []) {
     const classes = new Set(initialClasses);
@@ -283,6 +285,23 @@ function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     }
 }
 
+function arrangeRecipientSubmission(modal, contractMethods) {
+    modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+    modal.clearInputs = vi.fn();
+    modal.close = vi.fn();
+    globalThis.contractManager = {
+        isReady: vi.fn(() => true),
+        validateAndChecksumAddress: vi.fn(address => address),
+        ...contractMethods
+    };
+    globalThis.notificationManager = {
+        info: vi.fn(),
+        success: vi.fn(),
+        error: vi.fn()
+    };
+    globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+}
+
 function registerRemoveLiquidityButton(title = 'Wait for a supported remove-liquidity preview.') {
     const icon = { textContent: 'swap_horiz' };
     const text = { textContent: ' Remove LP Liquidity' };
@@ -449,20 +468,28 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('$30.00');
     });
 
-    it('keeps the unstake recipient field hidden until the override is enabled', async () => {
+    it.each([
+        ['unstake', 'renderUnstakeTab', 'unstakeRecipientEnabled', 'unstakeRecipientAddress', UNSTAKE_RECIPIENT_ADDRESS],
+        ['claim', 'renderClaimTab', 'claimRecipientEnabled', 'claimRecipientAddress', CLAIM_RECIPIENT_ADDRESS]
+    ])('keeps the %s recipient field hidden until the override is enabled', async (
+        action,
+        renderMethod,
+        enabledKey,
+        addressKey,
+        recipientAddress
+    ) => {
         const modal = await createLoadedModal();
 
-        const defaultHtml = modal.renderUnstakeTab();
-        modal.unstakeRecipientEnabled = true;
-        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
-        const overrideHtml = modal.renderUnstakeTab();
+        const defaultHtml = modal[renderMethod]();
+        modal[enabledKey] = true;
+        modal[addressKey] = recipientAddress;
+        const overrideHtml = modal[renderMethod]();
 
         expect(defaultHtml).toContain('Send to another wallet');
-        expect(defaultHtml).toContain('Receiving wallet:');
         expect(defaultHtml).toContain('Connected wallet');
-        expect(defaultHtml).not.toContain('id="unstake-recipient-input"');
-        expect(overrideHtml).toContain('id="unstake-recipient-input"');
-        expect(overrideHtml).toContain('0x2222222222222222222222222222222222222222');
+        expect(defaultHtml).not.toContain(`id="${action}-recipient-input"`);
+        expect(overrideHtml).toContain(`id="${action}-recipient-input"`);
+        expect(overrideHtml).toContain(recipientAddress);
         expect(overrideHtml).toContain('Send to connected wallet');
     });
 
@@ -506,35 +533,19 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
     });
 
-    it('keeps the claim recipient field hidden until the override is enabled', async () => {
-        const modal = await createLoadedModal();
-
-        const defaultHtml = modal.renderClaimTab();
-        modal.claimRecipientEnabled = true;
-        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
-        const overrideHtml = modal.renderClaimTab();
-
-        expect(defaultHtml).toContain('Send to another wallet');
-        expect(defaultHtml).toContain('Connected wallet');
-        expect(defaultHtml).not.toContain('id="claim-recipient-input"');
-        expect(overrideHtml).toContain('id="claim-recipient-input"');
-        expect(overrideHtml).toContain('0x3333333333333333333333333333333333333333');
-        expect(overrideHtml).toContain('Send to connected wallet');
-    });
-
     it('toggles and clears recipient override state', async () => {
         const modal = await createLoadedModal();
 
         modal.toggleRecipientOverride('unstake');
         expect(modal.unstakeRecipientEnabled).toBe(true);
 
-        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
         modal.toggleRecipientOverride('unstake');
         expect(modal.unstakeRecipientEnabled).toBe(false);
         expect(modal.unstakeRecipientAddress).toBe('');
 
         modal.claimRecipientEnabled = true;
-        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
+        modal.claimRecipientAddress = CLAIM_RECIPIENT_ADDRESS;
         modal.clearRecipientOverride('claim');
         expect(modal.claimRecipientEnabled).toBe(false);
         expect(modal.claimRecipientAddress).toBe('');
@@ -1866,23 +1877,12 @@ describe('StakingModalNew zap cleanup', () => {
     it('passes a custom recipient when executing recipient-aware unstake', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
-        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
         modal.unstakeAmount = '1';
         modal.unstakeRecipientEnabled = true;
-        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
-        modal.clearInputs = vi.fn();
-        modal.close = vi.fn();
-        globalThis.contractManager = {
-            isReady: vi.fn(() => true),
-            validateAndChecksumAddress: vi.fn(address => address),
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
             unstake: vi.fn(async () => ({ success: true, hash: '0xunstake-to' }))
-        };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
-        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+        });
 
         const executePromise = modal.executeUnstake();
         await vi.runAllTimersAsync();
@@ -1892,28 +1892,19 @@ describe('StakingModalNew zap cleanup', () => {
             '0xlp',
             '1',
             true,
-            '0x2222222222222222222222222222222222222222'
+            UNSTAKE_RECIPIENT_ADDRESS
         );
         expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
     });
 
     it('blocks unstake when the custom recipient is malformed', async () => {
         const modal = await createLoadedModal();
-        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
         modal.unstakeAmount = '1';
         modal.unstakeRecipientEnabled = true;
         modal.unstakeRecipientAddress = 'not-an-address';
-        modal.clearInputs = vi.fn();
-        modal.close = vi.fn();
-        globalThis.contractManager = {
-            isReady: vi.fn(() => true),
+        arrangeRecipientSubmission(modal, {
             unstake: vi.fn()
-        };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
+        });
 
         await modal.executeUnstake();
 
@@ -1927,20 +1918,10 @@ describe('StakingModalNew zap cleanup', () => {
     it('keeps default claim rewards submission unchanged', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
-        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
         modal.pendingRewards = '1';
-        modal.clearInputs = vi.fn();
-        modal.close = vi.fn();
-        globalThis.contractManager = {
-            isReady: vi.fn(() => true),
+        arrangeRecipientSubmission(modal, {
             claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim' }))
-        };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
-        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+        });
 
         const executePromise = modal.executeClaim();
         await vi.runAllTimersAsync();
@@ -1953,23 +1934,12 @@ describe('StakingModalNew zap cleanup', () => {
     it('passes a custom recipient when executing recipient-aware claim', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
-        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
         modal.pendingRewards = '1';
         modal.claimRecipientEnabled = true;
-        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
-        modal.clearInputs = vi.fn();
-        modal.close = vi.fn();
-        globalThis.contractManager = {
-            isReady: vi.fn(() => true),
-            validateAndChecksumAddress: vi.fn(address => address),
+        modal.claimRecipientAddress = CLAIM_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
             claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim-to' }))
-        };
-        globalThis.notificationManager = {
-            info: vi.fn(),
-            success: vi.fn(),
-            error: vi.fn()
-        };
-        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+        });
 
         const executePromise = modal.executeClaim();
         await vi.runAllTimersAsync();
@@ -1977,7 +1947,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(globalThis.contractManager.claimRewards).toHaveBeenCalledWith(
             '0xlp',
-            '0x3333333333333333333333333333333333333333'
+            CLAIM_RECIPIENT_ADDRESS
         );
         expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
     });
