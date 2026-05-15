@@ -487,6 +487,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(defaultHtml).toContain('Send to another wallet');
         expect(defaultHtml).toContain(`id="${action}-recipient-checkbox"`);
+        expect(defaultHtml).toContain('Receiving wallet:');
+        expect(defaultHtml).toContain('Connected wallet');
         expect(defaultHtml).not.toContain(`id="${action}-recipient-input"`);
         expect(overrideHtml).toContain(`id="${action}-recipient-input"`);
         expect(overrideHtml).toContain(recipientAddress);

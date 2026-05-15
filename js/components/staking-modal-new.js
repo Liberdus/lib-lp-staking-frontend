@@ -947,10 +947,10 @@ class StakingModalNew {
                     <span class="checkmark"></span>
                     Send to another wallet
                 </label>
-                ${state.enabled ? `<div class="balance-info recipient-destination">
+                <div class="balance-info recipient-destination">
                     <span class="balance-label">Receiving wallet:</span>
                     <span id="${action}-recipient-destination" class="balance-value">${destination}</span>
-                </div>` : ''}
+                </div>
                 ${recipientField}
             </div>
         `;
