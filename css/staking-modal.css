@@ -242,6 +242,10 @@
     text-decoration: underline;
 }
 
+.recipient-error {
+    margin-top: var(--spacing-1);
+}
+
 /* Slider Styles */
 .slider-container {
     margin: var(--spacing-2) 0;

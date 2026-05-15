@@ -110,8 +110,10 @@ class StakingModalNew {
         this.claimRewardsOnUnstake = true;
         this.unstakeRecipientEnabled = false;
         this.unstakeRecipientAddress = '';
+        this.unstakeRecipientError = '';
         this.claimRecipientEnabled = false;
         this.claimRecipientAddress = '';
+        this.claimRecipientError = '';
 
         this.transactionPhaseHandler = this.handleTransactionPhase.bind(this);
         if (typeof window !== 'undefined') {
@@ -402,13 +404,11 @@ class StakingModalNew {
             }
 
             if (e.target.id === 'unstake-recipient-input') {
-                this.unstakeRecipientAddress = e.target.value.trim();
-                this.updateRecipientDestination('unstake');
+                this.setRecipientAddress('unstake', e.target.value);
             }
 
             if (e.target.id === 'claim-recipient-input') {
-                this.claimRecipientAddress = e.target.value.trim();
-                this.updateRecipientDestination('claim');
+                this.setRecipientAddress('claim', e.target.value);
             }
 
             if (e.target.id === 'remove-liquidity-amount-input') {
@@ -783,14 +783,18 @@ class StakingModalNew {
             return {
                 enabled: this.claimRecipientEnabled,
                 address: this.claimRecipientAddress,
-                inputId: 'claim-recipient-input'
+                error: this.claimRecipientError,
+                inputId: 'claim-recipient-input',
+                errorId: 'claim-recipient-error'
             };
         }
 
         return {
             enabled: this.unstakeRecipientEnabled,
             address: this.unstakeRecipientAddress,
-            inputId: 'unstake-recipient-input'
+            error: this.unstakeRecipientError,
+            inputId: 'unstake-recipient-input',
+            errorId: 'unstake-recipient-error'
         };
     }
 
@@ -810,17 +814,71 @@ class StakingModalNew {
         }
     }
 
+    setRecipientError(action, error) {
+        if (action === 'claim') {
+            this.claimRecipientError = error;
+        } else {
+            this.unstakeRecipientError = error;
+        }
+    }
+
+    updateRecipientError(action) {
+        const state = this.getRecipientState(action);
+        const errorElement = document.getElementById(state.errorId);
+        if (errorElement) {
+            errorElement.textContent = state.error;
+            errorElement.hidden = !state.error;
+        }
+    }
+
+    getRecipientValidationError(action) {
+        const state = this.getRecipientState(action);
+        if (!state.enabled) {
+            return '';
+        }
+
+        if (!state.address) {
+            return 'Enter a recipient address.';
+        }
+
+        if (!window.ethers?.utils?.isAddress?.(state.address)) {
+            return 'Enter a valid recipient address.';
+        }
+
+        return '';
+    }
+
+    setRecipientAddress(action, value) {
+        if (action === 'claim') {
+            this.claimRecipientAddress = String(value || '').trim();
+        } else {
+            this.unstakeRecipientAddress = String(value || '').trim();
+        }
+
+        this.setRecipientError(action, this.getRecipientValidationError(action));
+        this.updateRecipientDestination(action);
+        this.updateRecipientError(action);
+
+        if (action === 'claim') {
+            this.updateClaimButton();
+        } else {
+            this.updateUnstakeButton();
+        }
+    }
+
     toggleRecipientOverride(action) {
         if (action === 'claim') {
             this.claimRecipientEnabled = !this.claimRecipientEnabled;
             if (!this.claimRecipientEnabled) {
                 this.claimRecipientAddress = '';
             }
+            this.claimRecipientError = '';
         } else {
             this.unstakeRecipientEnabled = !this.unstakeRecipientEnabled;
             if (!this.unstakeRecipientEnabled) {
                 this.unstakeRecipientAddress = '';
             }
+            this.unstakeRecipientError = '';
         }
 
         this.renderTabContent();
@@ -830,18 +888,48 @@ class StakingModalNew {
         if (action === 'claim') {
             this.claimRecipientEnabled = false;
             this.claimRecipientAddress = '';
+            this.claimRecipientError = '';
         } else {
             this.unstakeRecipientEnabled = false;
             this.unstakeRecipientAddress = '';
+            this.unstakeRecipientError = '';
         }
 
         this.renderTabContent();
+    }
+
+    getValidatedRecipient(action) {
+        const state = this.getRecipientState(action);
+        if (!state.enabled) {
+            return { success: true, address: null };
+        }
+
+        const validationError = this.getRecipientValidationError(action);
+        if (validationError) {
+            this.setRecipientError(action, validationError);
+            this.renderTabContent();
+            return { success: false, error: validationError };
+        }
+
+        try {
+            const address = window.contractManager?.validateAndChecksumAddress
+                ? window.contractManager.validateAndChecksumAddress(state.address, 'Recipient Address')
+                : window.ethers.utils.getAddress(state.address);
+            return { success: true, address };
+        } catch (error) {
+            const message = error?.message || 'Enter a valid recipient address.';
+            this.setRecipientError(action, message);
+            this.renderTabContent();
+            return { success: false, error: message };
+        }
     }
 
     renderRecipientOverride(action) {
         const state = this.getRecipientState(action);
         const destination = this.escapeHtml(this.getRecipientDestinationLabel(action));
         const toggleLabel = state.enabled ? 'Send to connected wallet' : 'Send to another wallet';
+        const error = this.escapeHtml(state.error);
+        const errorAttributes = state.error ? '' : ' hidden';
         const recipientField = state.enabled ? `
             <div class="form-group recipient-field">
                 <div class="recipient-field-header">
@@ -857,7 +945,10 @@ class StakingModalNew {
                     autocomplete="off"
                     spellcheck="false"
                     inputmode="text"
+                    aria-invalid="${state.error ? 'true' : 'false'}"
+                    aria-describedby="${state.errorId}"
                 >
+                <div id="${state.errorId}" class="zap-field-error recipient-error" aria-live="polite"${errorAttributes}>${error}</div>
             </div>
         ` : '';
 
@@ -2899,6 +2990,7 @@ class StakingModalNew {
         const unstakeUnits = window.ethers.utils.parseUnits(this.unstakeAmount || '0', this.userStakedDecimals);
         const hasSufficientStaked = stakedRaw.gte(unstakeUnits);
         const unstakePhase = this.actionPhases?.unstake || 'idle';
+        const recipientError = this.getRecipientValidationError('unstake');
 
         if (unstakePhase !== 'idle') {
             unstakeButton.disabled = true;
@@ -2912,10 +3004,13 @@ class StakingModalNew {
 
         const shouldDisable = this.isExecutingUnstake
             || !hasAmount
-            || !hasSufficientStaked;
+            || !hasSufficientStaked
+            || Boolean(recipientError);
         unstakeButton.disabled = shouldDisable;
         if (!hasSufficientStaked && hasAmount) {
             unstakeButton.title = 'Insufficient staked balance';
+        } else if (recipientError) {
+            unstakeButton.title = recipientError;
         } else {
             unstakeButton.title = 'Unstake LP Tokens';
         }
@@ -3006,6 +3101,7 @@ class StakingModalNew {
         const rewards = parseFloat(this.pendingRewards) || 0;
         const hasRewards = rewards > 0;
         const claimPhase = this.actionPhases?.claim || 'idle';
+        const recipientError = this.getRecipientValidationError('claim');
 
         if (claimPhase !== 'idle') {
             claimButton.disabled = true;
@@ -3017,8 +3113,9 @@ class StakingModalNew {
             return;
         }
 
-        const shouldDisable = this.isExecutingClaim || !hasRewards;
+        const shouldDisable = this.isExecutingClaim || !hasRewards || Boolean(recipientError);
         claimButton.disabled = shouldDisable;
+        claimButton.title = recipientError || 'Claim Rewards';
 
         if (buttonIcon) buttonIcon.textContent = 'redeem';
         if (buttonText) buttonText.textContent = ' Claim Rewards';
@@ -3200,8 +3297,10 @@ class StakingModalNew {
         this.zapCustomSlippageSelected = false;
         this.unstakeRecipientEnabled = false;
         this.unstakeRecipientAddress = '';
+        this.unstakeRecipientError = '';
         this.claimRecipientEnabled = false;
         this.claimRecipientAddress = '';
+        this.claimRecipientError = '';
         this.zapQuoteRequestId += 1;
         this.stopZapQuoteAutoRefresh();
         this.clearZapQuoteRateLimitTimer();
@@ -4992,6 +5091,12 @@ class StakingModalNew {
                 return;
             }
 
+            const recipient = this.getValidatedRecipient('unstake');
+            if (!recipient.success) {
+                window.notificationManager?.error(recipient.error);
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.info('Unstaking LP tokens...');
             }
@@ -5001,11 +5106,15 @@ class StakingModalNew {
             // Execute real unstaking transaction
             this.pendingOperations.unstake = true;
             this.setActionPhase('unstake', 'userApproval');
-            const result = await window.contractManager.unstake(
+            const unstakeArgs = [
                 lpTokenAddress,
                 this.unstakeAmount,
                 this.claimRewardsOnUnstake
-            );
+            ];
+            if (recipient.address) {
+                unstakeArgs.push(recipient.address);
+            }
+            const result = await window.contractManager.unstake(...unstakeArgs);
 
             if (this.actionPhases.unstake === 'userApproval') {
                 this.setActionPhase('unstake', 'processing');
@@ -5077,6 +5186,12 @@ class StakingModalNew {
                 return;
             }
 
+            const recipient = this.getValidatedRecipient('claim');
+            if (!recipient.success) {
+                window.notificationManager?.error(recipient.error);
+                return;
+            }
+
             if (window.notificationManager) {
                 window.notificationManager.info('Claiming rewards...');
             }
@@ -5084,9 +5199,11 @@ class StakingModalNew {
             // Execute real claim transaction
             this.pendingOperations.claim = true;
             this.setActionPhase('claim', 'userApproval');
-            const result = await window.contractManager.claimRewards(
-                this.currentPair.address
-            );
+            const claimArgs = [this.currentPair.address];
+            if (recipient.address) {
+                claimArgs.push(recipient.address);
+            }
+            const result = await window.contractManager.claimRewards(...claimArgs);
 
             if (this.actionPhases.claim === 'userApproval') {
                 this.setActionPhase('claim', 'processing');

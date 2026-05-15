@@ -1863,6 +1863,125 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.close).toHaveBeenCalled();
     });
 
+    it('passes a custom recipient when executing recipient-aware unstake', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+        modal.unstakeAmount = '1';
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = '0x2222222222222222222222222222222222222222';
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            validateAndChecksumAddress: vi.fn(address => address),
+            unstake: vi.fn(async () => ({ success: true, hash: '0xunstake-to' }))
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeUnstake();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.unstake).toHaveBeenCalledWith(
+            '0xlp',
+            '1',
+            true,
+            '0x2222222222222222222222222222222222222222'
+        );
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
+    });
+
+    it('blocks unstake when the custom recipient is malformed', async () => {
+        const modal = await createLoadedModal();
+        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+        modal.unstakeAmount = '1';
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = 'not-an-address';
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            unstake: vi.fn()
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+
+        await modal.executeUnstake();
+
+        expect(globalThis.contractManager.unstake).not.toHaveBeenCalled();
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Enter a valid recipient address.');
+        expect(modal.unstakeRecipientError).toBe('Enter a valid recipient address.');
+        expect(modal.clearInputs).not.toHaveBeenCalled();
+        expect(modal.close).not.toHaveBeenCalled();
+    });
+
+    it('keeps default claim rewards submission unchanged', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+        modal.pendingRewards = '1';
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim' }))
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeClaim();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.claimRewards).toHaveBeenCalledWith('0xlp');
+        expect(globalThis.notificationManager.success).toHaveBeenCalledWith('Rewards claimed successfully!');
+    });
+
+    it('passes a custom recipient when executing recipient-aware claim', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+        modal.pendingRewards = '1';
+        modal.claimRecipientEnabled = true;
+        modal.claimRecipientAddress = '0x3333333333333333333333333333333333333333';
+        modal.clearInputs = vi.fn();
+        modal.close = vi.fn();
+        globalThis.contractManager = {
+            isReady: vi.fn(() => true),
+            validateAndChecksumAddress: vi.fn(address => address),
+            claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim-to' }))
+        };
+        globalThis.notificationManager = {
+            info: vi.fn(),
+            success: vi.fn(),
+            error: vi.fn()
+        };
+        globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+
+        const executePromise = modal.executeClaim();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.claimRewards).toHaveBeenCalledWith(
+            '0xlp',
+            '0x3333333333333333333333333333333333333333'
+        );
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
+    });
+
     it('executes remove liquidity from the dedicated Remove LP tab', async () => {
         vi.useFakeTimers();
         const modal = await createLoadedModal();
