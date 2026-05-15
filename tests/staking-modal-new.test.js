@@ -362,7 +362,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         const html = modal.renderUnstakeTab();
 
-        expect(html).toContain('Keep rewards checked to withdraw your LP and LIB rewards together before moving to Farm 2.0.');
+        expect(html).toContain('Keep <em>Claim reward tokens</em> checked to withdraw your LP and LIB rewards together before moving to Farm 2.0.');
         expect(html).toContain('value="100"');
         expect(html).toContain('percentage-btn active');
         expect(html).toContain('<span class="material-icons">logout</span>');

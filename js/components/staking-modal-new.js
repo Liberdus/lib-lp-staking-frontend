@@ -2376,7 +2376,7 @@ class StakingModalNew {
         const migrationNote = this.isMigrationMode()
             ? `<div class="migration-modal-note" role="status">
                     <span class="material-icons" aria-hidden="true">info</span>
-                    <span>Keep rewards checked to withdraw your LP and LIB rewards together before moving to ${newFarmLabel}.</span>
+                    <span>Keep <em>Claim reward tokens</em> checked to withdraw your LP and LIB rewards together before moving to ${newFarmLabel}.</span>
                </div>`
             : '';
         const actionLabel = this.isMigrationMode() ? `Exit ${oldFarmLabel}` : 'Unstake LP Tokens';
