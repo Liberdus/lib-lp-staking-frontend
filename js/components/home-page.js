@@ -244,7 +244,7 @@ class HomePage {
                </a>`
             : `<span class="migration-action-muted">${newFarmLabel} link will be added before deployment</span>`;
         const supportAction = supportUrl
-            ? `<a class="btn btn-secondary migration-action" href="${supportUrl}" target="_blank" rel="noopener noreferrer">
+            ? `<a class="migration-support-link" href="${supportUrl}" target="_blank" rel="noopener noreferrer">
                     <span class="material-icons" aria-hidden="true">support_agent</span>
                     Support
                </a>`
@@ -257,7 +257,7 @@ class HomePage {
                     <div>
                         <h2 id="migration-title">Move your LP from ${oldFarmLabel} to ${newFarmLabel}</h2>
                         <p>
-                            New staking deposits are paused on this page. Use ${oldFarmLabel} to unstake your LP tokens and claim LIB rewards, then stake your LP on ${newFarmLabel}.
+                            ${oldFarmLabel} is being retired. Withdraw your LP and rewards here, then continue staking on ${newFarmLabel}.
                         </p>
                     </div>
                 </div>
@@ -545,9 +545,9 @@ class HomePage {
             : `<span style="font-size: 12px; color: var(--text-secondary);">${platform}</span>`;
         const isMigrationMode = this.isMigrationMode?.() || false;
         const oldFarmLabel = this.getMigrationConfig?.().OLD_FARM_LABEL || 'Farm 1.0';
-        const shareButtonTitle = isMigrationMode ? `Unstake from ${oldFarmLabel}` : 'Stake or Unstake';
-        const shareButtonIcon = isMigrationMode ? 'logout' : 'share';
-        const shareButtonLabel = isMigrationMode ? `Unstake ${userShares}%` : `${userShares}%`;
+        const shareButtonTitle = isMigrationMode ? `Open ${oldFarmLabel} position` : 'Stake or Unstake';
+        const shareButtonIcon = 'share';
+        const shareButtonLabel = `${userShares}%`;
         const shareButtonTab = isMigrationMode ? '1' : '0';
         const earningsButtonTitle = isMigrationMode ? `Claim ${oldFarmLabel} rewards` : 'Claim reward';
         

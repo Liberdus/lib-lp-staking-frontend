@@ -192,6 +192,9 @@ class StakingModalNew {
     createModal() {
         const modalContainer = document.getElementById('modal-container');
         if (!modalContainer) return;
+        const modalTitle = this.isMigrationMode()
+            ? `${this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0'} Position`
+            : 'Staking';
 
         // Create modal HTML matching React version exactly
         const modalHTML = `
@@ -200,7 +203,7 @@ class StakingModalNew {
                 <div class="modal-content">
                     <div class="modal-header">
                         <div class="modal-title-section">
-                            <h2 class="modal-title">Staking</h2>
+                            <h2 class="modal-title">${modalTitle}</h2>
                             <div class="pair-info" id="modal-pair-info">
                                 <!-- Pair info will be populated -->
                             </div>
@@ -420,6 +423,22 @@ class StakingModalNew {
         return window.CONFIG?.MIGRATION || {};
     }
 
+    defaultMigrationUnstakeToMax({ force = false } = {}) {
+        if (!this.isMigrationMode()) return;
+        if (this.currentTab !== 'unstake') return;
+        if (!force && this.unstakeAmount) return;
+
+        const stakedAmount = parseFloat(this.userStaked) || 0;
+        if (stakedAmount <= 0) {
+            if (force) {
+                this.unstakeAmount = '';
+            }
+            return;
+        }
+
+        this.unstakeAmount = this.userStaked;
+    }
+
     async open(pair, tab = 'stake') {
         if (this.isMigrationMode() && (tab === 'stake' || tab === 'zap')) {
             tab = 'unstake';
@@ -477,6 +496,7 @@ class StakingModalNew {
         // Load user balances if contract manager is ready
         await this.loadUserBalances();
         await this.loadZapTokens();
+        this.defaultMigrationUnstakeToMax({ force: tab === 'unstake' });
 
         // Re-render the tab to reflect fresh data
         this.switchTab(tab);
@@ -1914,12 +1934,12 @@ class StakingModalNew {
         const oldFarmLabel = this.getMigrationConfig().OLD_FARM_LABEL || 'Farm 1.0';
         unstakeButton.title = (!hasSufficientStaked && hasAmount)
             ? 'Insufficient staked balance'
-            : (this.isMigrationMode() ? `Unstake from ${oldFarmLabel}` : 'Unstake LP Tokens');
+            : (this.isMigrationMode() ? `Exit ${oldFarmLabel}` : 'Unstake LP Tokens');
 
-        if (buttonIcon) buttonIcon.textContent = 'remove';
+        if (buttonIcon) buttonIcon.textContent = this.isMigrationMode() ? 'logout' : 'remove';
         if (buttonText) {
-            buttonText.textContent = this.isMigrationMode() && this.claimRewardsOnUnstake
-                ? ' Unstake and Claim'
+            buttonText.textContent = this.isMigrationMode()
+                ? ` Exit ${oldFarmLabel}`
                 : ' Unstake LP Tokens';
         }
     }
@@ -2186,6 +2206,7 @@ class StakingModalNew {
         }
 
         this.currentTab = tab;
+        this.defaultMigrationUnstakeToMax();
         this.syncZapQuoteAutoRefresh();
 
         // Update tab buttons
@@ -2355,12 +2376,17 @@ class StakingModalNew {
         const migrationNote = this.isMigrationMode()
             ? `<div class="migration-modal-note" role="status">
                     <span class="material-icons" aria-hidden="true">info</span>
-                    <span>Unstake your ${oldFarmLabel} LP tokens and keep "Claim reward tokens" checked, then move to ${newFarmLabel}.</span>
+                    <span>Keep rewards checked to withdraw your LP and LIB rewards together before moving to ${newFarmLabel}.</span>
                </div>`
             : '';
-        const actionLabel = this.isMigrationMode() && this.claimRewardsOnUnstake
-            ? 'Unstake and Claim'
-            : 'Unstake LP Tokens';
+        const actionLabel = this.isMigrationMode() ? `Exit ${oldFarmLabel}` : 'Unstake LP Tokens';
+        const actionIcon = this.isMigrationMode() ? 'logout' : 'remove';
+        const stakedAmount = parseFloat(this.userStaked) || 0;
+        const unstakeAmount = parseFloat(this.unstakeAmount) || 0;
+        const unstakeSliderValue = stakedAmount > 0
+            ? Math.min(100, Math.max(0, (unstakeAmount / stakedAmount) * 100))
+            : 0;
+        const isMaxUnstake = unstakeSliderValue >= 99.999;
 
         return `
             ${migrationNote}
@@ -2389,7 +2415,7 @@ class StakingModalNew {
                         id="unstake-slider"
                         min="0"
                         max="100"
-                        value="0"
+                        value="${unstakeSliderValue}"
                         data-type="unstake"
                     >
                 </div>
@@ -2397,7 +2423,7 @@ class StakingModalNew {
                     <button class="percentage-btn" data-percentage="25">25%</button>
                     <button class="percentage-btn" data-percentage="50">50%</button>
                     <button class="percentage-btn" data-percentage="75">75%</button>
-                    <button class="percentage-btn" data-percentage="100">MAX</button>
+                    <button class="percentage-btn ${isMaxUnstake ? 'active' : ''}" data-percentage="100">MAX</button>
                 </div>
             </div>
 
@@ -2421,7 +2447,7 @@ class StakingModalNew {
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="safeModalClose()">Cancel</button>
                 <button class="btn btn-primary" onclick="safeModalExecuteUnstake()" ${!this.unstakeAmount || parseFloat(this.unstakeAmount) === 0 ? 'disabled' : ''}>
-                    <span class="material-icons">remove</span>
+                    <span class="material-icons">${actionIcon}</span>
                     ${actionLabel}
                 </button>
             </div>

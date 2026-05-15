@@ -166,6 +166,33 @@ body {
     font-weight: 600;
 }
 
+.migration-support-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 0 4px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.migration-support-link:hover,
+.migration-support-link:focus,
+.migration-support-link:visited {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.migration-support-link:hover,
+.migration-support-link:focus {
+    color: var(--primary-main);
+}
+
+.migration-support-link .material-icons {
+    font-size: 18px;
+}
+
 .migration-contract-link {
     color: var(--primary-main);
     font-weight: 600;
@@ -478,6 +505,7 @@ body {
 
     .migration-actions .btn,
     .migration-action-muted,
+    .migration-support-link,
     .migration-contract-link {
         width: 100%;
         justify-content: center;

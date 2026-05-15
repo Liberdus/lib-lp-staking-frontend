@@ -266,11 +266,12 @@ describe('StakingModalNew zap cleanup', () => {
 
     it('hides create LP and stake tabs in migration mode', async () => {
         const StakingModalNew = await loadStakingModalClass();
-        globalThis.CONFIG.MIGRATION = { ENABLED: true };
+        globalThis.CONFIG.MIGRATION = { ENABLED: true, OLD_FARM_LABEL: 'Farm 1.0' };
         const modalContainer = document.registerElement(createElement({ id: 'modal-container' }));
 
         new StakingModalNew();
 
+        expect(modalContainer.innerHTML).toContain('<h2 class="modal-title">Farm 1.0 Position</h2>');
         expect(modalContainer.innerHTML).not.toContain('aria-label="Create LP"');
         expect(modalContainer.innerHTML).not.toContain('aria-label="Stake"');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
@@ -346,6 +347,38 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
         expect(html).toContain('id="unstake-usd-estimate"');
         expect(html).toContain('$30.00');
+    });
+
+    it('renders the migration unstake tab as an exit flow with max selected', async () => {
+        const modal = await createLoadedModal();
+        globalThis.CONFIG.MIGRATION = {
+            ENABLED: true,
+            OLD_FARM_LABEL: 'Farm 1.0',
+            NEW_FARM_LABEL: 'Farm 2.0'
+        };
+        modal.currentTab = 'unstake';
+        modal.userStaked = '4';
+        modal.unstakeAmount = '4';
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).toContain('Keep rewards checked to withdraw your LP and LIB rewards together before moving to Farm 2.0.');
+        expect(html).toContain('value="100"');
+        expect(html).toContain('percentage-btn active');
+        expect(html).toContain('<span class="material-icons">logout</span>');
+        expect(html).toContain('Exit Farm 1.0');
+    });
+
+    it('defaults the migration unstake amount to the full staked position', async () => {
+        const modal = await createLoadedModal();
+        globalThis.CONFIG.MIGRATION = { ENABLED: true };
+        modal.currentTab = 'unstake';
+        modal.userStaked = '4.123456789';
+        modal.unstakeAmount = '';
+
+        modal.defaultMigrationUnstakeToMax();
+
+        expect(modal.unstakeAmount).toBe('4.123456789');
     });
 
     it('updates unstake input USD estimates from the slider path', async () => {

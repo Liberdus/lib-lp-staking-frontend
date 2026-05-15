@@ -157,11 +157,12 @@ describe('HomePage.renderPairRow', () => {
         expect(output).not.toContain('disabled');
     });
 
-    it('labels the primary row action as unstake in migration mode', async () => {
+    it('keeps the share action compact while opening unstake in migration mode', async () => {
         const homePagePrototype = await loadHomePage();
         const output = homePagePrototype.renderPairRow.call(
             {
                 isMigrationMode: () => true,
+                getMigrationConfig: () => ({ OLD_FARM_LABEL: 'Farm 1.0' }),
                 formatTvlDisplay: () => '$1.2K'
             },
             {
@@ -174,9 +175,11 @@ describe('HomePage.renderPairRow', () => {
             }
         );
 
-        expect(output).toContain('title="Unstake from Farm 1.0"');
+        expect(output).toContain('title="Open Farm 1.0 position"');
         expect(output).toContain('data-tab="1"');
-        expect(output).toContain('Unstake 3.50%');
+        expect(output).toContain('<span class="material-icons" style="font-size: 16px;">share</span>');
+        expect(output).toContain('3.50%');
+        expect(output).not.toContain('Unstake 3.50%');
     });
 });
 
