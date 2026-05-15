@@ -3573,7 +3573,7 @@ class ContractManager {
     /**
      * Claim rewards for LP token with enhanced gas estimation
      */
-    async claimRewards(lpTokenAddress) {
+    async claimRewards(lpTokenAddress, recipientAddress = null) {
         // Ensure we have a signer for transactions
         await this.ensureSigner();
 
@@ -3593,10 +3593,16 @@ class ContractManager {
         }
 
         try {
+            const receiver = recipientAddress
+                ? this.validateAndChecksumAddress(recipientAddress, 'Recipient Address')
+                : null;
+
             return await this.executeTransactionOnce(async () => {
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-                const tx = await contractWithSigner.claimRewards(lpTokenAddress);
+                const tx = receiver
+                    ? await contractWithSigner.claimRewardsTo(lpTokenAddress, receiver)
+                    : await contractWithSigner.claimRewards(lpTokenAddress);
 
                 console.log(`✅ Claim rewards transaction sent: ${tx.hash}`);
 
@@ -3663,7 +3669,7 @@ class ContractManager {
     /**
      * Unstake LP tokens
      */
-    async unstake(lpTokenAddress, amount, claimRewards) {
+    async unstake(lpTokenAddress, amount, claimRewards, recipientAddress = null) {
         // Ensure we have a signer for transactions
         await this.ensureSigner();
 
@@ -3683,13 +3689,19 @@ class ContractManager {
         }
 
         try {
+            const receiver = recipientAddress
+                ? this.validateAndChecksumAddress(recipientAddress, 'Recipient Address')
+                : null;
+
             return await this.executeTransactionOnce(async () => {
                 // Convert amount to wei
                 const amountWei = ethers.utils.parseEther(amount.toString());
 
                 // Connect contract with signer for transaction
                 const contractWithSigner = this.stakingContract.connect(this.signer);
-                const tx = await contractWithSigner.unstake(lpTokenAddress, amountWei, claimRewards);
+                const tx = receiver
+                    ? await contractWithSigner.unstakeTo(lpTokenAddress, amountWei, claimRewards, receiver)
+                    : await contractWithSigner.unstake(lpTokenAddress, amountWei, claimRewards);
 
                 console.log(`✅ Unstake transaction sent: ${tx.hash}`);
                 console.log(`   Amount: ${amount} LP tokens`);
