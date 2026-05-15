@@ -2,7 +2,7 @@
 
 ## What Changed
 
-This branch adds recipient-aware unstake and claim support in three layers:
+This branch adds recipient-aware unstake and claim support in four layers:
 
 1. Contract-manager transaction plumbing
    - `ContractManager.claimRewards(lpTokenAddress, recipientAddress = null)` keeps calling `claimRewards(lpTokenAddress)` by default.
@@ -15,6 +15,8 @@ This branch adds recipient-aware unstake and claim support in three layers:
    - Default state shows `Receiving wallet: Connected wallet`.
    - Clicking `Send to another wallet` reveals a recipient address field.
    - Clicking `Send to connected wallet` or `Clear` collapses the field and clears the override.
+   - The recipient toggle is right-aligned in the recipient area and uses a neutral grey treatment instead of the red/destructive button color.
+   - Recipient validation errors render below the input with dedicated spacing so the warning does not overlap the address field.
    - Recipient state is separate for Unstake and Claim:
      - `unstakeRecipientEnabled`
      - `unstakeRecipientAddress`
@@ -25,9 +27,18 @@ This branch adds recipient-aware unstake and claim support in three layers:
 
 3. Modal submission wiring
    - `executeUnstake()` and `executeClaim()` validate the custom recipient only when the override is enabled.
+   - While typing, the modal uses `window.ethers.utils.isAddress(...)` for local validation.
+   - On submit, the modal asks `window.contractManager.validateAndChecksumAddress(...)` for the final checksummed receiver.
    - Malformed recipient addresses block submission before wallet approval.
    - Valid custom recipients are passed into `window.contractManager.unstake(...)` or `window.contractManager.claimRewards(...)`.
    - If no override is enabled, the original function signatures and default connected-wallet behavior remain unchanged.
+   - `clearInputs()` resets both recipient override states after a completed action.
+
+4. Styling
+   - `.recipient-override` stacks the destination label, toggle button, and optional recipient field.
+   - `.recipient-toggle` is `align-self: flex-end`, so the button stays right-aligned within the recipient block.
+   - `.recipient-toggle` uses grey colors (`#4a5568`, `#64748b`, `#94a3b8`) for normal and hover states.
+   - `.zap-field-error.recipient-error` adds vertical spacing below the input to keep validation text readable.
 
 ## High-Level Flow
 
@@ -53,30 +64,31 @@ flowchart TD
     J -- "Yes" --> L
 
     L --> M["setRecipientAddress(action, value)"]
-    M --> N["getRecipientValidationError(action)"]
-    N --> O["updateRecipientDestination(action)"]
-    N --> P["updateRecipientError(action)"]
-    N --> Q["updateUnstakeButton() or updateClaimButton()"]
+    M --> N["getRecipientState(action)"]
+    N --> O["getRecipientValidationError(action)"]
+    O --> P["updateRecipientDestination(action)"]
+    O --> Q["updateRecipientError(action)"]
+    O --> R["updateUnstakeButton() or updateClaimButton()"]
 
-    K --> R["User submits action"]
-    Q --> R
+    K --> S["User submits action"]
+    R --> S
 
-    R --> S{"Action type"}
-    S --> T["executeUnstake()"]
-    S --> U["executeClaim()"]
+    S --> T{"Action type"}
+    T --> U["executeUnstake()"]
+    T --> V["executeClaim()"]
 
-    T --> V["getValidatedRecipient('unstake')"]
-    U --> W["getValidatedRecipient('claim')"]
+    U --> W["getValidatedRecipient('unstake')"]
+    V --> X["getValidatedRecipient('claim')"]
 
-    V --> X{"Valid custom recipient?"}
-    W --> X
+    W --> Y{"Recipient state"}
+    X --> Y
 
-    X -- "No" --> Y["Show error and stop before transaction"]
-    X -- "No override" --> Z["Call default contract-manager path"]
-    X -- "Yes" --> AA["Call recipient-aware contract-manager path"]
+    Y -- "Invalid" --> Z["Show error and stop before transaction"]
+    Y -- "No override" --> AA["Call default contract-manager path"]
+    Y -- "Valid override" --> AB["Call recipient-aware contract-manager path"]
 
-    Z --> AB["Contract sends funds to msg.sender"]
-    AA --> AC["Contract sends funds to receiver"]
+    AA --> AC["Contract sends funds to msg.sender"]
+    AB --> AD["Contract sends funds to receiver"]
 ```
 
 ## Unstake Sequence
@@ -97,6 +109,7 @@ sequenceDiagram
 
     User->>Modal: Type recipient address
     Modal->>Modal: setRecipientAddress('unstake', value)
+    Modal->>Modal: getRecipientState('unstake')
     Modal->>Modal: getRecipientValidationError('unstake')
     Modal->>Modal: updateRecipientDestination('unstake')
     Modal->>Modal: updateRecipientError('unstake')
@@ -106,7 +119,8 @@ sequenceDiagram
     Modal->>Modal: executeUnstake()
     Modal->>CM: isReady()
     Modal->>Modal: getValidatedRecipient('unstake')
-    Modal->>CM: validateAndChecksumAddress(address, 'Recipient Address')
+    Modal->>Modal: getRecipientState('unstake')
+    Modal->>Modal: getRecipientValidationError('unstake')
 
     alt Invalid recipient
         Modal->>Modal: setRecipientError('unstake', error)
@@ -120,6 +134,7 @@ sequenceDiagram
         Ethers->>Contract: unstake(lpTokenAddress, amountWei, claimRewardsOnUnstake)
         Contract->>Contract: _unstake(lpToken, amount, shouldClaimRewards, msg.sender)
     else Valid custom recipient
+        Modal->>CM: validateAndChecksumAddress(address, 'Recipient Address')
         Modal->>CM: unstake(lpTokenAddress, unstakeAmount, claimRewardsOnUnstake, receiver)
         CM->>CM: ensureSigner()
         CM->>CM: validateAndChecksumAddress(receiver, 'Recipient Address')
@@ -156,6 +171,7 @@ sequenceDiagram
 
     User->>Modal: Type recipient address
     Modal->>Modal: setRecipientAddress('claim', value)
+    Modal->>Modal: getRecipientState('claim')
     Modal->>Modal: getRecipientValidationError('claim')
     Modal->>Modal: updateRecipientDestination('claim')
     Modal->>Modal: updateRecipientError('claim')
@@ -165,7 +181,8 @@ sequenceDiagram
     Modal->>Modal: executeClaim()
     Modal->>CM: isReady()
     Modal->>Modal: getValidatedRecipient('claim')
-    Modal->>CM: validateAndChecksumAddress(address, 'Recipient Address')
+    Modal->>Modal: getRecipientState('claim')
+    Modal->>Modal: getRecipientValidationError('claim')
 
     alt Invalid recipient
         Modal->>Modal: setRecipientError('claim', error)
@@ -178,6 +195,7 @@ sequenceDiagram
         Ethers->>Contract: claimRewards(lpTokenAddress)
         Contract->>Contract: _claimRewards(lpToken, msg.sender)
     else Valid custom recipient
+        Modal->>CM: validateAndChecksumAddress(address, 'Recipient Address')
         Modal->>CM: claimRewards(lpTokenAddress, receiver)
         CM->>CM: ensureSigner()
         CM->>CM: validateAndChecksumAddress(receiver, 'Recipient Address')
