@@ -199,6 +199,9 @@
             
             // Libraries
             `${basePath}libs/ethers.umd.min.js`,
+
+            // ABI assets
+            `${basePath}assets/abi/LPStaking.json`,
             
             // CSS - All stylesheets (only existing files)
             `${basePath}css/admin-homepage-theme.css`,
