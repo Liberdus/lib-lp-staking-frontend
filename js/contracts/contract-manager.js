@@ -11,6 +11,8 @@
         return;
     }
 
+    const CONTRACT_MANAGER_SCRIPT_SRC = global.document?.currentScript?.src || null;
+
 class ContractManager {
     constructor() {
 
@@ -733,8 +735,11 @@ class ContractManager {
 
     getAssetPath(assetPath) {
         const normalizedPath = assetPath.replace(/^\/+/, '');
-        const isAdminPage = window.location?.pathname?.includes('/admin');
-        return isAdminPage ? `../${normalizedPath}` : normalizedPath;
+        if (CONTRACT_MANAGER_SCRIPT_SRC) {
+            return new URL(`../../${normalizedPath}`, CONTRACT_MANAGER_SCRIPT_SRC).toString();
+        }
+
+        return normalizedPath;
     }
 
     async loadABIAsset(assetPath, contractName) {

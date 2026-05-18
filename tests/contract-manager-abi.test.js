@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const scriptSrc = 'https://example.test/repo/js/contracts/contract-manager.js';
+
 async function loadContractManager(pathname = '/') {
     vi.resetModules();
     globalThis.window = globalThis;
     globalThis.location = { pathname };
+    globalThis.document = { currentScript: { src: scriptSrc } };
     delete globalThis.ContractManager;
 
     await import('../js/contracts/contract-manager.js');
@@ -20,6 +23,7 @@ describe('ContractManager ABI loading', () => {
         vi.restoreAllMocks();
         delete globalThis.CONFIG;
         delete globalThis.ContractManager;
+        delete globalThis.document;
         delete globalThis.fetch;
         delete globalThis.location;
         delete globalThis.window;
@@ -38,7 +42,7 @@ describe('ContractManager ABI loading', () => {
 
         await manager.loadContractABIs();
 
-        expect(globalThis.fetch).toHaveBeenCalledWith('assets/abi/LPStaking.json');
+        expect(globalThis.fetch).toHaveBeenCalledWith('https://example.test/repo/assets/abi/LPStaking.json');
         expect(manager.contractABIs.get('STAKING')).toBe(stakingABI);
         expect(manager.contractABIs.get('ERC20')).toEqual(globalThis.CONFIG.ABIS.ERC20);
     });
@@ -55,7 +59,23 @@ describe('ContractManager ABI loading', () => {
 
         await manager.loadContractABIs();
 
-        expect(globalThis.fetch).toHaveBeenCalledWith('../assets/abi/LPStaking.json');
+        expect(globalThis.fetch).toHaveBeenCalledWith('https://example.test/repo/assets/abi/LPStaking.json');
+        expect(manager.contractABIs.get('STAKING')).toEqual([{ type: 'function', name: 'stake' }]);
+    });
+
+    it('loads the staking ABI asset from an extensionless admin subpath', async () => {
+        const ContractManager = await loadContractManager('/repo/admin');
+        const manager = new ContractManager();
+
+        globalThis.CONFIG = {};
+        globalThis.fetch = vi.fn(async () => ({
+            ok: true,
+            json: async () => [{ type: 'function', name: 'stake' }]
+        }));
+
+        await manager.loadContractABIs();
+
+        expect(globalThis.fetch).toHaveBeenCalledWith('https://example.test/repo/assets/abi/LPStaking.json');
         expect(manager.contractABIs.get('STAKING')).toEqual([{ type: 'function', name: 'stake' }]);
     });
 });
