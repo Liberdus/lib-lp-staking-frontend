@@ -731,70 +731,34 @@ class ContractManager {
         }
     }
 
+    getAssetPath(assetPath) {
+        const normalizedPath = assetPath.replace(/^\/+/, '');
+        const isAdminPage = window.location?.pathname?.includes('/admin');
+        return isAdminPage ? `../${normalizedPath}` : normalizedPath;
+    }
+
+    async loadABIAsset(assetPath, contractName) {
+        const resolvedPath = this.getAssetPath(assetPath);
+        const response = await fetch(resolvedPath);
+
+        if (!response.ok) {
+            throw new Error(`Failed to load ${contractName} ABI from ${resolvedPath}: ${response.status}`);
+        }
+
+        const abi = await response.json();
+        if (!Array.isArray(abi)) {
+            throw new Error(`${contractName} ABI at ${resolvedPath} must be a JSON array`);
+        }
+
+        return abi;
+    }
+
     /**
-     * Load contract ABIs from configuration or external sources (FIXED)
+     * Load contract ABIs from canonical assets and configuration.
      */
     async loadContractABIs() {
         try {
-            // FIXED: Use ABI from CONFIG instead of hardcoded
-            let stakingABI;
-
-            if (window.CONFIG?.ABIS?.STAKING_CONTRACT) {
-                stakingABI = window.CONFIG.ABIS.STAKING_CONTRACT;
-            } else {
-                console.warn('⚠️ CONFIG ABI not found, using fallback ABI');
-                // Fallback ABI with essential functions only (no duplicates)
-                stakingABI = [
-                    "function rewardToken() external view returns (address)",
-                    "function hourlyRewardRate() external view returns (uint256)",
-                    "function REQUIRED_APPROVALS() external view returns (uint256)",
-                    "function actionCounter() external view returns (uint256)",
-                    "function totalWeight() external view returns (uint256)",
-                    "function getPairs() external view returns (tuple(address lpToken, string pairName, string platform, uint256 weight, bool isActive)[])",
-                    "function getActivePairs() external view returns (address[])",
-                    "function pairs(address lpToken) external view returns (address lpToken_, string pairName, string platform, uint256 weight, bool isActive)",
-                    "function getPairInfo(address lpToken) external view returns (address token, string platform, uint256 weight, bool isActive)",
-                    "function getActionPairs(uint256 actionId) external view returns (address[])",
-                    "function getActionWeights(uint256 actionId) external view returns (uint256[])",
-                    "function getActionApproval(uint256 actionId) external view returns (address[])",
-                    "function actions(uint256 actionId) external view returns (uint8 actionType, uint256 newHourlyRewardRate, address pairToAdd, string memory pairNameToAdd, string memory platformToAdd, uint256 weightToAdd, address pairToRemove, address recipient, uint256 withdrawAmount, bool executed, bool expired, uint8 approvals, uint256 proposedTime, bool rejected)",
-                    "function stake(address lpToken, uint256 amount) external",
-                    "function unstake(address lpToken, uint256 amount, bool claimRewards) external",
-                    "function unstakeTo(address lpToken, uint256 amount, bool shouldClaimRewards, address receiver) external",
-                    "function claimRewards(address lpToken) external",
-                    "function claimRewardsTo(address lpToken, address receiver) external",
-
-                    // Admin role functions
-                    "function hasRole(bytes32 role, address account) external view returns (bool)",
-                    "function ADMIN_ROLE() external view returns (bytes32)",
-                    "function grantRole(bytes32 role, address account) external",
-                    "function revokeRole(bytes32 role, address account) external",
-
-                    // Standard Ownable2Step functions
-                    "function owner() external view returns (address)",
-                    "function pendingOwner() external view returns (address)",
-                    "function transferOwnership(address newOwner) external",
-                    "function acceptOwnership() external",
-
-                    // Multi-signature proposal functions
-                    "function proposeSetHourlyRewardRate(uint256 newRate) external returns (uint256)",
-                    "function proposeUpdatePairWeights(address[] calldata lpTokens, uint256[] calldata weights) external returns (uint256)",
-                    "function proposeAddPair(address lpToken, string calldata pairName, string calldata platform, uint256 weight) external returns (uint256)",
-                    "function proposeRemovePair(address lpToken) external returns (uint256)",
-                    "function proposeChangeSigner(address oldSigner, address newSigner) external returns (uint256)",
-                    "function proposeWithdrawRewards(address recipient, uint256 amount) external returns (uint256)",
-
-                    // Multi-signature approval functions
-                    "function approveAction(uint256 actionId) external",
-                    "function executeAction(uint256 actionId) external",
-                    "function rejectAction(uint256 actionId) external",
-                    "function isActionExpired(uint256 actionId) external view returns (bool)",
-                    "function getSigners() external view returns (address[])",
-
-                    // Utility functions
-                    "function cleanupExpiredActions() external"
-                ];
-            }
+            const stakingABI = await this.loadABIAsset('assets/abi/LPStaking.json', 'LPStaking');
 
             // ERC20 Token ABI (FIXED: Use CONFIG or fallback)
             let erc20ABI;
