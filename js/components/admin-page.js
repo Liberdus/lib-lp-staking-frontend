@@ -2690,6 +2690,10 @@ class AdminPage {
             return '...';
         }
 
+        if (pair.tvl === null || pair.tvl === undefined) {
+            return 'N/A';
+        }
+
         const tvl = Number(pair.tvl);
         if (!Number.isFinite(tvl)) {
             return 'N/A';
