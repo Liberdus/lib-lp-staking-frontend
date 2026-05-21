@@ -260,7 +260,7 @@ class StakingModalNew {
                     
                     <div class="modal-tabs">
                         <button class="tab-button active" aria-label="Create LP" data-tab="zap">
-                            <span class="material-icons" aria-hidden="true">bolt</span>
+                            <span class="material-icons" aria-hidden="true">arrow_upward</span>
                             <span class="tab-label">Create LP</span>
                         </button>
                         <button class="tab-button" aria-label="Stake" data-tab="stake">
@@ -276,7 +276,7 @@ class StakingModalNew {
                             <span class="tab-label">Claim</span>
                         </button>
                         <button class="tab-button" aria-label="Remove LP" data-tab="remove-liquidity">
-                            <span class="material-icons" aria-hidden="true">swap_horiz</span>
+                            <span class="material-icons" aria-hidden="true">arrow_downward</span>
                             <span class="tab-label">Remove LP</span>
                         </button>
                     </div>

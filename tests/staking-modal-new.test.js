@@ -372,7 +372,8 @@ describe('StakingModalNew zap cleanup', () => {
 
         expect(modalContainer.innerHTML).toContain('class="modal-tabs"');
         expect(modalContainer.innerHTML).toContain('aria-label="Create LP"');
-        expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">bolt</span>');
+        expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">arrow_upward</span>');
+        expect(modalContainer.innerHTML).toContain('<span class="material-icons" aria-hidden="true">arrow_downward</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Remove LP</span>');
