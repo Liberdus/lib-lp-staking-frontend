@@ -1104,6 +1104,85 @@ class ContractManager {
     }
 
     /**
+     * Validate that an address is a deployed V2-compatible LP token contract.
+     * @returns {Promise<{ valid: true, address: string, token0: string, token1: string, reserve0: ethers.BigNumber, reserve1: ethers.BigNumber } | { valid: false, error: string }>}
+     */
+    async validateV2CompatibleLpToken(address) {
+        if (!address || typeof address !== 'string' || !address.trim()) {
+            return { valid: false, error: 'LP token address is required' };
+        }
+
+        let lpTokenAddress;
+        try {
+            lpTokenAddress = ethers.utils.getAddress(address.trim());
+        } catch (error) {
+            return { valid: false, error: 'Invalid Ethereum address format' };
+        }
+
+        const provider = this.provider || this.signer?.provider;
+        if (!provider) {
+            return { valid: false, error: 'Network provider is not available' };
+        }
+
+        let contractCode;
+        try {
+            contractCode = await provider.getCode(lpTokenAddress);
+        } catch (error) {
+            return {
+                valid: false,
+                error: 'Unable to verify contract code. Check your network connection and try again.'
+            };
+        }
+
+        if (contractCode === '0x') {
+            return { valid: false, error: 'No contract code found at this address' };
+        }
+
+        const pairContract = new ethers.Contract(lpTokenAddress, [
+            'function token0() view returns (address)',
+            'function token1() view returns (address)',
+            'function getReserves() view returns (uint112,uint112,uint32)'
+        ], provider);
+
+        let token0;
+        let token1;
+        let reserve0;
+        let reserve1;
+        try {
+            const [token0Address, token1Address, reserves] = await Promise.all([
+                pairContract.token0(),
+                pairContract.token1(),
+                pairContract.getReserves()
+            ]);
+
+            if (!ethers.utils.isAddress(token0Address) || !ethers.utils.isAddress(token1Address)) {
+                throw new Error('invalid pair tokens');
+            }
+
+            token0 = ethers.utils.getAddress(token0Address);
+            token1 = ethers.utils.getAddress(token1Address);
+            const zeroAddress = ethers.constants.AddressZero;
+            if (token0 === zeroAddress || token1 === zeroAddress || token0.toLowerCase() === token1.toLowerCase()) {
+                throw new Error('invalid pair tokens');
+            }
+
+            if (!Array.isArray(reserves) || reserves.length < 2) {
+                throw new Error('invalid reserves');
+            }
+
+            reserve0 = ethers.BigNumber.from(reserves[0]);
+            reserve1 = ethers.BigNumber.from(reserves[1]);
+        } catch (error) {
+            return {
+                valid: false,
+                error: 'This address does not appear to be a V2-compatible LP token contract'
+            };
+        }
+
+        return { valid: true, address: lpTokenAddress, token0, token1, reserve0, reserve1 };
+    }
+
+    /**
     * Normalize LP pair names so keys remain consistent regardless of contract formatting
     * @param {string} rawName - Original pair name from the contract
     * @returns {string|null} Normalized pair identifier with an LP prefix, or null when input cannot be normalized
