@@ -35,6 +35,7 @@ class AdminPage {
         // UI state: remember proposal filter preference across refreshes
         this.proposalFilter = 'pending';
         this.addPairLpValidation = { status: 'idle' };
+        this.addPairRegistryPairs = null;
 
         // Shared selectors for address copy functionality
         this.addressCopySelectors = [
@@ -3996,6 +3997,8 @@ class AdminPage {
         this.applyModalVisibilityFixes(modalContainer);
 
         console.log('✅ Add pair modal opened');
+        this.addPairRegistryPairs = null;
+        this.loadAddPairRegistry();
 
         // Initialize form validation AFTER a delay to prevent immediate triggering
         setTimeout(() => {
@@ -4422,6 +4425,7 @@ class AdminPage {
         this.addPairLpCheckTimer = null;
         this.addPairLpValidation = { status: 'idle' };
         this.addPairLpCheckSeq = 0;
+        this.addPairRegistryPairs = null;
 
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) {
