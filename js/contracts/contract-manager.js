@@ -1144,32 +1144,55 @@ class ContractManager {
             'function getReserves() view returns (uint112,uint112,uint32)'
         ], provider);
 
-        let token0;
-        let token1;
-        let reserve0;
-        let reserve1;
+        let token0Address;
+        let token1Address;
+        let reserves;
         try {
-            const [token0Address, token1Address, reserves] = await Promise.all([
+            [token0Address, token1Address, reserves] = await Promise.all([
                 pairContract.token0(),
                 pairContract.token1(),
                 pairContract.getReserves()
             ]);
-
-            if (!ethers.utils.isAddress(token0Address) || !ethers.utils.isAddress(token1Address)) {
-                throw new Error('invalid pair tokens');
+        } catch (error) {
+            if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT' || error?.code === 'SERVER_ERROR') {
+                return {
+                    valid: false,
+                    error: 'Unable to verify LP token contract. Check your network connection and try again.'
+                };
             }
+            return {
+                valid: false,
+                error: 'This address does not appear to be a V2-compatible LP token contract'
+            };
+        }
 
-            token0 = ethers.utils.getAddress(token0Address);
-            token1 = ethers.utils.getAddress(token1Address);
-            const zeroAddress = ethers.constants.AddressZero;
-            if (token0 === zeroAddress || token1 === zeroAddress || token0.toLowerCase() === token1.toLowerCase()) {
-                throw new Error('invalid pair tokens');
-            }
+        if (!ethers.utils.isAddress(token0Address) || !ethers.utils.isAddress(token1Address)) {
+            return {
+                valid: false,
+                error: 'This address does not appear to be a V2-compatible LP token contract'
+            };
+        }
 
-            if (!Array.isArray(reserves) || reserves.length < 2) {
-                throw new Error('invalid reserves');
-            }
+        const token0 = ethers.utils.getAddress(token0Address);
+        const token1 = ethers.utils.getAddress(token1Address);
+        const zeroAddress = ethers.constants.AddressZero;
+        if (token0 === zeroAddress || token1 === zeroAddress || token0.toLowerCase() === token1.toLowerCase()) {
+            return {
+                valid: false,
+                error: 'This address does not appear to be a V2-compatible LP token contract'
+            };
+        }
 
+        if (!Array.isArray(reserves) || reserves.length < 2) {
+            return {
+                valid: false,
+                error: 'This address does not appear to be a V2-compatible LP token contract'
+            };
+        }
+
+        let reserve0;
+        let reserve1;
+        try {
             reserve0 = ethers.BigNumber.from(reserves[0]);
             reserve1 = ethers.BigNumber.from(reserves[1]);
         } catch (error) {

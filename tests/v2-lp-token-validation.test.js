@@ -137,5 +137,18 @@ describe('ContractManager.validateV2CompatibleLpToken', () => {
             valid: false,
             error: 'Unable to verify contract code. Check your network connection and try again.'
         });
+
+        const pairReadFailure = await loadContractManager(
+            { getCode: vi.fn().mockResolvedValue('0x6000') },
+            {
+                token0: vi.fn().mockRejectedValue(Object.assign(new Error('timeout'), { code: 'TIMEOUT' })),
+                token1: vi.fn(),
+                getReserves: vi.fn()
+            }
+        );
+        await expect(pairReadFailure.validateV2CompatibleLpToken(LP)).resolves.toEqual({
+            valid: false,
+            error: 'Unable to verify LP token contract. Check your network connection and try again.'
+        });
     });
 });
