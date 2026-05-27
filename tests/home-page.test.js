@@ -116,13 +116,19 @@ describe('HomePage.renderPairRow', () => {
         delete globalThis.window;
     });
 
+    function createRenderPairRowContext(homePagePrototype, overrides = {}) {
+        const context = Object.create(homePagePrototype);
+        Object.assign(context, overrides);
+        return context;
+    }
+
     it('adds mobile card labels and cell classes to each staking row cell', async () => {
         const homePagePrototype = await loadHomePage();
         const output = homePagePrototype.renderPairRow.call(
-            {
+            createRenderPairRowContext(homePagePrototype, {
                 isWalletConnected: () => true,
                 formatTvlDisplay: () => '$1.2K'
-            },
+            }),
             {
                 id: '1',
                 address: '0x123',
@@ -145,15 +151,27 @@ describe('HomePage.renderPairRow', () => {
         ].forEach(([cell, label]) => {
             expect(output).toContain(`class="staking-cell staking-cell--${cell}" data-label="${label}"`);
         });
+
+        expect(output).toContain('class="staking-cell staking-cell--actions"');
+        expect(output).toContain('staking-metric-value">3.50%</span>');
+        expect(output).toContain('staking-metric-value">1.2345 LIB</span>');
+        expect(output).toContain('btn-stake');
+        expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-claim');
+        expect(output).toContain('>Stake</button>');
+        expect(output).toContain('>Unstake</button>');
+        expect(output).toContain('>Claim</button>');
+        expect(output).not.toContain('btn-share');
+        expect(output).not.toContain('btn-earnings');
     });
 
     it('keeps table action buttons clickable when the wallet is disconnected', async () => {
         const homePagePrototype = await loadHomePage();
         const output = homePagePrototype.renderPairRow.call(
-            {
+            createRenderPairRowContext(homePagePrototype, {
                 isWalletConnected: () => false,
                 formatTvlDisplay: () => '$1.2K'
-            },
+            }),
             {
                 id: '1',
                 address: '0x123',
@@ -162,8 +180,9 @@ describe('HomePage.renderPairRow', () => {
             }
         );
 
-        expect(output).toContain('btn-share');
-        expect(output).toContain('btn-earnings');
+        expect(output).toContain('btn-stake');
+        expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-claim');
         expect(output).not.toContain('disabled');
     });
 
@@ -172,10 +191,10 @@ describe('HomePage.renderPairRow', () => {
         globalThis.networkManager.isOnRequiredNetwork.mockReturnValue(false);
 
         const output = homePagePrototype.renderPairRow.call(
-            {
+            createRenderPairRowContext(homePagePrototype, {
                 isWalletConnected: () => true,
                 formatTvlDisplay: () => '$1.2K'
-            },
+            }),
             {
                 id: '1',
                 address: '0x123',
@@ -184,8 +203,9 @@ describe('HomePage.renderPairRow', () => {
             }
         );
 
-        expect(output).toContain('btn-share');
-        expect(output).toContain('btn-earnings');
+        expect(output).toContain('btn-stake');
+        expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-claim');
         expect(output).not.toContain('disabled');
     });
 });
@@ -217,17 +237,22 @@ describe('HomePage table action clicks', () => {
         clickHandler = undefined;
     });
 
-    function createActionButtonTarget(actionClass) {
+    function createActionButtonTarget(action) {
         const button = {
+            classList: {
+                contains(className) {
+                    return className === `btn-${action}`;
+                }
+            },
             dataset: {
                 pairId: '1',
-                tab: actionClass === 'btn-share' ? '0' : '2'
+                action
             },
             closest(selector) {
                 if (selector === '.pair-row') return { dataset: { pairId: '1' } };
                 if (selector === 'button') return button;
-                if (selector === '.btn-share') return actionClass === 'btn-share' ? button : null;
-                if (selector === '.btn-earnings') return actionClass === 'btn-earnings' ? button : null;
+                if (selector === '.btn-stake, .btn-unstake, .btn-claim') return button;
+                if (selector === `.btn-${action}`) return button;
                 return null;
             }
         };
@@ -262,13 +287,13 @@ describe('HomePage table action clicks', () => {
         expect(openStakingModal).not.toHaveBeenCalled();
     });
 
-    it.each(['btn-share', 'btn-earnings'])(
+    it.each(['stake', 'unstake', 'claim'])(
         'shows the wallet-required warning toast for disconnected %s clicks',
-        async (actionClass) => {
+        async (action) => {
             const homePagePrototype = await loadHomePage();
             const openStakingModal = vi.fn();
             const event = {
-                target: createActionButtonTarget(actionClass),
+                target: createActionButtonTarget(action),
                 stopPropagation: vi.fn()
             };
 
@@ -282,6 +307,32 @@ describe('HomePage table action clicks', () => {
             expect(event.stopPropagation).toHaveBeenCalled();
             expect(globalThis.notificationManager.warning).toHaveBeenCalledWith('Please connect your wallet to stake token.');
             expect(openStakingModal).not.toHaveBeenCalled();
+        }
+    );
+
+    it.each([
+        ['stake', 'stake'],
+        ['unstake', 'unstake'],
+        ['claim', 'claim']
+    ])(
+        'opens the modal on the %s tab when the %s button is clicked',
+        async (action, expectedTab) => {
+            const homePagePrototype = await loadHomePage();
+            const openStakingModal = vi.fn();
+            const event = {
+                target: createActionButtonTarget(action),
+                stopPropagation: vi.fn()
+            };
+
+            homePagePrototype.attachEventListeners.call({
+                isWalletConnected: () => true,
+                showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+                openStakingModal
+            });
+            clickHandler(event);
+
+            expect(event.stopPropagation).toHaveBeenCalled();
+            expect(openStakingModal).toHaveBeenCalledWith('1', expectedTab);
         }
     );
 
