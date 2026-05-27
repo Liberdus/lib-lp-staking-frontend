@@ -139,8 +139,8 @@ body {
     border-bottom: none;
 }
 
-.staking-cell {
-    vertical-align: middle;
+.staking-pairs-table .staking-cell {
+    vertical-align: top;
 }
 
 .staking-pairs-table th,
@@ -201,21 +201,46 @@ body {
 }
 
 @media (min-width: 769px) {
+    .staking-pairs-table {
+        --staking-metric-row-height: 24px;
+        --staking-actions-row-height: 34px;
+        --staking-actions-row-gap: 8px;
+    }
+
     .staking-pairs-table .staking-cell-body {
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         width: 100%;
-        min-height: 52px;
+        min-height: calc(
+            var(--staking-metric-row-height) +
+            var(--staking-actions-row-gap) +
+            var(--staking-actions-row-height)
+        );
     }
 
     .staking-pairs-table .staking-cell-value {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 24px;
         width: 100%;
+        min-height: var(--staking-metric-row-height);
+    }
+
+    .staking-pairs-table .staking-cell--apr .staking-cell-value,
+    .staking-pairs-table .staking-cell--weight .staking-cell-value,
+    .staking-pairs-table .staking-cell--tvl .staking-cell-value,
+    .staking-pairs-table .staking-cell--share .staking-cell-value,
+    .staking-pairs-table .staking-cell--reward .staking-cell-value {
+        height: var(--staking-metric-row-height);
+    }
+
+    .staking-pairs-table .staking-cell--pair .staking-cell-value {
+        align-items: flex-start;
+        height: auto;
+        min-height: var(--staking-metric-row-height);
     }
 
     .staking-pairs-table .staking-cell-footer {
@@ -223,9 +248,9 @@ body {
         display: flex;
         align-items: flex-start;
         justify-content: center;
-        min-height: 34px;
-        padding-top: 8px;
         width: 100%;
+        min-height: var(--staking-actions-row-height);
+        margin-top: var(--staking-actions-row-gap);
     }
 }
 
