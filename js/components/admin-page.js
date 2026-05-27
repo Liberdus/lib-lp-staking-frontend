@@ -4449,6 +4449,63 @@ class AdminPage {
     }
 
     // Form validation system
+    async loadAddPairRegistry() {
+        const contractManager = await this.ensureContractReady();
+        this.addPairRegistryPairs = await contractManager.getAllPairsInfo();
+    }
+
+    getAddPairConflict(lpAddress) {
+        const normalizedAddress = lpAddress.toLowerCase();
+
+        for (const pair of this.addPairRegistryPairs) {
+            if (pair.isActive && pair.address.toLowerCase() === normalizedAddress) {
+                return `This LP token is already registered as ${pair.name} on ${pair.platform}`;
+            }
+        }
+
+        for (const proposal of this.proposalsCache.values()) {
+            if (proposal.actionType !== 'ADD_PAIR') {
+                continue;
+            }
+            if (proposal.executed || proposal.rejected || proposal.expired) {
+                continue;
+            }
+            if (!proposal.pairToAdd || proposal.pairToAdd.toLowerCase() !== normalizedAddress) {
+                continue;
+            }
+            if (proposal.pairNameToAdd) {
+                return `An add-pair proposal for ${proposal.pairNameToAdd} is already pending`;
+            }
+            return 'An add-pair proposal for this LP token is already pending';
+        }
+
+        return null;
+    }
+
+    async validateAddPairLpAddress(address) {
+        const contractManager = await this.ensureContractReady();
+        if (!this.addPairRegistryPairs) {
+            this.addPairRegistryPairs = await contractManager.getAllPairsInfo();
+        }
+
+        const v2Validation = await contractManager.validateV2CompatibleLpToken(address);
+        if (!v2Validation.valid) {
+            return { status: 'invalid', error: v2Validation.error };
+        }
+
+        const conflictError = this.getAddPairConflict(v2Validation.address);
+        if (conflictError) {
+            return { status: 'invalid', error: conflictError };
+        }
+
+        return {
+            status: 'valid',
+            address: v2Validation.address,
+            token0: v2Validation.token0,
+            token1: v2Validation.token1
+        };
+    }
+
     initializeAddPairFormValidation() {
         const form = document.getElementById('add-pair-form');
         this.addPairLpCheckSeq = 0;
@@ -4488,16 +4545,19 @@ class AdminPage {
             };
 
             try {
-                const contractManager = await this.ensureContractReady();
-                const result = await contractManager.validateV2CompatibleLpToken(address);
+                const validation = await this.validateAddPairLpAddress(address);
                 if (!isCurrentRequest()) {
                     return;
                 }
-                if (!result.valid) {
-                    this.setAddPairLpValidation({ status: 'invalid', error: result.error });
+                if (validation.status === 'valid') {
+                    this.setAddPairLpValidation({
+                        status: 'valid',
+                        token0: validation.token0,
+                        token1: validation.token1
+                    });
                     return;
                 }
-                this.setAddPairLpValidation({ status: 'valid', token0: result.token0, token1: result.token1 });
+                this.setAddPairLpValidation(validation);
             } catch (error) {
                 if (!isCurrentRequest()) {
                     return;
@@ -5324,14 +5384,14 @@ class AdminPage {
         }
 
         try {
-            const contractManager = await this.ensureContractReady();
-            const lpValidation = await contractManager.validateV2CompatibleLpToken(pairAddress);
-            if (!lpValidation.valid) {
-                this.setAddPairLpValidation({ status: 'invalid', error: lpValidation.error });
+            const lpValidation = await this.validateAddPairLpAddress(pairAddress);
+            if (lpValidation.status !== 'valid') {
+                this.setAddPairLpValidation(lpValidation);
                 this.showError('Invalid LP token address', lpValidation.error);
                 return;
             }
 
+            const contractManager = await this.ensureContractReady();
             const result = await contractManager.proposeAddPair(lpValidation.address, pairName, platform, weightNum);
 
             if (result.success) {
