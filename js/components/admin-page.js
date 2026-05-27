@@ -779,6 +779,9 @@ class AdminPage {
                                 await this.submitHourlyRateProposal(e);
                                 break;
                             case 'add-pair-form':
+                                if (this.addPairLpValidation.status !== 'valid') {
+                                    return;
+                                }
                                 await this.submitAddPairProposal(e);
                                 break;
                             case 'remove-pair-form':
@@ -3978,7 +3981,7 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn">
+                        <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn" disabled>
                             <span class="btn-text">Create Proposal</span>
                             <span class="btn-loading" style="display: none;">
                                 <span class="spinner"></span> Creating...
@@ -3999,7 +4002,7 @@ class AdminPage {
             try {
                 // Set flag to prevent immediate validation
                 this.modalJustOpened = true;
-                this.initializeFormValidation('add-pair-form');
+                this.initializeAddPairFormValidation();
 
                 // Clear flag after a short delay
                 setTimeout(() => {
@@ -4558,12 +4561,6 @@ class AdminPage {
 
         // Specific field validations
         switch (fieldId) {
-            case 'pair-address':
-                if (value && !this.isValidAddress(value)) {
-                    isValid = false;
-                    errorMessage = 'Invalid Ethereum address format';
-                }
-                break;
             case 'pair-name':
                 if (value && (value.length < 2 || value.length > 50)) {
                     isValid = false;
