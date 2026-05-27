@@ -5197,19 +5197,14 @@ class AdminPage {
     async submitAddPairProposal(event = null) {
         if (event) event.preventDefault();
 
-        const pairAddress = document.getElementById('pair-address').value;
+        const pairAddressInput = document.getElementById('pair-address');
+        const pairAddress = pairAddressInput.value.trim();
         const weight = document.getElementById('pair-weight').value;
         const pairName = document.getElementById('pair-name').value;
         const platform = document.getElementById('pair-platform').value;
 
-        // Enhanced validation with detailed feedback
         if (!pairAddress || !weight || !pairName || !platform) {
             this.showError('Please fill in all required fields: LP Address, Weight, Pair Name, and Platform');
-            return;
-        }
-
-        if (!this.isValidAddress(pairAddress)) {
-            this.showError('Invalid LP token address format. Please enter a valid Ethereum address starting with 0x');
             return;
         }
 
@@ -5231,7 +5226,15 @@ class AdminPage {
 
         try {
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum);
+            const lpValidation = await contractManager.validateV2CompatibleLpToken(pairAddress);
+            if (!lpValidation.valid) {
+                document.getElementById('pair-address-error').textContent = lpValidation.error;
+                pairAddressInput.classList.add('error');
+                this.showError('Invalid LP token address', lpValidation.error);
+                return;
+            }
+
+            const result = await contractManager.proposeAddPair(lpValidation.address, pairName, platform, weightNum);
 
             if (result.success) {
                 this.closeModal();
