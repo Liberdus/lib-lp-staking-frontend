@@ -203,8 +203,12 @@ body {
 @media (min-width: 769px) {
     .staking-pairs-table {
         --staking-metric-row-height: 24px;
-        --staking-actions-row-height: 34px;
-        --staking-actions-row-gap: 8px;
+        --staking-actions-row-height: 28px;
+        --staking-actions-row-gap: 6px;
+    }
+
+    .staking-pairs-table tbody .staking-cell {
+        padding-bottom: 10px;
     }
 
     .staking-pairs-table .staking-cell-body {
@@ -246,7 +250,7 @@ body {
     .staking-pairs-table .staking-cell-footer {
         flex: 0 0 auto;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
         width: 100%;
         min-height: var(--staking-actions-row-height);
