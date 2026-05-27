@@ -496,28 +496,52 @@ class HomePage {
                     <span style="font-weight: 600;">${this.formatTvlDisplay(pair)}</span>
                 </td>
                 <td class="staking-cell staking-cell--share" data-label="My Share">
-                    <button class="btn btn-primary btn-small btn-share"
-                            data-pair-id="${pair.id}"
-                            data-pair-address="${pair.address}"
-                            data-tab="0"
-                            title="Stake or Unstake"
-                            style="min-width: 100px;">
-                        <span class="material-icons" style="font-size: 16px;">share</span>
-                        ${userShares}%
-                    </button>
+                    <div class="staking-metric-stack">
+                        <span class="staking-metric-value">${userShares}%</span>
+                        <div class="staking-row-actions staking-row-actions--desktop">
+                            ${this.renderPairActionButton(pair, 'stake')}
+                            ${this.renderPairActionButton(pair, 'unstake')}
+                        </div>
+                    </div>
                 </td>
                 <td class="staking-cell staking-cell--reward" data-label="My Reward">
-                    <button class="btn btn-secondary btn-small btn-earnings"
-                            data-pair-id="${pair.id}"
-                            data-pair-address="${pair.address}"
-                            data-tab="2"
-                            title="Claim reward"
-                            style="min-width: 120px;">
-                        <span class="material-icons" style="font-size: 16px;">redeem</span>
-                        ${userEarnings} LIB
-                    </button>
+                    <div class="staking-metric-stack">
+                        <span class="staking-metric-value">${userEarnings} LIB</span>
+                        <div class="staking-row-actions staking-row-actions--desktop">
+                            ${this.renderPairActionButton(pair, 'claim')}
+                        </div>
+                    </div>
+                </td>
+                <td class="staking-cell staking-cell--actions" data-label="">
+                    <div class="staking-row-actions staking-row-actions--mobile">
+                        ${this.renderPairActionButton(pair, 'stake')}
+                        ${this.renderPairActionButton(pair, 'unstake')}
+                        ${this.renderPairActionButton(pair, 'claim')}
+                    </div>
                 </td>
             </tr>
+        `;
+    }
+
+    renderPairActionButton(pair, action) {
+        const buttonConfig = {
+            stake: { className: 'btn-primary btn-stake', label: 'Stake' },
+            unstake: { className: 'btn-secondary btn-unstake', label: 'Unstake' },
+            claim: { className: 'btn-secondary btn-claim', label: 'Claim' }
+        };
+        const config = buttonConfig[action];
+        if (!config) {
+            return '';
+        }
+
+        return `
+            <button
+                type="button"
+                class="btn ${config.className} btn-small"
+                data-pair-id="${pair.id}"
+                data-pair-address="${pair.address}"
+                data-action="${action}"
+            >${config.label}</button>
         `;
     }
 
@@ -559,31 +583,19 @@ class HomePage {
                 }
             }
 
-            // Handle Share button click (open modal on Stake tab)
-            if (e.target.closest('.btn-share')) {
+            const actionButton = e.target.closest('.btn-stake, .btn-unstake, .btn-claim');
+            if (actionButton) {
                 e.stopPropagation();
                 if (!this.isWalletConnected()) {
                     this.showWalletRequiredToast();
                     return;
                 }
 
-                const button = e.target.closest('.btn-share');
-                const pairId = button.dataset.pairId;
-                const tab = parseInt(button.dataset.tab) || 0;
-                this.openStakingModal(pairId, tab === 0 ? 'stake' : 'unstake');
-            }
-
-            // Handle Earnings button click (open modal on Claim tab)
-            if (e.target.closest('.btn-earnings')) {
-                e.stopPropagation();
-                if (!this.isWalletConnected()) {
-                    this.showWalletRequiredToast();
-                    return;
+                const pairId = actionButton.dataset.pairId;
+                const action = actionButton.dataset.action;
+                if (pairId && action) {
+                    this.openStakingModal(pairId, action);
                 }
-
-                const button = e.target.closest('.btn-earnings');
-                const pairId = button.dataset.pairId;
-                this.openStakingModal(pairId, 'claim');
             }
 
         });
