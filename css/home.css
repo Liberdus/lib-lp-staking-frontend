@@ -168,30 +168,64 @@ body {
     justify-content: center;
 }
 
-.staking-metric-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    min-width: 0;
-}
-
-.staking-metric-value {
+.staking-metric-value,
+.staking-apr-value {
     font-weight: 600;
     line-height: 1.35;
     white-space: nowrap;
+}
+
+.staking-apr-value {
+    color: var(--success-main);
+    font-weight: 700;
 }
 
 .staking-row-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    width: 100%;
 }
 
 .staking-pairs-table .staking-cell--share,
 .staking-pairs-table .staking-cell--reward {
     min-width: 132px;
+    text-align: center;
+}
+
+@media (min-width: 769px) {
+    .staking-pairs-table .staking-cell-body {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        min-height: 52px;
+    }
+
+    .staking-pairs-table .staking-cell-value {
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 24px;
+    }
+
+    .staking-pairs-table .staking-cell--share .staking-cell-value,
+    .staking-pairs-table .staking-cell--reward .staking-cell-value {
+        justify-content: center;
+    }
+
+    .staking-pairs-table .staking-cell-footer {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        min-height: 34px;
+        padding-top: 8px;
+        width: 100%;
+    }
 }
 
 .staking-pairs-table .staking-cell--actions {
@@ -712,6 +746,10 @@ body {
     .staking-pairs-table .staking-cell--share,
     .staking-pairs-table .staking-cell--reward {
         min-height: 0;
+    }
+
+    .staking-pairs-table .staking-cell-footer {
+        display: none;
     }
 }
 

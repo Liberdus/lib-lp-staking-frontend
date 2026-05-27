@@ -476,41 +476,42 @@ class HomePage {
             ? `<a href="${platformUrl}" target="_blank" rel="noopener noreferrer" class="platform-link" title="View pool on ${platform}" style="font-size: 12px; color: var(--text-secondary); display: inline-block;">${platform}</a>`
             : `<span style="font-size: 12px; color: var(--text-secondary);">${platform}</span>`;
         
+        const shareActionsHtml = `
+            <div class="staking-row-actions staking-row-actions--desktop">
+                ${this.renderPairActionButton(pair, 'stake')}
+                ${this.renderPairActionButton(pair, 'unstake')}
+            </div>
+        `;
+        const claimActionHtml = `
+            <div class="staking-row-actions staking-row-actions--desktop">
+                ${this.renderPairActionButton(pair, 'claim')}
+            </div>
+        `;
+
         return `
             <tr class="pair-row" data-pair-id="${pair.id}" style="cursor: pointer;">
                 <td class="staking-cell staking-cell--pair" data-label="Pair">
-                    <div class="pair-link-stack">
-                        ${pairNameHtml}
-                        ${platformHtml}
-                    </div>
+                    ${this.renderStakingCellBody(`
+                        <div class="pair-link-stack">
+                            ${pairNameHtml}
+                            ${platformHtml}
+                        </div>
+                    `)}
                 </td>
                 <td class="staking-cell staking-cell--apr" data-label="APR">
-                    <span style="color: var(--success-main); font-weight: bold;">${pair.apr || '0.00'}%</span>
+                    ${this.renderStakingCellBody(`<span class="staking-apr-value">${pair.apr || '0.00'}%</span>`)}
                 </td>
                 <td class="staking-cell staking-cell--weight" data-label="Weight">
-                    <span style="font-weight: 600;">
-                        ${pair.weightPercentage || '0.00'}%
-                    </span>
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${pair.weightPercentage || '0.00'}%</span>`)}
                 </td>
                 <td class="staking-cell staking-cell--tvl" data-label="TVL">
-                    <span style="font-weight: 600;">${this.formatTvlDisplay(pair)}</span>
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${this.formatTvlDisplay(pair)}</span>`)}
                 </td>
                 <td class="staking-cell staking-cell--share" data-label="My Share">
-                    <div class="staking-metric-stack">
-                        <span class="staking-metric-value">${userShares}%</span>
-                        <div class="staking-row-actions staking-row-actions--desktop">
-                            ${this.renderPairActionButton(pair, 'stake')}
-                            ${this.renderPairActionButton(pair, 'unstake')}
-                        </div>
-                    </div>
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userShares}%</span>`, shareActionsHtml)}
                 </td>
                 <td class="staking-cell staking-cell--reward" data-label="My Reward">
-                    <div class="staking-metric-stack">
-                        <span class="staking-metric-value">${userEarnings} LIB</span>
-                        <div class="staking-row-actions staking-row-actions--desktop">
-                            ${this.renderPairActionButton(pair, 'claim')}
-                        </div>
-                    </div>
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userEarnings} LIB</span>`, claimActionHtml)}
                 </td>
                 <td class="staking-cell staking-cell--actions" data-label="">
                     <div class="staking-row-actions staking-row-actions--mobile">
@@ -523,11 +524,20 @@ class HomePage {
         `;
     }
 
+    renderStakingCellBody(valueHtml, footerHtml = '') {
+        return `
+            <div class="staking-cell-body">
+                <div class="staking-cell-value">${valueHtml}</div>
+                <div class="staking-cell-footer">${footerHtml}</div>
+            </div>
+        `;
+    }
+
     renderPairActionButton(pair, action) {
         const buttonConfig = {
             stake: { className: 'btn-primary btn-stake', label: 'Stake' },
-            unstake: { className: 'btn-secondary btn-unstake', label: 'Unstake' },
-            claim: { className: 'btn-secondary btn-claim', label: 'Claim' }
+            unstake: { className: 'btn-danger btn-unstake', label: 'Unstake' },
+            claim: { className: 'btn-success btn-claim', label: 'Claim' }
         };
         const config = buttonConfig[action];
         if (!config) {

@@ -157,7 +157,12 @@ describe('HomePage.renderPairRow', () => {
         expect(output).toContain('staking-metric-value">1.2345 LIB</span>');
         expect(output).toContain('btn-stake');
         expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-danger btn-unstake');
         expect(output).toContain('btn-claim');
+        expect(output).toContain('btn-success btn-claim');
+        expect(output).toContain('staking-cell-body');
+        expect(output).toContain('staking-cell-value');
+        expect(output).toContain('staking-cell-footer');
         expect(output).toContain('>Stake</button>');
         expect(output).toContain('>Unstake</button>');
         expect(output).toContain('>Claim</button>');
@@ -182,7 +187,12 @@ describe('HomePage.renderPairRow', () => {
 
         expect(output).toContain('btn-stake');
         expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-danger btn-unstake');
         expect(output).toContain('btn-claim');
+        expect(output).toContain('btn-success btn-claim');
+        expect(output).toContain('staking-cell-body');
+        expect(output).toContain('staking-cell-value');
+        expect(output).toContain('staking-cell-footer');
         expect(output).not.toContain('disabled');
     });
 
@@ -205,7 +215,12 @@ describe('HomePage.renderPairRow', () => {
 
         expect(output).toContain('btn-stake');
         expect(output).toContain('btn-unstake');
+        expect(output).toContain('btn-danger btn-unstake');
         expect(output).toContain('btn-claim');
+        expect(output).toContain('btn-success btn-claim');
+        expect(output).toContain('staking-cell-body');
+        expect(output).toContain('staking-cell-value');
+        expect(output).toContain('staking-cell-footer');
         expect(output).not.toContain('disabled');
     });
 });
