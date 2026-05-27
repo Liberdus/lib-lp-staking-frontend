@@ -3374,8 +3374,14 @@ class StakingModalNew {
             Math.abs(removeLiquidityPercentage - percentage) < 0.001
         );
         const balanceErrorClass = balanceError ? '' : ' zap-balance-error-empty';
+        const pairName = this.escapeHtml(this.currentPair?.name || 'this pair');
 
         return `
+            <div class="zap-info-panel">
+                <span class="material-icons">info</span>
+                <span>Remove LP burns your ${pairName} LP tokens and returns the underlying pool tokens. Enable Convert to one preferred token to receive a single token via zap-out in one transaction.</span>
+            </div>
+
             <div class="balance-info">
                 <span class="balance-label">Available LP Tokens:</span>
                 <span class="balance-value">${this.userBalance} LP${this.renderInlineLpUsdEstimate(this.userBalance)}</span>
