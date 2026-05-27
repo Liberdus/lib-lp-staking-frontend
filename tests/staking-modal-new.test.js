@@ -376,6 +376,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Remove LP</span>');
+        expect(modalContainer.innerHTML).toContain('<h2 class="modal-title" id="modal-title">Stake</h2>');
     });
 
     it('derives LP USD estimates from pair TVL data', async () => {
@@ -2162,24 +2163,7 @@ describe('StakingModalNew zap cleanup', () => {
 });
 
 describe('StakingModalNew modal title', () => {
-    afterEach(() => {
-        vi.restoreAllMocks();
-        delete globalThis.StakingModalNew;
-    });
-
-    it('maps each tab id to the matching title', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modal = new StakingModalNew();
-
-        expect(modal.getTabTitle('zap')).toBe('Create LP');
-        expect(modal.getTabTitle('stake')).toBe('Stake');
-        expect(modal.getTabTitle('unstake')).toBe('Unstake');
-        expect(modal.getTabTitle('claim')).toBe('Claim');
-        expect(modal.getTabTitle('remove-liquidity')).toBe('Remove LP');
-        expect(() => modal.getTabTitle('invalid-tab')).toThrow('Unknown staking modal tab: invalid-tab');
-    });
-
-    it('updates the header title when switching tabs', async () => {
+    it('syncs the header title to the active tab', async () => {
         const StakingModalNew = await loadStakingModalClass();
         const titleElement = document.registerElement(createElement({ id: 'modal-title' }));
         const modal = new StakingModalNew();
@@ -2190,16 +2174,9 @@ describe('StakingModalNew modal title', () => {
         modal.switchTab('claim');
         expect(titleElement.textContent).toBe('Claim');
 
-        modal.switchTab('remove-liquidity');
-        expect(titleElement.textContent).toBe('Remove LP');
-    });
+        modal.switchTab('zap');
+        expect(titleElement.textContent).toBe('Create LP');
 
-    it('renders the modal title element for updates', async () => {
-        const StakingModalNew = await loadStakingModalClass();
-        const modalContainer = document.registerElement(createElement({ id: 'modal-container' }));
-
-        new StakingModalNew();
-
-        expect(modalContainer.innerHTML).toContain('<h2 class="modal-title" id="modal-title">Stake</h2>');
+        expect(() => modal.switchTab('invalid-tab')).toThrow('Unknown staking modal tab: invalid-tab');
     });
 });

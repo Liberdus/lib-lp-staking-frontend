@@ -3133,37 +3133,26 @@ class StakingModalNew {
         `;
     }
 
-    getTabTitle(tab) {
+    switchTab(tab) {
         const title = StakingModalNew.TAB_TITLES[tab];
         if (!title) {
             throw new Error(`Unknown staking modal tab: ${tab}`);
         }
 
-        return title;
-    }
-
-    updateModalTitle(tab) {
-        const titleElement = document.getElementById('modal-title');
-        if (!titleElement) {
-            return;
-        }
-
-        titleElement.textContent = this.getTabTitle(tab);
-    }
-
-    switchTab(tab) {
         this.currentTab = tab;
         this.syncZapQuoteAutoRefresh();
         this.syncRemoveLiquidityPreviewAutoRefresh();
 
-        // Update tab buttons
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
 
-        this.updateModalTitle(tab);
+        const titleElement = document.getElementById('modal-title');
+        if (!titleElement) {
+            throw new Error('modal-title element is missing');
+        }
+        titleElement.textContent = title;
 
-        // Render tab content
         this.renderTabContent();
     }
 
