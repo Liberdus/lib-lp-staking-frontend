@@ -476,15 +476,9 @@ class HomePage {
             ? `<a href="${platformUrl}" target="_blank" rel="noopener noreferrer" class="platform-link" title="View pool on ${platform}" style="font-size: 12px; color: var(--text-secondary); display: inline-block;">${platform}</a>`
             : `<span style="font-size: 12px; color: var(--text-secondary);">${platform}</span>`;
         
-        const shareActionsHtml = `
+        const desktopActions = (actions) => `
             <div class="staking-row-actions staking-row-actions--desktop">
-                ${this.renderPairActionButton(pair, 'stake')}
-                ${this.renderPairActionButton(pair, 'unstake')}
-            </div>
-        `;
-        const claimActionHtml = `
-            <div class="staking-row-actions staking-row-actions--desktop">
-                ${this.renderPairActionButton(pair, 'claim')}
+                ${actions.map((action) => this.renderPairActionButton(pair, action)).join('')}
             </div>
         `;
 
@@ -499,7 +493,7 @@ class HomePage {
                     `)}
                 </td>
                 <td class="staking-cell staking-cell--apr" data-label="APR">
-                    ${this.renderStakingCellBody(`<span class="staking-apr-value">${pair.apr || '0.00'}%</span>`)}
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value staking-metric-value--apr">${pair.apr || '0.00'}%</span>`)}
                 </td>
                 <td class="staking-cell staking-cell--weight" data-label="Weight">
                     ${this.renderStakingCellBody(`<span class="staking-metric-value">${pair.weightPercentage || '0.00'}%</span>`)}
@@ -508,10 +502,10 @@ class HomePage {
                     ${this.renderStakingCellBody(`<span class="staking-metric-value">${this.formatTvlDisplay(pair)}</span>`)}
                 </td>
                 <td class="staking-cell staking-cell--share" data-label="My Share">
-                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userShares}%</span>`, shareActionsHtml)}
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userShares}%</span>`, desktopActions(['stake', 'unstake']))}
                 </td>
                 <td class="staking-cell staking-cell--reward" data-label="My Reward">
-                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userEarnings} LIB</span>`, claimActionHtml)}
+                    ${this.renderStakingCellBody(`<span class="staking-metric-value">${userEarnings} LIB</span>`, desktopActions(['claim']))}
                 </td>
                 <td class="staking-cell staking-cell--actions" data-label="">
                     <div class="staking-row-actions staking-row-actions--mobile">
@@ -524,35 +518,22 @@ class HomePage {
         `;
     }
 
-    renderStakingCellBody(valueHtml, footerHtml = '') {
-        return `
-            <div class="staking-cell-body">
-                <div class="staking-cell-value">${valueHtml}</div>
-                <div class="staking-cell-footer">${footerHtml}</div>
-            </div>
-        `;
+    renderStakingCellBody(valueHtml, footerHtml) {
+        return `<div class="staking-cell-body"><div class="staking-cell-value">${valueHtml}</div><div class="staking-cell-footer">${footerHtml || ''}</div></div>`;
     }
 
     renderPairActionButton(pair, action) {
-        const buttonConfig = {
-            stake: { className: 'btn-primary btn-stake', label: 'Stake' },
-            unstake: { className: 'btn-danger btn-unstake', label: 'Unstake' },
-            claim: { className: 'btn-success btn-claim', label: 'Claim' }
+        const classes = {
+            stake: 'btn-primary btn-stake',
+            unstake: 'btn-danger btn-unstake',
+            claim: 'btn-success btn-claim'
         };
-        const config = buttonConfig[action];
-        if (!config) {
-            return '';
+        const labels = { stake: 'Stake', unstake: 'Unstake', claim: 'Claim' };
+        if (!classes[action]) {
+            throw new Error(`Unknown staking row action: ${action}`);
         }
 
-        return `
-            <button
-                type="button"
-                class="btn ${config.className} btn-small"
-                data-pair-id="${pair.id}"
-                data-pair-address="${pair.address}"
-                data-action="${action}"
-            >${config.label}</button>
-        `;
+        return `<button type="button" class="btn ${classes[action]} btn-small" data-pair-id="${pair.id}" data-pair-address="${pair.address}" data-action="${action}">${labels[action]}</button>`;
     }
 
     attachEventListeners() {
@@ -601,11 +582,7 @@ class HomePage {
                     return;
                 }
 
-                const pairId = actionButton.dataset.pairId;
-                const action = actionButton.dataset.action;
-                if (pairId && action) {
-                    this.openStakingModal(pairId, action);
-                }
+                this.openStakingModal(actionButton.dataset.pairId, actionButton.dataset.action);
             }
 
         });

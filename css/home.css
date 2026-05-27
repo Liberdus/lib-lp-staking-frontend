@@ -174,14 +174,13 @@ body {
     justify-content: center;
 }
 
-.staking-metric-value,
-.staking-apr-value {
+.staking-metric-value {
     font-weight: 600;
     line-height: 1.35;
     white-space: nowrap;
 }
 
-.staking-apr-value {
+.staking-metric-value--apr {
     color: var(--success-main);
     font-weight: 700;
 }
@@ -231,20 +230,12 @@ body {
         justify-content: center;
         width: 100%;
         min-height: var(--staking-metric-row-height);
-    }
-
-    .staking-pairs-table .staking-cell--apr .staking-cell-value,
-    .staking-pairs-table .staking-cell--weight .staking-cell-value,
-    .staking-pairs-table .staking-cell--tvl .staking-cell-value,
-    .staking-pairs-table .staking-cell--share .staking-cell-value,
-    .staking-pairs-table .staking-cell--reward .staking-cell-value {
         height: var(--staking-metric-row-height);
     }
 
     .staking-pairs-table .staking-cell--pair .staking-cell-value {
         align-items: flex-start;
         height: auto;
-        min-height: var(--staking-metric-row-height);
     }
 
     .staking-pairs-table .staking-cell-footer {
