@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const LIB_TOKEN_ADDRESS = '0x05A4cfAF5a8f939d61E4Ec6D6287c9a065d6574c';
 const USDT_TOKEN_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
+const UNSTAKE_RECIPIENT_ADDRESS = '0x2222222222222222222222222222222222222222';
+const CLAIM_RECIPIENT_ADDRESS = '0x3333333333333333333333333333333333333333';
 
 function createClassList(initialClasses = []) {
     const classes = new Set(initialClasses);
@@ -283,6 +285,23 @@ function arrangeReadyRemoveLiquidityPreview(modal, { convert = false } = {}) {
     }
 }
 
+function arrangeRecipientSubmission(modal, contractMethods) {
+    modal.currentPair = { lpToken: '0xlp', address: '0xlp' };
+    modal.clearInputs = vi.fn();
+    modal.close = vi.fn();
+    globalThis.contractManager = {
+        isReady: vi.fn(() => true),
+        validateAndChecksumAddress: vi.fn(address => address),
+        ...contractMethods
+    };
+    globalThis.notificationManager = {
+        info: vi.fn(),
+        success: vi.fn(),
+        error: vi.fn()
+    };
+    globalThis.homePage = { refreshData: vi.fn().mockResolvedValue(undefined) };
+}
+
 function registerRemoveLiquidityButton(title = 'Wait for a supported remove-liquidity preview.') {
     const icon = { textContent: 'swap_horiz' };
     const text = { textContent: ' Remove LP Liquidity' };
@@ -449,6 +468,33 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('$30.00');
     });
 
+    it.each([
+        ['unstake', 'renderUnstakeTab', 'unstakeRecipientEnabled', 'unstakeRecipientAddress', UNSTAKE_RECIPIENT_ADDRESS],
+        ['claim', 'renderClaimTab', 'claimRecipientEnabled', 'claimRecipientAddress', CLAIM_RECIPIENT_ADDRESS]
+    ])('keeps the %s recipient field hidden until the recipient checkbox is enabled', async (
+        action,
+        renderMethod,
+        enabledKey,
+        addressKey,
+        recipientAddress
+    ) => {
+        const modal = await createLoadedModal();
+
+        const defaultHtml = modal[renderMethod]();
+        modal[enabledKey] = true;
+        modal[addressKey] = recipientAddress;
+        const overrideHtml = modal[renderMethod]();
+
+        expect(defaultHtml).toContain('Send to another wallet');
+        expect(defaultHtml).toContain(`id="${action}-recipient-checkbox"`);
+        expect(defaultHtml).toContain('Receiving wallet:');
+        expect(defaultHtml).toContain('Connected wallet');
+        expect(defaultHtml).not.toContain(`id="${action}-recipient-input"`);
+        expect(overrideHtml).toContain(`id="${action}-recipient-input"`);
+        expect(overrideHtml).toContain(recipientAddress);
+        expect(overrideHtml).toContain('Receiving wallet:');
+    });
+
     it('updates unstake input USD estimates from the slider path', async () => {
         const modal = await createLoadedModal();
         modal.currentPair = { tvlUsd: 2000, tvl: 100 };
@@ -487,6 +533,37 @@ describe('StakingModalNew zap cleanup', () => {
         const html = modal.renderClaimTab();
 
         expect(html).toContain('4 LP <span class="lp-usd-estimate">($80.00)</span>');
+    });
+
+    it('sets and clears recipient override state from checkbox selection', async () => {
+        const modal = await createLoadedModal();
+
+        modal.setRecipientOverride('unstake', true);
+        expect(modal.unstakeRecipientEnabled).toBe(true);
+
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+        modal.setRecipientOverride('unstake', false);
+        expect(modal.unstakeRecipientEnabled).toBe(false);
+        expect(modal.unstakeRecipientAddress).toBe('');
+
+        modal.claimRecipientEnabled = true;
+        modal.claimRecipientAddress = CLAIM_RECIPIENT_ADDRESS;
+        modal.clearRecipientOverride('claim');
+        expect(modal.claimRecipientEnabled).toBe(false);
+        expect(modal.claimRecipientAddress).toBe('');
+    });
+
+    it('hides and ignores the unstake recipient override when rewards are not claimed', async () => {
+        const modal = await createLoadedModal();
+        modal.claimRewardsOnUnstake = false;
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+
+        const html = modal.renderUnstakeTab();
+
+        expect(html).not.toContain('id="unstake-recipient-checkbox"');
+        expect(html).not.toContain('id="unstake-recipient-input"');
+        expect(modal.getValidatedRecipient('unstake')).toEqual({ success: true, address: null });
     });
 
     it('startZapQuoteAutoRefresh stops instead of refreshing while zap is executing', async () => {
@@ -1810,6 +1887,103 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modal.executeRemoveLiquidityTransaction).not.toHaveBeenCalled();
         expect(modal.clearInputs).toHaveBeenCalled();
         expect(modal.close).toHaveBeenCalled();
+    });
+
+    it('passes a custom recipient when executing recipient-aware unstake', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.unstakeAmount = '1';
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
+            unstake: vi.fn(async () => ({ success: true, hash: '0xunstake-to' }))
+        });
+
+        const executePromise = modal.executeUnstake();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.unstake).toHaveBeenCalledWith(
+            '0xlp',
+            '1',
+            true,
+            UNSTAKE_RECIPIENT_ADDRESS
+        );
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
+    });
+
+    it('keeps unstake on the default recipient path when reward claiming is disabled', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.unstakeAmount = '1';
+        modal.claimRewardsOnUnstake = false;
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = UNSTAKE_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
+            unstake: vi.fn(async () => ({ success: true, hash: '0xunstake' }))
+        });
+
+        const executePromise = modal.executeUnstake();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.unstake).toHaveBeenCalledWith('0xlp', '1', false);
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
+    });
+
+    it('blocks unstake when the custom recipient is malformed', async () => {
+        const modal = await createLoadedModal();
+        modal.unstakeAmount = '1';
+        modal.unstakeRecipientEnabled = true;
+        modal.unstakeRecipientAddress = 'not-an-address';
+        arrangeRecipientSubmission(modal, {
+            unstake: vi.fn()
+        });
+
+        await modal.executeUnstake();
+
+        expect(globalThis.contractManager.unstake).not.toHaveBeenCalled();
+        expect(globalThis.notificationManager.error).toHaveBeenCalledWith('Enter a valid recipient address.');
+        expect(modal.unstakeRecipientError).toBe('Enter a valid recipient address.');
+        expect(modal.clearInputs).not.toHaveBeenCalled();
+        expect(modal.close).not.toHaveBeenCalled();
+    });
+
+    it('keeps default claim rewards submission unchanged', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.pendingRewards = '1';
+        arrangeRecipientSubmission(modal, {
+            claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim' }))
+        });
+
+        const executePromise = modal.executeClaim();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.claimRewards).toHaveBeenCalledWith('0xlp');
+        expect(globalThis.notificationManager.success).toHaveBeenCalledWith('Rewards claimed successfully!');
+    });
+
+    it('passes a custom recipient when executing recipient-aware claim', async () => {
+        vi.useFakeTimers();
+        const modal = await createLoadedModal();
+        modal.pendingRewards = '1';
+        modal.claimRecipientEnabled = true;
+        modal.claimRecipientAddress = CLAIM_RECIPIENT_ADDRESS;
+        arrangeRecipientSubmission(modal, {
+            claimRewards: vi.fn(async () => ({ success: true, hash: '0xclaim-to' }))
+        });
+
+        const executePromise = modal.executeClaim();
+        await vi.runAllTimersAsync();
+        await executePromise;
+
+        expect(globalThis.contractManager.claimRewards).toHaveBeenCalledWith(
+            '0xlp',
+            CLAIM_RECIPIENT_ADDRESS
+        );
+        expect(globalThis.notificationManager.error).not.toHaveBeenCalled();
     });
 
     it('executes remove liquidity from the dedicated Remove LP tab', async () => {
