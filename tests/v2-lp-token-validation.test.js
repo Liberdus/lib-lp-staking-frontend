@@ -22,6 +22,9 @@ async function loadContractManager(provider, pairContract) {
                     throw new Error('invalid address');
                 }
                 return value;
+            },
+            formatEther(value) {
+                return String(value);
             }
         },
         BigNumber: {
@@ -150,5 +153,44 @@ describe('ContractManager.validateV2CompatibleLpToken', () => {
             valid: false,
             error: 'Unable to verify LP token contract. Check your network connection and try again.'
         });
+    });
+});
+
+describe('ContractManager.getAllPairsInfo', () => {
+    beforeEach(() => {
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete globalThis.ContractManager;
+        delete globalThis.document;
+        delete globalThis.ethers;
+        delete globalThis.location;
+        delete globalThis.window;
+    });
+
+    it('uses cached pairs unless a force refresh is requested', async () => {
+        const manager = await loadContractManager(
+            { getCode: vi.fn().mockResolvedValue('0x6000') },
+            validPairContract()
+        );
+        const refreshedLp = '0x4444444444444444444444444444444444444444';
+        const getPairs = vi.fn()
+            .mockResolvedValueOnce([{ lpToken: LP, pairName: 'LIB/USDC', platform: 'Uniswap V2', isActive: true }])
+            .mockResolvedValueOnce([{ lpToken: refreshedLp, pairName: 'LIB/USDT', platform: 'SushiSwap', isActive: true }]);
+
+        manager.stakingContract = { getPairs };
+
+        const initialPairs = await manager.getAllPairsInfo();
+        const cachedPairs = await manager.getAllPairsInfo();
+        const refreshedPairs = await manager.getAllPairsInfo({ forceRefresh: true });
+
+        expect(getPairs).toHaveBeenCalledTimes(2);
+        expect(initialPairs[0].address).toBe(LP);
+        expect(cachedPairs[0].address).toBe(LP);
+        expect(refreshedPairs[0].address).toBe(refreshedLp);
     });
 });

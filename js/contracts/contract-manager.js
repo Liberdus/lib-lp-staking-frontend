@@ -3522,7 +3522,7 @@ class ContractManager {
     /**
      * Get all pairs with their information
      */
-    async getAllPairsInfo() {
+    async getAllPairsInfo({ forceRefresh = false } = {}) {
         return await this.executeWithRetry(async () => {
             if (!this.stakingContract) {
                 throw new Error('Staking contract not initialized');
@@ -3534,7 +3534,7 @@ class ContractManager {
                 // Try multiple methods to get pairs
                 let pairs = [];
 
-                if (Array.isArray(this.cachedPairs) && this.cachedPairs.length > 0) {
+                if (!forceRefresh && Array.isArray(this.cachedPairs) && this.cachedPairs.length > 0) {
                     pairs = this.cachedPairs;
                     console.log('✅ Using cached pairs:', pairs.length);
                 } else {
