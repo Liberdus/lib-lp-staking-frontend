@@ -34,6 +34,7 @@ class AdminPage {
 
         // UI state: remember proposal filter preference across refreshes
         this.proposalFilter = 'pending';
+        this.addPairLpValidation = { status: 'idle' };
 
         // Shared selectors for address copy functionality
         this.addressCopySelectors = [
@@ -778,6 +779,9 @@ class AdminPage {
                                 await this.submitHourlyRateProposal(e);
                                 break;
                             case 'add-pair-form':
+                                if (this.addPairLpValidation.status !== 'valid') {
+                                    return;
+                                }
                                 await this.submitAddPairProposal(e);
                                 break;
                             case 'remove-pair-form':
@@ -3928,7 +3932,7 @@ class AdminPage {
                                 <label for="pair-address">LP Token Address *</label>
                                 <input type="text" id="pair-address" class="form-input" required
                                        placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$">
-                                <small class="form-help">Enter the LP token contract address</small>
+                                <small class="form-help" id="pair-address-help">Enter the LP token contract address</small>
                                 <div class="field-error" id="pair-address-error"></div>
                             </div>
 
@@ -3977,7 +3981,7 @@ class AdminPage {
                         <button type="button" class="btn btn-secondary modal-cancel">
                             Cancel
                         </button>
-                        <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn">
+                        <button type="submit" form="add-pair-form" class="btn btn-primary" id="add-pair-btn" disabled>
                             <span class="btn-text">Create Proposal</span>
                             <span class="btn-loading" style="display: none;">
                                 <span class="spinner"></span> Creating...
@@ -3998,7 +4002,7 @@ class AdminPage {
             try {
                 // Set flag to prevent immediate validation
                 this.modalJustOpened = true;
-                this.initializeFormValidation('add-pair-form');
+                this.initializeAddPairFormValidation();
 
                 // Clear flag after a short delay
                 setTimeout(() => {
@@ -4414,6 +4418,11 @@ class AdminPage {
     }
 
     closeModal() {
+        clearTimeout(this.addPairLpCheckTimer);
+        this.addPairLpCheckTimer = null;
+        this.addPairLpValidation = { status: 'idle' };
+        this.addPairLpCheckSeq = 0;
+
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) {
             modalContainer.style.display = 'none';
@@ -4440,6 +4449,102 @@ class AdminPage {
     }
 
     // Form validation system
+    initializeAddPairFormValidation() {
+        const form = document.getElementById('add-pair-form');
+        this.addPairLpCheckSeq = 0;
+        this.setAddPairLpValidation({ status: 'idle' });
+
+        form.addEventListener('input', (e) => {
+            if (e.target.id === 'pair-address') {
+                this.scheduleAddPairLpValidation(e.target.value.trim());
+                return;
+            }
+            this.validateField(e.target);
+        });
+    }
+
+    scheduleAddPairLpValidation(address) {
+        clearTimeout(this.addPairLpCheckTimer);
+
+        if (!address) {
+            this.setAddPairLpValidation({ status: 'idle' });
+            return;
+        }
+
+        if (!this.isValidAddress(address)) {
+            this.setAddPairLpValidation({ status: 'invalid', error: 'Invalid Ethereum address format' });
+            return;
+        }
+
+        this.setAddPairLpValidation({ status: 'validating' });
+        const seq = ++this.addPairLpCheckSeq;
+        this.addPairLpCheckTimer = setTimeout(async () => {
+            const isCurrentRequest = () => {
+                if (seq !== this.addPairLpCheckSeq) {
+                    return false;
+                }
+                const pairAddressInput = document.getElementById('pair-address');
+                return pairAddressInput && pairAddressInput.value.trim() === address;
+            };
+
+            try {
+                const contractManager = await this.ensureContractReady();
+                const result = await contractManager.validateV2CompatibleLpToken(address);
+                if (!isCurrentRequest()) {
+                    return;
+                }
+                if (!result.valid) {
+                    this.setAddPairLpValidation({ status: 'invalid', error: result.error });
+                    return;
+                }
+                this.setAddPairLpValidation({ status: 'valid', token0: result.token0, token1: result.token1 });
+            } catch (error) {
+                if (!isCurrentRequest()) {
+                    return;
+                }
+                this.setAddPairLpValidation({
+                    status: 'invalid',
+                    error: 'Unable to verify LP token address. Check your network connection and try again.'
+                });
+            }
+        }, 500);
+    }
+
+    setAddPairLpValidation(state) {
+        this.addPairLpValidation = state;
+
+        const input = document.getElementById('pair-address');
+        const help = document.getElementById('pair-address-help');
+        const error = document.getElementById('pair-address-error');
+        const submitButton = document.getElementById('add-pair-btn');
+
+        input.classList.remove('error', 'valid');
+        error.textContent = '';
+        help.textContent = 'Enter the LP token contract address';
+
+        switch (state.status) {
+            case 'idle':
+                submitButton.disabled = true;
+                return;
+            case 'validating':
+                error.textContent = 'Validating LP token...';
+                submitButton.disabled = true;
+                return;
+            case 'invalid':
+                error.textContent = state.error;
+                input.classList.add('error');
+                submitButton.disabled = true;
+                return;
+            case 'valid':
+                help.textContent = `Valid V2 LP pair: ${state.token0.slice(0, 6)}...${state.token0.slice(-4)} / ${state.token1.slice(0, 6)}...${state.token1.slice(-4)}`;
+                input.classList.add('valid');
+                submitButton.disabled = false;
+                return;
+            default:
+                throw new Error(`Unknown add-pair LP validation status: ${state.status}`);
+        }
+    }
+
     initializeFormValidation(formId) {
         const form = document.getElementById(formId);
         if (!form) return;
@@ -4474,12 +4579,6 @@ class AdminPage {
 
         // Specific field validations
         switch (fieldId) {
-            case 'pair-address':
-                if (value && !this.isValidAddress(value)) {
-                    isValid = false;
-                    errorMessage = 'Invalid Ethereum address format';
-                }
-                break;
             case 'pair-name':
                 if (value && (value.length < 2 || value.length > 50)) {
                     isValid = false;
@@ -5197,19 +5296,14 @@ class AdminPage {
     async submitAddPairProposal(event = null) {
         if (event) event.preventDefault();
 
-        const pairAddress = document.getElementById('pair-address').value;
+        const pairAddressInput = document.getElementById('pair-address');
+        const pairAddress = pairAddressInput.value.trim();
         const weight = document.getElementById('pair-weight').value;
         const pairName = document.getElementById('pair-name').value;
         const platform = document.getElementById('pair-platform').value;
 
-        // Enhanced validation with detailed feedback
         if (!pairAddress || !weight || !pairName || !platform) {
             this.showError('Please fill in all required fields: LP Address, Weight, Pair Name, and Platform');
-            return;
-        }
-
-        if (!this.isValidAddress(pairAddress)) {
-            this.showError('Invalid LP token address format. Please enter a valid Ethereum address starting with 0x');
             return;
         }
 
@@ -5231,7 +5325,14 @@ class AdminPage {
 
         try {
             const contractManager = await this.ensureContractReady();
-            const result = await contractManager.proposeAddPair(pairAddress, pairName, platform, weightNum);
+            const lpValidation = await contractManager.validateV2CompatibleLpToken(pairAddress);
+            if (!lpValidation.valid) {
+                this.setAddPairLpValidation({ status: 'invalid', error: lpValidation.error });
+                this.showError('Invalid LP token address', lpValidation.error);
+                return;
+            }
+
+            const result = await contractManager.proposeAddPair(lpValidation.address, pairName, platform, weightNum);
 
             if (result.success) {
                 this.closeModal();
