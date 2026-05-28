@@ -116,14 +116,16 @@ describe('HomePage.renderPairRow', () => {
         delete globalThis.window;
     });
 
-    it('adds mobile card labels and cell classes to each staking row cell', async () => {
+    function renderPairRowOutput(homePagePrototype, pair, overrides = {}) {
+        const context = Object.create(homePagePrototype);
+        context.isWalletConnected = overrides.isWalletConnected || (() => true);
+        context.formatTvlDisplay = overrides.formatTvlDisplay || (() => '$1.2K');
+        return homePagePrototype.renderPairRow.call(context, pair);
+    }
+
+    it('renders inline row metrics and action buttons', async () => {
         const homePagePrototype = await loadHomePage();
-        const output = homePagePrototype.renderPairRow.call(
-            {
-                isWalletConnected: () => true,
-                formatTvlDisplay: () => '$1.2K'
-            },
-            {
+        const output = renderPairRowOutput(homePagePrototype, {
                 id: '1',
                 address: '0x123',
                 name: 'LIB/BNB',
@@ -145,47 +147,17 @@ describe('HomePage.renderPairRow', () => {
         ].forEach(([cell, label]) => {
             expect(output).toContain(`class="staking-cell staking-cell--${cell}" data-label="${label}"`);
         });
-    });
 
-    it('keeps table action buttons clickable when the wallet is disconnected', async () => {
-        const homePagePrototype = await loadHomePage();
-        const output = homePagePrototype.renderPairRow.call(
-            {
-                isWalletConnected: () => false,
-                formatTvlDisplay: () => '$1.2K'
-            },
-            {
-                id: '1',
-                address: '0x123',
-                name: 'LIB/BNB',
-                platform: 'PancakeSwap'
-            }
-        );
-
-        expect(output).toContain('btn-share');
-        expect(output).toContain('btn-earnings');
-        expect(output).not.toContain('disabled');
-    });
-
-    it('keeps table action buttons clickable when connected on the wrong network', async () => {
-        const homePagePrototype = await loadHomePage();
-        globalThis.networkManager.isOnRequiredNetwork.mockReturnValue(false);
-
-        const output = homePagePrototype.renderPairRow.call(
-            {
-                isWalletConnected: () => true,
-                formatTvlDisplay: () => '$1.2K'
-            },
-            {
-                id: '1',
-                address: '0x123',
-                name: 'LIB/BNB',
-                platform: 'PancakeSwap'
-            }
-        );
-
-        expect(output).toContain('btn-share');
-        expect(output).toContain('btn-earnings');
+        expect(output).toContain('class="staking-cell staking-cell--actions"');
+        expect(output).toContain('staking-metric-value">3.50%</span>');
+        expect(output).toContain('staking-metric-value">1.2345 LIB</span>');
+        expect(output).toContain('btn-danger btn-unstake');
+        expect(output).toContain('btn-success btn-claim');
+        expect(output).toContain('>Stake</button>');
+        expect(output).toContain('>Unstake</button>');
+        expect(output).toContain('>Claim</button>');
+        expect(output).not.toContain('btn-share');
+        expect(output).not.toContain('btn-earnings');
         expect(output).not.toContain('disabled');
     });
 });
@@ -217,17 +189,11 @@ describe('HomePage table action clicks', () => {
         clickHandler = undefined;
     });
 
-    function createActionButtonTarget(actionClass) {
+    function createActionButtonTarget(action) {
         const button = {
-            dataset: {
-                pairId: '1',
-                tab: actionClass === 'btn-share' ? '0' : '2'
-            },
+            dataset: { pairId: '1', action },
             closest(selector) {
-                if (selector === '.pair-row') return { dataset: { pairId: '1' } };
-                if (selector === 'button') return button;
-                if (selector === '.btn-share') return actionClass === 'btn-share' ? button : null;
-                if (selector === '.btn-earnings') return actionClass === 'btn-earnings' ? button : null;
+                if (selector === '.btn-stake, .btn-unstake, .btn-claim') return button;
                 return null;
             }
         };
@@ -262,13 +228,13 @@ describe('HomePage table action clicks', () => {
         expect(openStakingModal).not.toHaveBeenCalled();
     });
 
-    it.each(['btn-share', 'btn-earnings'])(
+    it.each(['stake', 'unstake', 'claim'])(
         'shows the wallet-required warning toast for disconnected %s clicks',
-        async (actionClass) => {
+        async (action) => {
             const homePagePrototype = await loadHomePage();
             const openStakingModal = vi.fn();
             const event = {
-                target: createActionButtonTarget(actionClass),
+                target: createActionButtonTarget(action),
                 stopPropagation: vi.fn()
             };
 
@@ -284,6 +250,23 @@ describe('HomePage table action clicks', () => {
             expect(openStakingModal).not.toHaveBeenCalled();
         }
     );
+
+    it.each(['stake', 'unstake', 'claim'])('opens the modal on the %s tab', async (action) => {
+        const homePagePrototype = await loadHomePage();
+        const openStakingModal = vi.fn();
+
+        homePagePrototype.attachEventListeners.call({
+            isWalletConnected: () => true,
+            showWalletRequiredToast: homePagePrototype.showWalletRequiredToast,
+            openStakingModal
+        });
+        clickHandler({
+            target: createActionButtonTarget(action),
+            stopPropagation: vi.fn()
+        });
+
+        expect(openStakingModal).toHaveBeenCalledWith('1', action);
+    });
 
     it('opens the modal for connected row clicks even when the wallet is on another network', async () => {
         const homePagePrototype = await loadHomePage();
