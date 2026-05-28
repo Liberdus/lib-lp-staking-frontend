@@ -36,6 +36,7 @@ class AdminPage {
         this.proposalFilter = 'pending';
         this.addPairLpValidation = { status: 'idle' };
         this.addPairRegistryPairs = null;
+        this.isSubmittingFundRewards = false;
 
         // Shared selectors for address copy functionality
         this.addressCopySelectors = [
@@ -434,14 +435,12 @@ class AdminPage {
      * Setup event delegation for address copy-to-clipboard functionality
      */
     setupAddressCopyListeners() {
-        // Use event delegation on document to handle dynamically rendered addresses
         document.addEventListener('click', (event) => {
             const addressElement = event.target.closest(this.addressCopySelectors);
             if (!addressElement) {
                 return;
             }
 
-            // Get address from data-address attribute or text content
             const address = addressElement.getAttribute('data-address') || addressElement.textContent?.trim();
             if (!this.isCopyableAddress(address)) {
                 return;
@@ -450,7 +449,7 @@ class AdminPage {
             event.preventDefault();
             event.stopPropagation();
             this.copyAddressToClipboard(address.trim());
-        });
+        }, true);
     }
 
     /**
@@ -720,6 +719,12 @@ class AdminPage {
                     default:
                         console.warn(`Unknown modal type: ${modalType}`);
                 }
+                return;
+            }
+
+            if (e.target.closest('[data-action="fund-rewards"]')) {
+                e.preventDefault();
+                this.showFundRewardsModal();
                 return;
             }
 
@@ -1483,11 +1488,16 @@ class AdminPage {
 
                 <div class="card-content">
                     <div class="info-grid">
-                        <div class="info-item">
+                        <div class="info-item info-item-with-action">
                             <div class="info-label-wrapper">
                                 <h6>Reward Token Balance</h6>
                             </div>
-                            <h6 class="info-value" data-info="reward-balance">Loading...</h6>
+                            <div class="info-value-row">
+                                <h6 class="info-value" data-info="reward-balance">Loading...</h6>
+                                <button type="button" class="btn btn-primary fund-rewards-btn" data-action="fund-rewards" hidden>
+                                    Fund Rewards
+                                </button>
+                            </div>
                         </div>
                         <div class="info-item">
                             <div class="info-label-wrapper">
@@ -4420,6 +4430,208 @@ class AdminPage {
         this.applyModalVisibilityFixes(modalContainer);
     }
 
+    async loadFundRewardsContext() {
+        const contractManager = await this.ensureContractReady();
+        const symbol = this.contractStats.rewardTokenSymbol || 'USDC';
+        const stakingAddress = contractManager.stakingContract?.address || contractManager.contractAddresses?.get('STAKING');
+        const rewardTokenAddress = contractManager.rewardTokenContract?.address;
+
+        if (!contractManager.isRewardTokenContractReady()) {
+            return { ok: false, message: 'The configured reward token contract is not loaded yet.' };
+        }
+        if (!stakingAddress || !rewardTokenAddress) {
+            return { ok: false, message: 'Staking or reward token address is not available yet.' };
+        }
+        if (!this.userAddress) {
+            return { ok: false, message: 'Connect your wallet before funding rewards.' };
+        }
+
+        const walletBalanceRaw = await contractManager.rewardTokenContract.balanceOf(this.userAddress);
+        const walletBalanceAmount = ethers.utils.formatEther(walletBalanceRaw);
+
+        return {
+            ok: true,
+            symbol,
+            stakingAddress,
+            rewardTokenAddress,
+            poolBalance: this.contractStats.rewardBalance ?? 'N/A',
+            walletBalanceRaw,
+            walletBalanceAmount,
+            walletBalanceDisplay: `${walletBalanceAmount} ${symbol}`
+        };
+    }
+
+    async showFundRewardsModal() {
+        if (!this.isAuthorized) {
+            this.showError('Admin access required to fund rewards.');
+            return;
+        }
+
+        const modalContainer = document.getElementById('modal-container');
+        if (!modalContainer) {
+            return;
+        }
+
+        let context;
+        try {
+            context = await this.loadFundRewardsContext();
+        } catch (error) {
+            this.showError('Failed to load reward token details', error.message);
+            return;
+        }
+
+        if (!context.ok) {
+            this.showError('Unable to fund rewards', context.message);
+            return;
+        }
+
+        const addressField = (address) => `
+            <div class="pair-address-wrapper">
+                <span class="address-label">Address:</span>
+                <code class="pair-address" data-address="${address}" title="Click to copy address">${address}</code>
+            </div>`;
+
+        modalContainer.innerHTML = `
+            <div class="modal-overlay" onclick="adminPage.closeModal()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Fund Rewards</h3>
+                        <button class="modal-close" type="button" onclick="adminPage.closeModal()">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <form id="fund-rewards-form" onsubmit="adminPage.submitFundRewards(event)" data-wallet-balance-wei="${context.walletBalanceRaw.toString()}">
+                            <div class="form-group">
+                                <label>Reward Token</label>
+                                ${addressField(context.rewardTokenAddress)}
+                                <small class="form-help">Symbol: ${context.symbol}</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Recipient (Staking Contract)</label>
+                                ${addressField(context.stakingAddress)}
+                                <small class="form-help">Reward tokens will be sent directly to this contract address.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Contract Reward Balance</label>
+                                <p class="info-value">${context.poolBalance}</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Your Wallet Balance</label>
+                                <p class="info-value">${context.walletBalanceDisplay}</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fund-rewards-amount">Amount (${context.symbol})</label>
+                                <div class="fund-rewards-amount-row">
+                                    <input type="number" id="fund-rewards-amount" step="any" min="0" inputmode="decimal" required
+                                           placeholder="Enter amount to transfer">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('fund-rewards-amount').value='${context.walletBalanceAmount}'">
+                                        Max
+                                    </button>
+                                </div>
+                                <small class="form-help">This sends a direct ERC-20 transfer from your connected wallet.</small>
+                            </div>
+
+                            <div class="warning-box">
+                                <div class="warning-icon">💰</div>
+                                <div class="warning-text">
+                                    <strong>Note:</strong> This is not a multisig proposal. Tokens leave your wallet immediately after you confirm the transfer.
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary modal-cancel">
+                            Cancel
+                        </button>
+                        <button type="submit" form="fund-rewards-form" class="btn btn-primary">
+                            Transfer Reward Tokens
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modalContainer.style.display = 'block';
+        this.applyModalVisibilityFixes(modalContainer);
+    }
+
+    async submitFundRewards(event) {
+        event.preventDefault();
+
+        if (this.isSubmittingFundRewards) {
+            return;
+        }
+
+        const form = document.getElementById('fund-rewards-form');
+        const amount = document.getElementById('fund-rewards-amount')?.value;
+        const submitBtn = document.querySelector('button[form="fund-rewards-form"]');
+        const walletBalanceWei = form?.dataset.walletBalanceWei;
+
+        this.isSubmittingFundRewards = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Transferring...';
+        }
+
+        try {
+            if (!amount) {
+                this.showError('Please enter an amount to transfer');
+                return;
+            }
+
+            const amountNum = parseFloat(amount);
+            if (Number.isNaN(amountNum) || amountNum <= 0) {
+                this.showError('Amount must be a positive number');
+                return;
+            }
+
+            if (walletBalanceWei && ethers.utils.parseEther(amount).gt(walletBalanceWei)) {
+                this.showError('Insufficient reward token balance in your wallet');
+                return;
+            }
+
+            window.notificationManager?.info('Submitting reward token transfer');
+
+            const contractManager = await this.ensureContractReady();
+            const result = await contractManager.transferRewardTokensToStaking(amount);
+
+            if (!result.success) {
+                this.showError(
+                    result.error?.userMessage?.title || 'Failed to transfer reward tokens',
+                    result.error?.userMessage?.message || result.error?.message
+                );
+                return;
+            }
+
+            this.closeModal();
+            let successMessage = 'Reward tokens transferred to the staking contract successfully!';
+            if (result.transactionHash) {
+                successMessage += ` Transaction: ${result.transactionHash.substring(0, 10)}...`;
+            }
+            this.showSuccess(successMessage);
+            await this.refreshContractInfo();
+        } catch (error) {
+            console.error('Failed to transfer reward tokens:', error);
+            this.showError(
+                error.userMessage?.title || 'Failed to transfer reward tokens',
+                error.userMessage?.message || error.message
+            );
+        } finally {
+            this.isSubmittingFundRewards = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Transfer Reward Tokens';
+            }
+        }
+    }
+
     closeModal() {
         clearTimeout(this.addPairLpCheckTimer);
         this.addPairLpCheckTimer = null;
@@ -4977,6 +5189,16 @@ class AdminPage {
         const rewardBalanceEl = document.querySelector('[data-info="reward-balance"]');
         if (rewardBalanceEl) {
             rewardBalanceEl.textContent = info.rewardBalance ?? 'N/A';
+        }
+
+        const fundRewardsBtn = document.querySelector('.fund-rewards-btn');
+        if (fundRewardsBtn) {
+            const hasValidFundingAddresses = ethers.utils.isAddress(info.stakingAddress) &&
+                ethers.utils.isAddress(info.rewardTokenAddress);
+            const canFund = this.isAuthorized &&
+                hasValidFundingAddresses;
+            fundRewardsBtn.hidden = !canFund;
+            fundRewardsBtn.disabled = !canFund;
         }
 
         // Update reward obligation
