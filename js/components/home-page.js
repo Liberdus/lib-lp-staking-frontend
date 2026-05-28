@@ -110,7 +110,7 @@ class HomePage {
         });
 
         document.addEventListener('walletAccountChanged', () => {
-            console.log('🏠 HomePage: Wallet account changed');
+            console.log('🏠 HomePage: Account changed');
             this.updateFooter();
             this.refreshDataAfterWalletChange();
             this.checkFarmMigrationPosition({ force: true }).catch(() => {});
@@ -118,7 +118,7 @@ class HomePage {
         });
 
         document.addEventListener('walletChainChanged', () => {
-            console.log('🏠 HomePage: Wallet chain changed');
+            console.log('🏠 HomePage: Chain changed');
             window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
             this.updateFooter();
             this.checkFarmMigrationPosition({ force: true }).catch(() => {});
@@ -581,7 +581,7 @@ class HomePage {
     }
 
     isMetaMaskWalletSelected() {
-        const provider = window.ethereum;
+        const provider = window.walletManager?.getEip1193Provider?.();
         const walletType = String(window.walletManager?.getWalletType?.() || window.walletManager?.walletType || '').toLowerCase();
 
         if (
@@ -627,7 +627,7 @@ class HomePage {
     }
 
     async addRewardTokenToMetaMask() {
-        const injected = window.ethereum;
+        const injected = window.walletManager?.getEip1193Provider?.();
         if (!injected?.request) {
             throw new Error('MetaMask was not detected in this browser.');
         }

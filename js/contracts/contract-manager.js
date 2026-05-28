@@ -3171,13 +3171,13 @@ class ContractManager {
                 throw new Error('No approval method available in deployed contract. Check contract ABI.');
             }
 
-            // CRITICAL: Ensure we have a proper signer with MetaMask connection
+            // CRITICAL: Ensure we have a proper signer with wallet connection
             await this.ensureSigner();
 
             // Verify signer is actually available
             if (!this.signer) {
                 const networkName = window.networkSelector?.getCurrentNetworkName?.() || 'the selected network';
-                throw new Error(`No signer available. Please connect MetaMask and ensure you are on ${networkName}.`);
+                throw new Error(`No signer available. Please connect your wallet and ensure you are on ${networkName}.`);
             }
 
             const result = await this.executeTransactionOnce(async () => {
@@ -3213,7 +3213,7 @@ class ContractManager {
                 console.error(`[APPROVE DEBUG]   1. Contract method signature mismatch`);
                 console.error(`[APPROVE DEBUG]   2. Invalid action ID parameter`);
                 console.error(`[APPROVE DEBUG]   3. Network/RPC provider issues`);
-                console.error(`[APPROVE DEBUG]   4. MetaMask connection problems`);
+                console.error(`[APPROVE DEBUG]   4. Wallet connection problems`);
 
                 // Check contract connection
                 console.log(`[APPROVE DEBUG] Contract connection check:`);
@@ -4148,7 +4148,7 @@ class ContractManager {
             const tx = await operation();
             this.notifyTransactionPhase(operationName, 'processing');
 
-            // CRITICAL: Log transaction hash immediately after MetaMask confirmation
+            // CRITICAL: Log transaction hash immediately after wallet confirmation
             console.log(`✅ Transaction submitted to blockchain: ${tx.hash}`);
             console.log(`[TRANSACTION MONITORING] ${operationName} - Hash: ${tx.hash}`);
 

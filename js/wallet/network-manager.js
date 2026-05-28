@@ -44,8 +44,8 @@ class NetworkManager {
 
     /**
      * Check if wallet is on the required network (synchronous chainId comparison)
-     * ⚠️ NETWORK CHECK ONLY - Does NOT verify MetaMask permissions
-     * Only compares chainId values, not wallet_getPermissions
+     * ⚠️ NETWORK CHECK ONLY - does not request wallet permissions.
+     * Only compares chainId values.
      * For permission checks, use hasRequiredNetworkPermission()
      * @param {number} chainId - Chain ID to check (defaults to current)
      * @returns {boolean} True if on required network (chainId match)
@@ -352,7 +352,7 @@ class NetworkManager {
 
     /**
      * Build wallet-ready network configuration
-     * Transforms app-config.js format to MetaMask's expected format
+     * Transforms app-config.js format to wallet_addEthereumChain metadata
      * @returns {object} Network configuration for wallet_addEthereumChain
      */
     buildNetworkConfig() {

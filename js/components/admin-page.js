@@ -6123,16 +6123,6 @@ class AdminPage {
             this.refreshInterval = null;
         }
 
-        // Remove event listeners
-        if (window.ethereum) {
-            try {
-                window.ethereum.removeAllListeners('accountsChanged');
-                window.ethereum.removeAllListeners('chainChanged');
-            } catch (error) {
-                console.warn('⚠️ Error removing ethereum listeners:', error);
-            }
-        }
-
         // Remove custom event listeners
         document.removeEventListener('walletConnected', this.handleWalletConnected);
         document.removeEventListener('walletDisconnected', this.handleWalletDisconnected);
