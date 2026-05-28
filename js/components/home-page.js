@@ -240,9 +240,7 @@ class HomePage {
         if (connectWalletBtn) {
             connectWalletBtn.onclick = async () => {
                 try {
-                    if (window.walletManager?.connectMetaMask) {
-                        await window.walletManager.connectMetaMask();
-                    } else if (document.getElementById('connect-wallet-btn')?.click) {
+                    if (document.getElementById('connect-wallet-btn')?.click) {
                         document.getElementById('connect-wallet-btn').click();
                     } else {
                         window.notificationManager?.error('Wallet connection not available. Please refresh the page.');
