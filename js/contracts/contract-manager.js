@@ -2735,6 +2735,47 @@ class ContractManager {
         }
     }
 
+    async transferRewardTokensToStaking(amount) {
+        try {
+            await this.ensureSigner();
+
+            if (!this.isRewardTokenContractReady()) {
+                return { success: false, error: new Error('Reward token contract is not available.') };
+            }
+
+            const stakingAddress = this.stakingContract?.address || this.contractAddresses?.get('STAKING');
+            if (!stakingAddress || !this.isValidContractAddress(stakingAddress)) {
+                return { success: false, error: new Error('Staking contract address is not available.') };
+            }
+
+            const amountStr = String(amount);
+            const amountNum = parseFloat(amountStr);
+            if (!amountStr || Number.isNaN(amountNum) || amountNum <= 0) {
+                return { success: false, error: new Error('Amount must be a positive number.') };
+            }
+
+            const recipient = this.validateAndChecksumAddress(stakingAddress, 'Staking Contract Address');
+            const amountWei = ethers.utils.parseEther(amountStr);
+
+            const result = await this.executeTransactionOnce(async () => {
+                const tx = await this.rewardTokenContract.connect(this.signer).transfer(recipient, amountWei);
+                console.log('Reward token funding transaction sent:', tx.hash);
+                return tx;
+            }, 'transferRewardTokensToStaking');
+
+            return {
+                success: true,
+                transactionHash: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed?.toString?.() || result.gasUsed,
+                message: 'Reward tokens transferred to staking contract'
+            };
+        } catch (error) {
+            console.error('Failed to transfer reward tokens to staking contract:', error);
+            return { success: false, error };
+        }
+    }
+
     // ============ ADMIN PROPOSAL FUNCTIONS ============
 
     /**
