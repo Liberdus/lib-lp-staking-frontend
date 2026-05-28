@@ -2755,6 +2755,8 @@ class ContractManager {
             }
 
             const recipient = this.validateAndChecksumAddress(stakingAddress, 'Staking Contract Address');
+            // Assumes 18-decimal reward token; matches REWARD_PRECISION and admin UI formatting.
+            // See https://github.com/Liberdus/lib-lp-staking-frontend/issues/289 if we need decimal-agnostic tokens.
             const amountWei = ethers.utils.parseEther(amountStr);
 
             const result = await this.executeTransactionOnce(async () => {
