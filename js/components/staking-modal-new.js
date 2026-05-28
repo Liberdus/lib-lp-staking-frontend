@@ -4,6 +4,14 @@
  */
 
 class StakingModalNew {
+    static TAB_TITLES = {
+        zap: 'Create LP',
+        stake: 'Stake',
+        unstake: 'Unstake',
+        claim: 'Claim',
+        'remove-liquidity': 'Remove LP'
+    };
+
     constructor() {
         this.isOpen = false;
         this.currentPair = null;
@@ -254,7 +262,7 @@ class StakingModalNew {
                 <div class="modal-content">
                     <div class="modal-header">
                         <div class="modal-title-section">
-                            <h2 class="modal-title">Staking</h2>
+                            <h2 class="modal-title" id="modal-title">Stake</h2>
                             <div class="pair-info" id="modal-pair-info">
                                 <!-- Pair info will be populated -->
                             </div>
@@ -3346,16 +3354,25 @@ class StakingModalNew {
     }
 
     switchTab(tab) {
+        const title = StakingModalNew.TAB_TITLES[tab];
+        if (!title) {
+            throw new Error(`Unknown staking modal tab: ${tab}`);
+        }
+
         this.currentTab = tab;
         this.syncZapQuoteAutoRefresh();
         this.syncRemoveLiquidityPreviewAutoRefresh();
 
-        // Update tab buttons
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
 
-        // Render tab content
+        const titleElement = document.getElementById('modal-title');
+        if (!titleElement) {
+            throw new Error('modal-title element is missing');
+        }
+        titleElement.textContent = title;
+
         this.renderTabContent();
     }
 

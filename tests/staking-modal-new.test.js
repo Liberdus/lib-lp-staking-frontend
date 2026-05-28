@@ -396,6 +396,7 @@ describe('StakingModalNew zap cleanup', () => {
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Create LP</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Unstake</span>');
         expect(modalContainer.innerHTML).toContain('<span class="tab-label">Remove LP</span>');
+        expect(modalContainer.innerHTML).toContain('<h2 class="modal-title" id="modal-title">Stake</h2>');
     });
 
     it('derives LP USD estimates from pair TVL data', async () => {
@@ -2359,5 +2360,24 @@ describe('StakingModalNew zap cleanup', () => {
             routerAddress: '0xrouter',
             recipient: '0xuser'
         }));
+    });
+});
+
+describe('StakingModalNew modal title', () => {
+    it('syncs the header title to the active tab', async () => {
+        const StakingModalNew = await loadStakingModalClass();
+        const titleElement = document.registerElement(createElement({ id: 'modal-title' }));
+        const modal = new StakingModalNew();
+        modal.renderTabContent = vi.fn();
+        modal.syncZapQuoteAutoRefresh = vi.fn();
+        modal.syncRemoveLiquidityPreviewAutoRefresh = vi.fn();
+
+        modal.switchTab('claim');
+        expect(titleElement.textContent).toBe('Claim');
+
+        modal.switchTab('zap');
+        expect(titleElement.textContent).toBe('Create LP');
+
+        expect(() => modal.switchTab('invalid-tab')).toThrow('Unknown staking modal tab: invalid-tab');
     });
 });
