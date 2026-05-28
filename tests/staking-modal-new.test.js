@@ -1157,6 +1157,31 @@ describe('StakingModalNew zap cleanup', () => {
         expect(html).toContain('<dd>None</dd>');
     });
 
+    it('renders an info panel explaining remove LP and optional zap-out', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.currentPair = { name: 'LIB/USDT' };
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('class="zap-info-panel"');
+        expect(html).toContain('<span class="material-icons">info</span>');
+        expect(html).toContain('Remove LP burns your LIB/USDT LP tokens and returns the underlying pool tokens.');
+        expect(html).toContain('Convert to one preferred token');
+        expect(html).toContain('zap-out in one transaction');
+        expect(html.indexOf('zap-info-panel')).toBeLessThan(html.indexOf('balance-info'));
+    });
+
+    it('uses a fallback pair name in the remove LP info panel', async () => {
+        const modal = await createLoadedModal();
+        arrangeReadyRemoveLiquidityPreview(modal);
+        modal.currentPair = null;
+
+        const html = modal.renderRemoveLiquidityTab();
+
+        expect(html).toContain('Remove LP burns your this pair LP tokens');
+    });
+
     it('renders guided remove-liquidity controls and preview on the Remove LP tab', async () => {
         const modal = await createLoadedModal();
         arrangeReadyRemoveLiquidityPreview(modal, { convert: true });
@@ -1165,6 +1190,7 @@ describe('StakingModalNew zap cleanup', () => {
 
         const html = modal.renderRemoveLiquidityTab();
 
+        expect(html).toContain('class="zap-info-panel"');
         expect(html).toContain('10 LP <span class="lp-usd-estimate">($100.00)</span>');
         expect(html).toContain('id="remove-liquidity-amount-input"');
         expect(html).toContain('remove-liquidity-meta-row');
