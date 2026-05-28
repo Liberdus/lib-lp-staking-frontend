@@ -9,7 +9,7 @@ A professional, production-ready vanilla JavaScript implementation of a decentra
 - **Real-time TVL & APR** - Live calculation of Total Value Locked and Annual Percentage Rate
 - **Reward Claims** - Claim accumulated rewards at any time
 - **Multi-pair Support** - Support for multiple LP token pairs
-- **Wallet Integration** - MetaMask support
+- **Wallet Integration** - Injected EVM wallet support
 
 ### Admin Features
 - **Multi-signature Governance** - Secure multi-sig proposal system
@@ -29,8 +29,14 @@ A professional, production-ready vanilla JavaScript implementation of a decentra
 ## 📋 Requirements
 
 - Modern web browser (Chrome, Firefox, Edge, Safari)
-- MetaMask or compatible Web3 wallet
+- Injected EVM wallet such as MetaMask, Rabby, Coinbase Wallet, or another compatible wallet
 - Web server (Apache, Nginx, or any HTTP server)
+
+## Wallet support
+
+Wallet connection uses the vendored `liberdus-wallet-module` for injected EVM wallet discovery and session restore. If more than one compatible wallet is available, the header connect button opens a wallet picker before requesting account access.
+
+Read-only staking data still loads from the configured RPC without a wallet. Transaction actions require a connected wallet on the selected network.
 
 ## 🛠️ Installation
 
@@ -231,7 +237,7 @@ Tested and verified on:
 ### Common Issues
 
 **Issue:** Wallet won't connect
-- **Solution:** Ensure MetaMask is installed and unlocked
+- **Solution:** Ensure your wallet is installed and unlocked
 - **Solution:** Check that you're on the correct network
 
 **Issue:** Transactions fail
@@ -313,4 +319,3 @@ Before deploying to production:
 **Version:** 1.0.0  
 **Last Updated:** 2025-01-09  
 **Status:** Production Ready ✅
-
