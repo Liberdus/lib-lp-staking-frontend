@@ -4453,9 +4453,10 @@ class AdminPage {
     }
 
     // Form validation system
-    async loadAddPairRegistry() {
+    async loadAddPairRegistry({ forceRefresh = false } = {}) {
         const contractManager = await this.ensureContractReady();
-        this.addPairRegistryPairs = await contractManager.getAllPairsInfo();
+        this.addPairRegistryPairs = await contractManager.getAllPairsInfo({ forceRefresh });
+        return this.addPairRegistryPairs;
     }
 
     getAddPairConflict(lpAddress) {
@@ -4470,15 +4471,16 @@ class AdminPage {
         return null;
     }
 
-    async validateAddPairLpAddress(address) {
+    async validateAddPairLpAddress(address, { refreshRegistry = false } = {}) {
         const contractManager = await this.ensureContractReady();
-        if (!this.addPairRegistryPairs) {
-            this.addPairRegistryPairs = await contractManager.getAllPairsInfo();
-        }
 
         const v2Validation = await contractManager.validateV2CompatibleLpToken(address);
         if (!v2Validation.valid) {
             return { status: 'invalid', error: v2Validation.error };
+        }
+
+        if (refreshRegistry || !this.addPairRegistryPairs) {
+            await this.loadAddPairRegistry({ forceRefresh: refreshRegistry });
         }
 
         const conflictError = this.getAddPairConflict(v2Validation.address);
@@ -5372,7 +5374,7 @@ class AdminPage {
         }
 
         try {
-            const lpValidation = await this.validateAddPairLpAddress(pairAddress);
+            const lpValidation = await this.validateAddPairLpAddress(pairAddress, { refreshRegistry: true });
             if (lpValidation.status !== 'valid') {
                 this.setAddPairLpValidation(lpValidation);
                 this.showError('Invalid LP token address', lpValidation.error);
