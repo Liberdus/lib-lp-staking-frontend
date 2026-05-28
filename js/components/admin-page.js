@@ -4479,16 +4479,34 @@ class AdminPage {
         this.setAddPairLpValidation({ status: 'validating' });
         const seq = ++this.addPairLpCheckSeq;
         this.addPairLpCheckTimer = setTimeout(async () => {
-            const contractManager = await this.ensureContractReady();
-            const result = await contractManager.validateV2CompatibleLpToken(address);
-            if (seq !== this.addPairLpCheckSeq) {
-                return;
+            const isCurrentRequest = () => {
+                if (seq !== this.addPairLpCheckSeq) {
+                    return false;
+                }
+                const pairAddressInput = document.getElementById('pair-address');
+                return pairAddressInput && pairAddressInput.value.trim() === address;
+            };
+
+            try {
+                const contractManager = await this.ensureContractReady();
+                const result = await contractManager.validateV2CompatibleLpToken(address);
+                if (!isCurrentRequest()) {
+                    return;
+                }
+                if (!result.valid) {
+                    this.setAddPairLpValidation({ status: 'invalid', error: result.error });
+                    return;
+                }
+                this.setAddPairLpValidation({ status: 'valid', token0: result.token0, token1: result.token1 });
+            } catch (error) {
+                if (!isCurrentRequest()) {
+                    return;
+                }
+                this.setAddPairLpValidation({
+                    status: 'invalid',
+                    error: 'Unable to verify LP token address. Check your network connection and try again.'
+                });
             }
-            if (!result.valid) {
-                this.setAddPairLpValidation({ status: 'invalid', error: result.error });
-                return;
-            }
-            this.setAddPairLpValidation({ status: 'valid', token0: result.token0, token1: result.token1 });
         }, 500);
     }
 
