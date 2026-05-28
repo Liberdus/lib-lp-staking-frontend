@@ -4461,26 +4461,10 @@ class AdminPage {
     getAddPairConflict(lpAddress) {
         const normalizedAddress = lpAddress.toLowerCase();
 
-        for (const pair of this.addPairRegistryPairs) {
+        for (const pair of this.addPairRegistryPairs || []) {
             if (pair.isActive && pair.address.toLowerCase() === normalizedAddress) {
                 return `This LP token is already registered as ${pair.name} on ${pair.platform}`;
             }
-        }
-
-        for (const proposal of this.proposalsCache.values()) {
-            if (proposal.actionType !== 'ADD_PAIR') {
-                continue;
-            }
-            if (proposal.executed || proposal.rejected || proposal.expired) {
-                continue;
-            }
-            if (!proposal.pairToAdd || proposal.pairToAdd.toLowerCase() !== normalizedAddress) {
-                continue;
-            }
-            if (proposal.pairNameToAdd) {
-                return `An add-pair proposal for ${proposal.pairNameToAdd} is already pending`;
-            }
-            return 'An add-pair proposal for this LP token is already pending';
         }
 
         return null;
