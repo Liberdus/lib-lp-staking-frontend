@@ -4530,7 +4530,7 @@ class AdminPage {
                                 <div class="fund-rewards-amount-row">
                                     <input type="number" id="fund-rewards-amount" step="any" min="0" inputmode="decimal" required
                                            placeholder="Enter amount to transfer">
-                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('fund-rewards-amount').value='${context.walletBalanceAmount}'">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('fund-rewards-amount').value='${context.walletBalanceAmount}'">
                                         Max
                                     </button>
                                 </div>
@@ -5193,9 +5193,10 @@ class AdminPage {
 
         const fundRewardsBtn = document.querySelector('.fund-rewards-btn');
         if (fundRewardsBtn) {
+            const hasValidFundingAddresses = ethers.utils.isAddress(info.stakingAddress) &&
+                ethers.utils.isAddress(info.rewardTokenAddress);
             const canFund = this.isAuthorized &&
-                info.stakingAddress !== 'N/A' &&
-                info.rewardTokenAddress !== 'N/A';
+                hasValidFundingAddresses;
             fundRewardsBtn.hidden = !canFund;
             fundRewardsBtn.disabled = !canFund;
         }
