@@ -109,32 +109,26 @@ class HomePage {
             this.hideAdminButton();
         });
 
-        // Listen for account changes (MetaMask)
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
-                console.log('🏠 HomePage: Accounts changed:', accounts);
-                this.updateFooter();
-                this.refreshDataAfterWalletChange();
-                this.checkFarmMigrationPosition({ force: true }).catch(() => {});
-                this.checkAdminAccess();
-            });
+        document.addEventListener('walletAccountChanged', () => {
+            console.log('🏠 HomePage: Wallet account changed');
+            this.updateFooter();
+            this.refreshDataAfterWalletChange();
+            this.checkFarmMigrationPosition({ force: true }).catch(() => {});
+            this.checkAdminAccess();
+        });
 
-            // Re-check permissions when wallet network changes
-            window.ethereum.on('chainChanged', (chainId) => {
-                console.log('🏠 HomePage: Chain changed:', chainId);
-                // Only update the network indicator to re-check permissions
-                window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
-                this.updateFooter();
-                this.checkFarmMigrationPosition({ force: true }).catch(() => {});
-            });
+        document.addEventListener('walletChainChanged', () => {
+            console.log('🏠 HomePage: Wallet chain changed');
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
+            this.updateFooter();
+            this.checkFarmMigrationPosition({ force: true }).catch(() => {});
+        });
 
-            // Re-check permissions when page regains focus (in case permissions were removed in another tab)
-            window.addEventListener('focus', () => {
-                console.log('🏠 HomePage: Page focused, re-checking permissions...');
-                window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
-                this.updateFooter();
-            });
-        }
+        window.addEventListener('focus', () => {
+            console.log('🏠 HomePage: Page focused, re-checking permissions...');
+            window.NetworkIndicator?.update('network-indicator-home', 'home-network-selector', 'home');
+            this.updateFooter();
+        });
     }
 
     /**

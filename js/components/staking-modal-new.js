@@ -517,17 +517,13 @@ class StakingModalNew {
             this.close();
         });
 
-        // Listen for MetaMask account changes
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
-                this.close();
-            });
+        document.addEventListener('walletAccountChanged', () => {
+            this.close();
+        });
 
-            // Listen for network changes
-            window.ethereum.on('chainChanged', (chainId) => {
-                this.close();
-            });
-        }
+        document.addEventListener('walletChainChanged', () => {
+            this.close();
+        });
     }
 
     applyDecimalLimit(value, maxDecimals) {
