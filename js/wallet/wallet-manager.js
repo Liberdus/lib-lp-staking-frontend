@@ -34,36 +34,10 @@
         }
     }
 
-    function parseChainId(chainId) {
-        if (typeof chainId === 'number' && Number.isFinite(chainId)) return chainId;
-        if (typeof chainId === 'string' && chainId.trim()) {
-            return chainId.startsWith('0x') ? Number.parseInt(chainId, 16) : Number(chainId);
-        }
-        return null;
-    }
-
-    function getSelectedChainId() {
-        return parseChainId(global.networkSelector?.getCurrentChainId?.());
-    }
-
-    function getSelectedNetworkName() {
-        return global.networkSelector?.getCurrentNetworkName?.() || 'BNB Smart Chain';
-    }
-
-    function walletProviders(wallet) {
-        return [wallet?.provider, ...(wallet?.linkedProviders || [])].filter(Boolean);
-    }
-
-    function isPhantomProvider(provider) {
-        return !!provider?.isPhantom;
-    }
-
     function isPhantomWallet(wallet) {
-        const name = String(wallet?.info?.name || '').toLowerCase();
-        const rdns = String(wallet?.info?.rdns || '').toLowerCase();
-        return name.includes('phantom')
-            || rdns.includes('phantom')
-            || walletProviders(wallet).some(isPhantomProvider);
+        const walletIdentity = (wallet.info.name + ' ' + wallet.info.rdns).toLowerCase();
+        const providers = [wallet.provider, ...wallet.linkedProviders];
+        return walletIdentity.includes('phantom') || providers.some((provider) => provider.isPhantom);
     }
 
     class WalletManager {
@@ -125,8 +99,9 @@
             }
 
             const walletId = await this.resolveWalletId(options, wallets);
-            const wallet = this.findWalletById(wallets, walletId);
-            this.assertWalletSupportedOnCurrentNetwork(wallet);
+            const wallet = wallets.find((candidate) => candidate.id === walletId);
+            if (!wallet) throw new Error('The selected wallet is no longer available. Refresh the page and try again.');
+            this.rejectUnsupportedWallet(wallet);
 
             await this.walletCore.connect({ walletId });
             this.syncFromCoreState();
@@ -163,34 +138,19 @@
             return name.includes(needle) || rdns.includes(needle);
         }
 
-        findWalletById(wallets, walletId) {
-            return wallets.find((wallet) => wallet.id === walletId) || null;
-        }
-
-        assertWalletSupportedOnCurrentNetwork(wallet) {
-            const chainId = getSelectedChainId();
+        rejectUnsupportedWallet(wallet) {
+            const chainId = global.networkSelector.getCurrentChainId();
             if (!BNB_CHAIN_IDS.has(chainId) || !isPhantomWallet(wallet)) return;
 
-            const networkName = getSelectedNetworkName();
+            const networkName = global.networkSelector.getCurrentNetworkName();
             const error = new Error(
                 'Phantom does not support ' + networkName + '. Choose a BNB-compatible wallet such as MetaMask, Rabby, Trust Wallet, or OKX.'
             );
             error.code = UNSUPPORTED_WALLET_NETWORK;
-            error.walletName = wallet?.info?.name || 'Phantom';
+            error.walletName = wallet.info.name;
             error.networkName = networkName;
             error.chainId = chainId;
             throw error;
-        }
-
-        currentWalletDescriptor() {
-            const state = this.walletCore.getState();
-            return {
-                provider: this.walletCore.getEip1193Provider(),
-                info: {
-                    name: state.selectedWalletName,
-                    rdns: state.selectedWalletRdns
-                }
-            };
         }
 
         async disconnect() {
@@ -217,15 +177,6 @@
             this.assertReady();
             await this.walletCore.sync();
             if (!this.walletCore.getState().account) return false;
-
-            try {
-                this.assertWalletSupportedOnCurrentNetwork(this.currentWalletDescriptor());
-            } catch (error) {
-                if (error.code !== UNSUPPORTED_WALLET_NETWORK) throw error;
-                await this.walletCore.disconnect();
-                this.clearEthersState();
-                return false;
-            }
 
             this.syncFromCoreState();
             this.notifyListeners('connected', { restored: true });
