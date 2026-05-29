@@ -129,6 +129,7 @@ afterEach(() => {
     delete globalThis.removeEventListener;
     delete globalThis.dispatchEvent;
     delete globalThis.ethers;
+    delete globalThis.networkSelector;
 });
 
 describe('WalletManager wallet module integration', () => {
@@ -160,6 +161,49 @@ describe('WalletManager wallet module integration', () => {
         await expect(manager.connectWallet()).rejects.toMatchObject({
             code: 'WALLET_SELECTION_REQUIRED'
         });
+    });
+
+    it('rejects Phantom on BNB before requesting accounts', async () => {
+        const provider = createMockProvider({ flags: { isPhantom: true } });
+        installBrowser(provider);
+        globalThis.networkSelector = {
+            getCurrentChainId: vi.fn(() => 56),
+            getCurrentNetworkName: vi.fn(() => 'BNB Smart Chain')
+        };
+
+        const WalletManager = await loadWalletManager();
+        const manager = new WalletManager();
+        await manager.init();
+
+        const wallet = (await manager.discoverWallets())[0];
+        await expect(manager.connectWallet({ walletId: wallet.id })).rejects.toMatchObject({
+            code: 'UNSUPPORTED_WALLET_NETWORK',
+            networkName: 'BNB Smart Chain'
+        });
+
+        expect(provider.requests.map((request) => request.method)).not.toContain('eth_requestAccounts');
+        expect(manager.isConnected()).toBe(false);
+    });
+
+    it('does not restore a saved Phantom session on BNB', async () => {
+        const provider = createMockProvider({ flags: { isPhantom: true } });
+        const { storage } = installBrowser(provider);
+        globalThis.networkSelector = {
+            getCurrentChainId: vi.fn(() => 56),
+            getCurrentNetworkName: vi.fn(() => 'BNB Smart Chain')
+        };
+
+        const WalletManager = await loadWalletManager();
+        const manager = new WalletManager();
+        await manager.init();
+        const wallet = (await manager.discoverWallets())[0];
+
+        storage.setItem(SESSION_KEY, JSON.stringify({ walletId: wallet.id }));
+        await expect(manager.checkPreviousConnection()).resolves.toBe(false);
+
+        expect(provider.requests.map((request) => request.method)).not.toContain('eth_requestAccounts');
+        expect(storage.getItem(SESSION_KEY)).toBeNull();
+        expect(manager.isConnected()).toBe(false);
     });
 
     it('connects by wallet id and updates account, chain, and disconnect events', async () => {
