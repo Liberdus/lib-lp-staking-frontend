@@ -71,7 +71,11 @@ echo "Current submodule commit: $OLD_SHA"
 if [ -n "$REF" ]; then
     echo "Checking out submodule ref: $REF"
     git -C "$SUBMODULE_PATH" fetch origin --tags
-    git -C "$SUBMODULE_PATH" checkout "$REF"
+    CHECKOUT_REF="$REF"
+    if git -C "$SUBMODULE_PATH" show-ref --verify --quiet "refs/remotes/origin/$REF"; then
+        CHECKOUT_REF="origin/$REF"
+    fi
+    git -C "$SUBMODULE_PATH" checkout --detach "$CHECKOUT_REF"
 else
     echo "Updating submodule to latest remote commit..."
     git submodule update --remote "$SUBMODULE_PATH"
