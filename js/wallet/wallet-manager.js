@@ -8,6 +8,8 @@
 
     const WALLET_SESSION_KEY = 'lib_lp_staking:wallet-session';
     const SCRIPT_SRC = global.document?.currentScript?.src || '';
+    const BNB_CHAIN_IDS = new Set([56, 97]);
+    const UNSUPPORTED_WALLET_NETWORK = 'UNSUPPORTED_WALLET_NETWORK';
     let walletModulePromise = null;
 
     function walletModuleUrl() {
@@ -30,6 +32,12 @@
         } catch {
             return null;
         }
+    }
+
+    function isPhantomWallet(wallet) {
+        const walletIdentity = (wallet.info.name + ' ' + wallet.info.rdns).toLowerCase();
+        const providers = [wallet.provider, ...wallet.linkedProviders];
+        return walletIdentity.includes('phantom') || providers.some((provider) => provider.isPhantom);
     }
 
     class WalletManager {
@@ -91,6 +99,10 @@
             }
 
             const walletId = await this.resolveWalletId(options, wallets);
+            const wallet = wallets.find((candidate) => candidate.id === walletId);
+            if (!wallet) throw new Error('The selected wallet is no longer available. Refresh the page and try again.');
+            this.rejectUnsupportedWallet(wallet);
+
             await this.walletCore.connect({ walletId });
             this.syncFromCoreState();
             return this.connectionResult();
@@ -124,6 +136,21 @@
             const name = String(wallet.info?.name || '').toLowerCase();
             const rdns = String(wallet.info?.rdns || '').toLowerCase();
             return name.includes(needle) || rdns.includes(needle);
+        }
+
+        rejectUnsupportedWallet(wallet) {
+            const chainId = global.networkSelector.getCurrentChainId();
+            if (!BNB_CHAIN_IDS.has(chainId) || !isPhantomWallet(wallet)) return;
+
+            const networkName = global.networkSelector.getCurrentNetworkName();
+            const error = new Error(
+                'Phantom does not support ' + networkName + '. Choose a BNB-compatible wallet such as MetaMask, Rabby, Trust Wallet, or OKX.'
+            );
+            error.code = UNSUPPORTED_WALLET_NETWORK;
+            error.walletName = wallet.info.name;
+            error.networkName = networkName;
+            error.chainId = chainId;
+            throw error;
         }
 
         async disconnect() {

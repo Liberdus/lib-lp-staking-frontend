@@ -209,33 +209,11 @@ class MasterInitializer {
             this.components.set('notificationManager', window.notificationManager);
         }
 
-        // Initialize wallet manager - check multiple sources
-        // Try WalletManagerNew first (from theme-manager-new.js)
-        if (window.WalletManagerNew && !window.walletManager) {
-            try {
-                window.walletManager = new window.WalletManagerNew();
-                if (window.walletManager.init) {
-                    await window.walletManager.init(); // Initialize if init method exists
-                }
-                this.components.set('walletManager', window.walletManager);
-
-                // Update button status after wallet manager is ready
-                setTimeout(() => {
-                    if (this.updateConnectButtonStatus) {
-                        this.updateConnectButtonStatus();
-                    }
-                }, 500);
-
-            } catch (error) {
-                console.error('❌ Failed to initialize WalletManagerNew:', error);
-            }
-        }
-
-        // Try the main wallet manager if available and no instance exists
+        // Initialize wallet manager
         if (window.WalletManager && !window.walletManager) {
             try {
                 window.walletManager = new window.WalletManager();
-                await window.walletManager.init(); // Initialize wallet manager
+                await window.walletManager.init();
                 this.components.set('walletManager', window.walletManager);
 
                 // Update button status after wallet manager is ready
@@ -549,7 +527,7 @@ class MasterInitializer {
     }
 
     showWalletError(error) {
-        console.error('Failed to connect wallet:', error);
+        console.warn('Failed to connect wallet:', error);
         window.notificationManager?.error?.(error.message || 'Failed to connect wallet');
     }
 
@@ -675,11 +653,11 @@ class MasterInitializer {
                 window.errorHandler.handleError(event.error, { context: 'global_error' });
             }
 
-            // Handle specific MetaMask circuit breaker errors
+            // Handle specific wallet circuit breaker errors
             if (event.error && event.error.message && event.error.message.includes('circuit breaker')) {
                 if (window.notificationManager) {
                     window.notificationManager.error(
-                        'MetaMask is temporarily busy. Please wait a moment and try again.'
+                        'Your wallet is temporarily busy. Please wait a moment and try again.'
                     );
                 }
                 return true; // Prevent default error handling
@@ -700,12 +678,12 @@ class MasterInitializer {
                 window.errorHandler.handleError(event.reason, { context: 'unhandled_promise' });
             }
 
-            // Handle specific MetaMask circuit breaker errors
+            // Handle specific wallet circuit breaker errors
             if (event.reason && event.reason.message) {
                 if (event.reason.message.includes('circuit breaker')) {
                     if (window.notificationManager) {
                         window.notificationManager.error(
-                            'MetaMask is temporarily overloaded. Please wait a moment and try again.'
+                            'Your wallet is temporarily overloaded. Please wait a moment and try again.'
                         );
                     }
                     event.preventDefault(); // Prevent console spam
@@ -713,7 +691,7 @@ class MasterInitializer {
                 } else if (event.reason.message.includes('already processing')) {
                     if (window.notificationManager) {
                         window.notificationManager.warning(
-                            'MetaMask is processing another request. Please wait.'
+                            'Your wallet is processing another request. Please wait.'
                         );
                     }
                     event.preventDefault();
