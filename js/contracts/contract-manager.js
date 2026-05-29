@@ -2942,92 +2942,30 @@ class ContractManager {
      */
     async ensureSigner() {
         try {
-            // First ensure MetaMask is connected
-            if (typeof window.ethereum === 'undefined') {
-                throw new Error('MetaMask not installed');
+            if (!window.walletManager?.isConnected()) {
+                throw new Error('Wallet not connected');
             }
 
-            // Check if accounts are connected
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length === 0) {
-                console.log('🔐 No connected accounts, requesting MetaMask connection...');
-                try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                } catch (connectionError) {
-                    if (connectionError.code === 4001) {
-                        throw new Error('User rejected MetaMask connection');
-                    }
-                    throw new Error('Failed to connect to MetaMask: ' + connectionError.message);
-                }
-            }
-
-            // Always create a fresh Web3Provider for transactions (CRITICAL FIX)
-
-            // Create Web3Provider directly from MetaMask
-            const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-
-            // Ensure we're on the correct network (using centralized config)
-            const network = await web3Provider.getNetwork();
+            let web3Provider = window.walletManager.getProvider();
             const expectedChainId = window.networkSelector?.getCurrentChainId();
-            
-            // Check permissions for the selected network regardless of current network
-            const selectedNetwork = window.networkSelector?.getCurrentChainId();
             const networkName = window.networkSelector?.getCurrentNetworkName();
-            
-            if (selectedNetwork === expectedChainId) {
-                console.log(`🌐 ${networkName} selected in UI, checking permissions...`);
-                
-                // Check if we have permission for the selected network
-                const hasPermission = await window.networkManager.hasRequiredNetworkPermission();
-                if (!hasPermission) {
-                    console.log(`🔐 Requesting ${networkName} permission...`);
-                    try {
-                        const permissionGranted = await window.networkManager.requestNetworkPermission('metamask');
-                        if (!permissionGranted) {
-                            throw new Error(`${networkName} permission required for transactions`);
-                        }
-                    } catch (error) {
-                        // Handle network switching errors gracefully
-                        if (error.message.includes('User rejected') || error.message.includes('denied')) {
-                            throw new Error(`User rejected ${networkName} permission request`);
-                        }
-                        throw new Error(`${networkName} permission required for transactions: ${error.message}`);
-                    }
-                }
-            } else if (network.chainId !== expectedChainId) {
-                throw new Error(`Please switch to ${networkName} (Chain ID: ${expectedChainId}) in MetaMask`);
+
+            if ((await web3Provider.getNetwork()).chainId !== expectedChainId) {
+                console.log(`🔐 Requesting ${networkName} network permission...`);
+                await window.networkManager.requestNetworkPermission();
+                web3Provider = window.walletManager.getProvider();
             }
 
-            // Get signer from Web3Provider
             this.signer = web3Provider.getSigner();
-            // Keep the original provider for read operations, but use Web3Provider for transactions
             this.transactionProvider = web3Provider;
-
-            // Verify signer is connected
-            try {
-                await this.signer.getAddress();
-            } catch (error) {
-                console.error('❌ Signer verification failed:', error);
-
-                // If verification fails, try to recreate signer
-                if (window.ethereum) {
-                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-                    this.signer = provider.getSigner();
-                    this.provider = provider;
-
-                    // Try verification again
-                    await this.signer.getAddress();
-                } else {
-                    throw new Error('Signer not properly connected');
-                }
-            }
+            await this.signer.getAddress();
 
         } catch (error) {
             console.error('❌ ensureSigner failed:', error);
 
             // If it's a user rejection, throw specific error
             if (error.code === 4001) {
-                throw new Error('User rejected MetaMask connection');
+                throw new Error('User rejected wallet connection');
             }
 
             throw new Error('Signer not properly connected: ' + error.message);
@@ -4287,11 +4225,11 @@ class ContractManager {
             this.provider = fallbackProvider;
 
             // Get signer if wallet is connected
-            if (window.ethereum) {
+            if (window.walletManager?.isConnected()) {
                 try {
-                    const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+                    const provider = window.walletManager.getProvider();
                     this.signer = provider.getSigner();
-                    console.log('✅ Signer obtained from MetaMask during provider switch');
+                    console.log('✅ Signer obtained from selected wallet during provider switch');
                 } catch (error) {
                     console.error('⚠️ Could not get signer during provider switch:', error.message);
                 }
@@ -4524,9 +4462,7 @@ class ContractManager {
      */
     async getCurrentSignerForPermissions() {
         try {
-            if (typeof window.ethereum === 'undefined') return null;
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            return accounts.length > 0 ? accounts[0] : null;
+            return window.walletManager?.getAddress?.() || null;
         } catch (error) {
             if (error.code === 'UNSUPPORTED_OPERATION' || 
                 error.message?.includes('unknown account') ||

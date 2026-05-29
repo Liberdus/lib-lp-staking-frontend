@@ -304,10 +304,18 @@
         }
 
         // Connect wallet helper that delegates to the shared WalletManager
-        async function connectWallet(preferredWallet = 'metamask') {
+        async function connectWallet(preferredWallet = 'auto') {
             try {
                 console.log('🔗 Attempting wallet connection via WalletManager...');
-                const result = await window.walletManager.connectWallet(preferredWallet);
+                let result;
+                try {
+                    result = await window.walletManager.connectWallet(preferredWallet);
+                } catch (error) {
+                    if (error.code !== 'WALLET_SELECTION_REQUIRED') throw error;
+                    const button = document.getElementById('connect-wallet-btn');
+                    const walletId = await window.masterInitializer.pickWallet(error.wallets, button);
+                    result = await window.walletManager.connectWallet({ walletId });
+                }
 
                 // Snapshot connection details for shared wallet consumers
                 const wm = window.walletManager;

@@ -630,25 +630,22 @@ class AdminPage {
             this.handleWalletDisconnected();
         });
 
-        // Listen for account changes
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', async (accounts) => {
-                try {
-                    await this.handleAccountsChanged(accounts);
-                } catch (error) {
-                    console.error('❌ Error handling account change:', error);
-                    this.showError('Account Switch Error', 'Failed to switch accounts. Please refresh the page.');
-                }
-            });
+        document.addEventListener('walletAccountChanged', async (event) => {
+            try {
+                await this.handleAccountsChanged([event.detail?.data?.address]);
+            } catch (error) {
+                console.error('❌ Error handling account change:', error);
+                this.showError('Account Switch Error', 'Failed to switch accounts. Please refresh the page.');
+            }
+        });
 
-            window.ethereum.on('chainChanged', async (chainId) => {
-                try {
-                    await this.handleChainChanged(chainId);
-                } catch (error) {
-                    console.error('❌ Error handling chain changed:', error);
-                }
-            });
-        }
+        document.addEventListener('walletChainChanged', async (event) => {
+            try {
+                await this.handleChainChanged(event.detail?.data?.chainId);
+            } catch (error) {
+                console.error('❌ Error handling chain changed:', error);
+            }
+        });
     }
 
     /**
