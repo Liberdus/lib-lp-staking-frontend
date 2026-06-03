@@ -85,10 +85,6 @@
             }
         }
 
-        async connectMetaMask() {
-            return await this.connectWallet('metamask');
-        }
-
         async connect(options) {
             this.assertReady();
             if (this.isConnected()) return this.connectionResult();
@@ -191,10 +187,6 @@
                 return;
             }
 
-            if ((event === 'accountChanged' || event === 'chainChanged') && !this.hasActiveWalletSession()) {
-                return;
-            }
-
             if (event === 'accountChanged' || event === 'chainChanged') {
                 this.syncFromCoreState();
                 this.notifyListeners(event, data);
@@ -225,11 +217,6 @@
             this.account = null;
             this.chainId = null;
             this.walletType = null;
-        }
-
-        hasActiveWalletSession() {
-            const state = this.walletCore.getState();
-            return !!(state.sessionWalletId || state.selectedWalletId);
         }
 
         connectionResult() {
