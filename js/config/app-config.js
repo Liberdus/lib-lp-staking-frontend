@@ -99,20 +99,6 @@ window.CONFIG = {
         DEBOUNCE_DELAY: 500 // 500ms
     },
 
-    // Farm 1.0 migration notice shown on the Farm page
-    FARM_MIGRATION: {
-        ENABLED: true,
-        POSITION_CHECK_ENABLED: true,
-        HIDE_WHEN_CONNECTED_WALLET_HAS_NO_POSITION: true,
-        OLD_FARM_LABEL: 'Farm 1.0',
-        OLD_FARM_URL: 'https://liberdus.com/farm/migration',
-        OLD_FARM_CONTRACTS: {
-            BSC_MAINNET: '0x89E662CB5d784582DB631e2Cbc81bB6643BB2EF4',
-            BSC_TESTNET: '0x24F28129B65E9AeDdAfE3f1Fc67ab82DDCF30dF9'
-        },
-        LEGACY_LP_TOKENS: {}
-    },
-
     // Support Links
     SUPPORT: {
         DISCORD_URL: 'https://liberdus.com/discord/',

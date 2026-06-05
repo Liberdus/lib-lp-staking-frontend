@@ -75,7 +75,7 @@ describe('HomePage.loadDataWhenReady', () => {
         delete globalThis.window;
     });
 
-    it('checks Farm 1.0 migration status when the contract manager is already ready on page load', async () => {
+    it('loads data and checks admin access when the contract manager is already ready on page load', async () => {
         const homePagePrototype = await loadHomePage();
         globalThis.contractManager = {
             isReady: vi.fn().mockReturnValue(true)
@@ -83,14 +83,12 @@ describe('HomePage.loadDataWhenReady', () => {
         const context = {
             updateFooter: vi.fn(),
             loadData: vi.fn().mockResolvedValue(undefined),
-            checkFarmMigrationPosition: vi.fn().mockResolvedValue(undefined),
             checkAdminAccess: vi.fn()
         };
 
         await homePagePrototype.loadDataWhenReady.call(context);
 
         expect(context.loadData).toHaveBeenCalled();
-        expect(context.checkFarmMigrationPosition).toHaveBeenCalled();
         expect(context.checkAdminAccess).toHaveBeenCalled();
     });
 });
