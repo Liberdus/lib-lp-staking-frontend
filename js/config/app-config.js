@@ -165,6 +165,12 @@ window.CONFIG = {
                 CHAIN: 'bsc',
                 DEX: 'DEX_UNISWAPV2',
                 ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                // Explicitly trusted targets; never populate this list from a quote.
+                // Current BSC /in/route and /in/route/build target, verified 2026-09-08.
+                ROUTER_ADDRESSES: [
+                    '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                    '0x455C51505E90819aBdC691B98Aee6a11ED41d618'
+                ],
                 WRAPPED_NATIVE_TOKEN_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
                 DEX_CANDIDATES: [
                     'DEX_UNISWAPV2',
