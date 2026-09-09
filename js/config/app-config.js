@@ -166,9 +166,11 @@ window.CONFIG = {
                 DEX: 'DEX_UNISWAPV2',
                 ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05',
                 // Explicitly trusted targets; never populate this list from a quote.
-                // Current BSC /in/route and /in/route/build target, verified 2026-09-08.
                 ROUTER_ADDRESSES: [
+                    // Legacy KSZapRouterPosition remains listed in Kyber's BSC V2 deployments.
                     '0x0e97C887b61cCd952a53578B04763E7134429e05',
+                    // KSAllowanceHub: official deployment config lists this address for chain 56.
+                    // https://github.com/KyberNetwork/ks-allowance-hub/blob/9a156979a61c309f21e82056bce3b8aac156333b/script/config/allowance-hub.json
                     '0x455C51505E90819aBdC691B98Aee6a11ED41d618'
                 ],
                 WRAPPED_NATIVE_TOKEN_ADDRESS: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
