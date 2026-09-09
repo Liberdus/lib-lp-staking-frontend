@@ -279,4 +279,54 @@ describe('KyberZapService', () => {
             { ROUTER_ADDRESS: '0x0e97C887b61cCd952a53578B04763E7134429e05' }
         )).toThrow('Kyber returned an unexpected zap router');
     });
+
+    it('accepts the current BSC build target and legacy router using the app config', async () => {
+        const KyberZapService = await loadKyberZapService();
+        await import('../js/config/app-config.js');
+        const service = new KyberZapService();
+
+        for (const address of [
+            '0x455c51505e90819abdc691b98aee6a11ed41d618',
+            '0x0e97c887b61ccd952a53578b04763e7134429e05'
+        ]) {
+            expect(() => service.validateRouterAddress(address)).not.toThrow();
+        }
+        expect(() => service.validateRouterAddress(
+            '0x1111111111111111111111111111111111111111'
+        )).toThrow('unexpected zap router');
+    });
+
+    it('fails closed for missing trust configuration or malformed targets', async () => {
+        const KyberZapService = await loadKyberZapService();
+        const service = new KyberZapService();
+        for (const address of [null, '', '0xinvalid', '0x0000000000000000000000000000000000000000']) {
+            expect(() => service.validateRouterAddress(address)).toThrow('unexpected zap router');
+        }
+        expect(() => service.validateRouterAddress(
+            '0x455C51505E90819aBdC691B98Aee6a11ED41d618', {}
+        )).toThrow('unexpected zap router');
+    });
+
+    it('provides an actionable support message and router diagnostics', async () => {
+        const KyberZapService = await loadKyberZapService();
+        const service = new KyberZapService();
+        const address = '0x1111111111111111111111111111111111111111';
+
+        let failure;
+        try {
+            service.validateRouterAddress(address);
+        } catch (error) {
+            failure = error;
+        }
+
+        expect(failure?.code).toBe('KYBER_ROUTER_REVIEW_REQUIRED');
+        expect(failure?.userMessage.title).toBe('Zap temporarily unavailable');
+        expect(failure?.userMessage.message).toContain('verify it and update the app');
+        expect(failure?.userMessage.message).toContain(failure.code);
+        expect(failure?.details).toEqual({
+            chain: 'bsc',
+            returnedAddress: address,
+            allowedAddresses: ['0x0e97C887b61cCd952a53578B04763E7134429e05']
+        });
+    });
 });
